@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mahavir Card
 
-## Getting Started
+Mahavir Card is a Next.js App Router application for a commercial printing and packaging business. It combines a customer-facing storefront with a validated API foundation for products, categories, quotes, orders, leads, and artwork metadata.
 
-First, run the development server:
+## Local setup
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Install dependencies and create a local environment file:
+
+```powershell
+npm.cmd install
+Copy-Item .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Set these values in `.env.local`:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+DATABASE_URL="your-pooled-neon-connection-string"
+DATABASE_URL_UNPOOLED="your-direct-neon-connection-string"
+BETTER_AUTH_SECRET="a-long-random-secret"
+BETTER_AUTH_URL="http://localhost:3000"
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Use the pooled URL for the application and the direct URL for Drizzle migrations. The direct URL is optional for local development, but recommended for Neon deployments.
 
-## Learn More
+## Database commands
 
-To learn more about Next.js, take a look at the following resources:
+```powershell
+npm.cmd run db:generate
+npm.cmd run db:migrate
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The schema lives in `src/lib/db/schema.ts`. Better Auth uses the `user`, `session`, `account`, and `verification` tables defined there, while the remaining tables hold Mahavir Card business data.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Run and verify
 
-## Deploy on Vercel
+```powershell
+npm.cmd run dev
+npm.cmd run lint
+npm.cmd run build
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The API is served from the same Next.js application under `/api`. Better Auth is available at `/api/auth/*`. Admin-only mutations use the authenticated user role stored by Better Auth; new accounts default to `CUSTOMER`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deployment
+
+Deploy the repository to Vercel and add the four environment variables from `.env.local` to the project settings. Run the migration against the production Neon branch before opening the storefront to customers.
