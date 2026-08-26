@@ -3,13 +3,15 @@
 
 :root {
   /* Change these seven tokens to re-theme the customer storefront. */
-  --mc-surface: #fcfbf8;
+  --mc-surface: #f7f9fc;
   --mc-paper: #ffffff;
-  --mc-ink: #17221c;
-  --mc-muted: #626a62;
-  --mc-accent: #8b2f24;
-  --mc-accent-soft: #fcf7f5;
-  --mc-line: #d8d6cf;
+  --mc-ink: #162237;
+  --mc-muted: #607089;
+  --mc-accent: #2457b8;
+  --mc-accent-dark: #17479f;
+  --mc-navy: #102a5e;
+  --mc-accent-soft: #edf3ff;
+  --mc-line: #cfd8e8;
   --background: var(--mc-surface);
   --foreground: var(--mc-ink);
 }
@@ -46,3 +48,123 @@ html {
 }
 
 body { overflow-x: hidden; }
+
+[class~="tracking-[-0.04em]"],
+[class~="tracking-[-0.05em]"],
+[class~="tracking-[-0.06em]"] { letter-spacing: 0 !important; }
+
+/* Compatibility layer for older storefront screens that predate the theme tokens. */
+[class~="text-[#8b2f24]"],
+[class~="text-[#f15a3a]"],
+[class~="text-[#d99286]"] { color: var(--mc-accent) !important; }
+
+[class~="bg-[#8b2f24]"],
+[class~="bg-[#f15a3a]"] { background-color: var(--mc-accent) !important; }
+
+[class~="bg-[#17221c]"],
+[class~="bg-[#18231e]"] { background-color: var(--mc-navy) !important; }
+
+[class~="text-[#17221c]"],
+[class~="text-[#18231e]"],
+[class~="text-[#1d2921]"],
+[class~="text-[#243027]"],
+[class~="text-[#263129]"],
+[class~="text-[#28342b]"],
+[class~="text-[#29342c]"],
+[class~="text-[#344038]"] { color: var(--mc-ink) !important; }
+
+[class~="text-[#4b514c]"],
+[class~="text-[#505951]"],
+[class~="text-[#586159]"],
+[class~="text-[#5e665f]"],
+[class~="text-[#626861]"],
+[class~="text-[#626a62]"],
+[class~="text-[#646b64]"],
+[class~="text-[#687069]"],
+[class~="text-[#747b74]"],
+[class~="text-[#777d75]"],
+[class~="text-[#777d76]"],
+[class~="text-[#80877f]"],
+[class~="text-[#858a83]"],
+[class~="text-[#889087]"] { color: var(--mc-muted) !important; }
+
+[class~="bg-[#fcfbf8]"],
+[class~="bg-[#f8f7f3]"],
+[class~="bg-[#fbfaf7]"] { background-color: var(--mc-surface) !important; }
+
+[class~="bg-[#fcfbf8]/95"] { background-color: color-mix(in srgb, var(--mc-surface) 95%, transparent) !important; }
+
+[class~="bg-[#fcf7f5]"],
+[class~="bg-[#f4f2ed]"],
+[class~="bg-[#f1eee7]"],
+[class~="bg-[#eeece4]"],
+[class~="bg-[#eef1ec]"] { background-color: var(--mc-accent-soft) !important; }
+
+[class~="border-[#8b2f24]"],
+[class~="border-[#f15a3a]"],
+[class~="border-[#17221c]"],
+[class~="border-[#18231e]"] { border-color: var(--mc-accent) !important; }
+
+[class~="border-[#bdbdb5]"],
+[class~="border-[#c9c7bf]"],
+[class~="border-[#ccc9c0]"],
+[class~="border-[#cfcfc6]"],
+[class~="border-[#d8d6cf]"],
+[class~="border-[#d9d6ce]"],
+[class~="border-[#ddd9d0]"],
+[class~="border-[#dedcd5]"],
+[class~="border-[#dfddd7]"],
+[class~="border-[#e1dfd8]"],
+[class~="border-[#e2e0da]"],
+[class~="border-[#e3e1db]"],
+[class~="border-[#e5e2db]"],
+[class~="border-[#e8e6e0]"],
+[class~="border-[#ebe9e3]"],
+[class~="border-[#eeeae2]"] { border-color: var(--mc-line) !important; }
+
+[class~="hover:bg-[#17221c]"]:hover,
+[class~="hover:bg-[#18231e]"]:hover,
+[class~="hover:bg-[#8b2f24]"]:hover { background-color: var(--mc-accent-dark) !important; }
+
+[class~="hover:text-[#8b2f24]"]:hover,
+[class~="hover:text-[#f15a3a]"]:hover { color: var(--mc-accent) !important; }
+
+[class~="hover:border-[#18231e]"]:hover,
+[class~="hover:border-[#243027]"]:hover,
+[class~="hover:border-[#8b2f24]"]:hover,
+[class~="hover:border-[#f15a3a]"]:hover { border-color: var(--mc-accent) !important; }
+
+[class~="group"]:hover [class~="group-hover:text-[#8b2f24]"] { color: var(--mc-accent) !important; }
+
+[class~="focus:border-[#8b2f24]"]:focus,
+[class~="focus:border-[#f15a3a]"]:focus { border-color: var(--mc-accent) !important; }
+
+button,
+[role="button"],
+a[class*="px-"] {
+  border-radius: 9999px;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+button:not(:disabled):hover,
+[role="button"]:not([aria-disabled="true"]):hover,
+a[class*="px-"]:hover { transform: translateY(-1px); }
+
+button:disabled { transform: none; }
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+select,
+textarea { border-radius: 10px; }
+
+section[class*="border"][class*="bg-white"],
+article[class*="border"][class*="bg-white"],
+div[class~="border"][class~="bg-white"] { border-radius: 8px; }
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--mc-accent) 24%, transparent);
+  outline-offset: 2px;
+}
