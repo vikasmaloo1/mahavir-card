@@ -1,10 +1,25 @@
 import { ArrowLeft, Clock3, FileUp, ShieldCheck } from "lucide-react";
+import { and, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 
 import { ProductConfigurator } from "@/components/product-configurator";
 import { ProductImage } from "@/components/product-image";
 import { StorefrontHeader } from "@/components/storefront-header";
-import { catalogProducts, getCatalogProduct } from "@/lib/catalog";
+import { catalogProducts, getCatalogProduct, type CatalogProduct, type ConfigField } from "@/lib/catalog";
+import { db } from "@/lib/db/server";
+import { categories, products } from "@/lib/db/schema";
+
+export const dynamicParams = true;
+
+const fallbackFields: ConfigField[] = [{ id: "quantity", label: "Quantity", type: "number", defaultValue: "100" }];
+
+async function getDatabaseCatalogProduct(slug: string): Promise<CatalogProduct | null> {
+  const [row] = await db.select({ product: products, category: { name: categories.name, slug: categories.slug } }).from(products).leftJoin(categories, eq(products.categoryId, categories.id)).where(and(eq(products.slug, slug), eq(products.isActive, true), eq(products.status, "ACTIVE"))).limit(1);
+  if (!row) return null;
+  const configuration = row.product.configuration as { fields?: unknown };
+  const fields = Array.isArray(configuration.fields) ? configuration.fields as ConfigField[] : fallbackFields;
+  return { id: row.product.id, category: row.category?.name ?? "Printing", categorySlug: row.category?.slug ?? "printing", name: row.product.name, slug: row.product.slug, shortDescription: row.product.shortDescription ?? "Configure the details for your print job.", description: row.product.description ?? "Choose the options you need and request a quote for the confirmed price.", startingPrice: 0, unit: row.product.referenceQuantity ? `${row.product.referenceQuantity.toLocaleString("en-IN")} units` : "Configured quantity", turnaround: row.product.productionTime ?? "Confirmed after review", color: "blue", tags: [], configuration: fields.length ? fields : fallbackFields, imageUrl: row.product.imageUrl ?? "/images/mahavir-print-assortment.png", orderable: row.product.orderable, quoteable: row.product.quoteable };
+}
 
 export function generateStaticParams() {
   return catalogProducts.map((product) => ({ slug: product.slug }));
@@ -12,7 +27,7 @@ export function generateStaticParams() {
 
 export default async function ProductPage({ params }: PageProps<"/catalog/[slug]">) {
   const { slug } = await params;
-  const product = getCatalogProduct(slug);
+  const product = getCatalogProduct(slug) ?? await getDatabaseCatalogProduct(slug);
   if (!product) notFound();
 
   return <main className="min-h-screen bg-[#f7f9fc] text-[#162237]"><StorefrontHeader />
