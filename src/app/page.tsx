@@ -1,18 +1,80 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, FileUp, PackageCheck, ReceiptText, ShieldCheck, ShoppingBag } from "lucide-react";
+import { ArrowRight, FileCheck2, FileUp, MapPin, PackageCheck, ReceiptText, ShoppingBag } from "lucide-react";
 
-import { ProductCard } from "@/components/product-card";
+import { HomeCatalogSections } from "@/components/home-catalog-sections";
+import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
-import { catalogCategories, catalogProducts } from "@/lib/catalog";
+import { catalogCategories } from "@/lib/catalog";
+
+const localContext = "Ahmedabad \u00b7 Commercial printing \u00b7 Business and bulk orders";
+const printServices = "Offset printing \u00b7 Business cards \u00b7 Packaging \u00b7 Labels";
 
 export default function Home() {
-  return <main className="min-h-screen bg-[#fcfbf8] text-[#17221c]"><StorefrontHeader />
-    <section className="border-b border-[#dedcd5]"><div className="mx-auto grid max-w-[1440px] gap-8 px-4 py-8 xl:grid-cols-[.88fr_1.12fr] xl:px-8 xl:py-12"><div className="flex flex-col justify-center"><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8b2f24]">Commercial printing, Ahmedabad</p><h1 className="mt-4 max-w-xl text-4xl font-bold leading-tight text-[#17221c] sm:text-5xl">Print what your business needs.</h1><p className="mt-4 max-w-xl text-base leading-7 text-[#5e665f]">Cards, packaging, labels and stationery from one practical place. Buy approved print jobs online or send the complex work for a quote.</p><div className="mt-6 flex flex-wrap gap-3"><Link href="/products" className="inline-flex items-center gap-2 bg-[#8b2f24] px-5 py-3 text-sm font-bold text-white hover:bg-[#17221c]">Browse products <ArrowRight size={16} /></Link><Link href="/quote" className="inline-flex items-center gap-2 border border-[#bdbdb5] bg-white px-5 py-3 text-sm font-bold text-[#243027] hover:border-[#243027]">Get a quote <ReceiptText size={16} /></Link></div><div className="mt-8 grid grid-cols-3 gap-3 border-t border-[#e3e1db] pt-5"><p className="text-xs leading-5 text-[#5e665f]"><strong className="block text-sm text-[#17221c]">Exact prices</strong>from approved rules</p><p className="text-xs leading-5 text-[#5e665f]"><strong className="block text-sm text-[#17221c]">CDR artwork</strong>for production files</p><p className="text-xs leading-5 text-[#5e665f]"><strong className="block text-sm text-[#17221c]">Quote help</strong>for custom work</p></div></div><div className="relative min-h-[330px] overflow-hidden bg-[#ebe5db] sm:min-h-[410px]"><Image src="/images/mahavir-print-assortment.png" alt="Business cards, labels, packaging and print material" fill priority sizes="(max-width: 1024px) 100vw, 58vw" className="object-cover" /><div className="absolute bottom-4 left-4 bg-[#fcfbf8]/95 px-4 py-3 text-sm font-semibold text-[#263129] shadow-sm"><span className="block text-[10px] uppercase tracking-[0.14em] text-[#777d75]">Ready to order</span>Business cards from Rs 300 / 1,000</div></div></div></section>
-    <section className="mx-auto max-w-[1440px] px-4 py-10 xl:px-8"><div className="flex items-end justify-between gap-6"><div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8b2f24]">Popular categories</p><h2 className="mt-2 text-2xl font-bold">Start with the job, not the jargon.</h2></div><Link href="/products" className="hidden text-sm font-bold text-[#8b2f24] sm:inline-flex sm:items-center sm:gap-1">See catalogue <ArrowRight size={15} /></Link></div><div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{catalogCategories.map((category, index) => <Link key={category.slug} href={`/products?category=${category.slug}`} className="group flex items-center justify-between border border-[#dfddd7] bg-white px-4 py-4 hover:border-[#8b2f24]"><div><p className="text-[10px] font-bold uppercase tracking-[0.13em] text-[#8b2f24]">0{index + 1}</p><h3 className="mt-1 font-bold text-[#1d2921]">{category.name}</h3><p className="mt-1 text-sm text-[#687069]">{category.description}</p></div><ArrowRight className="shrink-0 text-[#889087] group-hover:text-[#8b2f24]" size={18} /></Link>)}</div></section>
-    <section className="border-y border-[#dedcd5] bg-[#f4f2ed]"><div className="mx-auto max-w-[1440px] px-4 py-10 xl:px-8"><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8b2f24]">Popular products</p><h2 className="mt-2 text-2xl font-bold">Choose a product and make it yours.</h2></div><p className="max-w-md text-sm leading-6 text-[#626a62]">Online ordering appears where an exact price is available. The rest stays safely in the quote route.</p></div><div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{catalogProducts.slice(0, 4).map((product) => <ProductCard key={product.id} product={product} />)}</div></div></section>
-    <section className="mx-auto max-w-[1440px] px-4 py-10 xl:px-8"><div className="grid gap-5 xl:grid-cols-[.85fr_1.15fr]"><div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8b2f24]">How it works</p><h2 className="mt-2 max-w-md text-2xl font-bold">A clear route for every kind of print job.</h2><Link href="/quote" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#8b2f24]">Need a custom job? Request a quote <ArrowRight size={16} /></Link></div><div className="grid gap-3 sm:grid-cols-4">{[[ShoppingBag, "Configure", "Choose format and quantity"], [FileUp, "Upload", "CDR artwork, when ready"], [ReceiptText, "Pay or quote", "Buy online or send a brief"], [PackageCheck, "We print", "Production and delivery updates"]].map(([Icon, title, detail]) => { const StepIcon = Icon as typeof ShoppingBag; return <div key={String(title)} className="border-t-2 border-[#17221c] pt-3"><StepIcon size={19} className="text-[#8b2f24]" /><h3 className="mt-5 text-sm font-bold">{title as string}</h3><p className="mt-1 text-sm leading-5 text-[#626a62]">{detail as string}</p></div>; })}</div></div></section>
-    <section className="border-t border-[#dedcd5] bg-[#17221c] text-white"><div className="mx-auto flex max-w-[1440px] flex-col justify-between gap-5 px-4 py-8 sm:flex-row sm:items-center xl:px-8"><div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#d99286]">Business and bulk printing</p><h2 className="mt-2 text-2xl font-bold">Need 10,000 labels or custom packaging?</h2></div><Link href="/quote" className="inline-flex w-fit items-center gap-2 bg-[#f5f2ec] px-5 py-3 text-sm font-bold text-[#17221c] hover:bg-white">Request a quote <ArrowRight size={16} /></Link></div></section>
-    <footer className="bg-[#17221c] text-[#b9c1ba]"><div className="mx-auto flex max-w-[1440px] items-center gap-2 border-t border-white/15 px-4 py-5 text-xs xl:px-8"><ShieldCheck size={15} className="text-[#d99286]" /> Mahavir Card. Clear print ordering for growing businesses.</div></footer>
-  </main>;
+  return (
+    <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
+      <StorefrontHeader />
+
+      <section className="border-b border-[var(--mc-line)] bg-white">
+        <div className="mx-auto grid max-w-[1440px] gap-7 px-4 py-8 lg:grid-cols-[.86fr_1.14fr] lg:items-center lg:px-8 lg:py-11">
+          <div className="py-2 lg:pr-6">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--mc-accent)]">Commercial printing {"\u00b7"} Ahmedabad</p>
+            <h1 className="mt-4 max-w-xl text-4xl font-bold leading-[1.1] sm:text-5xl">Printing that works for your business.</h1>
+            <p className="mt-5 max-w-xl text-base leading-7 text-[var(--mc-muted)]">Business cards, packaging, labels and stationery, with online ordering for approved jobs and quotations for custom work.</p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link href="/products" className="inline-flex items-center gap-2 bg-[var(--mc-accent)] px-5 py-3 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)]">Browse products <ArrowRight size={16} /></Link>
+              <Link href="/quote" className="inline-flex items-center gap-2 border border-[var(--mc-line)] bg-[var(--mc-paper)] px-5 py-3 text-sm font-bold text-[var(--mc-ink)] hover:border-[var(--mc-accent)]">Request a quote <ReceiptText size={16} /></Link>
+            </div>
+            <p className="mt-7 flex items-center gap-2 border-t border-[var(--mc-line)] pt-5 text-xs font-semibold text-[var(--mc-muted)]"><MapPin size={15} className="shrink-0 text-[var(--mc-accent)]" />{localContext}</p>
+          </div>
+
+          <div className="relative aspect-[1.55] min-h-[280px] overflow-hidden border border-[#bfd1f3] bg-[var(--mc-accent-soft)] shadow-[0_16px_44px_rgba(40,100,220,0.12)] sm:min-h-[300px]">
+            <Image src="/images/mahavir-print-assortment.png" alt="Business cards, printed stationery, packaging and product labels" fill priority sizes="(max-width: 1024px) 100vw, 58vw" className="object-cover" />
+            <div className="absolute bottom-4 left-4 max-w-[calc(100%-2rem)] border border-white/60 bg-[var(--mc-paper)]/95 px-4 py-3 text-sm font-semibold shadow-sm"><span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--mc-accent)]">Ready to order</span>Business cards from Rs 300 / 1,000</div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-b border-[var(--mc-line)] bg-[var(--mc-paper)]">
+        <div className="mx-auto grid max-w-[1440px] gap-5 px-4 py-5 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr] lg:px-8">
+          <div><p className="font-bold">Mahavir Card</p><p className="mt-1 text-xs text-[var(--mc-muted)]">{printServices}</p></div>
+          <div className="flex items-center gap-3"><ShoppingBag size={18} className="text-[var(--mc-accent)]" /><div><p className="text-sm font-bold">Online ordering</p><p className="text-xs text-[var(--mc-muted)]">For approved print jobs</p></div></div>
+          <div className="flex items-center gap-3"><FileUp size={18} className="text-[var(--mc-accent)]" /><div><p className="text-sm font-bold">CDR artwork</p><p className="text-xs text-[var(--mc-muted)]">Production-ready upload</p></div></div>
+          <div className="flex items-center gap-3"><ReceiptText size={18} className="text-[var(--mc-accent)]" /><div><p className="text-sm font-bold">Custom quotations</p><p className="text-xs text-[var(--mc-muted)]">For complex and bulk work</p></div></div>
+        </div>
+      </section>
+
+      <HomeCatalogSections initialCategories={catalogCategories} />
+
+      <section className="mx-auto max-w-[1440px] px-4 py-10 lg:px-8 lg:py-14">
+        <div className="grid gap-8 lg:grid-cols-[.78fr_1.22fr] lg:items-start">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--mc-accent)]">A practical print partner</p>
+            <h2 className="mt-2 max-w-md text-2xl font-bold sm:text-3xl">Made for businesses in Ahmedabad.</h2>
+            <p className="mt-4 max-w-lg text-sm leading-6 text-[var(--mc-muted)]">From everyday visiting cards to bulk packaging and labels, Mahavir Card handles the print work your business depends on.</p>
+            <Link href="/products" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[var(--mc-accent)]">Explore the catalogue <ArrowRight size={15} /></Link>
+          </div>
+          <div className="grid gap-px overflow-hidden border border-[var(--mc-line)] bg-[var(--mc-line)] sm:grid-cols-3">
+            {[
+              [FileCheck2, "Clear specification", "See quantities, finishes and artwork requirements before ordering."],
+              [PackageCheck, "Direct or custom", "Buy priced products online or request a quotation for tailored work."],
+              [MapPin, "Local context", "Based in Khadia Golwad and serving practical business print needs."],
+            ].map(([Icon, title, copy]) => {
+              const ItemIcon = Icon as typeof FileCheck2;
+              return <div key={String(title)} className="bg-[var(--mc-paper)] p-5"><ItemIcon size={20} className="text-[var(--mc-accent)]" /><h3 className="mt-5 text-sm font-bold">{String(title)}</h3><p className="mt-2 text-sm leading-6 text-[var(--mc-muted)]">{String(copy)}</p></div>;
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-[var(--mc-line)] bg-[var(--mc-accent-soft)]">
+        <div className="mx-auto flex max-w-[1440px] flex-col justify-between gap-5 px-4 py-8 sm:flex-row sm:items-center lg:px-8">
+          <div><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--mc-accent)]">Business and bulk printing</p><h2 className="mt-2 text-2xl font-bold">Need 10,000 labels or custom packaging?</h2></div>
+          <Link href="/quote" className="inline-flex w-fit items-center gap-2 bg-[var(--mc-accent)] px-5 py-3 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)]">Request a quote <ArrowRight size={16} /></Link>
+        </div>
+      </section>
+
+      <StorefrontFooter />
+    </main>
+  );
 }

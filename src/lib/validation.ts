@@ -267,8 +267,6 @@ export const adminOrderUpdateSchema = z.object({
 export const artworkUpdateSchema = z.object({
   status: z.enum(["PENDING_REVIEW", "APPROVED", "CHANGES_REQUIRED", "REJECTED"]).optional(),
   notes: z.string().trim().max(1000).optional(),
-  storageKey: z.string().trim().max(500).optional(),
-  storageUrl: z.url().nullable().optional(),
 });
 
 export type QuoteInput = z.infer<typeof quoteSchema>;

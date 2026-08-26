@@ -2,16 +2,16 @@
 @import "swagger-ui-react/swagger-ui.css";
 
 :root {
-  /* Change these seven tokens to re-theme the customer storefront. */
-  --mc-surface: #f7f9fc;
+  /* The storefront theme is intentionally controlled from this small set. */
+  --mc-surface: #f5f8ff;
   --mc-paper: #ffffff;
-  --mc-ink: #162237;
-  --mc-muted: #607089;
-  --mc-accent: #2457b8;
-  --mc-accent-dark: #17479f;
-  --mc-navy: #102a5e;
-  --mc-accent-soft: #edf3ff;
-  --mc-line: #cfd8e8;
+  --mc-ink: #10213f;
+  --mc-muted: #5d6f8d;
+  --mc-accent: #2864dc;
+  --mc-accent-dark: #174baa;
+  --mc-navy: #0d2042;
+  --mc-accent-soft: #eaf1ff;
+  --mc-line: #d7e1f2;
   --background: var(--mc-surface);
   --foreground: var(--mc-ink);
 }
@@ -27,6 +27,8 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+::selection { background: #cfe0ff; color: var(--mc-ink); }
+
 /* Use these for new storefront components so the theme stays centralized. */
 .mc-page { background: var(--mc-surface); color: var(--mc-ink); }
 .mc-paper { background: var(--mc-paper); }
@@ -35,8 +37,8 @@ body {
 .mc-accent { color: var(--mc-accent); }
 .mc-accent-bg { background: var(--mc-accent); color: #fff; }
 .mc-line { border-color: var(--mc-line); }
-.field { width: 100%; border: 1px solid #c9d2df; background: #fff; padding: 0.625rem 0.75rem; font-size: 0.875rem; font-weight: 400; outline: none; }
-.field:focus { border-color: #2457b8; }
+.field { width: 100%; border: 1px solid var(--mc-line); background: var(--mc-paper); padding: 0.625rem 0.75rem; font-size: 0.875rem; font-weight: 400; outline: none; }
+.field:focus { border-color: var(--mc-accent); }
 
 * {
   box-sizing: border-box;
@@ -62,10 +64,12 @@ body { overflow-x: hidden; }
 [class~="bg-[#f15a3a]"] { background-color: var(--mc-accent) !important; }
 
 [class~="bg-[#17221c]"],
-[class~="bg-[#18231e]"] { background-color: var(--mc-navy) !important; }
+[class~="bg-[#18231e]"],
+[class~="bg-[#1f2c25]"] { background-color: var(--mc-navy) !important; }
 
 [class~="text-[#17221c]"],
 [class~="text-[#18231e]"],
+[class~="text-[#152019]"],
 [class~="text-[#1d2921]"],
 [class~="text-[#243027]"],
 [class~="text-[#263129]"],
@@ -80,6 +84,9 @@ body { overflow-x: hidden; }
 [class~="text-[#626861]"],
 [class~="text-[#626a62]"],
 [class~="text-[#646b64]"],
+[class~="text-[#6d746d]"],
+[class~="text-[#3b453e]"],
+[class~="text-[#455047]"],
 [class~="text-[#687069]"],
 [class~="text-[#747b74]"],
 [class~="text-[#777d75]"],
@@ -98,6 +105,9 @@ body { overflow-x: hidden; }
 [class~="bg-[#f4f2ed]"],
 [class~="bg-[#f1eee7]"],
 [class~="bg-[#eeece4]"],
+[class~="bg-[#eef0eb]"],
+[class~="bg-[#ece7de]"],
+[class~="bg-[#f5f1ed]"],
 [class~="bg-[#eef1ec]"] { background-color: var(--mc-accent-soft) !important; }
 
 [class~="border-[#8b2f24]"],
@@ -109,6 +119,7 @@ body { overflow-x: hidden; }
 [class~="border-[#c9c7bf]"],
 [class~="border-[#ccc9c0]"],
 [class~="border-[#cfcfc6]"],
+[class~="border-[#cfcfc8]"],
 [class~="border-[#d8d6cf]"],
 [class~="border-[#d9d6ce]"],
 [class~="border-[#ddd9d0]"],
@@ -139,10 +150,49 @@ body { overflow-x: hidden; }
 [class~="focus:border-[#8b2f24]"]:focus,
 [class~="focus:border-[#f15a3a]"]:focus { border-color: var(--mc-accent) !important; }
 
+/* Keep newer customer tools on the same white and cobalt storefront palette. */
+.mc-storefront [class~="text-[#2457b8]"],
+.mc-storefront [class~="text-[#17479f]"] { color: var(--mc-accent) !important; }
+
+.mc-storefront [class~="text-[#162237]"],
+.mc-storefront [class~="text-[#263753]"],
+.mc-storefront [class~="text-[#24324a]"] { color: var(--mc-ink) !important; }
+
+.mc-storefront [class~="text-[#52647e]"],
+.mc-storefront [class~="text-[#607089]"] { color: var(--mc-muted) !important; }
+
+.mc-storefront [class~="bg-[#2457b8]"] { background-color: var(--mc-accent) !important; }
+.mc-storefront [class~="bg-[#17479f]"] { background-color: var(--mc-accent-dark) !important; }
+.mc-storefront [class~="bg-[#f7f9fc]"],
+.mc-storefront [class~="bg-[#fbfcff]"] { background-color: var(--mc-surface) !important; }
+.mc-storefront [class~="bg-[#edf3ff]"],
+.mc-storefront [class~="bg-[#edf2f8]"],
+.mc-storefront [class~="bg-[#f2f6fc]"],
+.mc-storefront [class~="bg-[#dbe4f3]"] { background-color: var(--mc-accent-soft) !important; }
+
+.mc-storefront [class~="border-[#2457b8]"],
+.mc-storefront [class~="border-[#9caed0]"],
+.mc-storefront [class~="border-[#aab9d1]"],
+.mc-storefront [class~="border-[#aebed8]"],
+.mc-storefront [class~="border-[#b6c4da]"],
+.mc-storefront [class~="border-[#c8d7f1]"],
+.mc-storefront [class~="border-[#c9d2df]"],
+.mc-storefront [class~="border-[#cfd8e8]"],
+.mc-storefront [class~="border-[#d4dbe7]"],
+.mc-storefront [class~="border-[#d5dce8]"],
+.mc-storefront [class~="border-[#d5deeb]"],
+.mc-storefront [class~="border-[#d9e0eb]"],
+.mc-storefront [class~="border-[#dfe5ef]"] { border-color: var(--mc-line) !important; }
+
+.mc-storefront [class~="hover:bg-[#17479f]"]:hover,
+.mc-storefront [class~="hover:bg-[#2457b8]"]:hover { background-color: var(--mc-accent-dark) !important; }
+.mc-storefront [class~="hover:border-[#2457b8]"]:hover,
+.mc-storefront [class~="focus:border-[#2457b8]"]:focus { border-color: var(--mc-accent) !important; }
+
 button,
 [role="button"],
 a[class*="px-"] {
-  border-radius: 9999px;
+  border-radius: 999px;
   transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
@@ -154,11 +204,11 @@ button:disabled { transform: none; }
 
 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
 select,
-textarea { border-radius: 10px; }
+textarea { border-radius: 8px; }
 
 section[class*="border"][class*="bg-white"],
 article[class*="border"][class*="bg-white"],
-div[class~="border"][class~="bg-white"] { border-radius: 8px; }
+div[class~="border"][class~="bg-white"] { border-radius: 6px; }
 
 button:focus-visible,
 a:focus-visible,

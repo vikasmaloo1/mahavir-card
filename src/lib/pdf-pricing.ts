@@ -10,7 +10,7 @@ export type PdfPriceRow = {
 const rows = (productSlug: string, name: string, quantity: number, values: Array<[string, string]>, unit: PdfPriceRow["unit"] = "batch") => values.map(([label, amount]) => ({ productSlug, name: label, quantity, amount, unit, options: { specification: label } }));
 
 export const pdfPricingRows: PdfPriceRow[] = [
-  ...rows("business-cards", "Business Card", 1000, [["NT single side", "300"], ["NT front back", "350"], ["Tearable single side", "250"], ["Tearable F-B without lamination", "300"], ["Tearable F-B with lamination", "350"], ["350 GSM matt single + F-B same rate", "500"], ["350 GSM matt round cut", "650"], ["400 GSM matt single side UV card", "650"], ["400 GSM single side UV card round cut", "800"], ["400 GSM matt UV F-B card", "750"], ["400 GSM matt UV F-B card round cut", "900"]]),
+  ...businessCardProducts.map((product) => ({ productSlug: product.slug, name: product.name, quantity: 1000, amount: product.price, unit: "batch" as const, options: {} })),
   ...rows("paper-job", "Paper Job", 1000, [["80 GSM Sunsine", "1000"], ["100 GSM SSP", "1100"], ["100 GSM 210x297 Alabaster", "1100"], ["100 GSM EXE Bond", "1300"]]),
   ...rows("cover-job", "Cover Job", 1000, [["80 GSM SSP 9.5x4.25", "1200"], ["100 GSM SSP 9.5x4.25", "1300"], ["100 GSM Alabaster", "1300"], ["11x5 100 GSM", "2400"]]),
   ...rows("gsm-130-170", "130 GSM - 170 GSM", 1000, [["130 GSM single side", "1300"], ["130 GSM front back", "1800"], ["170 GSM single side", "1700"], ["170 GSM front back", "2000"]]),
@@ -50,3 +50,4 @@ export const pdfPricingRows: PdfPriceRow[] = [
   ...rows("job-250gsm", "250 GSM Job", 900, [["11x17 with lamination + crizing / 8.25x22.5", "6000"]]),
   ...rows("job-250gsm", "250 GSM Job", 1000, [["11x17 with lamination + crizing / 8.25x22.5", "6800"]]),
 ];
+import { businessCardProducts } from "@/lib/business-cards";

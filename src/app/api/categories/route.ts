@@ -2,14 +2,18 @@ import { asc, eq } from "drizzle-orm";
 
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
 import { db } from "@/lib/db/server";
-import { categories } from "@/lib/db/schema";
+import { categories, categoryImages } from "@/lib/db/schema";
 import { requireRole } from "@/lib/permissions";
 import { categorySchema } from "@/lib/validation";
 
 export async function GET() {
   try {
-    const data = await db.select().from(categories).where(eq(categories.isActive, true)).orderBy(asc(categories.sortOrder));
-    return jsonOk(data);
+    const [data, images] = await Promise.all([
+      db.select().from(categories).where(eq(categories.isActive, true)).orderBy(asc(categories.sortOrder)),
+      db.select({ categoryId: categoryImages.categoryId, imageUrl: categoryImages.imageUrl }).from(categoryImages).where(eq(categoryImages.isPrimary, true)),
+    ]);
+    const primaryImages = new Map(images.map((image) => [image.categoryId, image.imageUrl]));
+    return jsonOk(data.map((category) => ({ ...category, imageUrl: primaryImages.get(category.id) ?? null })));
   } catch (error) {
     return handleApiError(error);
   }

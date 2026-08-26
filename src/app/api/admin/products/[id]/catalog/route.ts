@@ -5,9 +5,9 @@ import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
 import { db } from "@/lib/db/server";
 import { addons, artworkRequirements, pricingRules, productAddons, productContentItems, productContentSections, productDeliveryRules, productImages, products } from "@/lib/db/schema";
 import { requireRole } from "@/lib/permissions";
-import { adminPricingSchema, artworkRequirementSchema, productAddonSchema, productContentItemSchema, productContentSectionSchema, productDeliveryRuleSchema, productImageSchema } from "@/lib/validation";
+import { adminPricingSchema, artworkRequirementSchema, productAddonSchema, productContentItemSchema, productContentSectionSchema, productDeliveryRuleSchema } from "@/lib/validation";
 
-const resourceSchema = z.enum(["IMAGE", "SECTION", "SECTION_ITEM", "ADDON", "DELIVERY_RULE", "PRICING_RULE", "ARTWORK_REQUIREMENT"]);
+const resourceSchema = z.enum(["SECTION", "SECTION_ITEM", "ADDON", "DELIVERY_RULE", "PRICING_RULE", "ARTWORK_REQUIREMENT"]);
 const mutationSchema = z.object({ resource: resourceSchema, id: z.string().uuid().optional(), data: z.record(z.string(), z.unknown()) });
 
 async function productExists(id: string) {
@@ -56,11 +56,6 @@ export async function POST(request: Request, ctx: RouteContext<"/api/admin/produ
     const { id: productId } = await ctx.params;
     if (!await productExists(productId)) return jsonError("Product not found", 404);
     const input = await readBody(request, mutationSchema);
-    if (input.resource === "IMAGE") {
-      const data = productImageSchema.parse(input.data);
-      const image = await db.transaction(async (tx) => { if (data.isPrimary) await tx.update(productImages).set({ isPrimary: false, updatedAt: new Date() }).where(eq(productImages.productId, productId)); return (await tx.insert(productImages).values({ ...data, productId }).returning())[0]; });
-      return image ? jsonOk(image, 201) : jsonError("Image was not created", 500);
-    }
     if (input.resource === "SECTION") {
       const [section] = await db.insert(productContentSections).values({ ...productContentSectionSchema.parse(input.data), productId }).returning();
       return section ? jsonOk(section, 201) : jsonError("Section was not created", 500);
@@ -102,11 +97,6 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/prod
     const { id: productId } = await ctx.params;
     if (!await productExists(productId)) return jsonError("Product not found", 404);
     const input = await readBody(request, mutationSchema.refine((value) => Boolean(value.id), { message: "id is required" }));
-    if (input.resource === "IMAGE") {
-      const data = productImageSchema.partial().parse(input.data);
-      const image = await db.transaction(async (tx) => { if (data.isPrimary) await tx.update(productImages).set({ isPrimary: false, updatedAt: new Date() }).where(eq(productImages.productId, productId)); return (await tx.update(productImages).set({ ...data, updatedAt: new Date() }).where(and(eq(productImages.id, input.id!), eq(productImages.productId, productId))).returning())[0]; });
-      return image ? jsonOk(image) : jsonError("Image not found", 404);
-    }
     if (input.resource === "SECTION") {
       const [section] = await db.update(productContentSections).set({ ...productContentSectionSchema.partial().parse(input.data), updatedAt: new Date() }).where(and(eq(productContentSections.id, input.id!), eq(productContentSections.productId, productId))).returning();
       return section ? jsonOk(section) : jsonError("Section not found", 404);
@@ -146,8 +136,7 @@ export async function DELETE(request: Request, ctx: RouteContext<"/api/admin/pro
     const { id: productId } = await ctx.params;
     if (!await productExists(productId)) return jsonError("Product not found", 404);
     const input = await readBody(request, z.object({ resource: resourceSchema, id: z.string().uuid() }));
-    if (input.resource === "IMAGE") await db.delete(productImages).where(and(eq(productImages.id, input.id), eq(productImages.productId, productId)));
-    else if (input.resource === "SECTION") await db.delete(productContentSections).where(and(eq(productContentSections.id, input.id), eq(productContentSections.productId, productId)));
+    if (input.resource === "SECTION") await db.delete(productContentSections).where(and(eq(productContentSections.id, input.id), eq(productContentSections.productId, productId)));
     else if (input.resource === "SECTION_ITEM") {
       if (!await productOwnsSectionItem(productId, input.id)) return jsonError("Content item not found", 404);
       await db.delete(productContentItems).where(eq(productContentItems.id, input.id));

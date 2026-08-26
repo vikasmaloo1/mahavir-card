@@ -9,6 +9,7 @@ const { db, pool } = await import("../src/lib/db");
 const { addons, artworkRequirements, categories, pricingRules, productAddons, productContentItems, productContentSections, productDeliveryRules, productImages, productVariants, products } = await import("../src/lib/db/schema");
 const { sql } = await import("drizzle-orm");
 const { catalogCategories, catalogProducts } = await import("../src/lib/catalog");
+const { businessCardProducts } = await import("../src/lib/business-cards");
 const { pdfPricingRows } = await import("../src/lib/pdf-pricing");
 
 function uuidFor(value: string) {
@@ -25,6 +26,7 @@ await db.insert(categories).values(catalogCategories.map((category, index) => ({
 
 const allProducts = [
   ...catalogProducts.map((product) => ({ id: product.id, categorySlug: product.categorySlug, name: product.name, slug: product.slug, description: product.description, configuration: product.configuration, imageUrl: product.imageUrl, orderable: product.orderable, quoteable: product.quoteable })),
+  ...businessCardProducts.map((product) => ({ id: uuidFor(`product:${product.slug}`), categorySlug: "business-cards", name: product.name, slug: product.slug, description: product.description, configuration: [{ id: "quantity", label: "Quantity", type: "number", defaultValue: "1000" }], imageUrl: "/images/mahavir-print-assortment.png", orderable: true, quoteable: true })),
   ...pdfProducts.map(([slug, name, categorySlug]) => ({ id: uuidFor(`product:${slug}`), categorySlug, name, slug, description: `PDF-derived price list product: ${name}`, configuration: {}, imageUrl: undefined, orderable: false, quoteable: true })),
 ];
 
@@ -37,54 +39,70 @@ const productIds = new Map(allProducts.map((product) => [product.slug, product.i
 const pricingValues = pdfPricingRows.map((row) => ({ id: uuidFor(`price:${row.productSlug}:${row.quantity}:${row.name}:${row.amount}`), productId: productIds.get(row.productSlug) ?? uuidFor(`product:${row.productSlug}`), variantId: uuidFor(`variant:${row.productSlug}`), name: `${row.name} / ${row.quantity}`, ruleType: "PDF_PRICE_LIST", conditions: { quantity: row.quantity, ...row.options }, priceFormula: { amount: row.amount, unit: row.unit, source: "PRICE_LIST_2026.pdf" } }));
 await db.insert(pricingRules).values(pricingValues).onConflictDoNothing();
 
-const businessCardId = productIds.get("business-cards")!;
-await db.update(products).set({
-  shortDescription: "Visiting cards with database-managed finishes, delivery, and approved pricing.",
-  productCode: "VC",
-  productReference: "MHC-VC",
-  productClass: "Visiting Cards",
-  productionTime: "2-3 working days",
-  artworkRequired: true,
-  artworkInstructions: "Upload final CorelDRAW artwork (.cdr) with text converted to curves.",
-  referenceQuantity: 1000,
-  referenceWeight: "1.000",
-  referenceWeightUnit: "KG",
-  pricesTaxInclusive: true,
-  status: "ACTIVE",
-  updatedAt: new Date(),
-}).where(sql`${products.id} = ${businessCardId}`);
+for (const product of businessCardProducts) {
+  const id = uuidFor(`price:${product.slug}:1000:${product.name}:${product.price}`);
+  await db.update(pricingRules).set({
+    name: `${product.name} / 1000`,
+    conditions: { quantity: 1000 },
+    priceFormula: { amount: product.price, unit: "batch", source: "PRICE_LIST_2026.pdf" },
+    isActive: true,
+  }).where(sql`${pricingRules.id} = ${id}`);
+}
+
+await db.update(products).set({ isActive: false, status: "ARCHIVED", archivedAt: new Date(), updatedAt: new Date() }).where(sql`${products.slug} = 'business-cards'`);
+
+for (const [index, product] of businessCardProducts.entries()) {
+  await db.update(products).set({
+    shortDescription: `${product.name} business cards, 1,000 cards per order.`,
+    productCode: `VC-${String(index + 1).padStart(2, "0")}`,
+    productReference: `MHC-VC-${String(index + 1).padStart(2, "0")}`,
+    productClass: "Visiting Cards",
+    productionTime: "2-3 working days",
+    artworkRequired: true,
+    artworkInstructions: "Upload final CorelDRAW artwork (.cdr) with text converted to curves.",
+    referenceQuantity: 1000,
+    referenceWeight: "1.000",
+    referenceWeightUnit: "KG",
+    pricesTaxInclusive: true,
+    status: "ACTIVE",
+    isActive: true,
+    archivedAt: null,
+    sortOrder: index,
+    updatedAt: new Date(),
+  }).where(sql`${products.id} = ${productIds.get(product.slug)!}`);
+}
 
 const addonRows = [
   { id: uuidFor("addon:velvet-lamination"), name: "Velvet Lamination", code: "VELVET_LAMINATION", description: "Soft-touch protective finish.", pricingType: "FIXED" },
   { id: uuidFor("addon:spot-uv"), name: "Spot UV", code: "SPOT_UV", description: "Raised gloss detail on selected artwork areas.", pricingType: "FIXED" },
 ];
 await db.insert(addons).values(addonRows).onConflictDoUpdate({ target: addons.code, set: { name: sql`excluded."name"`, description: sql`excluded."description"`, pricingType: sql`excluded."pricingType"`, isActive: true, updatedAt: new Date() } });
-const businessRule = (specification: string) => uuidFor(`price:business-cards:1000:${specification}:${pdfPricingRows.find((row) => row.productSlug === "business-cards" && row.name === specification)?.amount}`);
-const configuredBusinessAddons = [
-  ["NT front back", addonRows[0], "100.00"], ["NT front back", addonRows[1], "150.00"],
-  ["350 GSM matt single + F-B same rate", addonRows[0], "100.00"], ["350 GSM matt single + F-B same rate", addonRows[1], "150.00"],
-] as const;
-await db.update(productAddons).set({ isActive: false, updatedAt: new Date() }).where(sql`${productAddons.productId} = ${businessCardId} and ${productAddons.pricingRuleId} is null`);
-await db.insert(productAddons).values(configuredBusinessAddons.map(([specification, addon, price], index) => ({ id: uuidFor(`product-addon:business-cards:${specification}:${addon.code}`), productId: businessCardId, pricingRuleId: businessRule(specification), addonId: addon.id, price, sortOrder: index, isActive: true, taxInclusive: true }))).onConflictDoUpdate({ target: productAddons.id, set: { price: sql`excluded."price"`, pricingRuleId: sql`excluded."pricingRuleId"`, sortOrder: sql`excluded."sortOrder"`, isActive: true, taxInclusive: true, updatedAt: new Date() } });
-await db.insert(artworkRequirements).values([
-  { id: uuidFor("artwork:business-cards:default"), productId: businessCardId, scopeKey: "PRODUCT", artworkRequired: true, maxFileSize: 100, maxFiles: 1, designUnit: "mm", additionalInstructions: "Upload a final CorelDRAW file. Convert all text to curves and keep important content inside the safe area.", isActive: true },
-  { id: uuidFor("artwork:business-cards:nt-front-back"), productId: businessCardId, pricingRuleId: businessRule("NT front back"), scopeKey: businessRule("NT front back"), artworkRequired: true, maxFileSize: 100, maxFiles: 1, designWidth: "93", designHeight: "56", designUnit: "mm", safeAreaWidth: "82", safeAreaHeight: "45", finalWidth: "90", finalHeight: "53", orientation: "LANDSCAPE", additionalInstructions: "Upload a final CorelDRAW file with text converted to curves. Keep important content inside the safe area.", isActive: true },
-]).onConflictDoUpdate({ target: artworkRequirements.id, set: { artworkRequired: sql`excluded."artworkRequired"`, maxFileSize: sql`excluded."maxFileSize"`, designWidth: sql`excluded."designWidth"`, designHeight: sql`excluded."designHeight"`, safeAreaWidth: sql`excluded."safeAreaWidth"`, safeAreaHeight: sql`excluded."safeAreaHeight"`, finalWidth: sql`excluded."finalWidth"`, finalHeight: sql`excluded."finalHeight"`, additionalInstructions: sql`excluded."additionalInstructions"`, isActive: true, updatedAt: new Date() } });
-await db.insert(productDeliveryRules).values([
-  { id: uuidFor("delivery:business-cards:pickup"), productId: businessCardId, deliveryMethod: "PICKUP", stateCode: "*", price: "0.00", sortOrder: 0, isActive: true, taxInclusive: true },
-  { id: uuidFor("delivery:business-cards:courier:gj"), productId: businessCardId, deliveryMethod: "COURIER", stateCode: "GJ", price: "80.00", sortOrder: 1, isActive: true, taxInclusive: true },
-  { id: uuidFor("delivery:business-cards:courier:default"), productId: businessCardId, deliveryMethod: "COURIER", stateCode: "*", price: "120.00", sortOrder: 2, isActive: true, taxInclusive: true },
-]).onConflictDoUpdate({ target: productDeliveryRules.id, set: { price: sql`excluded."price"`, sortOrder: sql`excluded."sortOrder"`, isActive: true, taxInclusive: true, updatedAt: new Date() } });
-await db.insert(productImages).values({ id: uuidFor("image:business-cards:primary"), productId: businessCardId, imageUrl: "/images/mahavir-print-assortment.png", altText: "Mahavir Card business card samples", sortOrder: 0, isPrimary: true }).onConflictDoUpdate({ target: productImages.id, set: { imageUrl: sql`excluded."imageUrl"`, altText: sql`excluded."altText"`, sortOrder: 0, isPrimary: true, updatedAt: new Date() } });
-const sectionRows = [
-  { id: uuidFor("content:business-cards:details"), productId: businessCardId, title: "Product details", sortOrder: 0 },
-  { id: uuidFor("content:business-cards:artwork"), productId: businessCardId, title: "Artwork notes", sortOrder: 1 },
-];
+const configuredBusinessAddons = businessCardProducts.filter((product) => product.supportsPremiumAddons).flatMap((product, productIndex) => addonRows.map((addon, addonIndex) => ({ id: uuidFor(`product-addon:${product.slug}:${addon.code}`), productId: productIds.get(product.slug)!, addonId: addon.id, price: addonIndex === 0 ? "100.00" : "150.00", sortOrder: productIndex * addonRows.length + addonIndex, isActive: true, taxInclusive: true })));
+await db.insert(productAddons).values(configuredBusinessAddons).onConflictDoUpdate({ target: productAddons.id, set: { price: sql`excluded."price"`, sortOrder: sql`excluded."sortOrder"`, isActive: true, taxInclusive: true, updatedAt: new Date() } });
+
+const artworkRows = businessCardProducts.map((product) => ({ id: uuidFor(`artwork:${product.slug}:product`), productId: productIds.get(product.slug)!, scopeKey: "PRODUCT", artworkRequired: true, maxFileSize: 100, maxFiles: 1, designUnit: "mm", additionalInstructions: "Upload a final CorelDRAW file. Convert all text to curves and keep important content inside the safe area.", isActive: true }));
+await db.insert(artworkRequirements).values(artworkRows).onConflictDoUpdate({ target: artworkRequirements.id, set: { artworkRequired: sql`excluded."artworkRequired"`, maxFileSize: sql`excluded."maxFileSize"`, maxFiles: sql`excluded."maxFiles"`, additionalInstructions: sql`excluded."additionalInstructions"`, isActive: true, updatedAt: new Date() } });
+
+const deliveryRows = businessCardProducts.flatMap((product) => [
+  { id: uuidFor(`delivery:${product.slug}:pickup`), productId: productIds.get(product.slug)!, deliveryMethod: "PICKUP", stateCode: "*", price: "0.00", sortOrder: 0, isActive: true, taxInclusive: true },
+  { id: uuidFor(`delivery:${product.slug}:courier:gj`), productId: productIds.get(product.slug)!, deliveryMethod: "COURIER", stateCode: "GJ", price: "80.00", sortOrder: 1, isActive: true, taxInclusive: true },
+  { id: uuidFor(`delivery:${product.slug}:courier:default`), productId: productIds.get(product.slug)!, deliveryMethod: "COURIER", stateCode: "*", price: "120.00", sortOrder: 2, isActive: true, taxInclusive: true },
+]);
+await db.insert(productDeliveryRules).values(deliveryRows).onConflictDoUpdate({ target: productDeliveryRules.id, set: { price: sql`excluded."price"`, sortOrder: sql`excluded."sortOrder"`, isActive: true, taxInclusive: true, updatedAt: new Date() } });
+
+const imageRows = businessCardProducts.map((product) => ({ id: uuidFor(`image:${product.slug}:primary`), productId: productIds.get(product.slug)!, imageUrl: "/images/mahavir-print-assortment.png", altText: `${product.name} business cards`, sortOrder: 0, isPrimary: true }));
+await db.insert(productImages).values(imageRows).onConflictDoUpdate({ target: productImages.id, set: { imageUrl: sql`excluded."imageUrl"`, altText: sql`excluded."altText"`, sortOrder: 0, isPrimary: true, updatedAt: new Date() } });
+
+const sectionRows = businessCardProducts.flatMap((product) => [
+  { id: uuidFor(`content:${product.slug}:details`), productId: productIds.get(product.slug)!, title: "Product details", sortOrder: 0 },
+  { id: uuidFor(`content:${product.slug}:artwork`), productId: productIds.get(product.slug)!, title: "Artwork notes", sortOrder: 1 },
+]);
 await db.insert(productContentSections).values(sectionRows).onConflictDoUpdate({ target: productContentSections.id, set: { title: sql`excluded."title"`, sortOrder: sql`excluded."sortOrder"`, updatedAt: new Date() } });
-await db.insert(productContentItems).values([
-  { id: uuidFor("content-item:business-cards:details:quantity"), sectionId: sectionRows[0].id, label: "Reference quantity", content: "1,000 cards is configured as the reference quantity.", sortOrder: 0 },
-  { id: uuidFor("content-item:business-cards:artwork:cdr"), sectionId: sectionRows[1].id, label: "Artwork", content: "Supply final .cdr artwork with fonts converted to curves.", sortOrder: 0 },
-]).onConflictDoUpdate({ target: productContentItems.id, set: { label: sql`excluded."label"`, content: sql`excluded."content"`, sortOrder: sql`excluded."sortOrder"`, updatedAt: new Date() } });
+const contentItems = businessCardProducts.flatMap((product) => [
+  { id: uuidFor(`content-item:${product.slug}:quantity`), sectionId: uuidFor(`content:${product.slug}:details`), label: "Reference quantity", content: "1,000 cards is configured as the reference quantity.", sortOrder: 0 },
+  { id: uuidFor(`content-item:${product.slug}:artwork`), sectionId: uuidFor(`content:${product.slug}:artwork`), label: "Artwork", content: "Supply final .cdr artwork with fonts converted to curves.", sortOrder: 0 },
+]);
+await db.insert(productContentItems).values(contentItems).onConflictDoUpdate({ target: productContentItems.id, set: { label: sql`excluded."label"`, content: sql`excluded."content"`, sortOrder: sql`excluded."sortOrder"`, updatedAt: new Date() } });
 
 console.log(`Seeded ${catalogCategories.length} categories, ${allProducts.length} products, and ${pricingValues.length} PDF-derived pricing rules.`);
 await pool.end();

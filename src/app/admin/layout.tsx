@@ -1,10 +1,10 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { BarChart3, Boxes, CreditCard, FileText, FolderKanban, LayoutDashboard, LogOut, Package, Settings2, Truck, Users, WandSparkles } from "lucide-react";
+import { BarChart3, Boxes, CreditCard, FileText, FolderKanban, HardDrive, LayoutDashboard, LogOut, Package, Settings2, Truck, Users, WandSparkles } from "lucide-react";
 
 import { getAdminAccess } from "@/lib/permissions";
 
-const links = [["Overview", "/admin", LayoutDashboard], ["Products", "/admin/products", Boxes], ["Categories", "/admin/categories", FolderKanban], ["Add-ons", "/admin/addons", Settings2], ["Pricing", "/admin/pricing", WandSparkles], ["Delivery", "/admin/delivery", Truck], ["Quotes", "/admin/quotes", FileText], ["Orders", "/admin/orders", Package], ["Customers", "/admin/customers", Users], ["Inquiries", "/admin/inquiries", BarChart3], ["Payments", "/admin/payments", CreditCard], ["Artwork", "/admin/artworks", FileText], ["Admins", "/admin/admins", Users]] as const;
+const links = [["Overview", "/admin", LayoutDashboard], ["Products", "/admin/products", Boxes], ["Categories", "/admin/categories", FolderKanban], ["Add-ons", "/admin/addons", Settings2], ["Pricing", "/admin/pricing", WandSparkles], ["Delivery", "/admin/delivery", Truck], ["Quotes", "/admin/quotes", FileText], ["Orders", "/admin/orders", Package], ["Customers", "/admin/customers", Users], ["Inquiries", "/admin/inquiries", BarChart3], ["Payments", "/admin/payments", CreditCard], ["Artwork", "/admin/artworks", FileText], ["Storage", "/admin/storage", HardDrive], ["Admins", "/admin/admins", Users]] as const;
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const requestHeaders = await headers();

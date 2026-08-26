@@ -11,6 +11,7 @@ const focus: Record<string, string> = {
 };
 
 export function ProductImage({ alt, slug, src, priority = false }: { alt: string; slug: string; src: string; priority?: boolean }) {
+  const objectPosition = slug.startsWith("business-card-") ? "53% 76%" : focus[slug] ?? "50% 55%";
   return (
     <Image
       src={src}
@@ -19,7 +20,7 @@ export function ProductImage({ alt, slug, src, priority = false }: { alt: string
       priority={priority}
       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
       className="object-cover"
-      style={{ objectPosition: focus[slug] ?? "50% 55%" }}
+      style={{ objectPosition }}
     />
   );
 }

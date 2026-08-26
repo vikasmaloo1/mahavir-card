@@ -161,12 +161,52 @@ export const productImages = pgTable(
     productId: uuid("productId").notNull().references(() => products.id, { onDelete: "cascade" }),
     imageUrl: text("imageUrl").notNull(),
     storageKey: text("storageKey"),
+    originalFilename: text("originalFilename"),
+    contentType: text("contentType"),
+    fileSize: integer("fileSize"),
     altText: text("altText"),
     sortOrder: integer("sortOrder").notNull().default(0),
     isPrimary: boolean("isPrimary").notNull().default(false),
     ...timestamps,
   },
   (table) => [index("product_images_product_idx").on(table.productId)],
+);
+
+export const categoryImages = pgTable(
+  "category_images",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    categoryId: uuid("categoryId").notNull().references(() => categories.id, { onDelete: "cascade" }),
+    imageUrl: text("imageUrl").notNull(),
+    storageKey: text("storageKey").notNull().unique(),
+    originalFilename: text("originalFilename").notNull(),
+    contentType: text("contentType").notNull(),
+    fileSize: integer("fileSize").notNull(),
+    altText: text("altText"),
+    sortOrder: integer("sortOrder").notNull().default(0),
+    isPrimary: boolean("isPrimary").notNull().default(false),
+    ...timestamps,
+  },
+  (table) => [index("category_images_category_idx").on(table.categoryId)],
+);
+
+export const brandingAssets = pgTable(
+  "branding_assets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    assetKey: text("assetKey").notNull().unique(),
+    assetType: text("assetType").notNull().default("ASSET"),
+    storageKey: text("storageKey").notNull().unique(),
+    imageUrl: text("imageUrl").notNull(),
+    originalFilename: text("originalFilename").notNull(),
+    contentType: text("contentType").notNull(),
+    fileSize: integer("fileSize").notNull(),
+    altText: text("altText"),
+    isPublic: boolean("isPublic").notNull().default(true),
+    isActive: boolean("isActive").notNull().default(true),
+    ...timestamps,
+  },
+  (table) => [index("branding_assets_type_idx").on(table.assetType)],
 );
 
 export const productContentSections = pgTable(
@@ -392,12 +432,39 @@ export const artworks = pgTable("artworks", {
   uploadedBy: uuid("uploadedBy").references(() => user.id, { onDelete: "set null" }),
   storageKey: text("storageKey"),
   storageUrl: text("storageUrl"),
+  storageProvider: text("storageProvider").notNull().default("R2"),
+  etag: text("etag"),
+  replacesArtworkId: uuid("replacesArtworkId"),
+  uploadExpiresAt: timestamp("uploadExpiresAt", { withTimezone: true }),
   previewUrl: text("previewUrl"),
   status: text("status").notNull().default("PENDING_REVIEW"),
   notes: text("notes"),
   replacedAt: timestamp("replacedAt", { withTimezone: true }),
   ...timestamps,
 });
+
+export const storedDocuments = pgTable(
+  "stored_documents",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    documentType: text("documentType").notNull(),
+    entityType: text("entityType").notNull(),
+    entityId: uuid("entityId").notNull(),
+    customerId: uuid("customerId").references(() => customers.id, { onDelete: "set null" }),
+    quoteId: uuid("quoteId").references(() => quotes.id, { onDelete: "cascade" }),
+    orderId: uuid("orderId").references(() => orders.id, { onDelete: "cascade" }),
+    storageKey: text("storageKey").notNull().unique(),
+    originalFilename: text("originalFilename").notNull(),
+    contentType: text("contentType").notNull(),
+    fileSize: integer("fileSize").notNull(),
+    etag: text("etag"),
+    status: text("status").notNull().default("AVAILABLE"),
+    isPrivate: boolean("isPrivate").notNull().default(true),
+    createdBy: uuid("createdBy").references(() => user.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (table) => [index("stored_documents_customer_idx").on(table.customerId), index("stored_documents_quote_idx").on(table.quoteId), index("stored_documents_order_idx").on(table.orderId), index("stored_documents_entity_idx").on(table.entityType, table.entityId)],
+);
 
 export const leads = pgTable("leads", {
   id: uuid("id").defaultRandom().primaryKey(),

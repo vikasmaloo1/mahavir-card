@@ -30,6 +30,7 @@ const printOptions = ["Single side", "Both sides"];
 const paperOptions = ["Matt", "Gloss", "Natural textured"];
 
 export const catalogCategories = [
+  { name: "Business Cards", slug: "business-cards", description: "Visiting card stocks, finishes, and ready-to-order options." },
   { name: "Printing", slug: "printing", description: "Cards, brochures, flyers, and everyday print." },
   { name: "Packaging", slug: "packaging", description: "Boxes, bags, sleeves, and retail-ready packs." },
   { name: "Labels & Stickers", slug: "labels-stickers", description: "Product, bottle, barcode, and shipping labels." },
@@ -66,7 +67,7 @@ const catalogProductRows: Omit<CatalogProduct, "imageUrl" | "orderable" | "quote
   { id: "12121212-1212-4212-8212-121212121212", category: "Corporate Gifting", categorySlug: "corporate-gifting", name: "Corporate Gift Boxes", slug: "corporate-gift-boxes", shortDescription: "A polished way to say thank you.", description: "Curated printed gift boxes for festivals, milestones, onboarding, and customer appreciation.", startingPrice: 6800, unit: "25 boxes", turnaround: "10-12 working days", color: "green", tags: ["Premium", "Seasonal"], configuration: [{ id: "quantity", label: "Quantity", type: "number", defaultValue: "25" }, { id: "size", label: "Size", type: "select", options: ["Small", "Medium", "Large"], defaultValue: "Medium" }, { id: "material", label: "Material", type: "select", options: ["Rigid board", "Kraft", "Corrugated"], defaultValue: "Rigid board" }, { id: "finish", label: "Finish", type: "select", options: ["Matt", "Foil stamp", "Embossed"], defaultValue: "Matt" }] },
 ];
 
-export const catalogProducts: CatalogProduct[] = catalogProductRows.map((product) => ({
+export const catalogProducts: CatalogProduct[] = catalogProductRows.filter((product) => product.slug !== "business-cards").map((product) => ({
   ...product,
   imageUrl: productImage,
   orderable: product.slug === "business-cards",
