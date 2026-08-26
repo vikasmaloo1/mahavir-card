@@ -1,37 +1,66 @@
 import "server-only";
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/lib/db/server";
-import { pricingRules, products, productVariants } from "@/lib/db/schema";
+import { addons, pricingRules, productAddons, productDeliveryRules, products, productVariants } from "@/lib/db/schema";
 
 type RuleData = { quantity?: number; specification?: string; [key: string]: unknown };
 type FormulaData = { amount?: string; unit?: "batch" | "piece"; [key: string]: unknown };
 
+export type DeliverySelection = { method: "PICKUP" | "LOCAL_DELIVERY" | "COURIER"; stateCode?: string };
+export type PriceCalculationInput = { addonIds?: string[]; delivery?: DeliverySelection };
+
 export type CalculatedPrice = {
   calculatedAmount: string | null;
+  productPrice: string | null;
+  addonTotal: string;
+  addons: Array<{ addonId: string; name: string; price: string; pricingType: string }>;
+  delivery: { method: string | null; stateCode: string | null; price: string };
+  taxInclusive: boolean;
+  taxAmount: string;
   currency: "INR";
   pricingDetails: Record<string, unknown>;
   applicableRule: string | null;
   warnings: string[];
 };
 
-export async function calculateProductPrice(productId: string, quantity: number, options: Record<string, unknown>): Promise<CalculatedPrice | null> {
-  const [product] = await db.select().from(products).where(and(eq(products.id, productId), eq(products.isActive, true))).limit(1);
-  if (!product) return null;
+export class PricingValidationError extends Error {}
 
+function money(value: number) { return value.toFixed(2); }
+
+async function calculateBasePrice(productId: string, quantity: number, options: Record<string, unknown>) {
   const rules = await db.select().from(pricingRules).where(and(eq(pricingRules.productId, productId), eq(pricingRules.isActive, true))).orderBy(asc(pricingRules.createdAt));
   const matching = rules.map((rule) => ({ rule, conditions: rule.conditions as RuleData, formula: rule.priceFormula as FormulaData })).filter(({ conditions }) => !conditions.specification || conditions.specification === options.specification).sort((a, b) => Math.abs((a.conditions.quantity ?? quantity) - quantity) - Math.abs((b.conditions.quantity ?? quantity) - quantity));
   const selected = matching[0];
-
   if (selected?.formula.amount) {
     const amount = Number(selected.formula.amount);
-    const calculatedAmount = selected.formula.unit === "piece" ? amount * quantity : amount;
-    const exactQuantity = selected.conditions.quantity === quantity;
-    return { calculatedAmount: calculatedAmount.toFixed(2), currency: "INR", pricingDetails: { quantity, specification: selected.conditions.specification ?? null, source: "PRICE_LIST_2026.pdf", unit: selected.formula.unit ?? "batch" }, applicableRule: selected.rule.name, warnings: exactQuantity ? [] : ["This is the nearest listed quantity. Final pricing will be confirmed by the team."] };
+    const base = selected.formula.unit === "piece" ? amount * quantity : amount;
+    return { amount: base, rule: selected.rule.name, taxInclusive: selected.rule.taxInclusive, details: { quantity, specification: selected.conditions.specification ?? null, source: "PRICE_LIST_2026.pdf", unit: selected.formula.unit ?? "batch" }, warnings: selected.conditions.quantity === quantity ? [] : ["This is the nearest listed quantity. Final pricing will be confirmed by the team."] };
   }
-
   const [variant] = await db.select().from(productVariants).where(and(eq(productVariants.productId, productId), eq(productVariants.isActive, true))).orderBy(asc(productVariants.basePrice)).limit(1);
-  if (!variant || Number(variant.basePrice) <= 0) return { calculatedAmount: null, currency: "INR", pricingDetails: {}, applicableRule: null, warnings: ["This product needs a custom quote."] };
-  return { calculatedAmount: (Number(variant.basePrice) * quantity).toFixed(2), currency: "INR", pricingDetails: { quantity, source: "BASE_VARIANT" }, applicableRule: variant.name, warnings: [] };
+  if (!variant || Number(variant.basePrice) <= 0) return { amount: null, rule: null, taxInclusive: true, details: {}, warnings: ["This product needs a custom quote."] };
+  return { amount: Number(variant.basePrice) * quantity, rule: variant.name, taxInclusive: true, details: { quantity, source: "BASE_VARIANT" }, warnings: [] };
+}
+
+export async function calculateProductPrice(productId: string, quantity: number, options: Record<string, unknown>, input: PriceCalculationInput = {}): Promise<CalculatedPrice | null> {
+  const [product] = await db.select().from(products).where(and(eq(products.id, productId), eq(products.isActive, true))).limit(1);
+  if (!product || product.status !== "ACTIVE") return null;
+  const base = await calculateBasePrice(productId, quantity, options);
+  const addonIds = [...new Set(input.addonIds ?? [])];
+  if (addonIds.length !== (input.addonIds ?? []).length) throw new PricingValidationError("An add-on can only be selected once");
+  const configuredAddons = addonIds.length ? await db.select({ addonId: productAddons.addonId, name: addons.name, price: productAddons.price, pricingType: addons.pricingType, taxInclusive: productAddons.taxInclusive }).from(productAddons).innerJoin(addons, eq(productAddons.addonId, addons.id)).where(and(eq(productAddons.productId, productId), eq(productAddons.isActive, true), eq(addons.isActive, true), inArray(productAddons.addonId, addonIds))) : [];
+  if (configuredAddons.length !== addonIds.length) throw new PricingValidationError("One or more selected add-ons are not available for this product");
+  const selectedAddons = configuredAddons.map((addon) => ({ addonId: addon.addonId, name: addon.name, pricingType: addon.pricingType, price: money(Number(addon.price) * (addon.pricingType === "PER_UNIT" ? quantity : 1)), taxInclusive: addon.taxInclusive }));
+  const addonTotal = selectedAddons.reduce((total, addon) => total + Number(addon.price), 0);
+  let delivery = { method: null as string | null, stateCode: null as string | null, price: "0.00", taxInclusive: true };
+  if (input.delivery) {
+    const stateCode = input.delivery.stateCode?.trim().toUpperCase() || "*";
+    const rules = await db.select().from(productDeliveryRules).where(and(eq(productDeliveryRules.productId, productId), eq(productDeliveryRules.deliveryMethod, input.delivery.method), eq(productDeliveryRules.isActive, true))).orderBy(asc(productDeliveryRules.sortOrder));
+    const rule = rules.find((candidate) => candidate.stateCode.toUpperCase() === stateCode) ?? rules.find((candidate) => candidate.stateCode === "*");
+    if (!rule) throw new PricingValidationError("This delivery option is not available for the selected state");
+    delivery = { method: rule.deliveryMethod, stateCode, price: money(Number(rule.price)), taxInclusive: rule.taxInclusive };
+  }
+  const total = base.amount === null ? null : base.amount + addonTotal + Number(delivery.price);
+  return { calculatedAmount: total === null ? null : money(total), productPrice: base.amount === null ? null : money(base.amount), addonTotal: money(addonTotal), addons: selectedAddons.map((addon) => ({ addonId: addon.addonId, name: addon.name, price: addon.price, pricingType: addon.pricingType })), delivery: { method: delivery.method, stateCode: delivery.stateCode, price: delivery.price }, taxInclusive: product.pricesTaxInclusive && base.taxInclusive && selectedAddons.every((addon) => addon.taxInclusive) && delivery.taxInclusive, taxAmount: "0.00", currency: "INR", pricingDetails: { ...base.details, referenceQuantity: product.referenceQuantity, referenceWeight: product.referenceWeight, referenceWeightUnit: product.referenceWeightUnit }, applicableRule: base.rule, warnings: base.warnings };
 }

@@ -5,16 +5,26 @@ import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
 import { db } from "@/lib/db/server";
 import { quoteItems, quotes } from "@/lib/db/schema";
 import { quoteSchema, type QuoteInput } from "@/lib/validation";
+import { calculateProductPrice } from "@/lib/pricing-service";
 
 function makeNumber(prefix: string) {
   return `${prefix}-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 }
 
-function calculateItems(items: QuoteInput["items"]) {
+function calculateItems<T extends QuoteInput["items"][number]>(items: T[]) {
   return items.map((item) => ({
     ...item,
     totalPrice: (item.quantity * Number(item.unitPrice)).toFixed(2),
   }));
+}
+
+function getSelections(configuration: Record<string, unknown>) {
+  const addonIds = Array.isArray(configuration.addonIds) ? configuration.addonIds.filter((value): value is string => typeof value === "string") : [];
+  const deliveryValue = configuration.delivery;
+  const deliveryRecord = deliveryValue && typeof deliveryValue === "object" ? deliveryValue as Record<string, unknown> : null;
+  const delivery = deliveryRecord && typeof deliveryRecord.method === "string"
+    ? { method: deliveryRecord.method as "PICKUP" | "LOCAL_DELIVERY" | "COURIER", stateCode: typeof deliveryRecord.stateCode === "string" ? deliveryRecord.stateCode : undefined }
+    : undefined;  return { addonIds, delivery };
 }
 
 export async function GET(request: Request) {
@@ -37,7 +47,13 @@ export async function POST(request: Request) {
   try {
     const session = await getSession(request);
     const input = await readBody(request, quoteSchema);
-    const items = calculateItems(input.items);
+    const calculatedItems = await Promise.all(input.items.map(async (item) => {
+      if (!item.productId) return { ...item, pricingSnapshot: {} };
+      const price = await calculateProductPrice(item.productId, item.quantity, item.configuration, getSelections(item.configuration));
+      const unitPrice = price?.calculatedAmount ?? item.unitPrice;
+      return { ...item, unitPrice, pricingSnapshot: price ?? {} };
+    }));
+    const items = calculateItems(calculatedItems);
     const subtotal = items.reduce((total, item) => total + Number(item.totalPrice), 0).toFixed(2);
     const quoteNumber = makeNumber("MHC-Q");
 
@@ -65,6 +81,7 @@ export async function POST(request: Request) {
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         totalPrice: item.totalPrice,
+        pricingSnapshot: item.pricingSnapshot,
       })));
 
       return quote;

@@ -15,12 +15,72 @@ export const productSchema = z.object({
   name: z.string().trim().min(2).max(160),
   slug: z.string().trim().min(2).max(180).regex(/^[a-z0-9-]+$/),
   description: z.string().trim().max(2000).optional(),
+  shortDescription: z.string().trim().max(500).optional(),
+  productCode: z.string().trim().max(100).optional(),
+  productReference: z.string().trim().max(100).optional(),
+  productClass: z.string().trim().max(100).optional(),
   productType: z.string().trim().max(40).default("CONFIGURABLE"),
   configuration: metadata,
   imageUrl: z.string().trim().max(500).optional(),
+  status: z.enum(["DRAFT", "ACTIVE", "DISABLED", "ARCHIVED"]).default("ACTIVE"),
   orderable: z.boolean().default(false),
   quoteable: z.boolean().default(true),
   isActive: z.boolean().default(true),
+  productionTime: z.string().trim().max(100).optional(),
+  artworkRequired: z.boolean().default(false),
+  artworkInstructions: z.string().trim().max(2000).optional(),
+  sortOrder: z.number().int().min(0).default(0),
+  referenceQuantity: z.number().int().positive().nullable().optional(),
+  referenceWeight: z.string().regex(/^\d+(\.\d{1,3})?$/).nullable().optional(),
+  referenceWeightUnit: z.string().trim().max(20).nullable().optional(),
+  pricesTaxInclusive: z.boolean().default(true),
+  archivedAt: z.coerce.date().nullable().optional(),
+});
+
+export const addonSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  code: z.string().trim().min(2).max(80).regex(/^[A-Z0-9_-]+$/i),
+  description: z.string().trim().max(1000).optional(),
+  pricingType: z.enum(["FIXED", "PER_UNIT", "CUSTOM"]).default("FIXED"),
+  priceConfiguration: metadata,
+  isActive: z.boolean().default(true),
+});
+
+export const productImageSchema = z.object({
+  imageUrl: z.url().max(500),
+  storageKey: z.string().trim().max(500).optional(),
+  altText: z.string().trim().max(300).optional(),
+  sortOrder: z.number().int().min(0).default(0),
+  isPrimary: z.boolean().default(false),
+});
+
+export const productContentSectionSchema = z.object({
+  title: z.string().trim().min(2).max(160),
+  sortOrder: z.number().int().min(0).default(0),
+});
+
+export const productContentItemSchema = z.object({
+  label: z.string().trim().max(160).nullable().optional(),
+  content: z.string().trim().min(1).max(3000),
+  sortOrder: z.number().int().min(0).default(0),
+});
+
+export const productAddonSchema = z.object({
+  addonId: z.string().uuid(),
+  price: z.string().regex(/^\d+(\.\d{1,2})?$/),
+  isActive: z.boolean().default(true),
+  isDefault: z.boolean().default(false),
+  sortOrder: z.number().int().min(0).default(0),
+  taxInclusive: z.boolean().default(true),
+});
+
+export const productDeliveryRuleSchema = z.object({
+  deliveryMethod: z.enum(["PICKUP", "LOCAL_DELIVERY", "COURIER"]),
+  stateCode: z.string().trim().min(1).max(100).default("*"),
+  price: z.string().regex(/^\d+(\.\d{1,2})?$/),
+  isActive: z.boolean().default(true),
+  sortOrder: z.number().int().min(0).default(0),
+  taxInclusive: z.boolean().default(true),
 });
 
 export const quoteSchema = z.object({
@@ -92,6 +152,11 @@ export const pricingCalculateSchema = z.object({
   productId: z.string().uuid(),
   quantity: z.number().int().positive().max(1_000_000),
   options: metadata,
+  addonIds: z.array(z.string().uuid()).max(50).default([]),
+  delivery: z.object({
+    method: z.enum(["PICKUP", "LOCAL_DELIVERY", "COURIER"]),
+    stateCode: z.string().trim().min(1).max(100).default("*"),
+  }).optional(),
 });
 
 export const adminPricingSchema = z.object({
@@ -101,6 +166,7 @@ export const adminPricingSchema = z.object({
   ruleType: z.string().trim().max(40).default("PDF_PRICE_LIST"),
   conditions: metadata,
   priceFormula: metadata,
+  taxInclusive: z.boolean().default(true),
   isActive: z.boolean().default(true),
 });
 
@@ -110,6 +176,17 @@ export const paymentSchema = z.object({
   method: z.enum(["RAZORPAY", "COD"]),
   amount: z.string().regex(/^\d+(\.\d{1,2})?$/),
 });
+
+export const adminPaymentSchema = paymentSchema.extend({
+  method: z.enum(["RAZORPAY", "COD", "MANUAL"]),
+  status: z.enum(["PENDING", "PAID", "FAILED", "REFUNDED", "COD_PENDING", "COD_COLLECTED"]).default("PAID"),
+  provider: z.string().trim().max(80).nullable().optional(),
+  providerOrderId: z.string().trim().max(160).nullable().optional(),
+  providerPaymentId: z.string().trim().max(160).nullable().optional(),
+  codCollectedAt: z.coerce.date().nullable().optional(),
+});
+
+export const adminPaymentUpdateSchema = adminPaymentSchema.omit({ orderId: true }).partial();
 
 export const checkoutSchema = z.object({
   customer: z.object({

@@ -12,6 +12,15 @@ function makeNumber() {
   return `MHC-O-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 }
 
+function getSelections(configuration: Record<string, unknown>) {
+  const addonIds = Array.isArray(configuration.addonIds) ? configuration.addonIds.filter((value): value is string => typeof value === "string") : [];
+  const deliveryValue = configuration.delivery;
+  const deliveryRecord = deliveryValue && typeof deliveryValue === "object" ? deliveryValue as Record<string, unknown> : null;
+  const delivery = deliveryRecord && typeof deliveryRecord.method === "string"
+    ? { method: deliveryRecord.method as "PICKUP" | "LOCAL_DELIVERY" | "COURIER", stateCode: typeof deliveryRecord.stateCode === "string" ? deliveryRecord.stateCode : undefined }
+    : undefined;  return { addonIds, delivery };
+}
+
 export async function POST(request: Request) {
   try {
     const session = await requireUser(request);
@@ -19,7 +28,7 @@ export async function POST(request: Request) {
     const pricedItems = await Promise.all(input.items.map(async (item) => {
       const [product] = await db.select().from(products).where(eq(products.id, item.productId)).limit(1);
       if (!product?.isActive || !product.orderable) return null;
-      const price = await calculateProductPrice(item.productId, item.quantity, item.configuration);
+      const price = await calculateProductPrice(item.productId, item.quantity, item.configuration, getSelections(item.configuration));
       if (!price?.calculatedAmount || price.warnings.length > 0) return null;
       return { product, item, price };
     }));
@@ -33,7 +42,7 @@ export async function POST(request: Request) {
       if (!customer) return null;
       const [order] = await tx.insert(orders).values({ orderNumber: makeNumber(), customerId: customer.id, subtotal: total, total, notes: "Created through customer checkout" }).returning();
       if (!order) return null;
-      await tx.insert(orderItems).values(completeItems.map(({ product, item, price }) => ({ orderId: order.id, productId: product.id, description: product.name, configuration: item.configuration, quantity: item.quantity, unitPrice: price.calculatedAmount!, totalPrice: price.calculatedAmount! })));
+      await tx.insert(orderItems).values(completeItems.map(({ product, item, price }) => ({ orderId: order.id, productId: product.id, description: product.name, configuration: item.configuration, quantity: item.quantity, unitPrice: price.calculatedAmount!, totalPrice: price.calculatedAmount!, pricingSnapshot: price })));
       const intent = createPaymentIntent(input.paymentMethod, total);
       const [payment] = await tx.insert(payments).values({ orderId: order.id, customerId: customer.id, method: input.paymentMethod, amount: total, status: intent.status, provider: intent.provider }).returning();
       return { order, payment };

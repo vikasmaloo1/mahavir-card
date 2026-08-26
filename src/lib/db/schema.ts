@@ -131,14 +131,111 @@ export const products = pgTable("products", {
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   description: text("description"),
+  shortDescription: text("shortDescription"),
+  productCode: text("productCode"),
+  productReference: text("productReference"),
+  productClass: text("productClass"),
   productType: text("productType").notNull().default("CONFIGURABLE"),
   configuration: jsonb("configuration").$type<Record<string, unknown>>().notNull().default({}),
   imageUrl: text("imageUrl"),
+  status: text("status").notNull().default("ACTIVE"),
   orderable: boolean("orderable").notNull().default(false),
   quoteable: boolean("quoteable").notNull().default(true),
   isActive: boolean("isActive").notNull().default(true),
+  productionTime: text("productionTime"),
+  artworkRequired: boolean("artworkRequired").notNull().default(false),
+  artworkInstructions: text("artworkInstructions"),
+  sortOrder: integer("sortOrder").notNull().default(0),
+  referenceQuantity: integer("referenceQuantity"),
+  referenceWeight: numeric("referenceWeight", { precision: 12, scale: 3 }),
+  referenceWeightUnit: text("referenceWeightUnit"),
+  pricesTaxInclusive: boolean("pricesTaxInclusive").notNull().default(true),
+  archivedAt: timestamp("archivedAt", { withTimezone: true }),
   ...timestamps,
 });
+
+export const productImages = pgTable(
+  "product_images",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    productId: uuid("productId").notNull().references(() => products.id, { onDelete: "cascade" }),
+    imageUrl: text("imageUrl").notNull(),
+    storageKey: text("storageKey"),
+    altText: text("altText"),
+    sortOrder: integer("sortOrder").notNull().default(0),
+    isPrimary: boolean("isPrimary").notNull().default(false),
+    ...timestamps,
+  },
+  (table) => [index("product_images_product_idx").on(table.productId)],
+);
+
+export const productContentSections = pgTable(
+  "product_content_sections",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    productId: uuid("productId").notNull().references(() => products.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    sortOrder: integer("sortOrder").notNull().default(0),
+    ...timestamps,
+  },
+  (table) => [index("product_content_sections_product_idx").on(table.productId)],
+);
+
+export const productContentItems = pgTable(
+  "product_content_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    sectionId: uuid("sectionId").notNull().references(() => productContentSections.id, { onDelete: "cascade" }),
+    label: text("label"),
+    content: text("content").notNull(),
+    sortOrder: integer("sortOrder").notNull().default(0),
+    ...timestamps,
+  },
+  (table) => [index("product_content_items_section_idx").on(table.sectionId)],
+);
+
+export const addons = pgTable("addons", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  code: text("code").notNull().unique(),
+  description: text("description"),
+  pricingType: text("pricingType").notNull().default("FIXED"),
+  priceConfiguration: jsonb("priceConfiguration").$type<Record<string, unknown>>().notNull().default({}),
+  isActive: boolean("isActive").notNull().default(true),
+  ...timestamps,
+});
+
+export const productAddons = pgTable(
+  "product_addons",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    productId: uuid("productId").notNull().references(() => products.id, { onDelete: "cascade" }),
+    addonId: uuid("addonId").notNull().references(() => addons.id, { onDelete: "cascade" }),
+    price: numeric("price", { precision: 12, scale: 2 }).notNull().default("0"),
+    isActive: boolean("isActive").notNull().default(true),
+    isDefault: boolean("isDefault").notNull().default(false),
+    sortOrder: integer("sortOrder").notNull().default(0),
+    taxInclusive: boolean("taxInclusive").notNull().default(true),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex("product_addons_product_addon_idx").on(table.productId, table.addonId), index("product_addons_product_idx").on(table.productId)],
+);
+
+export const productDeliveryRules = pgTable(
+  "product_delivery_rules",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    productId: uuid("productId").notNull().references(() => products.id, { onDelete: "cascade" }),
+    deliveryMethod: text("deliveryMethod").notNull(),
+    stateCode: text("stateCode").notNull().default("*"),
+    price: numeric("price", { precision: 12, scale: 2 }).notNull().default("0"),
+    isActive: boolean("isActive").notNull().default(true),
+    sortOrder: integer("sortOrder").notNull().default(0),
+    taxInclusive: boolean("taxInclusive").notNull().default(true),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex("product_delivery_rules_product_method_state_idx").on(table.productId, table.deliveryMethod, table.stateCode), index("product_delivery_rules_product_idx").on(table.productId)],
+);
 
 export const productVariants = pgTable("product_variants", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -183,6 +280,7 @@ export const pricingRules = pgTable("pricing_rules", {
   ruleType: text("ruleType").notNull().default("QUANTITY"),
   conditions: jsonb("conditions").$type<Record<string, unknown>>().notNull().default({}),
   priceFormula: jsonb("priceFormula").$type<Record<string, unknown>>().notNull().default({}),
+  taxInclusive: boolean("taxInclusive").notNull().default(true),
   isActive: boolean("isActive").notNull().default(true),
   ...timestamps,
 });
@@ -217,6 +315,7 @@ export const quoteItems = pgTable("quote_items", {
   quantity: integer("quantity").notNull().default(1),
   unitPrice: numeric("unitPrice", { precision: 12, scale: 2 }).notNull().default("0"),
   totalPrice: numeric("totalPrice", { precision: 12, scale: 2 }).notNull().default("0"),
+  pricingSnapshot: jsonb("pricingSnapshot").$type<Record<string, unknown>>().notNull().default({}),
 });
 
 export const orders = pgTable("orders", {
@@ -244,6 +343,7 @@ export const orderItems = pgTable("order_items", {
   quantity: integer("quantity").notNull().default(1),
   unitPrice: numeric("unitPrice", { precision: 12, scale: 2 }).notNull().default("0"),
   totalPrice: numeric("totalPrice", { precision: 12, scale: 2 }).notNull().default("0"),
+  pricingSnapshot: jsonb("pricingSnapshot").$type<Record<string, unknown>>().notNull().default({}),
 });
 
 export const artworks = pgTable("artworks", {
