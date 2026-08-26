@@ -1,5 +1,8 @@
-import "dotenv/config";
+import dotenv from "dotenv";
 import { and, eq } from "drizzle-orm";
+
+dotenv.config({ path: ".env.local" });
+dotenv.config();
 
 async function main() {
 const { auth } = await import("../src/lib/auth");
