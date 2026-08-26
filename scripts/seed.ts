@@ -6,7 +6,7 @@ dotenv.config();
 
 async function main() {
 const { db, pool } = await import("../src/lib/db");
-const { addons, categories, pricingRules, productAddons, productContentItems, productContentSections, productDeliveryRules, productImages, productVariants, products } = await import("../src/lib/db/schema");
+const { addons, artworkRequirements, categories, pricingRules, productAddons, productContentItems, productContentSections, productDeliveryRules, productImages, productVariants, products } = await import("../src/lib/db/schema");
 const { sql } = await import("drizzle-orm");
 const { catalogCategories, catalogProducts } = await import("../src/lib/catalog");
 const { pdfPricingRows } = await import("../src/lib/pdf-pricing");
@@ -59,10 +59,17 @@ const addonRows = [
   { id: uuidFor("addon:spot-uv"), name: "Spot UV", code: "SPOT_UV", description: "Raised gloss detail on selected artwork areas.", pricingType: "FIXED" },
 ];
 await db.insert(addons).values(addonRows).onConflictDoUpdate({ target: addons.code, set: { name: sql`excluded."name"`, description: sql`excluded."description"`, pricingType: sql`excluded."pricingType"`, isActive: true, updatedAt: new Date() } });
-await db.insert(productAddons).values([
-  { id: uuidFor("product-addon:business-cards:velvet"), productId: businessCardId, addonId: addonRows[0].id, price: "100.00", sortOrder: 0, isActive: true, taxInclusive: true },
-  { id: uuidFor("product-addon:business-cards:spot-uv"), productId: businessCardId, addonId: addonRows[1].id, price: "150.00", sortOrder: 1, isActive: true, taxInclusive: true },
-]).onConflictDoUpdate({ target: productAddons.id, set: { price: sql`excluded."price"`, sortOrder: sql`excluded."sortOrder"`, isActive: true, taxInclusive: true, updatedAt: new Date() } });
+const businessRule = (specification: string) => uuidFor(`price:business-cards:1000:${specification}:${pdfPricingRows.find((row) => row.productSlug === "business-cards" && row.name === specification)?.amount}`);
+const configuredBusinessAddons = [
+  ["NT front back", addonRows[0], "100.00"], ["NT front back", addonRows[1], "150.00"],
+  ["350 GSM matt single + F-B same rate", addonRows[0], "100.00"], ["350 GSM matt single + F-B same rate", addonRows[1], "150.00"],
+] as const;
+await db.update(productAddons).set({ isActive: false, updatedAt: new Date() }).where(sql`${productAddons.productId} = ${businessCardId} and ${productAddons.pricingRuleId} is null`);
+await db.insert(productAddons).values(configuredBusinessAddons.map(([specification, addon, price], index) => ({ id: uuidFor(`product-addon:business-cards:${specification}:${addon.code}`), productId: businessCardId, pricingRuleId: businessRule(specification), addonId: addon.id, price, sortOrder: index, isActive: true, taxInclusive: true }))).onConflictDoUpdate({ target: productAddons.id, set: { price: sql`excluded."price"`, pricingRuleId: sql`excluded."pricingRuleId"`, sortOrder: sql`excluded."sortOrder"`, isActive: true, taxInclusive: true, updatedAt: new Date() } });
+await db.insert(artworkRequirements).values([
+  { id: uuidFor("artwork:business-cards:default"), productId: businessCardId, scopeKey: "PRODUCT", artworkRequired: true, maxFileSize: 100, maxFiles: 1, designUnit: "mm", additionalInstructions: "Upload a final CorelDRAW file. Convert all text to curves and keep important content inside the safe area.", isActive: true },
+  { id: uuidFor("artwork:business-cards:nt-front-back"), productId: businessCardId, pricingRuleId: businessRule("NT front back"), scopeKey: businessRule("NT front back"), artworkRequired: true, maxFileSize: 100, maxFiles: 1, designWidth: "93", designHeight: "56", designUnit: "mm", safeAreaWidth: "82", safeAreaHeight: "45", finalWidth: "90", finalHeight: "53", orientation: "LANDSCAPE", additionalInstructions: "Upload a final CorelDRAW file with text converted to curves. Keep important content inside the safe area.", isActive: true },
+]).onConflictDoUpdate({ target: artworkRequirements.id, set: { artworkRequired: sql`excluded."artworkRequired"`, maxFileSize: sql`excluded."maxFileSize"`, designWidth: sql`excluded."designWidth"`, designHeight: sql`excluded."designHeight"`, safeAreaWidth: sql`excluded."safeAreaWidth"`, safeAreaHeight: sql`excluded."safeAreaHeight"`, finalWidth: sql`excluded."finalWidth"`, finalHeight: sql`excluded."finalHeight"`, additionalInstructions: sql`excluded."additionalInstructions"`, isActive: true, updatedAt: new Date() } });
 await db.insert(productDeliveryRules).values([
   { id: uuidFor("delivery:business-cards:pickup"), productId: businessCardId, deliveryMethod: "PICKUP", stateCode: "*", price: "0.00", sortOrder: 0, isActive: true, taxInclusive: true },
   { id: uuidFor("delivery:business-cards:courier:gj"), productId: businessCardId, deliveryMethod: "COURIER", stateCode: "GJ", price: "80.00", sortOrder: 1, isActive: true, taxInclusive: true },

@@ -210,6 +210,7 @@ export const productAddons = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     productId: uuid("productId").notNull().references(() => products.id, { onDelete: "cascade" }),
+    pricingRuleId: uuid("pricingRuleId").references(() => pricingRules.id, { onDelete: "cascade" }),
     addonId: uuid("addonId").notNull().references(() => addons.id, { onDelete: "cascade" }),
     price: numeric("price", { precision: 12, scale: 2 }).notNull().default("0"),
     isActive: boolean("isActive").notNull().default(true),
@@ -218,7 +219,36 @@ export const productAddons = pgTable(
     taxInclusive: boolean("taxInclusive").notNull().default(true),
     ...timestamps,
   },
-  (table) => [uniqueIndex("product_addons_product_addon_idx").on(table.productId, table.addonId), index("product_addons_product_idx").on(table.productId)],
+  (table) => [uniqueIndex("product_addons_scope_addon_idx").on(table.productId, table.pricingRuleId, table.addonId), index("product_addons_product_idx").on(table.productId), index("product_addons_pricing_rule_idx").on(table.pricingRuleId)],
+);
+
+export const artworkRequirements = pgTable(
+  "artwork_requirements",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    productId: uuid("productId").notNull().references(() => products.id, { onDelete: "cascade" }),
+    pricingRuleId: uuid("pricingRuleId").references(() => pricingRules.id, { onDelete: "cascade" }),
+    scopeKey: text("scopeKey").notNull(),
+    artworkRequired: boolean("artworkRequired").notNull().default(false),
+    minFileSize: integer("minFileSize"),
+    maxFileSize: integer("maxFileSize"),
+    maxFiles: integer("maxFiles").notNull().default(1),
+    designWidth: numeric("designWidth", { precision: 12, scale: 3 }),
+    designHeight: numeric("designHeight", { precision: 12, scale: 3 }),
+    designUnit: text("designUnit").notNull().default("mm"),
+    bleedWidth: numeric("bleedWidth", { precision: 12, scale: 3 }),
+    bleedHeight: numeric("bleedHeight", { precision: 12, scale: 3 }),
+    safeAreaWidth: numeric("safeAreaWidth", { precision: 12, scale: 3 }),
+    safeAreaHeight: numeric("safeAreaHeight", { precision: 12, scale: 3 }),
+    finalWidth: numeric("finalWidth", { precision: 12, scale: 3 }),
+    finalHeight: numeric("finalHeight", { precision: 12, scale: 3 }),
+    orientation: text("orientation"),
+    additionalInstructions: text("additionalInstructions"),
+    notes: text("notes"),
+    isActive: boolean("isActive").notNull().default(true),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex("artwork_requirements_product_scope_idx").on(table.productId, table.scopeKey), index("artwork_requirements_pricing_rule_idx").on(table.pricingRuleId)],
 );
 
 export const productDeliveryRules = pgTable(
@@ -351,6 +381,9 @@ export const artworks = pgTable("artworks", {
   orderId: uuid("orderId").references(() => orders.id, { onDelete: "set null" }),
   quoteId: uuid("quoteId").references(() => quotes.id, { onDelete: "set null" }),
   customerId: uuid("customerId").references(() => customers.id, { onDelete: "set null" }),
+  productId: uuid("productId").references(() => products.id, { onDelete: "set null" }),
+  pricingRuleId: uuid("pricingRuleId").references(() => pricingRules.id, { onDelete: "set null" }),
+  configuration: jsonb("configuration").$type<Record<string, unknown>>().notNull().default({}),
   fileName: text("fileName").notNull(),
   fileType: text("fileType").notNull(),
   extension: text("extension").notNull().default(".cdr"),
@@ -359,8 +392,10 @@ export const artworks = pgTable("artworks", {
   uploadedBy: uuid("uploadedBy").references(() => user.id, { onDelete: "set null" }),
   storageKey: text("storageKey"),
   storageUrl: text("storageUrl"),
+  previewUrl: text("previewUrl"),
   status: text("status").notNull().default("PENDING_REVIEW"),
   notes: text("notes"),
+  replacedAt: timestamp("replacedAt", { withTimezone: true }),
   ...timestamps,
 });
 

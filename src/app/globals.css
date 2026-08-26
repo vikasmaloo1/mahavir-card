@@ -33,6 +33,8 @@ body {
 .mc-accent { color: var(--mc-accent); }
 .mc-accent-bg { background: var(--mc-accent); color: #fff; }
 .mc-line { border-color: var(--mc-line); }
+.field { width: 100%; border: 1px solid #c9d2df; background: #fff; padding: 0.625rem 0.75rem; font-size: 0.875rem; font-weight: 400; outline: none; }
+.field:focus { border-color: #2457b8; }
 
 * {
   box-sizing: border-box;

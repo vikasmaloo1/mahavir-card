@@ -5,6 +5,7 @@ import { db } from "@/lib/db/server";
 import { cartItems, carts, products } from "@/lib/db/schema";
 import { requireUser } from "@/lib/permissions";
 import { cartItemSchema } from "@/lib/validation";
+import { validateRequiredArtwork } from "@/lib/artwork-validation";
 
 export async function POST(request: Request) {
   try {
@@ -14,6 +15,7 @@ export async function POST(request: Request) {
     if (!product?.isActive) return jsonError("Product is not available", 422);
     if (input.kind === "PURCHASE" && !product.orderable) return jsonError("This product is available only for quotes", 422);
     if (input.kind === "QUOTE" && !product.quoteable) return jsonError("This product cannot be added to a quote", 422);
+    try { await validateRequiredArtwork(session.user.id, input.productId, input.configuration); } catch (error) { return jsonError(error instanceof Error ? error.message : "Artwork validation failed", 422); }
     await db.insert(carts).values({ userId: session.user.id, kind: input.kind }).onConflictDoNothing();
     const [cart] = await db.select().from(carts).where(and(eq(carts.userId, session.user.id), eq(carts.kind, input.kind))).limit(1);
     if (!cart) return jsonError("Basket was not created", 500);

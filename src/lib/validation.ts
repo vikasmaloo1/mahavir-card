@@ -66,12 +66,36 @@ export const productContentItemSchema = z.object({
 });
 
 export const productAddonSchema = z.object({
+  pricingRuleId: z.string().uuid().nullable().optional(),
   addonId: z.string().uuid(),
   price: z.string().regex(/^\d+(\.\d{1,2})?$/),
   isActive: z.boolean().default(true),
   isDefault: z.boolean().default(false),
   sortOrder: z.number().int().min(0).default(0),
   taxInclusive: z.boolean().default(true),
+});
+
+const optionalDimension = z.string().regex(/^\d+(\.\d{1,3})?$/).nullable().optional();
+
+export const artworkRequirementSchema = z.object({
+  pricingRuleId: z.string().uuid().nullable().optional(),
+  artworkRequired: z.boolean().default(false),
+  minFileSize: z.number().int().positive().nullable().optional(),
+  maxFileSize: z.number().int().positive().nullable().optional(),
+  maxFiles: z.number().int().min(1).max(10).default(1),
+  designWidth: optionalDimension,
+  designHeight: optionalDimension,
+  designUnit: z.string().trim().min(1).max(20).default("mm"),
+  bleedWidth: optionalDimension,
+  bleedHeight: optionalDimension,
+  safeAreaWidth: optionalDimension,
+  safeAreaHeight: optionalDimension,
+  finalWidth: optionalDimension,
+  finalHeight: optionalDimension,
+  orientation: z.enum(["PORTRAIT", "LANDSCAPE", "SQUARE", "ANY"]).nullable().optional(),
+  additionalInstructions: z.string().trim().max(3000).nullable().optional(),
+  notes: z.string().trim().max(1000).nullable().optional(),
+  isActive: z.boolean().default(true),
 });
 
 export const productDeliveryRuleSchema = z.object({
@@ -127,11 +151,14 @@ export const artworkSchema = z.object({
   orderId: z.string().uuid().nullable().optional(),
   quoteId: z.string().uuid().nullable().optional(),
   customerId: z.string().uuid().nullable().optional(),
+  productId: z.string().uuid(),
+  pricingRuleId: z.string().uuid().nullable().optional(),
+  configuration: metadata,
   fileName: z.string().trim().min(1).max(255).refine((value) => value.toLowerCase().endsWith(".cdr"), "Only CorelDRAW .cdr files are accepted"),
   fileType: z.literal("cdr"),
   extension: z.literal(".cdr").default(".cdr"),
   mimeType: z.string().trim().max(120).default("application/octet-stream"),
-  fileSize: z.number().int().positive().max(50_000_000),
+  fileSize: z.number().int().positive(),
   storageKey: z.string().trim().max(500).optional(),
   storageUrl: z.url().optional(),
   notes: z.string().trim().max(1000).optional(),
