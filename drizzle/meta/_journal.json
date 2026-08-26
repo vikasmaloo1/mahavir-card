@@ -57,6 +57,13 @@
       "when": 1787738854891,
       "tag": "0007_cynical_maverick",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787741941258,
+      "tag": "0008_sweet_lady_deathstrike",
+      "breakpoints": true
     }
   ]
 }

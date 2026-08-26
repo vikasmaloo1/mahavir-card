@@ -153,6 +153,26 @@ export const productVariants = pgTable("product_variants", {
   ...timestamps,
 });
 
+export const carts = pgTable(
+  "carts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("userId").notNull().references(() => user.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull().default("PURCHASE"),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex("carts_user_kind_idx").on(table.userId, table.kind)],
+);
+
+export const cartItems = pgTable("cart_items", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  cartId: uuid("cartId").notNull().references(() => carts.id, { onDelete: "cascade" }),
+  productId: uuid("productId").notNull().references(() => products.id, { onDelete: "cascade" }),
+  configuration: jsonb("configuration").$type<Record<string, unknown>>().notNull().default({}),
+  quantity: integer("quantity").notNull().default(1),
+  ...timestamps,
+});
+
 export const pricingRules = pgTable("pricing_rules", {
   id: uuid("id").defaultRandom().primaryKey(),
   productId: uuid("productId")

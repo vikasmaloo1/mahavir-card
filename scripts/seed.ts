@@ -7,6 +7,7 @@ dotenv.config();
 async function main() {
 const { db, pool } = await import("../src/lib/db");
 const { categories, pricingRules, productVariants, products } = await import("../src/lib/db/schema");
+const { sql } = await import("drizzle-orm");
 const { catalogCategories, catalogProducts } = await import("../src/lib/catalog");
 const { pdfPricingRows } = await import("../src/lib/pdf-pricing");
 
@@ -27,7 +28,7 @@ const allProducts = [
   ...pdfProducts.map(([slug, name, categorySlug]) => ({ id: uuidFor(`product:${slug}`), categorySlug, name, slug, description: `PDF-derived price list product: ${name}`, configuration: {}, imageUrl: undefined, orderable: false, quoteable: true })),
 ];
 
-await db.insert(products).values(allProducts.map((product) => ({ id: product.id, categoryId: categoryIds.get(product.categorySlug), name: product.name, slug: product.slug, description: product.description, configuration: { fields: product.configuration }, imageUrl: product.imageUrl, orderable: product.orderable ?? false, quoteable: product.quoteable ?? true, productType: "CONFIGURABLE" }))).onConflictDoUpdate({ target: products.slug, set: { categoryId: products.categoryId, name: products.name, description: products.description, configuration: products.configuration, imageUrl: products.imageUrl, orderable: products.orderable, quoteable: products.quoteable, updatedAt: new Date() } });
+await db.insert(products).values(allProducts.map((product) => ({ id: product.id, categoryId: categoryIds.get(product.categorySlug), name: product.name, slug: product.slug, description: product.description, configuration: { fields: product.configuration }, imageUrl: product.imageUrl, orderable: product.orderable ?? false, quoteable: product.quoteable ?? true, productType: "CONFIGURABLE" }))).onConflictDoUpdate({ target: products.slug, set: { categoryId: sql`excluded."categoryId"`, name: sql`excluded."name"`, description: sql`excluded."description"`, configuration: sql`excluded."configuration"`, imageUrl: sql`excluded."imageUrl"`, orderable: sql`excluded."orderable"`, quoteable: sql`excluded."quoteable"`, updatedAt: new Date() } });
 
 const variants = allProducts.map((product) => ({ id: uuidFor(`variant:${product.slug}`), productId: product.id, name: "Standard", sku: `MHC-${product.slug.toUpperCase().replaceAll("-", "_")}`, options: {}, basePrice: "0" }));
 await db.insert(productVariants).values(variants).onConflictDoUpdate({ target: productVariants.sku, set: { productId: productVariants.productId, updatedAt: new Date() } });

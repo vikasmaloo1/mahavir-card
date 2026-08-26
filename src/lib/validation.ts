@@ -125,6 +125,15 @@ export const checkoutSchema = z.object({
   })).min(1).max(25),
 });
 
+export const cartKindSchema = z.enum(["PURCHASE", "QUOTE"]);
+export const cartItemSchema = z.object({
+  kind: cartKindSchema,
+  productId: z.string().uuid(),
+  quantity: z.number().int().positive().max(1_000_000).default(1),
+  configuration: metadata,
+});
+export const cartItemUpdateSchema = z.object({ quantity: z.number().int().positive().max(1_000_000), configuration: metadata.optional() });
+
 export const adminCreateSchema = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.email(),

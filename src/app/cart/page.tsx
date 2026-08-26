@@ -5,12 +5,14 @@ import { ArrowRight, ShoppingBag, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { StorefrontHeader } from "@/components/storefront-header";
+import { PurchaseCart } from "@/components/purchase-cart";
 
 type CartItem = { productId: string; slug: string; name: string; configuration: Record<string, string>; quantity: number; calculatedAmount: string };
 
 export default function CartPage() {
+  return <main className="min-h-screen bg-[#fcfbf8] text-[#17221c]"><StorefrontHeader /><div className="mx-auto max-w-[1120px] px-4 py-8 xl:px-8"><div className="flex items-end justify-between border-b border-[#dedcd5] pb-5"><div><p className="text-[11px] font-bold uppercase tracking-[.15em] text-[#8b2f24]">Purchase basket</p><h1 className="mt-2 text-3xl font-bold">Ready-to-print orders.</h1></div><Link href="/quote" className="text-sm font-bold text-[#8b2f24]">Need a quote instead?</Link></div><PurchaseCart /></div></main>;
   const [items, setItems] = useState<CartItem[]>([]);
-  useEffect(() => { try { // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { try {
     setItems(JSON.parse(window.localStorage.getItem("mahavir-purchase-cart") ?? "[]")); } catch {} }, []);
   const total = useMemo(() => items.reduce((sum, item) => sum + Number(item.calculatedAmount), 0), [items]);
   function save(next: CartItem[]) { setItems(next); window.localStorage.setItem("mahavir-purchase-cart", JSON.stringify(next)); }
