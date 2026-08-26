@@ -10,6 +10,17 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/prod
   try { await requireRole(request, ["ADMIN"]); const { id } = await ctx.params; const input = await readBody(request, productSchema.partial()); const [product] = await db.update(products).set({ ...input, updatedAt: new Date() }).where(eq(products.id, id)).returning(); return product ? jsonOk(product) : jsonError("Product not found", 404); } catch (error) { return error instanceof Response ? error : handleApiError(error); }
 }
 
+export async function GET(request: Request, ctx: RouteContext<"/api/admin/products/[id]">) {
+  try {
+    await requireRole(request, ["ADMIN"]);
+    const { id } = await ctx.params;
+    const [product] = await db.select().from(products).where(eq(products.id, id)).limit(1);
+    return product ? jsonOk(product) : jsonError("Product not found", 404);
+  } catch (error) {
+    return error instanceof Response ? error : handleApiError(error);
+  }
+}
+
 export async function DELETE(request: Request, ctx: RouteContext<"/api/admin/products/[id]">) {
   try { await requireRole(request, ["ADMIN"]); const { id } = await ctx.params; const [product] = await db.update(products).set({ isActive: false, updatedAt: new Date() }).where(eq(products.id, id)).returning(); return product ? jsonOk(product) : jsonError("Product not found", 404); } catch (error) { return error instanceof Response ? error : handleApiError(error); }
 }

@@ -15,6 +15,16 @@ async function productExists(id: string) {
   return Boolean(product);
 }
 
+async function productOwnsSectionItem(productId: string, itemId: string) {
+  const [item] = await db
+    .select({ id: productContentItems.id })
+    .from(productContentItems)
+    .innerJoin(productContentSections, eq(productContentItems.sectionId, productContentSections.id))
+    .where(and(eq(productContentItems.id, itemId), eq(productContentSections.productId, productId)))
+    .limit(1);
+  return Boolean(item);
+}
+
 export async function GET(request: Request, ctx: RouteContext<"/api/admin/products/[id]/catalog">) {
   try {
     await requireRole(request, ["ADMIN"]);
@@ -88,6 +98,7 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/prod
       return section ? jsonOk(section) : jsonError("Section not found", 404);
     }
     if (input.resource === "SECTION_ITEM") {
+      if (!await productOwnsSectionItem(productId, input.id!)) return jsonError("Content item not found", 404);
       const [item] = await db.update(productContentItems).set({ ...productContentItemSchema.partial().parse(input.data), updatedAt: new Date() }).where(eq(productContentItems.id, input.id!)).returning();
       return item ? jsonOk(item) : jsonError("Content item not found", 404);
     }
@@ -115,7 +126,10 @@ export async function DELETE(request: Request, ctx: RouteContext<"/api/admin/pro
     const input = await readBody(request, z.object({ resource: resourceSchema, id: z.string().uuid() }));
     if (input.resource === "IMAGE") await db.delete(productImages).where(and(eq(productImages.id, input.id), eq(productImages.productId, productId)));
     else if (input.resource === "SECTION") await db.delete(productContentSections).where(and(eq(productContentSections.id, input.id), eq(productContentSections.productId, productId)));
-    else if (input.resource === "SECTION_ITEM") await db.delete(productContentItems).where(eq(productContentItems.id, input.id));
+    else if (input.resource === "SECTION_ITEM") {
+      if (!await productOwnsSectionItem(productId, input.id)) return jsonError("Content item not found", 404);
+      await db.delete(productContentItems).where(eq(productContentItems.id, input.id));
+    }
     else if (input.resource === "ADDON") await db.delete(productAddons).where(and(eq(productAddons.id, input.id), eq(productAddons.productId, productId)));
     else if (input.resource === "DELIVERY_RULE") await db.delete(productDeliveryRules).where(and(eq(productDeliveryRules.id, input.id), eq(productDeliveryRules.productId, productId)));
     else await db.delete(pricingRules).where(and(eq(pricingRules.id, input.id), eq(pricingRules.productId, productId)));
