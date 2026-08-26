@@ -1,7 +1,7 @@
 import { desc } from "drizzle-orm";
 
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
-import { db } from "@/lib/db";
+import { db } from "@/lib/db/server";
 import { leads } from "@/lib/db/schema";
 import { requireRole } from "@/lib/permissions";
 import { leadSchema } from "@/lib/validation";

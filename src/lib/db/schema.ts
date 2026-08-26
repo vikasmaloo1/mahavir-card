@@ -21,10 +21,25 @@ export const user = pgTable("user", {
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   emailVerified: boolean("emailVerified").notNull().default(false),
+  phoneNumber: text("phoneNumber").unique(),
+  phoneNumberVerified: boolean("phoneNumberVerified").notNull().default(false),
   image: text("image"),
   role: text("role").notNull().default("CUSTOMER"),
   ...timestamps,
 });
+
+export const admins = pgTable(
+  "admins",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("userId").notNull().references(() => user.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("ADMIN"),
+    status: text("status").notNull().default("ACTIVE"),
+    createdBy: uuid("createdBy").references(() => user.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex("admins_user_idx").on(table.userId)],
+);
 
 export const session = pgTable(
   "session",
@@ -117,6 +132,9 @@ export const products = pgTable("products", {
   description: text("description"),
   productType: text("productType").notNull().default("CONFIGURABLE"),
   configuration: jsonb("configuration").$type<Record<string, unknown>>().notNull().default({}),
+  imageUrl: text("imageUrl"),
+  orderable: boolean("orderable").notNull().default(false),
+  quoteable: boolean("quoteable").notNull().default(true),
   isActive: boolean("isActive").notNull().default(true),
   ...timestamps,
 });
@@ -214,11 +232,13 @@ export const artworks = pgTable("artworks", {
   customerId: uuid("customerId").references(() => customers.id, { onDelete: "set null" }),
   fileName: text("fileName").notNull(),
   fileType: text("fileType").notNull(),
+  extension: text("extension").notNull().default(".cdr"),
   mimeType: text("mimeType").notNull(),
   fileSize: integer("fileSize").notNull(),
+  uploadedBy: uuid("uploadedBy").references(() => user.id, { onDelete: "set null" }),
   storageKey: text("storageKey"),
   storageUrl: text("storageUrl"),
-  status: text("status").notNull().default("UPLOADED"),
+  status: text("status").notNull().default("PENDING_REVIEW"),
   notes: text("notes"),
   ...timestamps,
 });
@@ -234,5 +254,44 @@ export const leads = pgTable("leads", {
   phone: text("phone"),
   message: text("message"),
   requirement: jsonb("requirement").$type<Record<string, unknown>>().notNull().default({}),
+  ...timestamps,
+});
+
+export const inquiries = pgTable("inquiries", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  customerId: uuid("customerId").references(() => customers.id, { onDelete: "set null" }),
+  source: text("source").notNull().default("WEBSITE"),
+  status: text("status").notNull().default("NEW"),
+  companyName: text("companyName"),
+  contactName: text("contactName").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  subject: text("subject"),
+  message: text("message").notNull(),
+  requirement: jsonb("requirement").$type<Record<string, unknown>>().notNull().default({}),
+  ...timestamps,
+});
+
+export const payments = pgTable("payments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orderId: uuid("orderId").notNull().unique().references(() => orders.id, { onDelete: "cascade" }),
+  customerId: uuid("customerId").references(() => customers.id, { onDelete: "set null" }),
+  method: text("method").notNull().default("COD"),
+  status: text("status").notNull().default("PENDING"),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull().default("0"),
+  provider: text("provider"),
+  providerOrderId: text("providerOrderId"),
+  providerPaymentId: text("providerPaymentId"),
+  codCollectedAt: timestamp("codCollectedAt", { withTimezone: true }),
+  ...timestamps,
+});
+
+export const paymentTransactions = pgTable("payment_transactions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  paymentId: uuid("paymentId").notNull().references(() => payments.id, { onDelete: "cascade" }),
+  transactionId: text("transactionId"),
+  status: text("status").notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull().default("0"),
+  rawData: jsonb("rawData").$type<Record<string, unknown>>().notNull().default({}),
   ...timestamps,
 });

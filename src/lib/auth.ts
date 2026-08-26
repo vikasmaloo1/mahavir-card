@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { phoneNumber } from "better-auth/plugins";
 import { Pool } from "pg";
 
 const database = new Pool({
@@ -29,4 +30,12 @@ export const auth = betterAuth({
     minPasswordLength: 8,
     maxPasswordLength: 128,
   },
+  plugins: [
+    phoneNumber({
+      requireVerification: false,
+      sendOTP: async () => {
+        throw new Error("SMS provider is not configured");
+      },
+    }),
+  ],
 });

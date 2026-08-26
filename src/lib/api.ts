@@ -1,14 +1,18 @@
 import { ZodError, type ZodType } from "zod";
 
 export function jsonOk<T>(data: T, status = 200) {
-  return Response.json({ data }, { status });
+  return Response.json({ success: true, data }, { status });
 }
 
 export function jsonError(message: string, status = 400, details?: unknown) {
   return Response.json(
-    { error: { message, ...(details ? { details } : {}) } },
+    { success: false, error: { code: statusCode(status), message, ...(details ? { details } : {}) } },
     { status },
   );
+}
+
+function statusCode(status: number) {
+  return status === 401 ? "UNAUTHORIZED" : status === 403 ? "FORBIDDEN" : status === 404 ? "NOT_FOUND" : status === 409 ? "CONFLICT" : status === 422 ? "VALIDATION_ERROR" : status >= 500 ? "INTERNAL_ERROR" : "REQUEST_ERROR";
 }
 
 export async function readBody<T>(request: Request, schema: ZodType<T>) {

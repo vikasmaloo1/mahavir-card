@@ -1,9 +1,9 @@
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
-import { db } from "@/lib/db";
-import { orderItems, orders } from "@/lib/db/schema";
-import { requireRole } from "@/lib/permissions";
+import { db } from "@/lib/db/server";
+import { customers, orderItems, orders } from "@/lib/db/schema";
+import { getAdminAccess, getSession } from "@/lib/permissions";
 import { orderSchema, type OrderInput } from "@/lib/validation";
 
 function makeNumber() {
@@ -12,8 +12,12 @@ function makeNumber() {
 
 export async function GET(request: Request) {
   try {
-    await requireRole(request, ["ADMIN"]);
-    const data = await db.select().from(orders).orderBy(desc(orders.createdAt));
+    const session = await getSession(request);
+    if (!session) return jsonError("Authentication required", 401);
+    const admin = await getAdminAccess(request);
+    const data = admin
+      ? await db.select().from(orders).orderBy(desc(orders.createdAt))
+      : await db.select({ order: orders }).from(orders).innerJoin(customers, eq(orders.customerId, customers.id)).where(eq(customers.userId, session.user.id)).orderBy(desc(orders.createdAt)).then((items) => items.map((item) => item.order));
     return jsonOk(data);
   } catch (error) {
     return error instanceof Response ? error : handleApiError(error);
@@ -22,8 +26,16 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await requireRole(request, ["ADMIN"]);
+    const session = await getSession(request);
+    if (!session) return jsonError("Authentication required", 401);
+    const admin = await getAdminAccess(request);
     const input = await readBody(request, orderSchema);
+    let customerId = input.customerId;
+    if (!admin) {
+      const [customer] = await db.select({ id: customers.id }).from(customers).where(eq(customers.userId, session.user.id)).limit(1);
+      if (!customer) return jsonError("Complete your customer profile before creating an order", 422);
+      customerId = customer.id;
+    }
     const items = input.items.map((item: OrderInput["items"][number]) => ({
       ...item,
       totalPrice: (item.quantity * Number(item.unitPrice)).toFixed(2),
@@ -34,7 +46,7 @@ export async function POST(request: Request) {
       const [order] = await tx.insert(orders).values({
         orderNumber: makeNumber(),
         quoteId: input.quoteId,
-        customerId: input.customerId,
+        customerId,
         notes: input.notes,
         subtotal,
         total: subtotal,

@@ -1,8 +1,17 @@
 @import "tailwindcss";
+@import "swagger-ui-react/swagger-ui.css";
 
 :root {
-  --background: #f7f4ee;
-  --foreground: #17211c;
+  /* Change these seven tokens to re-theme the customer storefront. */
+  --mc-surface: #fcfbf8;
+  --mc-paper: #ffffff;
+  --mc-ink: #17221c;
+  --mc-muted: #626a62;
+  --mc-accent: #8b2f24;
+  --mc-accent-soft: #fcf7f5;
+  --mc-line: #d8d6cf;
+  --background: var(--mc-surface);
+  --foreground: var(--mc-ink);
 }
 
 @theme inline {
@@ -16,10 +25,22 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Use these for new storefront components so the theme stays centralized. */
+.mc-page { background: var(--mc-surface); color: var(--mc-ink); }
+.mc-paper { background: var(--mc-paper); }
+.mc-ink { color: var(--mc-ink); }
+.mc-muted { color: var(--mc-muted); }
+.mc-accent { color: var(--mc-accent); }
+.mc-accent-bg { background: var(--mc-accent); color: #fff; }
+.mc-line { border-color: var(--mc-line); }
+
 * {
   box-sizing: border-box;
 }
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
+
+body { overflow-x: hidden; }

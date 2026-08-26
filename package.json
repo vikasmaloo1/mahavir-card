@@ -9,9 +9,13 @@
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:check": "drizzle-kit check"
+    "db:check": "drizzle-kit check",
+    "db:seed": "tsx scripts/seed.ts",
+    "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",
+    "api:docs": "tsx scripts/api-docs.ts"
   },
   "dependencies": {
+    "@types/swagger-ui-react": "^5.18.0",
     "better-auth": "^1.7.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -21,6 +25,8 @@
     "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
+    "swagger-ui-react": "^5.32.14",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
   },
@@ -36,6 +42,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.2",
     "tailwindcss": "^4",
+    "tsx": "^4.23.12",
     "typescript": "^5"
   }
 }

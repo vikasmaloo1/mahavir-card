@@ -1,8 +1,8 @@
 import { desc, eq } from "drizzle-orm";
 
-import { getSession } from "@/lib/permissions";
+import { getAdminAccess, getSession } from "@/lib/permissions";
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
-import { db } from "@/lib/db";
+import { db } from "@/lib/db/server";
 import { quoteItems, quotes } from "@/lib/db/schema";
 import { quoteSchema, type QuoteInput } from "@/lib/validation";
 
@@ -22,8 +22,8 @@ export async function GET(request: Request) {
     const session = await getSession(request);
     if (!session) return jsonError("Authentication required", 401);
 
-    const role = String(session.user.role ?? "CUSTOMER");
-    const data = role === "ADMIN"
+    const admin = await getAdminAccess(request);
+    const data = admin
       ? await db.select().from(quotes).orderBy(desc(quotes.createdAt))
       : await db.select().from(quotes).where(eq(quotes.userId, session.user.id)).orderBy(desc(quotes.createdAt));
 

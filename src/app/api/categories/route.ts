@@ -1,7 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
-import { db } from "@/lib/db";
+import { db } from "@/lib/db/server";
 import { categories } from "@/lib/db/schema";
 import { requireRole } from "@/lib/permissions";
 import { categorySchema } from "@/lib/validation";

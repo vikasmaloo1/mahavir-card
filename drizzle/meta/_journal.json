@@ -15,6 +15,41 @@
       "when": 1787687648807,
       "tag": "0001_stormy_sugar_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787692632453,
+      "tag": "0002_good_mysterio",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787720189534,
+      "tag": "0003_petite_obadiah_stane",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1787720189535,
+      "tag": "0004_admin_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787720189536,
+      "tag": "0005_sync_user_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787726284468,
+      "tag": "0006_secret_triton",
+      "breakpoints": true
     }
   ]
 }
