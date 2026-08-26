@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { FileText, Search, ShoppingBag, UserRound } from "lucide-react";
 
 export function StorefrontHeader() {
@@ -6,8 +7,8 @@ export function StorefrontHeader() {
     <header className="sticky top-0 z-30 border-b border-[#d8d6cf] bg-[#fcfbf8]/95 backdrop-blur">
       <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-3 px-4 py-3 lg:px-8">
         <Link href="/" className="flex shrink-0 items-center gap-3" aria-label="Mahavir Card home">
-          <span className="grid size-9 place-items-center bg-[#8b2f24] text-sm font-black text-white">M</span>
-          <span className="text-base font-bold text-[#17221c]">mahavir<span className="text-[#8b2f24]">card</span></span>
+          <Image src="/images/mahavir-card-logo.jpeg" alt="" width={40} height={40} priority className="size-10 rounded-full object-cover" />
+          <span className="text-base font-bold text-[#17221c]">Mahavir Card</span>
         </Link>
         <form action="/catalog" className="hidden min-w-0 max-w-xl flex-1 items-center border border-[#d7d5ce] bg-white px-3 md:flex">
           <Search size={17} className="text-[#777a74]" />
