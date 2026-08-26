@@ -44,6 +44,7 @@ export interface ObjectStorage {
   deleteObject(key: string): Promise<void>;
   headObject(key: string): Promise<ObjectHead | null>;
   objectExists(key: string): Promise<boolean>;
+  getObjectPrefix(key: string, byteCount: number): Promise<Uint8Array>;
   getSignedUploadUrl(input: SignedUploadInput): Promise<string>;
   getSignedDownloadUrl(input: SignedDownloadInput): Promise<string>;
 }

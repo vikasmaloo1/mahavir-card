@@ -78,7 +78,7 @@ export function ProductConfigurator({ product }: { product: CatalogProduct }) {
   function configuration() { return { ...values, pricingRuleId: selectedRuleId, addonIds, ...(delivery ? { delivery } : {}), ...(artwork ? { artworkId: artwork.id } : {}) }; }
   async function add(kind: "PURCHASE" | "QUOTE", checkout = false) {
     setBasketError("");
-    if (requirement?.artworkRequired && !artwork) { setBasketError("Upload the required CDR artwork before continuing."); return; }
+    if (requirement?.artworkRequired && !artwork) { setBasketError(`Upload the required ${(requirement.acceptedFormats ?? ["CDR"]).join(" or ")} artwork before continuing.`); return; }
     const response = await fetch("/api/cart/items", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, productId: product.id, quantity, configuration: configuration() }) });
     const payload = await response.json();
     if (!response.ok) { setBasketError(response.status === 401 ? "Sign in to save this item." : payload.error?.message ?? "Could not save this item."); return; }

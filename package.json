@@ -13,6 +13,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",
     "api:docs": "tsx scripts/api-docs.ts",
+    "artwork:verify": "tsx scripts/verify-artwork-rules.ts",
     "storage:verify": "node --conditions=react-server --import tsx scripts/verify-r2.ts",
     "storage:api-verify": "node --import tsx scripts/verify-storage-api.ts",
     "test:storage": "node --conditions=react-server --import tsx --test tests/storage-policies.test.ts"

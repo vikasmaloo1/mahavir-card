@@ -59,7 +59,7 @@ for (const [index, product] of businessCardProducts.entries()) {
     productClass: "Visiting Cards",
     productionTime: "2-3 working days",
     artworkRequired: true,
-    artworkInstructions: "Upload final CorelDRAW artwork (.cdr) with text converted to curves.",
+    artworkInstructions: "Upload a production-ready PDF or CorelDRAW file using the configured dimensions and page order.",
     referenceQuantity: 1000,
     referenceWeight: "1.000",
     referenceWeightUnit: "KG",
@@ -80,8 +80,30 @@ await db.insert(addons).values(addonRows).onConflictDoUpdate({ target: addons.co
 const configuredBusinessAddons = businessCardProducts.filter((product) => product.supportsPremiumAddons).flatMap((product, productIndex) => addonRows.map((addon, addonIndex) => ({ id: uuidFor(`product-addon:${product.slug}:${addon.code}`), productId: productIds.get(product.slug)!, addonId: addon.id, price: addonIndex === 0 ? "100.00" : "150.00", sortOrder: productIndex * addonRows.length + addonIndex, isActive: true, taxInclusive: true })));
 await db.insert(productAddons).values(configuredBusinessAddons).onConflictDoUpdate({ target: productAddons.id, set: { price: sql`excluded."price"`, sortOrder: sql`excluded."sortOrder"`, isActive: true, taxInclusive: true, updatedAt: new Date() } });
 
-const artworkRows = businessCardProducts.map((product) => ({ id: uuidFor(`artwork:${product.slug}:product`), productId: productIds.get(product.slug)!, scopeKey: "PRODUCT", artworkRequired: true, maxFileSize: 100, maxFiles: 1, designUnit: "mm", additionalInstructions: "Upload a final CorelDRAW file. Convert all text to curves and keep important content inside the safe area.", isActive: true }));
-await db.insert(artworkRequirements).values(artworkRows).onConflictDoUpdate({ target: artworkRequirements.id, set: { artworkRequired: sql`excluded."artworkRequired"`, maxFileSize: sql`excluded."maxFileSize"`, maxFiles: sql`excluded."maxFiles"`, additionalInstructions: sql`excluded."additionalInstructions"`, isActive: true, updatedAt: new Date() } });
+function visitingCardPages(slug: string) {
+  const frontBack = slug.includes("front-back") || slug.includes("350gsm-matt") || slug.includes("uv-front-back");
+  const spotUv = slug.includes("uv") || slug === "business-card-350gsm-matt" || slug === "business-card-nt-front-back";
+  const pages = frontBack
+    ? [{ pageNumber: 1, label: "Front Design File", required: true }, { pageNumber: 2, label: "Back Design File", required: true }]
+    : [{ pageNumber: 1, label: "Design File", required: true }];
+  if (spotUv) pages.push({ pageNumber: pages.length + 1, label: "Spot UV File", colorMode: "B&W only", notes: "Include this separation page only when Spot UV is selected.", required: false } as typeof pages[number]);
+  pages.push({ pageNumber: pages.length + 1, label: "Foil File", colorMode: "B&W only", notes: "Include this separation page only when foil finishing is selected.", required: false } as typeof pages[number]);
+  return pages;
+}
+
+const multiplePageInstructions = "Upload all artwork pages in one PDF and keep them in the displayed order. Use the same 93 x 56 mm full-design size on every page. Front/back jobs must place the front first and back second. Include B&W separation pages only for finishes selected in the order.";
+const artworkRows = businessCardProducts.map((product) => ({
+  id: uuidFor(`artwork:${product.slug}:product`), productId: productIds.get(product.slug)!, scopeKey: "PRODUCT", artworkRequired: true,
+  acceptedFormats: ["PDF", "CDR"] as Array<"PDF" | "CDR">, maxFileSize: 100, maxFiles: 1, designWidth: "93", designHeight: "56", designUnit: "mm",
+  safeAreaWidth: "82", safeAreaHeight: "45", finalWidth: "90", finalHeight: "53", orientation: "ANY", pageInstructions: visitingCardPages(product.slug),
+  multiplePageInstructions, additionalInstructions: "Keep all text and important content inside the safe area. Convert fonts to curves before exporting CDR artwork. PDF artwork must preserve the configured page order.",
+  notes: "Visiting-card production artwork rule seeded from the standard card specification.", isActive: true,
+}));
+await db.insert(artworkRequirements).values(artworkRows).onConflictDoUpdate({ target: artworkRequirements.id, set: {
+  artworkRequired: sql`excluded."artworkRequired"`, acceptedFormats: sql`excluded."acceptedFormats"`, maxFileSize: sql`excluded."maxFileSize"`, maxFiles: sql`excluded."maxFiles"`,
+  designWidth: sql`excluded."designWidth"`, designHeight: sql`excluded."designHeight"`, designUnit: sql`excluded."designUnit"`, safeAreaWidth: sql`excluded."safeAreaWidth"`, safeAreaHeight: sql`excluded."safeAreaHeight"`, finalWidth: sql`excluded."finalWidth"`, finalHeight: sql`excluded."finalHeight"`, orientation: sql`excluded."orientation"`,
+  pageInstructions: sql`excluded."pageInstructions"`, multiplePageInstructions: sql`excluded."multiplePageInstructions"`, additionalInstructions: sql`excluded."additionalInstructions"`, notes: sql`excluded."notes"`, isActive: true, updatedAt: new Date(),
+} });
 
 const deliveryRows = businessCardProducts.flatMap((product) => [
   { id: uuidFor(`delivery:${product.slug}:pickup`), productId: productIds.get(product.slug)!, deliveryMethod: "PICKUP", stateCode: "*", price: "0.00", sortOrder: 0, isActive: true, taxInclusive: true },
@@ -100,7 +122,7 @@ const sectionRows = businessCardProducts.flatMap((product) => [
 await db.insert(productContentSections).values(sectionRows).onConflictDoUpdate({ target: productContentSections.id, set: { title: sql`excluded."title"`, sortOrder: sql`excluded."sortOrder"`, updatedAt: new Date() } });
 const contentItems = businessCardProducts.flatMap((product) => [
   { id: uuidFor(`content-item:${product.slug}:quantity`), sectionId: uuidFor(`content:${product.slug}:details`), label: "Reference quantity", content: "1,000 cards is configured as the reference quantity.", sortOrder: 0 },
-  { id: uuidFor(`content-item:${product.slug}:artwork`), sectionId: uuidFor(`content:${product.slug}:artwork`), label: "Artwork", content: "Supply final .cdr artwork with fonts converted to curves.", sortOrder: 0 },
+  { id: uuidFor(`content-item:${product.slug}:artwork`), sectionId: uuidFor(`content:${product.slug}:artwork`), label: "Artwork", content: "Supply a final PDF or CDR file using the configured design size, safe area, final size, and page order.", sortOrder: 0 },
 ]);
 await db.insert(productContentItems).values(contentItems).onConflictDoUpdate({ target: productContentItems.id, set: { label: sql`excluded."label"`, content: sql`excluded."content"`, sortOrder: sql`excluded."sortOrder"`, updatedAt: new Date() } });
 

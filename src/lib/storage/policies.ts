@@ -5,7 +5,9 @@ import { filenameExtension } from "./helpers";
 export class FilePolicyError extends Error {}
 
 export const cdrMimeTypes = new Set(["", "application/octet-stream", "application/cdr", "application/vnd.corel-draw", "application/x-cdr"]);
+export const pdfMimeTypes = new Set(["application/pdf"]);
 export const imageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
+export type ArtworkFileFormat = "CDR" | "PDF";
 
 function configuredLimit(name: string, fallback: number) {
   const value = Number(process.env[name]);
@@ -25,6 +27,31 @@ export function validateCdrMetadata(input: { filename: string; contentType?: str
   const minimum = artworkLimitBytes(input.minimumMb);
   if (maximum && input.size > maximum) throw new FilePolicyError(`File exceeds the ${input.maximumMb} MB limit.`);
   if (minimum && input.size < minimum) throw new FilePolicyError(`File is smaller than the ${input.minimumMb} MB minimum.`);
+}
+
+export function validateArtworkMetadata(input: { filename: string; contentType?: string | null; size: number; acceptedFormats: ArtworkFileFormat[]; maximumMb?: number | null; minimumMb?: number | null }) {
+  const extension = filenameExtension(input.filename);
+  const format: ArtworkFileFormat | null = extension === ".cdr" ? "CDR" : extension === ".pdf" ? "PDF" : null;
+  const allowed = [...new Set(input.acceptedFormats)];
+  if (!format || !allowed.includes(format)) throw new FilePolicyError(`Only ${formatNames(allowed)} artwork files are accepted.`);
+  const contentType = (input.contentType ?? "").toLowerCase();
+  if (format === "CDR" && !cdrMimeTypes.has(contentType)) throw new FilePolicyError("The selected file does not have a valid CorelDRAW type.");
+  if (format === "PDF" && !pdfMimeTypes.has(contentType)) throw new FilePolicyError("The selected file does not have a valid PDF type.");
+  if (!Number.isSafeInteger(input.size) || input.size <= 0) throw new FilePolicyError("The artwork file is empty or has an invalid size.");
+  const maximum = artworkLimitBytes(input.maximumMb);
+  const minimum = artworkLimitBytes(input.minimumMb);
+  if (maximum && input.size > maximum) throw new FilePolicyError(`File exceeds the ${input.maximumMb} MB limit.`);
+  if (minimum && input.size < minimum) throw new FilePolicyError(`File is smaller than the ${input.minimumMb} MB minimum.`);
+  return format;
+}
+
+export function validatePdfHeader(bytes: Uint8Array) {
+  if (new TextDecoder().decode(bytes.slice(0, 5)) !== "%PDF-") throw new FilePolicyError("The uploaded file is not a valid PDF document.");
+}
+
+function formatNames(formats: ArtworkFileFormat[]) {
+  if (formats.length === 1) return formats[0] === "CDR" ? "CorelDRAW (.cdr)" : "PDF (.pdf)";
+  return formats.map((format) => format === "CDR" ? "CorelDRAW (.cdr)" : "PDF (.pdf)").join(" or ");
 }
 
 function matchesImageSignature(contentType: string, bytes: Uint8Array) {

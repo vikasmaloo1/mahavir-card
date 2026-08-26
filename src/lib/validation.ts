@@ -80,6 +80,7 @@ const optionalDimension = z.string().regex(/^\d+(\.\d{1,3})?$/).nullable().optio
 export const artworkRequirementSchema = z.object({
   pricingRuleId: z.string().uuid().nullable().optional(),
   artworkRequired: z.boolean().default(false),
+  acceptedFormats: z.array(z.enum(["CDR", "PDF"])).min(1).max(2).default(["CDR"]).transform((formats) => [...new Set(formats)]),
   minFileSize: z.number().int().positive().nullable().optional(),
   maxFileSize: z.number().int().positive().nullable().optional(),
   maxFiles: z.number().int().min(1).max(10).default(1),
@@ -93,6 +94,14 @@ export const artworkRequirementSchema = z.object({
   finalWidth: optionalDimension,
   finalHeight: optionalDimension,
   orientation: z.enum(["PORTRAIT", "LANDSCAPE", "SQUARE", "ANY"]).nullable().optional(),
+  pageInstructions: z.array(z.object({
+    pageNumber: z.number().int().positive().max(20),
+    label: z.string().trim().min(1).max(160),
+    colorMode: z.string().trim().max(80).nullable().optional(),
+    notes: z.string().trim().max(500).nullable().optional(),
+    required: z.boolean().default(true),
+  })).max(20).default([]),
+  multiplePageInstructions: z.string().trim().max(2000).nullable().optional(),
   additionalInstructions: z.string().trim().max(3000).nullable().optional(),
   notes: z.string().trim().max(1000).nullable().optional(),
   isActive: z.boolean().default(true),

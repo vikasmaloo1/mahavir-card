@@ -1,6 +1,6 @@
 import "server-only";
 
-import { DeleteObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { safeContentDispositionFilename } from "./helpers";
@@ -97,13 +97,20 @@ export class R2ObjectStorage implements ObjectStorage {
     return Boolean(await this.headObject(key));
   }
 
+  async getObjectPrefix(key: string, byteCount: number) {
+    if (!Number.isSafeInteger(byteCount) || byteCount < 1 || byteCount > 1024) throw new Error("Invalid object prefix length.");
+    const settings = config();
+    const output = await r2().send(new GetObjectCommand({ Bucket: settings.bucket, Key: key, Range: `bytes=0-${byteCount - 1}` }));
+    if (!output.Body) throw new Error("Stored object has no readable body.");
+    return output.Body.transformToByteArray();
+  }
+
   async getSignedUploadUrl(input: SignedUploadInput) {
     const settings = config();
     return getSignedUrl(r2(), new PutObjectCommand({ Bucket: settings.bucket, Key: input.key, ContentType: input.contentType }), { expiresIn: expires(input.expiresIn, 300) });
   }
 
   async getSignedDownloadUrl(input: SignedDownloadInput) {
-    const { GetObjectCommand } = await import("@aws-sdk/client-s3");
     const settings = config();
     const disposition = input.filename ? `${input.disposition ?? "attachment"}; filename="${safeContentDispositionFilename(input.filename)}"` : undefined;
     return getSignedUrl(r2(), new GetObjectCommand({ Bucket: settings.bucket, Key: input.key, ResponseContentType: input.contentType, ResponseContentDisposition: disposition }), { expiresIn: expires(input.expiresIn, 600) });
