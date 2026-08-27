@@ -1,0 +1,117 @@
+export type RateCatalogItem = {
+  slug: string;
+  name: string;
+  shortDescription: string;
+  productionTime?: string;
+  referenceQuantity?: number;
+  referenceWeight?: number;
+  ruleType: "FIXED_PER_REFERENCE_QUANTITY" | "FIXED" | "PER_SQ_INCH";
+  amount?: number;
+  netAmount?: number;
+  taxRate?: number;
+  ratePerSqInch?: number;
+  sourceDisplayedRate?: number;
+  minimumArea?: number;
+  minimumCharge?: number;
+  bladeCharge?: number;
+  size?: string;
+  artwork: {
+    design?: [number, number];
+    safe?: [number, number];
+    final?: [number, number];
+    black?: string;
+    slots: Array<{ key: string; name: string; instructions?: string }>;
+  };
+  addon?: { code: string; name: string; amount: number };
+};
+
+export type RateCatalogCategory = {
+  slug: string;
+  name: string;
+  description: string;
+  items: RateCatalogItem[];
+};
+
+const gst = (net: number) => Number((net * 1.18).toFixed(2));
+const slot = (key: string, name: string, instructions?: string) => ({ key, name, instructions });
+const cardArtwork = (slots: RateCatalogItem["artwork"]["slots"], design: [number, number] = [90, 53], black = "C50 M20 Y20 K100"): RateCatalogItem["artwork"] => ({ design, safe: [83, 47], black, slots });
+const premiumArtwork = (slots: RateCatalogItem["artwork"]["slots"]): RateCatalogItem["artwork"] => ({ design: [93.5, 54], safe: [83, 47], final: [90, 53], black: "C50 M20 Y20 K100", slots });
+const fixedCard = (slug: string, name: string, netAmount: number, productionTime: string, artwork: RateCatalogItem["artwork"], extra: Partial<RateCatalogItem> = {}): RateCatalogItem => ({ slug, name, netAmount, amount: gst(netAmount), taxRate: 18, productionTime, referenceQuantity: 1000, referenceWeight: 1, ruleType: "FIXED_PER_REFERENCE_QUANTITY", shortDescription: `${name} for a reference batch of 1,000 cards.`, artwork, ...extra });
+const fixed = (slug: string, name: string, amount: number, productionTime: string | undefined, size?: string): RateCatalogItem => ({ slug, name, amount, productionTime, size, ruleType: "FIXED", shortDescription: [name, size].filter(Boolean).join(" · "), artwork: { slots: [slot("DESIGN", "Design artwork")] } });
+
+export const rateCatalog: RateCatalogCategory[] = [
+  {
+    slug: "visiting-card", name: "Visiting Card", description: "Standard, tearable, thermal matt, texture, and UV visiting cards.",
+    items: [
+      fixedCard("nt-single", "NT Single", 240, "2-3 working days", cardArtwork([slot("DESIGN", "Design artwork")]), { addon: undefined }),
+      fixedCard("nt-front-back", "NT Front Back", 280, "3-4 working days", cardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")])),
+      fixedCard("tearable-single-side", "Tearable Single Side Art Card 250 GSM", 210, "2-3 working days", cardArtwork([slot("FRONT", "Front design")])),
+      fixedCard("tearable-front-back-without-lamination", "Tearable Front Back Without Lamination", 300, "3-4 working days", cardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")])),
+      fixedCard("tearable-front-back-with-lamination", "Tearable Front Back With Lamination", 320, "4-5 working days", cardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")])),
+      fixedCard("400-gsm-thermal-matt-single-front-back", "400 GSM Thermal Matt Single + Front Back", 480, "4-5 working days", cardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")], [92, 54], "C30 M0 Y0 K100"), { addon: { code: "CORNER_CUT", name: "Corner Cut", amount: 300 } }),
+      fixedCard("350-gsm-thermal-matt-texture", "350 GSM Thermal Matt Texture", 700, "4-5 working days", cardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")], [92, 54], "C30 M0 Y0 K100")),
+      fixedCard("400-gsm-thermal-matt-single-side-uv", "400 GSM Thermal Matt Single Side UV", 570, "5-7 working days", cardArtwork([slot("FRONT", "Front design"), slot("SPOT_UV", "Spot UV separation", "Black and white only")], [92, 54], "C30 M0 Y0 K100")),
+      fixedCard("400-gsm-thermal-matt-front-back-uv", "400 GSM Thermal Matt Front Back UV", 670, "5-7 working days", cardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design"), slot("FRONT_SPOT_UV", "Front Spot UV separation", "Black and white only"), slot("BACK_SPOT_UV", "Back Spot UV separation", "Black and white only")], [92, 54], "C30 M0 Y0 K100"), { addon: { code: "CORNER_CUT", name: "Corner Cut", amount: 300 } }),
+    ],
+  },
+  {
+    slug: "premium-card", name: "Premium Card", description: "Round-cut premium velvet, UV, foil, and drip-off cards.",
+    items: [
+      fixedCard("premium-400-gsm-velvet", "400 GSM Velvet", 746, "7-10 working days", premiumArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")])),
+      fixedCard("premium-400-gsm-velvet-single-side-uv", "400 GSM Velvet Single Side UV", 848, "7-10 working days", premiumArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design"), slot("SPOT_UV", "Spot UV separation", "Black and white only")])),
+      fixedCard("premium-400-gsm-velvet-front-back-uv", "400 GSM Velvet Front Back UV", 932, "7-10 working days", premiumArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design"), slot("FRONT_SPOT_UV", "Front Spot UV separation", "Black and white only"), slot("BACK_SPOT_UV", "Back Spot UV separation", "Black and white only")])),
+      fixedCard("premium-400-gsm-velvet-single-side-foil", "400 GSM Velvet With Single Side Foil", 1017, "7-10 working days", premiumArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design"), slot("FOIL", "Foil separation", "Black and white only")])),
+      fixedCard("premium-400-gsm-velvet-front-back-foil", "400 GSM Velvet With Front Back Foil", 1288, "7-10 working days", premiumArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design"), slot("FRONT_FOIL", "Front foil separation", "Black and white only"), slot("BACK_FOIL", "Back foil separation", "Black and white only")])),
+      fixedCard("premium-400-gsm-dripoff-front-back", "400 GSM Drip-Off Front Back", 1102, "7-10 working days", premiumArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design"), slot("FRONT_DRIPOFF", "Front drip-off separation", "Black and white only"), slot("BACK_DRIPOFF", "Back drip-off separation", "Black and white only")])),
+    ],
+  },
+  {
+    slug: "art-card", name: "Art Card", description: "250 GSM art card jobs priced by finished square-inch area for 1,000 quantity.",
+    items: [
+      { slug: "art-card-single-side", name: "Art Card Single Side", shortDescription: "250 GSM single-side art card · 1,000 quantity.", ruleType: "PER_SQ_INCH", ratePerSqInch: 30, sourceDisplayedRate: 28, referenceQuantity: 1000, artwork: cardArtwork([slot("FRONT", "Front design")]) },
+      { slug: "art-card-both-side", name: "Art Card Both Side", shortDescription: "250 GSM both-side art card · minimum 50 sq in · 1,000 quantity.", ruleType: "PER_SQ_INCH", ratePerSqInch: 40, sourceDisplayedRate: 33, minimumArea: 50, referenceQuantity: 1000, artwork: cardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")]) },
+      { slug: "art-card-both-side-lamination", name: "Art Card Both Side Lamination", shortDescription: "250 GSM laminated both-side art card · 1,000 quantity.", ruleType: "PER_SQ_INCH", ratePerSqInch: 40, sourceDisplayedRate: 37, referenceQuantity: 1000, artwork: cardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")]) },
+    ],
+  },
+  {
+    slug: "letterhead-envelope", name: "Letterhead / Envelope", description: "Letterheads, envelopes, and covers in the workbook paper and size combinations.",
+    items: [
+      fixed("letterhead-100-alabaster", "100 Alabaster Letterhead", 1150, "2-3 working days", "210 × 297 mm"),
+      fixed("letterhead-80-gsm-ss-finish", "80 GSM SS Finish Letterhead", 1100, "3-4 working days", "210 × 297 mm"),
+      fixed("letterhead-100-gsm-ss-finish", "100 GSM SS Finish Letterhead", 1250, "3-4 working days", "210 × 297 mm"),
+      fixed("letterhead-100-alabaster-front-back", "100 Alabaster Front Back Letterhead", 2000, "4-5 working days", "210 × 297 mm"),
+      fixed("envelope-100-alabaster", "100 Alabaster Envelope", 1450, "2-3 working days", "9.5 × 4.25 in"),
+      fixed("envelope-80-gsm-ss-finish", "80 GSM SS Finish Envelope", 1400, "3-4 working days", "9.5 × 4.25 in"),
+      fixed("envelope-100-gsm-ss-finish", "100 GSM SS Finish Envelope", 1550, "3-4 working days", "9.5 × 4.25 in"),
+      fixed("cover-a4-130-gsm-art-paper", "A4 130 GSM Art Paper Cover", 2100, "4-5 working days", "9.5 × 4.25 in"),
+    ],
+  },
+  {
+    slug: "brochure", name: "Brochure", description: "250 GSM art-card brochure formats from the workbook.",
+    items: [
+      fixed("brochure-a4-single-side", "A4 Single Side", 2600, undefined, "8.5 × 11.25 in"),
+      fixed("brochure-a4-both-side-without-lamination", "A4 Both Side Without Lamination", 3000, undefined, "8.5 × 11.25 in"),
+      fixed("brochure-a4-both-side-lamination", "A4 Both Side Lamination", 3600, undefined, "8.5 × 11.25 in"),
+      fixed("brochure-a8-250-tearable-single-side", "A8 250 Tearable Single Side", 1300, undefined, "8.5 × 5.5 in"),
+      fixed("brochure-a8-250-tearable-front-back", "A8 250 Tearable Front Back", 1500, undefined, "8.5 × 5.5 in"),
+      fixed("brochure-a8-250-lamination-front-back", "A8 250 Lamination Front Back", 1800, undefined, "8.5 × 5.5 in"),
+    ],
+  },
+  {
+    slug: "leaflet-cover", name: "Leaflet / Cover", description: "A4 art-paper leaflet and cover jobs.",
+    items: [
+      fixed("leaflet-a4-130-gsm-single-side", "A4 130 GSM Art Paper Single Side", 1700, "4-5 working days"),
+      fixed("leaflet-a4-130-gsm-front-back", "A4 130 GSM Art Paper Front Back", 2200, "2-3 working days"),
+      fixed("leaflet-a4-170-gsm-single-or-front-back", "A4 170 GSM Art Paper Single Side or Front Back", 2400, "4-5 working days"),
+    ],
+  },
+  {
+    slug: "sticker", name: "Sticker", description: "Standard and Avery stickers priced by square inch with workbook minimums and blade charges.",
+    items: [
+      { slug: "sticker-without-lamination", name: "Sticker Without Lamination (80/90)", shortDescription: "Square-inch pricing · minimum charge ₹250.", ruleType: "PER_SQ_INCH", ratePerSqInch: 33, minimumCharge: 250, bladeCharge: 50, productionTime: "4-5 working days", artwork: { slots: [slot("DESIGN", "Sticker design")] } },
+      { slug: "sticker-with-lamination", name: "Sticker With Lamination (80/90)", shortDescription: "Square-inch pricing · minimum charge ₹300.", ruleType: "PER_SQ_INCH", ratePerSqInch: 37, minimumCharge: 300, bladeCharge: 50, productionTime: "4-5 working days", artwork: { slots: [slot("DESIGN", "Sticker design")] } },
+      { slug: "avery-sticker-without-lamination", name: "Avery Sticker Without Lamination", shortDescription: "Square-inch pricing · minimum charge ₹350.", ruleType: "PER_SQ_INCH", ratePerSqInch: 42, minimumCharge: 350, bladeCharge: 50, productionTime: "5-7 working days", artwork: { slots: [slot("DESIGN", "Sticker design")] } },
+      { slug: "avery-sticker-with-lamination", name: "Avery Sticker With Lamination", shortDescription: "Square-inch pricing · minimum charge ₹400.", ruleType: "PER_SQ_INCH", ratePerSqInch: 46, minimumCharge: 400, bladeCharge: 50, productionTime: "7-10 working days", artwork: { slots: [slot("DESIGN", "Sticker design")] } },
+    ],
+  },
+];

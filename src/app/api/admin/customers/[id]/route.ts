@@ -6,7 +6,15 @@ import { db } from "@/lib/db/server";
 import { addresses, customers, inquiries, orders, quotes } from "@/lib/db/schema";
 import { requireRole } from "@/lib/permissions";
 
-const customerUpdateSchema = z.object({ companyName: z.string().trim().min(2).max(160).optional(), contactName: z.string().trim().min(2).max(120).optional(), phone: z.string().trim().max(30).optional(), gstNumber: z.string().trim().max(30).nullable().optional(), status: z.enum(["ACTIVE", "INACTIVE"]).optional() });
+const customerUpdateSchema = z.object({
+  companyName: z.string().trim().min(2).max(160).optional(), contactName: z.string().trim().min(2).max(120).optional(),
+  phone: z.string().trim().max(30).optional(), gstNumber: z.string().trim().max(30).nullable().optional(),
+  customerType: z.enum(["B2B", "B2C"]).optional(), city: z.string().trim().max(100).nullable().optional(),
+  state: z.string().trim().max(100).nullable().optional(), stateCode: z.string().trim().max(3).toUpperCase().nullable().optional(),
+  creditEnabled: z.boolean().optional(), creditLimit: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
+  availableCredit: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(), walletBalance: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
+  paymentTermsDays: z.number().int().min(0).max(365).optional(), status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+});
 
 export async function GET(request: Request, ctx: RouteContext<"/api/admin/customers/[id]">) {
   try {

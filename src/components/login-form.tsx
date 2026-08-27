@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, LockKeyhole, Mail, Smartphone, UserRound } from 
 import { FormEvent, useState } from "react";
 
 import { isValidIndianPhoneNumber, normalizePhoneNumber } from "@/lib/phone";
+import { indiaStates } from "@/lib/india-states";
 
 type Method = "email" | "phone";
 
@@ -24,6 +25,10 @@ export function LoginForm() {
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
+  const [customerType, setCustomerType] = useState<"B2B" | "B2C">("B2C");
+  const [companyName, setCompanyName] = useState("");
+  const [city, setCity] = useState("");
+  const [stateCode, setStateCode] = useState("GJ");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -51,6 +56,15 @@ export function LoginForm() {
         });
         const phoneResult = await phoneResponse.json().catch(() => null);
         if (!phoneResponse.ok) throw new Error(messageFrom(phoneResult, "Account created, but the mobile number could not be saved"));
+
+        const selectedState = indiaStates.find(([code]) => code === stateCode);
+        const profileResponse = await fetch("/api/account/profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ customerType, contactName: name.trim(), companyName: companyName.trim() || null, phone: normalizePhoneNumber(phoneNumber), city: city.trim(), stateCode, state: selectedState?.[1] ?? "" }),
+        });
+        const profileResult = await profileResponse.json().catch(() => null);
+        if (!profileResponse.ok) throw new Error(messageFrom(profileResult, "Account created, but the customer profile could not be saved"));
 
         router.replace("/account");
         router.refresh();
@@ -126,13 +140,13 @@ export function LoginForm() {
 
           <form onSubmit={submit} className="mt-6 space-y-4">
             {isSignup && (
-              <label className="block">
+              <><div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => setCustomerType("B2C")} className={`rounded-lg border px-3 py-3 text-sm font-bold ${customerType === "B2C" ? "border-[var(--mc-accent)] bg-[var(--mc-accent-soft)] text-[var(--mc-accent-dark)]" : "border-[var(--mc-line)] text-[var(--mc-muted)]"}`}>Individual (B2C)</button><button type="button" onClick={() => setCustomerType("B2B")} className={`rounded-lg border px-3 py-3 text-sm font-bold ${customerType === "B2B" ? "border-[var(--mc-accent)] bg-[var(--mc-accent-soft)] text-[var(--mc-accent-dark)]" : "border-[var(--mc-line)] text-[var(--mc-muted)]"}`}>Business (B2B)</button></div><label className="block">
                 <span className="mb-2 block text-sm font-semibold">Full name</span>
                 <div className="relative">
                   <UserRound size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--mc-muted)]" />
                   <input required autoComplete="name" minLength={2} value={name} onChange={(event) => setName(event.target.value)} className={`${fieldClass} pl-11`} />
                 </div>
-              </label>
+              </label>{customerType === "B2B" ? <label className="block"><span className="mb-2 block text-sm font-semibold">Company name</span><input required value={companyName} onChange={(event) => setCompanyName(event.target.value)} className={fieldClass} /></label> : null}<div className="grid gap-4 sm:grid-cols-2"><label className="block"><span className="mb-2 block text-sm font-semibold">City</span><input required autoComplete="address-level2" value={city} onChange={(event) => setCity(event.target.value)} className={fieldClass} /></label><label className="block"><span className="mb-2 block text-sm font-semibold">State</span><select required autoComplete="address-level1" value={stateCode} onChange={(event) => setStateCode(event.target.value)} className={fieldClass}>{indiaStates.map(([code, state]) => <option key={code} value={code}>{state}</option>)}</select></label></div></>
             )}
 
             {(method === "email" || isSignup) && (

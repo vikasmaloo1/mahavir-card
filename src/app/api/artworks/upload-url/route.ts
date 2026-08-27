@@ -8,6 +8,8 @@ import { FilePolicyError, StorageConfigurationError } from "@/lib/storage";
 const inputSchema = z.object({
   productId: z.string().uuid(),
   pricingRuleId: z.string().uuid().nullable().optional(),
+  artworkSlotId: z.string().uuid().nullable().optional(),
+  artworkSlotKey: z.string().trim().min(1).max(80).nullable().optional(),
   filename: z.string().trim().min(1).max(255),
   contentType: z.string().trim().max(120).nullable().optional(),
   fileSize: z.number().int().positive(),

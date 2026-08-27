@@ -20,8 +20,8 @@ export function selectionsFromConfiguration(configuration: Record<string, unknow
   return { addonIds, delivery };
 }
 
-export async function calculateCartSelection(productId: string, quantity: number, configuration: Record<string, unknown>) {
-  return calculateProductPrice(productId, quantity, configuration, selectionsFromConfiguration(configuration));
+export async function calculateCartSelection(productId: string, quantity: number, configuration: Record<string, unknown>, userId?: string) {
+  return calculateProductPrice(productId, quantity, configuration, { ...selectionsFromConfiguration(configuration), userId });
 }
 
 export function purchasablePrice(price: CalculatedPrice | null) {
@@ -36,6 +36,7 @@ export async function getOwnedCart(userId: string, kind: CartKind) {
     id: cartItems.id,
     productId: cartItems.productId,
     quantity: cartItems.quantity,
+    jobName: cartItems.jobName,
     configuration: cartItems.configuration,
     storedCalculatedAmount: cartItems.calculatedAmount,
     storedPricingSnapshot: cartItems.pricingSnapshot,
@@ -54,7 +55,7 @@ export async function getOwnedCart(userId: string, kind: CartKind) {
     const capable = row.product.isActive && row.product.status === "ACTIVE" && (kind === "PURCHASE" ? row.product.orderable : row.product.quoteable);
     if (!capable) return { ...row, calculatedAmount: null, pricingSnapshot: row.storedPricingSnapshot, available: false, message: "This product is no longer available for this basket." };
     try {
-      const price = await calculateCartSelection(row.productId, row.quantity, row.configuration);
+      const price = await calculateCartSelection(row.productId, row.quantity, row.configuration, userId);
       const available = kind === "QUOTE" ? Boolean(price) : purchasablePrice(price);
       return {
         ...row,

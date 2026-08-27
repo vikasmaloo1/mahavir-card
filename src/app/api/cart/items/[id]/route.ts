@@ -26,9 +26,9 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/cart/items
     const capable = existing.product.isActive && existing.product.status === "ACTIVE" && (existing.kind === "PURCHASE" ? existing.product.orderable : existing.product.quoteable);
     if (!capable) return jsonError("This product is no longer available for this basket", 422);
     try { await validateRequiredArtwork(session.user.id, existing.productId, configuration); } catch (error) { return jsonError(error instanceof Error ? error.message : "Artwork validation failed", 422); }
-    const price = await calculateCartSelection(existing.productId, quantity, configuration);
+    const price = await calculateCartSelection(existing.productId, quantity, configuration, session.user.id);
     if (existing.kind === "PURCHASE" && !purchasablePrice(price)) return jsonError(price?.warnings[0] ?? "This configuration does not have an exact direct-purchase price", 422);
-    const [item] = await db.update(cartItems).set({ quantity, configuration, calculatedAmount: price?.calculatedAmount ?? null, pricingSnapshot: price ?? {}, updatedAt: new Date() }).where(eq(cartItems.id, id)).returning();
+    const [item] = await db.update(cartItems).set({ quantity, jobName: input.jobName, configuration, calculatedAmount: price?.calculatedAmount ?? null, pricingSnapshot: price ?? {}, updatedAt: new Date() }).where(eq(cartItems.id, id)).returning();
     return item ? jsonOk(item) : jsonError("Basket item not found", 404);
   } catch (error) {
     if (error instanceof Response) return error;

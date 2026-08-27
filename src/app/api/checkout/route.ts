@@ -33,6 +33,7 @@ export async function POST(request: Request) {
     const deliveryMethods = [...new Set(deliverySelections.map((delivery) => delivery!.method))];
     const deliveryStates = [...new Set(deliverySelections.map((delivery) => delivery!.stateCode).filter(Boolean))];
     const deliveryPrice = basket.items.reduce((sum, item) => sum + Number((item.pricingSnapshot as { delivery?: { price?: string } }).delivery?.price ?? 0), 0).toFixed(2);
+    const tax = basket.items.reduce((sum, item) => sum + Number((item.pricingSnapshot as { taxAmount?: string }).taxAmount ?? 0), 0).toFixed(2);
     const total = basket.summary.total;
     const deliveryAddress = { ...input.address, line2: input.address.line2 || null, country: input.address.country || "India" };
 
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
         orderNumber: makeNumber(),
         customerId: customer.id,
         subtotal: total,
-        tax: "0.00",
+        tax,
         total,
         deliveryMethod: deliveryMethods.length === 1 ? deliveryMethods[0] : deliveryMethods.length > 1 ? "MULTIPLE" : null,
         deliveryState: deliveryStates.length === 1 ? deliveryStates[0] : null,
@@ -70,6 +71,7 @@ export async function POST(request: Request) {
           orderId: order.id,
           productId: item.productId,
           description: item.product.name,
+          jobName: item.jobName,
           configuration: item.configuration,
           quantity: item.quantity,
           unitPrice: (lineTotal / item.quantity).toFixed(2),

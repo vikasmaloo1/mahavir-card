@@ -93,6 +93,15 @@ export const customers = pgTable(
     email: text("email").notNull(),
     phone: text("phone"),
     gstNumber: text("gstNumber"),
+    customerType: text("customerType").notNull().default("B2C"),
+    city: text("city"),
+    state: text("state"),
+    stateCode: text("stateCode"),
+    creditEnabled: boolean("creditEnabled").notNull().default(false),
+    creditLimit: numeric("creditLimit", { precision: 12, scale: 2 }).notNull().default("0"),
+    availableCredit: numeric("availableCredit", { precision: 12, scale: 2 }).notNull().default("0"),
+    walletBalance: numeric("walletBalance", { precision: 12, scale: 2 }).notNull().default("0"),
+    paymentTermsDays: integer("paymentTermsDays").notNull().default(0),
     status: text("status").notNull().default("ACTIVE"),
     ...timestamps,
   },
@@ -109,6 +118,7 @@ export const addresses = pgTable("addresses", {
   line2: text("line2"),
   city: text("city").notNull(),
   state: text("state").notNull(),
+  stateCode: text("stateCode"),
   postalCode: text("postalCode").notNull(),
   country: text("country").notNull().default("India"),
   isDefault: boolean("isDefault").notNull().default(false),
@@ -312,6 +322,28 @@ export const artworkRequirements = pgTable(
   (table) => [uniqueIndex("artwork_requirements_product_scope_idx").on(table.productId, table.scopeKey), index("artwork_requirements_pricing_rule_idx").on(table.pricingRuleId)],
 );
 
+export const artworkSlots = pgTable(
+  "artwork_slots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    artworkRequirementId: uuid("artworkRequirementId").notNull().references(() => artworkRequirements.id, { onDelete: "cascade" }),
+    pricingRuleId: uuid("pricingRuleId").references(() => pricingRules.id, { onDelete: "cascade" }),
+    slotKey: text("slotKey").notNull(),
+    name: text("name").notNull(),
+    required: boolean("required").notNull().default(true),
+    acceptedFormats: jsonb("acceptedFormats").$type<Array<"CDR">>().notNull().default(["CDR"]),
+    maxFileSize: integer("maxFileSize"),
+    instructions: text("instructions"),
+    sortOrder: integer("sortOrder").notNull().default(0),
+    isActive: boolean("isActive").notNull().default(true),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("artwork_slots_requirement_key_idx").on(table.artworkRequirementId, table.slotKey),
+    index("artwork_slots_pricing_rule_idx").on(table.pricingRuleId),
+  ],
+);
+
 export const productDeliveryRules = pgTable(
   "product_delivery_rules",
   {
@@ -326,6 +358,27 @@ export const productDeliveryRules = pgTable(
     ...timestamps,
   },
   (table) => [uniqueIndex("product_delivery_rules_product_method_state_idx").on(table.productId, table.deliveryMethod, table.stateCode), index("product_delivery_rules_product_idx").on(table.productId)],
+);
+
+export const locationSurcharges = pgTable(
+  "location_surcharges",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    productId: uuid("productId").notNull().references(() => products.id, { onDelete: "cascade" }),
+    pricingRuleId: uuid("pricingRuleId").references(() => pricingRules.id, { onDelete: "cascade" }),
+    locationScope: text("locationScope").notNull(),
+    city: text("city"),
+    stateCode: text("stateCode"),
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull().default("0"),
+    taxInclusive: boolean("taxInclusive").notNull().default(true),
+    isActive: boolean("isActive").notNull().default(true),
+    sortOrder: integer("sortOrder").notNull().default(0),
+    ...timestamps,
+  },
+  (table) => [
+    index("location_surcharges_product_idx").on(table.productId),
+    index("location_surcharges_pricing_rule_idx").on(table.pricingRuleId),
+  ],
 );
 
 export const productVariants = pgTable("product_variants", {
@@ -358,6 +411,7 @@ export const cartItems = pgTable("cart_items", {
   productId: uuid("productId").notNull().references(() => products.id, { onDelete: "cascade" }),
   configuration: jsonb("configuration").$type<Record<string, unknown>>().notNull().default({}),
   quantity: integer("quantity").notNull().default(1),
+  jobName: text("jobName"),
   calculatedAmount: numeric("calculatedAmount", { precision: 12, scale: 2 }),
   pricingSnapshot: jsonb("pricingSnapshot").$type<Record<string, unknown>>().notNull().default({}),
   ...timestamps,
@@ -373,6 +427,9 @@ export const pricingRules = pgTable("pricing_rules", {
   ruleType: text("ruleType").notNull().default("QUANTITY"),
   conditions: jsonb("conditions").$type<Record<string, unknown>>().notNull().default({}),
   priceFormula: jsonb("priceFormula").$type<Record<string, unknown>>().notNull().default({}),
+  taxRate: numeric("taxRate", { precision: 6, scale: 3 }),
+  productionTime: text("productionTime"),
+  sortOrder: integer("sortOrder").notNull().default(0),
   taxInclusive: boolean("taxInclusive").notNull().default(true),
   isActive: boolean("isActive").notNull().default(true),
   ...timestamps,
@@ -407,6 +464,7 @@ export const quoteItems = pgTable("quote_items", {
   productId: uuid("productId").references(() => products.id, { onDelete: "set null" }),
   variantId: uuid("variantId").references(() => productVariants.id, { onDelete: "set null" }),
   description: text("description").notNull(),
+  jobName: text("jobName"),
   configuration: jsonb("configuration").$type<Record<string, unknown>>().notNull().default({}),
   quantity: integer("quantity").notNull().default(1),
   unitPrice: numeric("unitPrice", { precision: 12, scale: 2 }).notNull().default("0"),
@@ -439,6 +497,7 @@ export const orderItems = pgTable("order_items", {
   productId: uuid("productId").references(() => products.id, { onDelete: "set null" }),
   variantId: uuid("variantId").references(() => productVariants.id, { onDelete: "set null" }),
   description: text("description").notNull(),
+  jobName: text("jobName"),
   configuration: jsonb("configuration").$type<Record<string, unknown>>().notNull().default({}),
   quantity: integer("quantity").notNull().default(1),
   unitPrice: numeric("unitPrice", { precision: 12, scale: 2 }).notNull().default("0"),
@@ -453,6 +512,8 @@ export const artworks = pgTable("artworks", {
   customerId: uuid("customerId").references(() => customers.id, { onDelete: "set null" }),
   productId: uuid("productId").references(() => products.id, { onDelete: "set null" }),
   pricingRuleId: uuid("pricingRuleId").references(() => pricingRules.id, { onDelete: "set null" }),
+  artworkSlotId: uuid("artworkSlotId").references(() => artworkSlots.id, { onDelete: "set null" }),
+  artworkSlotKey: text("artworkSlotKey").notNull().default("MAIN"),
   configuration: jsonb("configuration").$type<Record<string, unknown>>().notNull().default({}),
   fileName: text("fileName").notNull(),
   fileType: text("fileType").notNull(),
@@ -549,3 +610,20 @@ export const paymentTransactions = pgTable("payment_transactions", {
   rawData: jsonb("rawData").$type<Record<string, unknown>>().notNull().default({}),
   ...timestamps,
 });
+
+export const walletTransactions = pgTable(
+  "wallet_transactions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    customerId: uuid("customerId").notNull().references(() => customers.id, { onDelete: "cascade" }),
+    transactionType: text("transactionType").notNull(),
+    status: text("status").notNull().default("PENDING"),
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+    balanceAfter: numeric("balanceAfter", { precision: 12, scale: 2 }),
+    reference: text("reference"),
+    notes: text("notes"),
+    createdBy: uuid("createdBy").references(() => user.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (table) => [index("wallet_transactions_customer_idx").on(table.customerId)],
+);

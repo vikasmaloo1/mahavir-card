@@ -1,8 +1,21 @@
 import Image from "next/image";
 import Link from "next/link";
 import { FileText, Search, ShoppingBag, UserRound } from "lucide-react";
+import { headers } from "next/headers";
 
-export function StorefrontHeader() {
+import { auth } from "@/lib/auth/server";
+
+export async function StorefrontHeader() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  const navigation = session ? [
+    ["Home", "/"], ["Order now", "/products"], ["Order status", "/account#orders"],
+    ["Wallet / balance", "/account/wallet"], ["Account", "/account"],
+  ] : [
+    ["Home", "/"], ["Order now", "/products"], ["Visiting Card", "/products?category=visiting-card"],
+    ["Premium Card", "/products?category=premium-card"], ["Art Card", "/products?category=art-card"],
+    ["Letterhead / Envelope", "/products?category=letterhead-envelope"], ["Brochure", "/products?category=brochure"],
+    ["Leaflet / Cover", "/products?category=leaflet-cover"], ["Sticker", "/products?category=sticker"],
+  ];
   return (
     <header className="sticky top-0 z-30 border-b border-[var(--mc-line)] border-t-[3px] border-t-[var(--mc-accent)] bg-[var(--mc-paper)]/95 shadow-[0_8px_28px_rgba(16,33,63,0.05)] backdrop-blur">
       <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-3 px-4 py-3.5 lg:px-8">
@@ -21,7 +34,7 @@ export function StorefrontHeader() {
         </form>
 
         <div className="flex items-center gap-1.5 text-sm sm:gap-2">
-          <Link href="/login" className="flex items-center gap-2 px-2 py-2 text-[var(--mc-muted)] hover:text-[var(--mc-ink)]"><UserRound size={17} /> <span className="hidden sm:inline">Account</span></Link>
+          <Link href={session ? "/account" : "/login"} className="flex items-center gap-2 px-2 py-2 text-[var(--mc-muted)] hover:text-[var(--mc-ink)]"><UserRound size={17} /> <span className="hidden sm:inline">{session ? "Account" : "Login"}</span></Link>
           <Link href="/cart" className="grid size-9 place-items-center border border-[var(--mc-line)] bg-white text-[var(--mc-ink)] hover:border-[var(--mc-accent)]" aria-label="Purchase basket"><ShoppingBag size={17} /></Link>
           <Link href="/quote" className="flex items-center gap-2 bg-[var(--mc-accent)] px-3 py-2.5 font-semibold text-white hover:bg-[var(--mc-accent-dark)]"><FileText size={16} /> <span className="hidden sm:inline">Quote basket</span></Link>
         </div>
@@ -32,25 +45,9 @@ export function StorefrontHeader() {
         <input name="q" placeholder="Search products..." className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none" />
       </form>
 
-      <nav className="mx-auto hidden max-w-[1440px] gap-x-6 gap-y-2 px-4 pb-3 text-sm font-semibold text-[var(--mc-muted)] md:flex lg:px-8" aria-label="Product categories">
-        <Link href="/products" className="whitespace-nowrap hover:text-[var(--mc-ink)]">All products</Link>
-        <Link href="/products?category=business-cards" className="whitespace-nowrap hover:text-[var(--mc-ink)]">Business cards</Link>
-        <Link href="/products?category=printing" className="whitespace-nowrap hover:text-[var(--mc-ink)]">Printing</Link>
-        <Link href="/products?category=packaging" className="whitespace-nowrap hover:text-[var(--mc-ink)]">Packaging</Link>
-        <Link href="/products?category=labels-stickers" className="whitespace-nowrap hover:text-[var(--mc-ink)]">Labels &amp; stickers</Link>
-        <Link href="/products?category=stationery" className="whitespace-nowrap hover:text-[var(--mc-ink)]">Stationery</Link>
-        <Link href="/products?category=branding-signage" className="whitespace-nowrap hover:text-[var(--mc-ink)]">Branding &amp; signage</Link>
-        <Link href="/products?category=corporate-gifting" className="whitespace-nowrap hover:text-[var(--mc-ink)]">Corporate gifting</Link>
-      </nav>
+      <nav className="mx-auto hidden max-w-[1440px] gap-x-6 gap-y-2 overflow-x-auto px-4 pb-3 text-sm font-semibold text-[var(--mc-muted)] md:flex lg:px-8" aria-label={session ? "Customer navigation" : "Product categories"}>{navigation.map(([label, href]) => <Link key={href} href={href} className="whitespace-nowrap hover:text-[var(--mc-ink)]">{label}</Link>)}</nav>
 
-      <nav className="flex gap-5 overflow-x-auto border-t border-[var(--mc-line)] px-4 py-2.5 text-sm font-semibold text-[var(--mc-muted)] md:hidden" aria-label="Mobile product categories">
-        <Link href="/products" className="shrink-0 py-1 hover:text-[var(--mc-accent)]">All products</Link>
-        <Link href="/products?category=business-cards" className="shrink-0 py-1 hover:text-[var(--mc-accent)]">Business cards</Link>
-        <Link href="/products?category=printing" className="shrink-0 py-1 hover:text-[var(--mc-accent)]">Printing</Link>
-        <Link href="/products?category=packaging" className="shrink-0 py-1 hover:text-[var(--mc-accent)]">Packaging</Link>
-        <Link href="/products?category=labels-stickers" className="shrink-0 py-1 hover:text-[var(--mc-accent)]">Labels &amp; stickers</Link>
-        <Link href="/products?category=stationery" className="shrink-0 py-1 hover:text-[var(--mc-accent)]">Stationery</Link>
-      </nav>
+      <nav className="flex gap-5 overflow-x-auto border-t border-[var(--mc-line)] px-4 py-2.5 text-sm font-semibold text-[var(--mc-muted)] md:hidden" aria-label={session ? "Mobile customer navigation" : "Mobile product categories"}>{navigation.map(([label, href]) => <Link key={href} href={href} className="shrink-0 py-1 hover:text-[var(--mc-accent)]">{label}</Link>)}</nav>
     </header>
   );
 }

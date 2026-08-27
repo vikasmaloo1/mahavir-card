@@ -26,10 +26,10 @@ test("PDF artwork must contain a genuine PDF header", () => {
   assert.throws(() => validatePdfHeader(new TextEncoder().encode("not-pdf")), FilePolicyError);
 });
 
-test("admin artwork rules accept PDF/CDR dimensions and ordered page instructions", () => {
+test("admin artwork rules accept CDR dimensions and named artwork instructions", () => {
   const rule = artworkRequirementSchema.parse({
     artworkRequired: true,
-    acceptedFormats: ["PDF", "CDR"],
+    acceptedFormats: ["CDR"],
     maxFileSize: 100,
     maxFiles: 1,
     designWidth: "93",
@@ -44,10 +44,10 @@ test("admin artwork rules accept PDF/CDR dimensions and ordered page instruction
       { pageNumber: 2, label: "Spot UV File", colorMode: "B&W only", required: false },
       { pageNumber: 3, label: "Foil File", colorMode: "B&W only", required: false },
     ],
-    multiplePageInstructions: "Upload all pages in one PDF in the displayed order.",
+    multiplePageInstructions: "Upload each named production separation in its matching CDR slot.",
   });
 
-  assert.deepEqual(rule.acceptedFormats, ["PDF", "CDR"]);
+  assert.deepEqual(rule.acceptedFormats, ["CDR"]);
   assert.equal(rule.pageInstructions[1]?.colorMode, "B&W only");
   assert.equal(rule.finalWidth, "90");
 });

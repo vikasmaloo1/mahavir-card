@@ -6,14 +6,15 @@ import { useRouter } from "next/navigation";
 
 import { ArtworkUploader, type ArtworkRequirement, type UploadedArtwork } from "@/components/artwork-uploader";
 import type { CatalogProduct } from "@/lib/catalog";
+import { indiaStates } from "@/lib/india-states";
 
 type PricingRule = { id: string; name: string; conditions: Record<string, unknown>; priceFormula: Record<string, unknown> };
 type Addon = { addonId: string; pricingRuleId: string | null; name: string; description: string | null; price: string; isDefault: boolean };
 type Delivery = { method: "PICKUP" | "LOCAL_DELIVERY" | "COURIER"; stateCode: string };
-type Estimate = { calculatedAmount: string | null; productPrice?: string | null; addonTotal?: string; delivery?: { method: string | null; price: string }; warnings: string[]; applicableRule?: string | null };
+type Estimate = { calculatedAmount: string | null; productPrice?: string | null; addonTotal?: string; delivery?: { method: string | null; price: string }; locationSurcharge?: { amount: string; label: string | null }; taxAmount?: string; priceBeforeTax?: string | null; taxRate?: string | null; warnings: string[]; applicableRule?: string | null };
 type ProductDetails = { addons: Addon[]; pricingRules: PricingRule[]; deliveryRules: Array<{ deliveryMethod: Delivery["method"]; stateCode: string; price: string }>; artworkRequirements: Array<ArtworkRequirement & { pricingRuleId: string | null }>; };
 type CartKind = "PURCHASE" | "QUOTE";
-type EditableCartItem = { id: string; quantity: number; configuration: Record<string, unknown> };
+type EditableCartItem = { id: string; quantity: number; jobName: string | null; configuration: Record<string, unknown> };
 
 function money(value: string | null | undefined) { return `Rs ${Number(value || 0).toLocaleString("en-IN")}`; }
 function requirementFor(details: ProductDetails | null, ruleId: string | null) { return details?.artworkRequirements.find((rule) => rule.pricingRuleId === ruleId) ?? details?.artworkRequirements.find((rule) => !rule.pricingRuleId) ?? null; }
@@ -27,12 +28,16 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
   const [addonIds, setAddonIds] = useState<string[]>([]);
   const [delivery, setDelivery] = useState<Delivery | undefined>();
   const [estimate, setEstimate] = useState<Estimate>({ calculatedAmount: null, warnings: [] });
-  const [artwork, setArtwork] = useState<UploadedArtwork | null>(null);
+  const [artworks, setArtworks] = useState<Record<string, UploadedArtwork>>({});
   const [status, setStatus] = useState<"idle" | "quote" | "cart">("idle");
   const [basketError, setBasketError] = useState("");
+  const [jobName, setJobName] = useState("");
   const quantity = Math.max(1, Number(values.quantity || 1));
   const requirement = requirementFor(details, selectedRuleId);
-  const directReady = product.orderable && Boolean(estimate.calculatedAmount) && estimate.warnings.length === 0 && (!requirement?.artworkRequired || Boolean(artwork));
+  const artworkSlots = requirement?.slots?.length ? requirement.slots : [];
+  const requiredArtworkKeys = artworkSlots.length ? artworkSlots.filter((slot) => slot.required).map((slot) => slot.slotKey) : ["MAIN"];
+  const artworkReady = !requirement?.artworkRequired || requiredArtworkKeys.every((key) => Boolean(artworks[key]));
+  const directReady = product.orderable && Boolean(estimate.calculatedAmount) && estimate.warnings.length === 0 && artworkReady;
   const configurationAddons = useMemo(() => {
     const scoped = details?.addons.filter((addon) => addon.pricingRuleId === selectedRuleId) ?? [];
     return scoped.length ? scoped : details?.addons.filter((addon) => addon.pricingRuleId === null) ?? [];
@@ -74,14 +79,18 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
       const deliveryRecord = deliveryValue && typeof deliveryValue === "object" ? deliveryValue as Record<string, unknown> : null;
       const nextDelivery = deliveryRecord && typeof deliveryRecord.method === "string" ? { method: deliveryRecord.method as Delivery["method"], stateCode: typeof deliveryRecord.stateCode === "string" ? deliveryRecord.stateCode : "*" } : undefined;
       setSelectedRuleId(ruleId);
+      setJobName(item.jobName ?? "");
       setAddonIds(selectedAddons);
       setDelivery(nextDelivery);
       setValues({ ...defaults, ...Object.fromEntries(Object.entries(configuration).filter(([, value]) => typeof value === "string").map(([key, value]) => [key, String(value)])), quantity: String(item.quantity) });
-      if (typeof configuration.artworkId === "string") {
-        const artworkResponse = await fetch(`/api/artworks/${configuration.artworkId}`, { cache: "no-store" });
+      const configuredArtworkIds = configuration.artworkIds && typeof configuration.artworkIds === "object" && !Array.isArray(configuration.artworkIds) ? configuration.artworkIds as Record<string, unknown> : {};
+      if (typeof configuration.artworkId === "string" && !configuredArtworkIds.MAIN) configuredArtworkIds.MAIN = configuration.artworkId;
+      const loaded = await Promise.all(Object.entries(configuredArtworkIds).filter((entry): entry is [string, string] => typeof entry[1] === "string").map(async ([slotKey, artworkId]) => {
+        const artworkResponse = await fetch(`/api/artworks/${artworkId}`, { cache: "no-store" });
         const artworkPayload = await artworkResponse.json().catch(() => null);
-        if (active && artworkPayload?.success) setArtwork(artworkPayload.data);
-      }
+        return artworkPayload?.success ? [slotKey, artworkPayload.data] as const : null;
+      }));
+      if (active) setArtworks(Object.fromEntries(loaded.filter((entry): entry is readonly [string, UploadedArtwork] => Boolean(entry))));
     }).catch(() => { if (active) setBasketError("This basket item could not be loaded."); });
     return () => { active = false; };
   }, [defaults, details, editItemId, editKind]);
@@ -97,18 +106,21 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
   function selectRule(id: string) {
     const rule = details?.pricingRules.find((item) => item.id === id);
     if (!rule) return;
-    setSelectedRuleId(id); setArtwork(null); setStatus("idle");
+    setSelectedRuleId(id); setArtworks({}); setStatus("idle");
     const scopedAddons = details?.addons.filter((addon) => addon.pricingRuleId === id) ?? [];
     const availableAddons = scopedAddons.length ? scopedAddons : details?.addons.filter((addon) => addon.pricingRuleId === null) ?? [];
     setAddonIds(availableAddons.filter((addon) => addon.isDefault).map((addon) => addon.addonId));
     setValues((current) => ({ ...current, ...Object.fromEntries(Object.entries(rule.conditions ?? {}).map(([key, value]) => [key, String(value)])) }));
   }
-  function configuration() { return { ...values, pricingRuleId: selectedRuleId, addonIds, ...(delivery ? { delivery } : {}), ...(artwork ? { artworkId: artwork.id } : {}) }; }
+  function configuration() {
+    const artworkIds = Object.fromEntries(Object.entries(artworks).map(([slotKey, artwork]) => [slotKey, artwork.id]));
+    return { ...values, pricingRuleId: selectedRuleId, addonIds, ...(delivery ? { delivery } : {}), ...(Object.keys(artworkIds).length ? { artworkIds } : {}), ...(artworkIds.MAIN ? { artworkId: artworkIds.MAIN } : {}) };
+  }
   async function add(kind: "PURCHASE" | "QUOTE", checkout = false) {
     setBasketError("");
-    if (requirement?.artworkRequired && !artwork) { setBasketError("Upload the required CDR artwork before continuing."); return; }
+    if (!artworkReady) { setBasketError("Upload every required CDR artwork file before continuing."); return; }
     const editing = Boolean(editItemId && kind === editKind);
-    const response = await fetch(editing ? `/api/cart/items/${editItemId}` : "/api/cart/items", { method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editing ? { quantity, configuration: configuration() } : { kind, productId: product.id, quantity, configuration: configuration() }) });
+    const response = await fetch(editing ? `/api/cart/items/${editItemId}` : "/api/cart/items", { method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editing ? { quantity, jobName: jobName.trim() || null, configuration: configuration() } : { kind, productId: product.id, quantity, jobName: jobName.trim() || null, configuration: configuration() }) });
     const payload = await response.json();
     if (!response.ok) { setBasketError(response.status === 401 ? "Sign in to save this item." : payload.error?.message ?? "Could not save this item."); return; }
     setStatus(kind === "QUOTE" ? "quote" : "cart");
@@ -117,12 +129,14 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
   }
 
   return <section className="overflow-hidden rounded-lg border border-[#cfd8e8] bg-white shadow-[0_10px_30px_rgba(16,33,63,0.08)]"><div className="border-b border-[#dfe5ef] px-5 py-4"><p className="text-[13px] font-bold uppercase tracking-[0.13em] text-[#2457b8]">Configure your order</p><p className="mt-1 text-[15px] text-[#607089]">Select the print option, delivery, and artwork in one place.</p></div><div className="space-y-5 p-5">
+    <label className="block"><span className="mb-2 block text-[13px] font-bold text-[#263753]">Job name <span className="font-normal text-[#607089]">(optional)</span></span><input value={jobName} onChange={(event) => setJobName(event.target.value)} maxLength={160} placeholder="For example: Patel & Co visiting cards" className="w-full border border-[#c9d2df] px-3 py-3 text-[15px] outline-none focus:border-[#2457b8]" /></label>
     <label className="block"><span className="mb-2 block text-[13px] font-bold text-[#263753]">Quantity</span><div className="flex items-center border border-[#c9d2df]"><input inputMode="numeric" value={values.quantity || "1000"} onChange={(event) => update("quantity", event.target.value)} className="min-w-0 flex-1 px-3 py-3 text-[15px] outline-none" /><div className="flex gap-1 pr-2"><button type="button" onClick={() => update("quantity", String(Math.max(1, quantity - 1)))} className="grid size-9 place-items-center border border-[#c9d2df]" aria-label="Decrease quantity"><Minus size={14} /></button><button type="button" onClick={() => update("quantity", String(quantity + 1))} className="grid size-9 place-items-center border border-[#c9d2df]" aria-label="Increase quantity"><Plus size={14} /></button></div></div></label>
+    {product.configuration.filter((field) => field.id !== "quantity").length ? <div className="grid gap-3 sm:grid-cols-2">{product.configuration.filter((field) => field.id !== "quantity").map((field) => <label key={field.id}><span className="mb-2 block text-[13px] font-bold text-[#263753]">{field.label}</span>{field.type === "select" ? <select value={values[field.id] ?? field.defaultValue} onChange={(event) => update(field.id, event.target.value)} className="w-full border border-[#c9d2df] bg-white px-3 py-3 text-[15px] outline-none">{field.options?.map((option) => <option key={option}>{option}</option>)}</select> : <div className="flex border border-[#c9d2df]"><input inputMode={field.type === "number" ? "decimal" : undefined} value={values[field.id] ?? field.defaultValue} onChange={(event) => update(field.id, event.target.value)} className="min-w-0 flex-1 px-3 py-3 text-[15px] outline-none" />{field.suffix ? <span className="border-l border-[#c9d2df] px-3 py-3 text-sm text-[#607089]">{field.suffix}</span> : null}</div>}</label>)}</div> : null}
     {details?.pricingRules.length && details.pricingRules.length > 1 ? <label className="block"><span className="mb-2 block text-[13px] font-bold text-[#263753]">Card stock and print</span><select value={selectedRuleId ?? ""} onChange={(event) => selectRule(event.target.value)} className="w-full border border-[#c9d2df] bg-white px-3 py-3 text-[15px] font-semibold outline-none focus:border-[#2457b8]">{details.pricingRules.map((rule) => <option key={rule.id} value={rule.id}>{rule.name}</option>)}</select></label> : null}
     {configurationAddons.length ? <div><p className="mb-2 text-[13px] font-bold text-[#263753]">Add-ons</p><div className="space-y-2">{configurationAddons.map((addon) => <label key={addon.addonId} className="flex cursor-pointer items-start gap-3 border border-[#d9e0eb] p-3 text-[15px]"><input type="checkbox" checked={addonIds.includes(addon.addonId)} onChange={() => setAddonIds((current) => current.includes(addon.addonId) ? current.filter((id) => id !== addon.addonId) : [...current, addon.addonId])} className="mt-0.5 size-4 accent-[#2457b8]" /><span className="min-w-0 flex-1"><strong className="block text-[#162237]">{addon.name}</strong>{addon.description ? <span className="mt-1 block text-[13px] text-[#607089]">{addon.description}</span> : null}</span><span className="font-bold text-[#2457b8]">{money(addon.price)}</span></label>)}</div></div> : <p className="border border-dashed border-[#d5dce8] px-3 py-3 text-[13px] text-[#607089]">No add-ons are available for this print option.</p>}
-    {deliveryMethods.length ? <div className="grid gap-3 sm:grid-cols-2"><label><span className="mb-2 block text-[13px] font-bold text-[#263753]">Delivery</span><select value={delivery?.method ?? ""} onChange={(event) => setDelivery({ method: event.target.value as Delivery["method"], stateCode: event.target.value === "PICKUP" ? "*" : delivery?.stateCode || "GJ" })} className="w-full border border-[#c9d2df] bg-white px-3 py-3 text-[15px] outline-none"><option value="">Choose delivery</option>{deliveryMethods.map((method) => <option key={method} value={method}>{method.replaceAll("_", " ")}</option>)}</select></label>{delivery?.method && delivery.method !== "PICKUP" ? <label><span className="mb-2 block text-[13px] font-bold text-[#263753]">Delivery state</span><input value={delivery.stateCode} onChange={(event) => setDelivery({ ...delivery, stateCode: event.target.value.toUpperCase() })} placeholder="For example: GJ" maxLength={2} className="w-full border border-[#c9d2df] px-3 py-3 text-[15px] outline-none" /></label> : null}</div> : null}
-    {requirement ? <ArtworkUploader productId={product.id} pricingRuleId={selectedRuleId} requirement={requirement} configuration={values} artwork={artwork} onUploaded={setArtwork} onRemoved={() => setArtwork(null)} /> : null}
-    <div className="border-t border-[#dfe5ef] pt-5"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.12em] text-[#607089]">Price</p><p className="mt-1 text-2xl font-bold text-[#162237]">{estimate.calculatedAmount ? money(estimate.calculatedAmount) : "Checking price..."}</p></div><span className="text-right text-[13px] text-[#607089]">{estimate.applicableRule ?? "Server pricing"}</span></div>{estimate.productPrice ? <div className="mt-3 space-y-1 text-[13px] text-[#607089]"><p>Base product: {money(estimate.productPrice)}</p>{Number(estimate.addonTotal || 0) > 0 ? <p>Add-ons: {money(estimate.addonTotal)}</p> : null}{Number(estimate.delivery?.price || 0) > 0 ? <p>Delivery: {money(estimate.delivery?.price)}</p> : null}<p className="font-semibold text-[#52647e]">Price includes applicable GST/taxes.</p></div> : null}{estimate.warnings[0] ? <p className="mt-3 border-l-2 border-[#c78b30] pl-3 text-[13px] leading-5 text-[#805910]">{estimate.warnings[0]}</p> : null}</div>
+    {deliveryMethods.length ? <div className="grid gap-3 sm:grid-cols-2"><label><span className="mb-2 block text-[13px] font-bold text-[#263753]">Delivery</span><select value={delivery?.method ?? ""} onChange={(event) => setDelivery({ method: event.target.value as Delivery["method"], stateCode: event.target.value === "PICKUP" ? "*" : delivery?.stateCode === "*" ? "GJ" : delivery?.stateCode || "GJ" })} className="w-full border border-[#c9d2df] bg-white px-3 py-3 text-[15px] outline-none"><option value="">Choose delivery</option>{deliveryMethods.map((method) => <option key={method} value={method}>{method.replaceAll("_", " ")}</option>)}</select></label>{delivery?.method && delivery.method !== "PICKUP" ? <label><span className="mb-2 block text-[13px] font-bold text-[#263753]">Delivery state</span><select value={delivery.stateCode} onChange={(event) => setDelivery({ ...delivery, stateCode: event.target.value })} className="w-full border border-[#c9d2df] bg-white px-3 py-3 text-[15px] outline-none">{indiaStates.map(([code, state]) => <option key={code} value={code}>{state}</option>)}</select></label> : null}</div> : null}
+    {requirement ? <div className="space-y-3">{artworkSlots.length ? artworkSlots.map((slot, index) => <ArtworkUploader key={slot.id} productId={product.id} pricingRuleId={selectedRuleId} requirement={requirement} slot={slot} showRequirements={index === 0} configuration={values} artwork={artworks[slot.slotKey] ?? null} onUploaded={(uploaded) => setArtworks((current) => ({ ...current, [slot.slotKey]: uploaded }))} onRemoved={() => setArtworks((current) => { const next = { ...current }; delete next[slot.slotKey]; return next; })} />) : <ArtworkUploader productId={product.id} pricingRuleId={selectedRuleId} requirement={requirement} configuration={values} artwork={artworks.MAIN ?? null} onUploaded={(uploaded) => setArtworks((current) => ({ ...current, MAIN: uploaded }))} onRemoved={() => setArtworks((current) => { const next = { ...current }; delete next.MAIN; return next; })} />}</div> : null}
+    <div className="border-t border-[#dfe5ef] pt-5"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.12em] text-[#607089]">Total</p><p className="mt-1 text-2xl font-bold text-[#162237]">{estimate.calculatedAmount ? money(estimate.calculatedAmount) : "Checking price..."}</p></div><span className="text-right text-[13px] text-[#607089]">{estimate.applicableRule ?? "Server pricing"}</span></div>{estimate.productPrice ? <div className="mt-3 space-y-1.5 text-[13px] text-[#607089]"><p className="flex justify-between"><span>Base product</span><strong>{money(estimate.productPrice)}</strong></p>{Number(estimate.addonTotal || 0) > 0 ? <p className="flex justify-between"><span>Add-ons</span><strong>{money(estimate.addonTotal)}</strong></p> : null}{Number(estimate.locationSurcharge?.amount || 0) > 0 ? <p className="flex justify-between"><span>{estimate.locationSurcharge?.label ?? "Location charge"}</span><strong>{money(estimate.locationSurcharge?.amount)}</strong></p> : null}{Number(estimate.delivery?.price || 0) > 0 ? <p className="flex justify-between"><span>Delivery</span><strong>{money(estimate.delivery?.price)}</strong></p> : null}{estimate.taxRate && estimate.priceBeforeTax ? <><p className="flex justify-between border-t border-[#e2e7ef] pt-2"><span>Price before GST</span><strong>{money(estimate.priceBeforeTax)}</strong></p><p className="flex justify-between"><span>GST {Number(estimate.taxRate)}%</span><strong>{money(estimate.taxAmount)}</strong></p></> : <p className="font-semibold text-[#52647e]">GST is included; the source sheet does not specify a separate rate.</p>}</div> : null}{estimate.warnings[0] ? <p className="mt-3 border-l-2 border-[#c78b30] pl-3 text-[13px] leading-5 text-[#805910]">{estimate.warnings[0]}</p> : null}</div>
     {basketError ? <p className="text-[15px] font-semibold text-[#a53025]">{basketError}</p> : null}
     {editItemId ? <button type="button" onClick={() => void add(editKind)} disabled={editKind === "PURCHASE" && !directReady} className="flex w-full items-center justify-center gap-2 rounded-full bg-[#2457b8] px-4 py-3.5 text-[15px] font-bold text-white disabled:cursor-not-allowed disabled:bg-[#9bb6e8]"><Check size={16} />Update {editKind === "QUOTE" ? "quote" : "purchase"} basket</button> : <>
       {product.orderable ? <div className="grid gap-2 sm:grid-cols-2"><button type="button" onClick={() => void add("PURCHASE", true)} disabled={!directReady} className="flex items-center justify-center gap-2 rounded-full bg-[#2457b8] px-4 py-3.5 text-[15px] font-bold text-white disabled:cursor-not-allowed disabled:bg-[#9bb6e8]">Buy now <ArrowRight size={16} /></button><button type="button" onClick={() => void add("PURCHASE")} disabled={!directReady} className="flex items-center justify-center gap-2 rounded-full border border-[#2457b8] px-4 py-3.5 text-[15px] font-bold text-[#2457b8] disabled:cursor-not-allowed disabled:text-[#9bb6e8]"><ShoppingBag size={16} />Add to basket</button></div> : null}

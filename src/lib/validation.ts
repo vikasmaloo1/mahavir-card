@@ -107,6 +107,18 @@ export const artworkRequirementSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
+export const artworkSlotSchema = z.object({
+  pricingRuleId: z.string().uuid().nullable().optional(),
+  slotKey: z.string().trim().min(1).max(80).regex(/^[A-Z0-9_-]+$/i),
+  name: z.string().trim().min(2).max(160),
+  required: z.boolean().default(true),
+  acceptedFormats: z.array(z.literal("CDR")).length(1).default(["CDR"]),
+  maxFileSize: z.number().int().positive().nullable().optional(),
+  instructions: z.string().trim().max(1000).nullable().optional(),
+  sortOrder: z.number().int().min(0).default(0),
+  isActive: z.boolean().default(true),
+});
+
 export const productDeliveryRuleSchema = z.object({
   deliveryMethod: z.enum(["PICKUP", "LOCAL_DELIVERY", "COURIER"]),
   stateCode: z.string().trim().min(1).max(100).default("*"),
@@ -114,6 +126,17 @@ export const productDeliveryRuleSchema = z.object({
   isActive: z.boolean().default(true),
   sortOrder: z.number().int().min(0).default(0),
   taxInclusive: z.boolean().default(true),
+});
+
+export const locationSurchargeSchema = z.object({
+  pricingRuleId: z.string().uuid().nullable().optional(),
+  locationScope: z.enum(["CITY", "OUTSIDE_CITY", "STATE", "OUTSIDE_STATE"]),
+  city: z.string().trim().min(2).max(100).nullable().optional(),
+  stateCode: z.string().trim().min(2).max(3).toUpperCase().nullable().optional(),
+  amount: z.string().regex(/^\d+(\.\d{1,2})?$/),
+  taxInclusive: z.boolean().default(true),
+  isActive: z.boolean().default(true),
+  sortOrder: z.number().int().min(0).default(0),
 });
 
 export const quoteSchema = z.object({
@@ -126,6 +149,7 @@ export const quoteSchema = z.object({
     productId: z.string().uuid().nullable().optional(),
     variantId: z.string().uuid().nullable().optional(),
     description: z.string().trim().min(2).max(500),
+    jobName: z.string().trim().max(160).nullable().optional(),
     configuration: metadata,
     quantity: z.number().int().positive().max(1_000_000),
     unitPrice: z.string().regex(/^\d+(\.\d{1,2})?$/).default("0"),
@@ -140,6 +164,7 @@ export const orderSchema = z.object({
     productId: z.string().uuid().nullable().optional(),
     variantId: z.string().uuid().nullable().optional(),
     description: z.string().trim().min(2).max(500),
+    jobName: z.string().trim().max(160).nullable().optional(),
     configuration: metadata,
     quantity: z.number().int().positive().max(1_000_000),
     unitPrice: z.string().regex(/^\d+(\.\d{1,2})?$/).default("0"),
@@ -210,6 +235,9 @@ export const adminPricingSchema = z.object({
   ruleType: z.string().trim().max(40).default("PDF_PRICE_LIST"),
   conditions: metadata,
   priceFormula: metadata,
+  taxRate: z.string().regex(/^\d+(\.\d{1,3})?$/).nullable().optional(),
+  productionTime: z.string().trim().max(100).nullable().optional(),
+  sortOrder: z.number().int().min(0).default(0),
   taxInclusive: z.boolean().default(true),
   isActive: z.boolean().default(true),
 });
@@ -259,9 +287,21 @@ export const cartItemSchema = z.object({
   kind: cartKindSchema,
   productId: z.string().uuid(),
   quantity: z.number().int().positive().max(1_000_000).default(1),
+  jobName: z.string().trim().max(160).nullable().optional(),
   configuration: metadata,
 });
-export const cartItemUpdateSchema = z.object({ quantity: z.number().int().positive().max(1_000_000), configuration: z.record(z.string(), z.unknown()).optional() });
+export const cartItemUpdateSchema = z.object({ quantity: z.number().int().positive().max(1_000_000), jobName: z.string().trim().max(160).nullable().optional(), configuration: z.record(z.string(), z.unknown()).optional() });
+
+export const customerOnboardingSchema = z.object({
+  customerType: z.enum(["B2B", "B2C"]),
+  contactName: z.string().trim().min(2).max(120),
+  companyName: z.string().trim().max(160).nullable().optional(),
+  phone: z.string().trim().min(10).max(20),
+  city: z.string().trim().min(2).max(100),
+  state: z.string().trim().min(2).max(100),
+  stateCode: z.string().trim().min(2).max(3).toUpperCase(),
+  gstNumber: z.string().trim().max(30).nullable().optional(),
+});
 
 export const adminCreateSchema = z.object({
   name: z.string().trim().min(2).max(120),
