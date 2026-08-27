@@ -12,11 +12,13 @@ type Addon = { addonId: string; pricingRuleId: string | null; name: string; desc
 type Delivery = { method: "PICKUP" | "LOCAL_DELIVERY" | "COURIER"; stateCode: string };
 type Estimate = { calculatedAmount: string | null; productPrice?: string | null; addonTotal?: string; delivery?: { method: string | null; price: string }; warnings: string[]; applicableRule?: string | null };
 type ProductDetails = { addons: Addon[]; pricingRules: PricingRule[]; deliveryRules: Array<{ deliveryMethod: Delivery["method"]; stateCode: string; price: string }>; artworkRequirements: Array<ArtworkRequirement & { pricingRuleId: string | null }>; };
+type CartKind = "PURCHASE" | "QUOTE";
+type EditableCartItem = { id: string; quantity: number; configuration: Record<string, unknown> };
 
 function money(value: string | null | undefined) { return `Rs ${Number(value || 0).toLocaleString("en-IN")}`; }
 function requirementFor(details: ProductDetails | null, ruleId: string | null) { return details?.artworkRequirements.find((rule) => rule.pricingRuleId === ruleId) ?? details?.artworkRequirements.find((rule) => !rule.pricingRuleId) ?? null; }
 
-export function ProductConfigurator({ product }: { product: CatalogProduct }) {
+export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE" }: { product: CatalogProduct; editItemId?: string; editKind?: CartKind }) {
   const router = useRouter();
   const defaults = useMemo(() => Object.fromEntries(product.configuration.map((field) => [field.id, field.defaultValue])), [product.configuration]);
   const [values, setValues] = useState<Record<string, string>>(defaults);
@@ -59,6 +61,32 @@ export function ProductConfigurator({ product }: { product: CatalogProduct }) {
   }, [defaults, product.id]);
 
   useEffect(() => {
+    if (!editItemId || !details) return;
+    let active = true;
+    fetch(`/api/cart?kind=${editKind}`, { cache: "no-store" }).then((response) => response.json()).then(async (payload) => {
+      if (!active || !payload.success) return;
+      const item = (payload.data.items as EditableCartItem[]).find((candidate) => candidate.id === editItemId);
+      if (!item) { setBasketError("This basket item could not be found."); return; }
+      const configuration = item.configuration;
+      const ruleId = typeof configuration.pricingRuleId === "string" ? configuration.pricingRuleId : null;
+      const selectedAddons = Array.isArray(configuration.addonIds) ? configuration.addonIds.filter((value): value is string => typeof value === "string") : [];
+      const deliveryValue = configuration.delivery;
+      const deliveryRecord = deliveryValue && typeof deliveryValue === "object" ? deliveryValue as Record<string, unknown> : null;
+      const nextDelivery = deliveryRecord && typeof deliveryRecord.method === "string" ? { method: deliveryRecord.method as Delivery["method"], stateCode: typeof deliveryRecord.stateCode === "string" ? deliveryRecord.stateCode : "*" } : undefined;
+      setSelectedRuleId(ruleId);
+      setAddonIds(selectedAddons);
+      setDelivery(nextDelivery);
+      setValues({ ...defaults, ...Object.fromEntries(Object.entries(configuration).filter(([, value]) => typeof value === "string").map(([key, value]) => [key, String(value)])), quantity: String(item.quantity) });
+      if (typeof configuration.artworkId === "string") {
+        const artworkResponse = await fetch(`/api/artworks/${configuration.artworkId}`, { cache: "no-store" });
+        const artworkPayload = await artworkResponse.json().catch(() => null);
+        if (active && artworkPayload?.success) setArtwork(artworkPayload.data);
+      }
+    }).catch(() => { if (active) setBasketError("This basket item could not be loaded."); });
+    return () => { active = false; };
+  }, [defaults, details, editItemId, editKind]);
+
+  useEffect(() => {
     const controller = new AbortController();
     fetch("/api/pricing/calculate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId: product.id, quantity, options: { ...values, ...(selectedRuleId ? { pricingRuleId: selectedRuleId } : {}) }, addonIds, delivery }), signal: controller.signal })
       .then((response) => response.json()).then((result) => { if (result.success) setEstimate(result.data); }).catch(() => undefined);
@@ -78,11 +106,13 @@ export function ProductConfigurator({ product }: { product: CatalogProduct }) {
   function configuration() { return { ...values, pricingRuleId: selectedRuleId, addonIds, ...(delivery ? { delivery } : {}), ...(artwork ? { artworkId: artwork.id } : {}) }; }
   async function add(kind: "PURCHASE" | "QUOTE", checkout = false) {
     setBasketError("");
-    if (requirement?.artworkRequired && !artwork) { setBasketError(`Upload the required ${(requirement.acceptedFormats ?? ["CDR"]).join(" or ")} artwork before continuing.`); return; }
-    const response = await fetch("/api/cart/items", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, productId: product.id, quantity, configuration: configuration() }) });
+    if (requirement?.artworkRequired && !artwork) { setBasketError("Upload the required CDR artwork before continuing."); return; }
+    const editing = Boolean(editItemId && kind === editKind);
+    const response = await fetch(editing ? `/api/cart/items/${editItemId}` : "/api/cart/items", { method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editing ? { quantity, configuration: configuration() } : { kind, productId: product.id, quantity, configuration: configuration() }) });
     const payload = await response.json();
     if (!response.ok) { setBasketError(response.status === 401 ? "Sign in to save this item." : payload.error?.message ?? "Could not save this item."); return; }
     setStatus(kind === "QUOTE" ? "quote" : "cart");
+    if (editing) { router.push(kind === "QUOTE" ? "/quote" : "/cart"); return; }
     if (checkout) router.push("/checkout");
   }
 
@@ -94,8 +124,10 @@ export function ProductConfigurator({ product }: { product: CatalogProduct }) {
     {requirement ? <ArtworkUploader productId={product.id} pricingRuleId={selectedRuleId} requirement={requirement} configuration={values} artwork={artwork} onUploaded={setArtwork} onRemoved={() => setArtwork(null)} /> : null}
     <div className="border-t border-[#dfe5ef] pt-5"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.12em] text-[#607089]">Price</p><p className="mt-1 text-2xl font-bold text-[#162237]">{estimate.calculatedAmount ? money(estimate.calculatedAmount) : "Checking price..."}</p></div><span className="text-right text-[13px] text-[#607089]">{estimate.applicableRule ?? "Server pricing"}</span></div>{estimate.productPrice ? <div className="mt-3 space-y-1 text-[13px] text-[#607089]"><p>Base product: {money(estimate.productPrice)}</p>{Number(estimate.addonTotal || 0) > 0 ? <p>Add-ons: {money(estimate.addonTotal)}</p> : null}{Number(estimate.delivery?.price || 0) > 0 ? <p>Delivery: {money(estimate.delivery?.price)}</p> : null}<p className="font-semibold text-[#52647e]">Price includes applicable GST/taxes.</p></div> : null}{estimate.warnings[0] ? <p className="mt-3 border-l-2 border-[#c78b30] pl-3 text-[13px] leading-5 text-[#805910]">{estimate.warnings[0]}</p> : null}</div>
     {basketError ? <p className="text-[15px] font-semibold text-[#a53025]">{basketError}</p> : null}
-    {product.orderable ? <div className="grid gap-2 sm:grid-cols-2"><button type="button" onClick={() => void add("PURCHASE", true)} disabled={!directReady} className="flex items-center justify-center gap-2 bg-[#2457b8] px-4 py-3.5 text-[15px] font-bold text-white disabled:cursor-not-allowed disabled:bg-[#9bb6e8]">Buy now <ArrowRight size={16} /></button><button type="button" onClick={() => void add("PURCHASE")} disabled={!directReady} className="flex items-center justify-center gap-2 border border-[#2457b8] px-4 py-3.5 text-[15px] font-bold text-[#2457b8] disabled:cursor-not-allowed disabled:text-[#9bb6e8]"><ShoppingBag size={16} />Add to basket</button></div> : null}
-    {product.quoteable ? <button type="button" onClick={() => void add("QUOTE")} className="flex w-full items-center justify-center gap-2 border border-[#b6c4da] px-4 py-3.5 text-[15px] font-bold text-[#263753]">{status === "quote" ? <><Check size={16} />Added to quote basket</> : "Request quote"}</button> : null}
+    {editItemId ? <button type="button" onClick={() => void add(editKind)} disabled={editKind === "PURCHASE" && !directReady} className="flex w-full items-center justify-center gap-2 rounded-full bg-[#2457b8] px-4 py-3.5 text-[15px] font-bold text-white disabled:cursor-not-allowed disabled:bg-[#9bb6e8]"><Check size={16} />Update {editKind === "QUOTE" ? "quote" : "purchase"} basket</button> : <>
+      {product.orderable ? <div className="grid gap-2 sm:grid-cols-2"><button type="button" onClick={() => void add("PURCHASE", true)} disabled={!directReady} className="flex items-center justify-center gap-2 rounded-full bg-[#2457b8] px-4 py-3.5 text-[15px] font-bold text-white disabled:cursor-not-allowed disabled:bg-[#9bb6e8]">Buy now <ArrowRight size={16} /></button><button type="button" onClick={() => void add("PURCHASE")} disabled={!directReady} className="flex items-center justify-center gap-2 rounded-full border border-[#2457b8] px-4 py-3.5 text-[15px] font-bold text-[#2457b8] disabled:cursor-not-allowed disabled:text-[#9bb6e8]"><ShoppingBag size={16} />Add to basket</button></div> : null}
+      {product.quoteable ? <button type="button" onClick={() => void add("QUOTE")} className="flex w-full items-center justify-center gap-2 rounded-full border border-[#b6c4da] px-4 py-3.5 text-[15px] font-bold text-[#263753]">{status === "quote" ? <><Check size={16} />Added to quote basket</> : "Request quote"}</button> : null}
+    </>}
     {status === "cart" ? <a href="/cart" className="block text-center text-[15px] font-bold text-[#2457b8]">View purchase basket</a> : null}{status === "quote" ? <a href="/quote" className="block text-center text-[15px] font-bold text-[#2457b8]">View quote basket</a> : null}
   </div></section>;
 }

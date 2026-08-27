@@ -340,6 +340,8 @@ export const cartItems = pgTable("cart_items", {
   productId: uuid("productId").notNull().references(() => products.id, { onDelete: "cascade" }),
   configuration: jsonb("configuration").$type<Record<string, unknown>>().notNull().default({}),
   quantity: integer("quantity").notNull().default(1),
+  calculatedAmount: numeric("calculatedAmount", { precision: 12, scale: 2 }),
+  pricingSnapshot: jsonb("pricingSnapshot").$type<Record<string, unknown>>().notNull().default({}),
   ...timestamps,
 });
 
@@ -400,6 +402,10 @@ export const orders = pgTable("orders", {
   subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull().default("0"),
   tax: numeric("tax", { precision: 12, scale: 2 }).notNull().default("0"),
   total: numeric("total", { precision: 12, scale: 2 }).notNull().default("0"),
+  deliveryMethod: text("deliveryMethod"),
+  deliveryState: text("deliveryState"),
+  deliveryPrice: numeric("deliveryPrice", { precision: 12, scale: 2 }).notNull().default("0"),
+  deliveryAddress: jsonb("deliveryAddress").$type<{ line1: string; line2?: string | null; city: string; state: string; postalCode: string; country: string }>(),
   notes: text("notes"),
   ...timestamps,
 });

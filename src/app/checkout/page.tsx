@@ -1,26 +1,18 @@
-"use client";
-
-import Link from "next/link";
-import { ArrowRight, CheckCircle2, CreditCard, FileText, Truck } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-
-import { StorefrontHeader } from "@/components/storefront-header";
 import { CheckoutFlow } from "@/components/checkout-flow";
-
-type CartItem = { productId: string; slug: string; name: string; configuration: Record<string, string>; quantity: number; calculatedAmount: string };
+import { StorefrontHeader } from "@/components/storefront-header";
 
 export default function CheckoutPage() {
-  return <main className="min-h-screen bg-[#fcfbf8] text-[#17221c]"><StorefrontHeader /><div className="mx-auto max-w-[1120px] px-4 xl:px-8"><CheckoutFlow /></div></main>;
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [method, setMethod] = useState<"RAZORPAY" | "COD">("RAZORPAY");
-  const [form, setForm] = useState({ contactName: "", companyName: "", phone: "" });
-  const [error, setError] = useState("");
-  const [result, setResult] = useState<{ order: { orderNumber: string }; payment: { status: string; method: string } } | null>(null);
-  const [loading, setLoading] = useState(false);
-  useEffect(() => { try {
-    setItems(JSON.parse(window.localStorage.getItem("mahavir-purchase-cart") ?? "[]")); } catch {} }, []);
-  const total = useMemo(() => items.reduce((sum, item) => sum + Number(item.calculatedAmount), 0), [items]);
-  async function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); setError(""); setLoading(true); try { const response = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customer: form, paymentMethod: method, items: items.map((item) => ({ productId: item.productId, quantity: item.quantity, configuration: item.configuration })) }) }); const payload = await response.json(); if (!response.ok) { if (response.status === 401) throw new Error("Please sign in before placing your order."); throw new Error(payload.error?.message ?? "We could not place this order."); } setResult(payload.data); window.localStorage.removeItem("mahavir-purchase-cart"); } catch (caught) { setError(caught instanceof Error ? caught.message : "We could not place this order."); } finally { setLoading(false); } }
-  if (result) return <main className="min-h-screen bg-[#fcfbf8] text-[#17221c]"><StorefrontHeader /><div className="mx-auto max-w-xl px-4 py-20 text-center"><CheckCircle2 className="mx-auto text-[#8b2f24]" size={44} /><p className="mt-6 text-[11px] font-bold uppercase tracking-[.15em] text-[#8b2f24]">Order created</p><h1 className="mt-2 text-3xl font-bold">{result!.order.orderNumber}</h1><p className="mt-4 text-sm leading-6 text-[#626a62]">{result!.payment.method === "COD" ? "Cash on delivery has been recorded for this order." : "Your Razorpay payment intent is pending. Complete payment in the connected provider flow before production."}</p><Link href="/account" className="mt-7 inline-flex items-center gap-2 bg-[#17221c] px-5 py-3 text-sm font-bold text-white">View account <ArrowRight size={16} /></Link></div></main>;
-  return <main className="min-h-screen bg-[#fcfbf8] text-[#17221c]"><StorefrontHeader /><div className="mx-auto max-w-[1120px] px-4 py-8 xl:px-8"><div className="border-b border-[#dedcd5] pb-5"><p className="text-[11px] font-bold uppercase tracking-[.15em] text-[#8b2f24]">Checkout</p><h1 className="mt-2 text-3xl font-bold">Confirm your order.</h1></div><div className="mt-6 grid gap-6 xl:grid-cols-[1fr_350px]"><form onSubmit={submit} className="space-y-6"><section className="border border-[#d8d6cf] bg-white p-5"><h2 className="font-bold">Customer details</h2><div className="mt-4 grid gap-4 sm:grid-cols-2">{[["contactName", "Contact name", "text"], ["companyName", "Company name", "text"], ["phone", "Mobile number", "tel"]].map(([key, label, type]) => <label key={key} className="block"><span className="mb-2 block text-xs font-bold text-[#455047]">{label}</span><input required type={type} value={form[key as keyof typeof form]} onChange={(event) => setForm({ ...form, [key]: event.target.value })} className="w-full border border-[#d8d6cf] bg-[#fcfbf8] px-3 py-3 text-sm outline-none focus:border-[#8b2f24]" /></label>)}</div></section><section className="border border-[#d8d6cf] bg-white p-5"><h2 className="font-bold">Payment method</h2><div className="mt-4 grid gap-3 sm:grid-cols-2"><button type="button" onClick={() => setMethod("RAZORPAY")} className={`flex items-start gap-3 border p-4 text-left ${method === "RAZORPAY" ? "border-[#8b2f24] bg-[#fcf7f5]" : "border-[#d8d6cf]"}`}><CreditCard size={19} className="text-[#8b2f24]" /><span><strong className="block text-sm">Razorpay</strong><span className="mt-1 block text-xs text-[#687069]">Secure online payment</span></span></button><button type="button" onClick={() => setMethod("COD")} className={`flex items-start gap-3 border p-4 text-left ${method === "COD" ? "border-[#8b2f24] bg-[#fcf7f5]" : "border-[#d8d6cf]"}`}><Truck size={19} className="text-[#8b2f24]" /><span><strong className="block text-sm">Cash on delivery</strong><span className="mt-1 block text-xs text-[#687069]">Pay when delivered</span></span></button></div></section>{error && <div className="border border-[#e9c4bd] bg-[#fff4f1] p-4 text-sm text-[#8b2f24]">{error}{error.includes("sign in") && <Link href="/login" className="ml-2 font-bold underline">Sign in</Link>}</div>}<button disabled={!items.length || loading} type="submit" className="flex w-full items-center justify-center gap-2 bg-[#8b2f24] px-5 py-4 text-sm font-bold text-white hover:bg-[#17221c] disabled:cursor-not-allowed disabled:opacity-50">{loading ? "Creating order..." : method === "COD" ? "Place COD order" : "Create payment request"} <ArrowRight size={16} /></button></form><aside className="h-fit border border-[#d8d6cf] bg-white p-5 xl:sticky xl:top-[108px]"><p className="text-[11px] font-bold uppercase tracking-[.14em] text-[#747b74]">Your order</p>{items.length ? <div className="mt-4 space-y-3">{items.map((item, index) => <div key={`${item.productId}-${index}`} className="border-b border-[#ebe9e3] pb-3"><p className="font-bold">{item.name}</p><p className="mt-1 text-xs text-[#687069]">Qty {item.quantity}</p><p className="mt-2 text-sm font-bold">Rs {Number(item.calculatedAmount).toLocaleString("en-IN")}</p></div>)}<div className="flex justify-between pt-2 text-base font-bold"><span>Total</span><span>Rs {total.toLocaleString("en-IN")}</span></div></div> : <div className="mt-4 text-sm text-[#687069]">No direct-purchase items yet. <Link href="/catalog" className="font-bold text-[#8b2f24]">Browse products</Link></div>}<div className="mt-5 flex gap-2 border-t border-[#ebe9e3] pt-4 text-xs leading-5 text-[#687069]"><FileText className="shrink-0 text-[#8b2f24]" size={16} /> Amount is validated again by the server when you place the order.</div></aside></div></div></main>;
+  return (
+    <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
+      <StorefrontHeader />
+      <div className="mx-auto max-w-[1120px] px-4 py-8 lg:px-8 lg:py-12">
+        <header className="border-b border-[var(--mc-line)] pb-6">
+          <p className="text-xs font-bold uppercase text-[var(--mc-accent)]">Secure checkout</p>
+          <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Delivery and payment</h1>
+          <p className="mt-2 text-[15px] text-[var(--mc-muted)]">Your total is recalculated securely from the current product rules.</p>
+        </header>
+        <CheckoutFlow />
+      </div>
+    </main>
+  );
 }

@@ -44,12 +44,13 @@ async function getDatabaseCatalogProduct(slug: string): Promise<PageProduct | nu
     orderable: row.product.orderable,
     quoteable: row.product.quoteable,
     ...deriveStartingPrice(row.product, rules),
-    artworkFormatLabel: requirements[0]?.acceptedFormats.join(" or ") ?? (row.product.artworkRequired ? "Artwork required" : "Optional"),
+    artworkFormatLabel: row.product.artworkRequired || requirements.length ? "CDR only" : "Optional",
   };
 }
 
-export default async function ProductPage({ params }: PageProps<"/catalog/[slug]">) {
+export default async function ProductPage({ params, searchParams }: PageProps<"/catalog/[slug]">) {
   const { slug } = await params;
+  const query = await searchParams;
   if (slug === "business-cards") redirect("/products?category=business-cards");
   const product = await getDatabaseCatalogProduct(slug);
   if (!product) notFound();
@@ -60,7 +61,7 @@ export default async function ProductPage({ params }: PageProps<"/catalog/[slug]
       <div className="mt-6 grid gap-7 xl:grid-cols-[minmax(0,.52fr)_minmax(0,1fr)] xl:items-start"><section><div className="relative aspect-[1.1] overflow-hidden rounded-lg border border-[#d5deeb] bg-[#edf2f8] sm:aspect-[1.25]"><ProductImage src={product.imageUrl} alt={`${product.name} printed sample`} slug={product.slug} priority /><div className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-2 text-xs font-bold uppercase text-[#2457b8]">{product.category}</div></div>
         <div className="grid gap-5 border-b border-[#dfe5ef] py-6 sm:grid-cols-3"><div><Clock3 size={20} className="text-[#2457b8]" /><p className="mt-2 text-xs font-bold uppercase text-[#607089]">Turnaround</p><p className="mt-1 text-[15px] font-bold">{product.turnaround}</p></div><div><ShieldCheck size={20} className="text-[#2457b8]" /><p className="mt-2 text-xs font-bold uppercase text-[#607089]">Purchase route</p><p className="mt-1 text-[15px] font-bold">{product.orderable ? "Buy now or request quote" : "Quote confirmed by team"}</p></div><div><FileUp size={20} className="text-[#2457b8]" /><p className="mt-2 text-xs font-bold uppercase text-[#607089]">Artwork</p><p className="mt-1 text-[15px] font-bold">{product.artworkFormatLabel}</p></div></div>
         <div className="pt-6"><p className="text-xs font-bold uppercase text-[#2457b8]">Product information</p><h1 className="mt-2 text-3xl font-bold sm:text-4xl">{product.name}</h1><p className="mt-3 max-w-2xl text-base leading-7 text-[#52647e]">{product.description}</p><div className="mt-5 inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-full border border-[#c7d7f3] bg-[var(--mc-accent-soft)] px-4 py-2.5"><span className="text-xs font-bold uppercase text-[var(--mc-accent)]">Starting price</span><strong className="text-base">{product.priceLabel}</strong>{product.taxInclusive ? <span className="text-xs text-[var(--mc-muted)]">GST included</span> : null}</div></div>
-      </section><aside className="xl:sticky xl:top-[116px]"><ProductConfigurator product={product} /></aside></div>
+      </section><aside className="xl:sticky xl:top-[116px]"><ProductConfigurator product={product} editItemId={typeof query.editItem === "string" ? query.editItem : undefined} editKind={query.kind === "QUOTE" ? "QUOTE" : "PURCHASE"} /></aside></div>
     </div>
     <StorefrontFooter />
   </main>;

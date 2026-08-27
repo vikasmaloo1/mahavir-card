@@ -1,21 +1,72 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, FileText, Package, Palette, UserRound } from "lucide-react";
+import { ArrowRight, FileQuestion, FileText, MapPin, Package, Palette, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 
-type AccountData = { user: { name: string; email: string; phoneNumber?: string | null }; customer: { companyName: string; contactName: string; phone: string | null } | null; orders: { orderNumber: string; status: string; total: string }[]; quotes: { quoteNumber: string; status: string; total: string }[]; inquiries: { id: string; subject: string | null; status: string }[]; artworks: { id: string; fileName: string; status: string }[]; addresses: { id: string; line1: string; city: string; state: string }[] };
+type AccountData = {
+  user: { name: string; email: string; phoneNumber?: string | null };
+  customer: { companyName: string; contactName: string; phone: string | null } | null;
+  orders: { id: string; orderNumber: string; status: string; total: string; createdAt: string }[];
+  quotes: { id: string; quoteNumber: string; status: string; total: string; createdAt: string }[];
+  inquiries: { id: string; subject: string | null; status: string; createdAt: string }[];
+  artworks: { id: string; fileName: string; status: string; createdAt: string }[];
+  addresses: { id: string; label: string; line1: string; line2: string | null; city: string; state: string; postalCode: string; country: string }[];
+};
 
 export function AccountDashboard() {
   const [data, setData] = useState<AccountData | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  useEffect(() => { async function load() { try { const response = await fetch("/api/account/summary", { cache: "no-store" }); const payload = await response.json(); if (response.status === 401) throw new Error("Sign in to view your print desk."); if (!response.ok || !payload.success) throw new Error(payload.error?.message ?? "Could not load your account"); setData(payload.data); } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not load your account"); } finally { setLoading(false); } } void load(); }, []);
-  if (loading) return <div className="py-16 text-sm text-[#646b64]">Loading your account...</div>;
-  if (error) return <div className="border border-[#e9c4bd] bg-[#fff4f1] p-5"><p className="font-bold text-[#8b2f24]">{error}</p><Link href="/login" className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-[#8b2f24]">Sign in <ArrowRight size={15} /></Link></div>;
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const response = await fetch("/api/account/summary", { cache: "no-store" });
+        const payload = await response.json();
+        if (response.status === 401) throw new Error("Sign in to view your account.");
+        if (!response.ok || !payload.success) throw new Error(payload.error?.message ?? "Could not load your account.");
+        setData(payload.data);
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : "Could not load your account.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    void load();
+  }, []);
+
+  if (loading) return <div className="py-16 text-[15px] text-[var(--mc-muted)]">Loading your account...</div>;
+  if (error) return <div className="mt-6 border border-[#c7d6f0] bg-white p-5"><p className="font-bold text-[var(--mc-ink)]">{error}</p><Link href="/login" className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-[var(--mc-accent)]">Customer sign in <ArrowRight size={15} /></Link></div>;
   if (!data) return null;
-  return <div><div className="flex flex-col justify-between gap-4 border-b border-[#ddd9d0] pb-7 sm:flex-row sm:items-end"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#f15a3a]">Customer account</p><h1 className="mt-2 text-3xl font-bold sm:text-4xl">Your print desk</h1><p className="mt-2 text-sm text-[#646b64]">Orders, quotes, artwork, and account details from your live records.</p></div><Link href="/catalog" className="inline-flex items-center gap-2 border border-[#cfcfc6] bg-white px-4 py-3 text-sm font-bold hover:border-[#18231e]">Browse catalogue <ArrowRight size={16} /></Link></div><div className="mt-7 grid gap-3 sm:grid-cols-3"><Metric label="Open quotes" value={data.quotes.filter((quote) => !["CUSTOMER_REJECTED", "EXPIRED", "CONVERTED_TO_ORDER", "CANCELLED"].includes(quote.status)).length} Icon={FileText} /><Metric label="Active orders" value={data.orders.filter((order) => !["DELIVERED", "CANCELLED"].includes(order.status)).length} Icon={Package} /><Metric label="Artwork files" value={data.artworks.length} Icon={Palette} /></div><div className="mt-7 grid gap-5 xl:grid-cols-2"><Records title="Orders" items={data.orders} empty="No orders yet." action="Browse products" href="/catalog" render={(item) => <><span>{item.orderNumber}<small className="mt-1 block text-[#777d76]">{item.status}</small></span><strong>Rs {Number(item.total).toLocaleString("en-IN")}</strong></>} /><Records title="Quotes" items={data.quotes} empty="No quote requests yet." action="Request a quote" href="/quote" render={(item) => <><span>{item.quoteNumber}<small className="mt-1 block text-[#777d76]">{item.status}</small></span><strong>Rs {Number(item.total).toLocaleString("en-IN")}</strong></>} /><Records title="Artwork" items={data.artworks} empty="No CDR artwork uploaded yet." action="Choose a product" href="/catalog" render={(item) => <><span className="truncate">{item.fileName}</span><small className="text-[#777d76]">{item.status}</small></>} /><section className="border border-[#ddd9d0] bg-white p-5"><div className="flex items-center gap-2"><UserRound size={19} className="text-[#f15a3a]" /><h2 className="font-bold">Profile and delivery</h2></div><p className="mt-4 text-sm font-semibold">{data.customer?.contactName ?? data.user.name}</p><p className="mt-1 text-sm text-[#646b64]">{data.customer?.companyName ?? data.user.email}</p><p className="mt-1 text-sm text-[#646b64]">{data.customer?.phone ?? data.user.phoneNumber ?? "No mobile number saved"}</p><p className="mt-5 border-t border-[#eeeae2] pt-4 text-sm text-[#646b64]">{data.addresses.length ? `${data.addresses.length} saved delivery address${data.addresses.length === 1 ? "" : "es"}` : "Checkout details are saved when you place an order."}</p></section></div></div>;
+
+  const openQuotes = data.quotes.filter((quote) => !["CUSTOMER_REJECTED", "EXPIRED", "CONVERTED_TO_ORDER", "CANCELLED"].includes(quote.status)).length;
+  const activeOrders = data.orders.filter((order) => !["DELIVERED", "CANCELLED"].includes(order.status)).length;
+
+  return (
+    <div>
+      <header className="flex flex-col justify-between gap-4 border-b border-[var(--mc-line)] pb-7 sm:flex-row sm:items-end">
+        <div><p className="text-xs font-bold uppercase text-[var(--mc-accent)]">Customer account</p><h1 className="mt-2 text-3xl font-bold sm:text-4xl">Your print desk</h1><p className="mt-2 text-[15px] text-[var(--mc-muted)]">Orders, quotes, inquiries, artwork, and delivery details from your account.</p></div>
+        <Link href="/products" className="inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-5 py-3 text-sm font-bold text-white">Browse products <ArrowRight size={16} /></Link>
+      </header>
+      <div className="mt-7 grid gap-3 sm:grid-cols-3"><Metric label="Open quotes" value={openQuotes} Icon={FileText} /><Metric label="Active orders" value={activeOrders} Icon={Package} /><Metric label="Artwork files" value={data.artworks.length} Icon={Palette} /></div>
+      <div className="mt-7 grid gap-5 xl:grid-cols-2">
+        <Records title="Orders" items={data.orders} empty="No orders yet." action="Browse products" href="/products" render={(item) => <><span><strong>{item.orderNumber}</strong><small className="mt-1 block text-[var(--mc-muted)]">{labelStatus(item.status)} / {date(item.createdAt)}</small></span><strong>Rs {money(item.total)}</strong></>} />
+        <Records title="Quotes" items={data.quotes} empty="No quote requests yet." action="Open quote basket" href="/quote" render={(item) => <><span><strong>{item.quoteNumber}</strong><small className="mt-1 block text-[var(--mc-muted)]">{labelStatus(item.status)} / {date(item.createdAt)}</small></span><strong>Rs {money(item.total)}</strong></>} />
+        <Records title="Inquiries" items={data.inquiries} empty="No inquiries yet." action="Contact Mahavir Card" href="/contact" render={(item) => <><span className="min-w-0"><strong className="block truncate">{item.subject || "General inquiry"}</strong><small className="mt-1 block text-[var(--mc-muted)]">{labelStatus(item.status)} / {date(item.createdAt)}</small></span><FileQuestion size={18} className="shrink-0 text-[var(--mc-accent)]" /></>} />
+        <Records title="Artwork" items={data.artworks} empty="No CDR artwork uploaded yet." action="Choose a product" href="/products" render={(item) => <><span className="min-w-0"><strong className="block truncate">{item.fileName}</strong><small className="mt-1 block text-[var(--mc-muted)]">{labelStatus(item.status)} / {date(item.createdAt)}</small></span><Palette size={18} className="shrink-0 text-[var(--mc-accent)]" /></>} />
+      </div>
+      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        <section className="border border-[var(--mc-line)] bg-white p-5 sm:p-6"><div className="flex items-center gap-2"><UserRound size={19} className="text-[var(--mc-accent)]" /><h2 className="font-bold">Profile</h2></div><dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2"><ProfileValue label="Contact" value={data.customer?.contactName ?? data.user.name} /><ProfileValue label="Company" value={data.customer?.companyName || "Not provided"} /><ProfileValue label="Email" value={data.user.email} /><ProfileValue label="Mobile" value={data.customer?.phone ?? data.user.phoneNumber ?? "Not provided"} /></dl></section>
+        <section className="border border-[var(--mc-line)] bg-white p-5 sm:p-6"><div className="flex items-center gap-2"><MapPin size={19} className="text-[var(--mc-accent)]" /><h2 className="font-bold">Saved delivery addresses</h2></div><div className="mt-5 space-y-4">{data.addresses.length ? data.addresses.map((address) => <address key={address.id} className="border-t border-[var(--mc-line)] pt-4 text-sm not-italic leading-6 text-[var(--mc-muted)]"><strong className="block text-[var(--mc-ink)]">{address.label || "Delivery"}</strong>{address.line1}{address.line2 ? `, ${address.line2}` : ""}<br />{address.city}, {address.state} {address.postalCode}<br />{address.country}</address>) : <p className="text-sm leading-6 text-[var(--mc-muted)]">Your delivery address is securely saved when you complete checkout.</p>}</div></section>
+      </div>
+    </div>
+  );
 }
 
-function Metric({ label, value, Icon }: { label: string; value: number; Icon: typeof FileText }) { return <div className="border border-[#ddd9d0] bg-white p-5"><Icon size={20} className="text-[#f15a3a]" /><p className="mt-4 text-xs font-bold uppercase tracking-[0.1em] text-[#777d76]">{label}</p><p className="mt-2 text-3xl font-bold">{value}</p></div>; }
-function Records<T>({ title, items, empty, action, href, render }: { title: string; items: T[]; empty: string; action: string; href: string; render: (item: T) => React.ReactNode }) { return <section className="border border-[#ddd9d0] bg-white p-5"><h2 className="font-bold">{title}</h2><div className="mt-4 space-y-3">{items.length ? items.map((item, index) => <div key={index} className="flex items-center justify-between gap-3 border-t border-[#eeeae2] pt-3 text-sm">{render(item)}</div>) : <div className="border-t border-dashed border-[#ddd9d0] pt-5 text-sm text-[#646b64]"><p>{empty}</p><Link href={href} className="mt-3 inline-flex items-center gap-2 font-bold text-[#f15a3a]">{action} <ArrowRight size={15} /></Link></div>}</div></section>; }
+function Metric({ label, value, Icon }: { label: string; value: number; Icon: typeof FileText }) { return <div className="border border-[var(--mc-line)] bg-white p-5"><Icon size={20} className="text-[var(--mc-accent)]" /><p className="mt-4 text-xs font-bold uppercase text-[var(--mc-muted)]">{label}</p><p className="mt-2 text-3xl font-bold">{value}</p></div>; }
+function Records<T>({ title, items, empty, action, href, render }: { title: string; items: T[]; empty: string; action: string; href: string; render: (item: T) => React.ReactNode }) { return <section className="border border-[var(--mc-line)] bg-white p-5 sm:p-6"><h2 className="font-bold">{title}</h2><div className="mt-4 space-y-3">{items.length ? items.map((item, index) => <div key={index} className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] pt-3 text-sm">{render(item)}</div>) : <div className="border-t border-dashed border-[var(--mc-line)] pt-5 text-sm text-[var(--mc-muted)]"><p>{empty}</p><Link href={href} className="mt-3 inline-flex items-center gap-2 font-bold text-[var(--mc-accent)]">{action} <ArrowRight size={15} /></Link></div>}</div></section>; }
+function ProfileValue({ label, value }: { label: string; value: string }) { return <div><dt className="text-xs font-bold uppercase text-[var(--mc-muted)]">{label}</dt><dd className="mt-1 break-words font-semibold text-[var(--mc-ink)]">{value}</dd></div>; }
+function money(value: string) { return Number(value).toLocaleString("en-IN", { maximumFractionDigits: 2 }); }
+function date(value: string) { return new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }); }
+function labelStatus(value: string) { return value.toLowerCase().split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" "); }

@@ -5,7 +5,7 @@ import { and, eq, isNotNull, isNull, lt } from "drizzle-orm";
 import { resolveArtworkRequirement } from "@/lib/artwork-requirements";
 import { db } from "@/lib/db/server";
 import { artworks, customers, pricingRules, products } from "@/lib/db/schema";
-import { storage, storageKeys, validateArtworkMetadata, validatePdfHeader } from "@/lib/storage";
+import { storage, storageKeys, validateCdrMetadata } from "@/lib/storage";
 
 export type InitiateArtworkInput = {
   productId: string;
@@ -53,7 +53,8 @@ export async function initiateArtworkUpload(userId: string, input: InitiateArtwo
   await validatePricingRule(input.productId, input.pricingRuleId);
   const requirement = await resolveArtworkRequirement(input.productId, input.pricingRuleId);
   if (!requirement) throw new Error("Artwork requirements have not been configured for this product configuration.");
-  const format = validateArtworkMetadata({ filename: input.filename, contentType: input.contentType, size: input.fileSize, acceptedFormats: requirement.acceptedFormats, maximumMb: requirement.maxFileSize, minimumMb: requirement.minFileSize });
+  validateCdrMetadata({ filename: input.filename, contentType: input.contentType, size: input.fileSize, maximumMb: requirement.maxFileSize, minimumMb: requirement.minFileSize });
+  const format = "CDR";
 
   let replacement: typeof artworks.$inferSelect | null = null;
   if (input.replaceArtworkId) {
@@ -105,8 +106,7 @@ export async function finalizeArtworkUpload(userId: string, artworkId: string) {
   try {
     const requirement = artwork.productId ? await resolveArtworkRequirement(artwork.productId, artwork.pricingRuleId) : null;
     if (!requirement) throw new Error("Artwork requirements are no longer available.");
-    const format = validateArtworkMetadata({ filename: artwork.fileName, contentType: head.contentType, size: head.contentLength, acceptedFormats: requirement.acceptedFormats, maximumMb: requirement.maxFileSize, minimumMb: requirement.minFileSize });
-    if (format === "PDF") validatePdfHeader(await storage.getObjectPrefix(artwork.storageKey, 5));
+    validateCdrMetadata({ filename: artwork.fileName, contentType: head.contentType, size: head.contentLength, maximumMb: requirement.maxFileSize, minimumMb: requirement.minFileSize });
     if (head.contentLength !== artwork.fileSize) throw new Error("The uploaded file size does not match the approved upload.");
   } catch (error) {
     await failArtworkUpload(artwork);

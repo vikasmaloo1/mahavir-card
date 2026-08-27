@@ -195,6 +195,14 @@ export const pricingCalculateSchema = z.object({
   }).optional(),
 });
 
+export const quoteSubmitSchema = z.object({
+  contactName: z.string().trim().min(2).max(120),
+  email: z.email(),
+  phone: z.string().trim().max(30).optional(),
+  companyName: z.string().trim().max(160).optional(),
+  notes: z.string().trim().max(3000).optional(),
+});
+
 export const adminPricingSchema = z.object({
   productId: z.string().uuid(),
   variantId: z.string().uuid().nullable().optional(),
@@ -230,12 +238,20 @@ export const checkoutSchema = z.object({
     companyName: z.string().trim().min(2).max(160),
     phone: z.string().trim().min(8).max(30),
   }),
+  address: z.object({
+    line1: z.string().trim().min(3).max(200),
+    line2: z.string().trim().max(200).optional(),
+    city: z.string().trim().min(2).max(100),
+    state: z.string().trim().min(2).max(100),
+    postalCode: z.string().trim().regex(/^\d{6}$/, "Enter a valid 6-digit postal code"),
+    country: z.string().trim().min(2).max(80).default("India"),
+  }),
   paymentMethod: z.enum(["RAZORPAY", "COD"]),
   items: z.array(z.object({
     productId: z.string().uuid(),
     quantity: z.number().int().positive().max(1_000_000),
     configuration: metadata,
-  })).min(1).max(25),
+  })).max(25).optional(),
 });
 
 export const cartKindSchema = z.enum(["PURCHASE", "QUOTE"]);
@@ -245,7 +261,7 @@ export const cartItemSchema = z.object({
   quantity: z.number().int().positive().max(1_000_000).default(1),
   configuration: metadata,
 });
-export const cartItemUpdateSchema = z.object({ quantity: z.number().int().positive().max(1_000_000), configuration: metadata.optional() });
+export const cartItemUpdateSchema = z.object({ quantity: z.number().int().positive().max(1_000_000), configuration: z.record(z.string(), z.unknown()).optional() });
 
 export const adminCreateSchema = z.object({
   name: z.string().trim().min(2).max(120),
