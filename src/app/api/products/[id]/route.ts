@@ -3,6 +3,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { handleApiError, jsonError, jsonOk } from "@/lib/api";
 import { db } from "@/lib/db/server";
 import { addons, artworkRequirements, pricingRules, productAddons, productContentItems, productContentSections, productDeliveryRules, productImages, products, productVariants } from "@/lib/db/schema";
+import { deriveStartingPrice } from "@/lib/product-listing-pricing";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -18,11 +19,11 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/products/[i
       db.select().from(productContentItems).orderBy(asc(productContentItems.sortOrder)),
       db.select({ id: productAddons.id, pricingRuleId: productAddons.pricingRuleId, addonId: productAddons.addonId, name: addons.name, description: addons.description, pricingType: addons.pricingType, price: productAddons.price, isDefault: productAddons.isDefault, sortOrder: productAddons.sortOrder, taxInclusive: productAddons.taxInclusive }).from(productAddons).innerJoin(addons, eq(productAddons.addonId, addons.id)).where(and(eq(productAddons.productId, product.id), eq(productAddons.isActive, true), eq(addons.isActive, true))).orderBy(asc(productAddons.sortOrder)),
       db.select({ id: productDeliveryRules.id, deliveryMethod: productDeliveryRules.deliveryMethod, stateCode: productDeliveryRules.stateCode, price: productDeliveryRules.price, sortOrder: productDeliveryRules.sortOrder, taxInclusive: productDeliveryRules.taxInclusive }).from(productDeliveryRules).where(and(eq(productDeliveryRules.productId, product.id), eq(productDeliveryRules.isActive, true))).orderBy(asc(productDeliveryRules.sortOrder)),
-      db.select({ id: pricingRules.id, name: pricingRules.name, conditions: pricingRules.conditions, priceFormula: pricingRules.priceFormula, taxInclusive: pricingRules.taxInclusive }).from(pricingRules).where(and(eq(pricingRules.productId, product.id), eq(pricingRules.isActive, true))).orderBy(asc(pricingRules.createdAt)),
+      db.select({ id: pricingRules.id, productId: pricingRules.productId, variantId: pricingRules.variantId, variantActive: productVariants.isActive, name: pricingRules.name, conditions: pricingRules.conditions, priceFormula: pricingRules.priceFormula, taxInclusive: pricingRules.taxInclusive, isActive: pricingRules.isActive }).from(pricingRules).leftJoin(productVariants, eq(pricingRules.variantId, productVariants.id)).where(and(eq(pricingRules.productId, product.id), eq(pricingRules.isActive, true))).orderBy(asc(pricingRules.createdAt)),
       db.select().from(artworkRequirements).where(and(eq(artworkRequirements.productId, product.id), eq(artworkRequirements.isActive, true))),
     ]);
     const sectionIds = new Set(sections.map((section) => section.id));
-    return jsonOk({ ...product, variants, images, contentSections: sections.map((section) => ({ ...section, items: contentItems.filter((item) => item.sectionId === section.id) })), addons: productAddonRows, deliveryRules, pricingRules: rules, artworkRequirements: requirements, configuration: product.configuration, hasStructuredContent: sectionIds.size > 0 });
+    return jsonOk({ ...product, ...deriveStartingPrice(product, rules), variants, images, contentSections: sections.map((section) => ({ ...section, items: contentItems.filter((item) => item.sectionId === section.id) })), addons: productAddonRows, deliveryRules, pricingRules: rules, artworkRequirements: requirements, configuration: product.configuration, hasStructuredContent: sectionIds.size > 0 });
   } catch (error) {
     return handleApiError(error);
   }
