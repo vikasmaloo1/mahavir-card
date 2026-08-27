@@ -24,11 +24,19 @@ export function ConfigurationAddonsPanel({ rows, addons, pricingRules, mutate }:
       <Field label="Price"><input required inputMode="decimal" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} className="field" /></Field>
       <div className="flex flex-wrap items-end gap-4"><Check label="Active" checked={form.isActive} onChange={(isActive) => setForm({ ...form, isActive })} /><Check label="Default" checked={form.isDefault} onChange={(isDefault) => setForm({ ...form, isDefault })} /><button className="bg-[#2457b8] px-3 py-2.5 text-sm font-bold text-white">Map add-on</button></div>
     </form>
-    <div className="mt-6 space-y-3">{rows.map((item) => { const mapping = asRow(item.mapping) ?? item; const addon = asRow(item.addon); return <article key={text(mapping.id)} className="flex flex-col gap-3 border border-[#d7dce5] p-4 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><p className="font-bold text-[#162237]">{text(addon?.name) || "Add-on"}</p><p className="mt-1 text-xs text-[#607089]">{text(ruleName(mapping.pricingRuleId))}</p></div><p className="font-semibold text-[#2457b8]">Rs {text(mapping.price)}</p><button type="button" onClick={() => void mutate("PATCH", "ADDON", { isActive: !bool(mapping.isActive) }, text(mapping.id))} className="border border-[#c9d2df] px-3 py-2 text-xs font-bold">{bool(mapping.isActive) ? "Disable" : "Enable"}</button><button type="button" onClick={() => void mutate("DELETE", "ADDON", {}, text(mapping.id))} className="border border-[#e3c5c0] px-3 py-2 text-xs font-bold text-[#a53025]">Remove</button></article>; })}</div>
+    <div className="mt-6 space-y-3">{rows.map((item, index) => <ConfigurationAddonRow key={text((asRow(item.mapping) ?? item).id)} item={item} index={index} total={rows.length} ruleName={ruleName} mutate={mutate} />)}</div>
   </div>;
 }
 
-type ArtworkFormat = "CDR" | "PDF";
+function ConfigurationAddonRow({ item, index, total, ruleName, mutate }: { item: Row; index: number; total: number; ruleName: (id: unknown) => unknown; mutate: Mutation }) {
+  const mapping = asRow(item.mapping) ?? item;
+  const addon = asRow(item.addon);
+  const [price, setPrice] = useState(text(mapping.price));
+  const [sortOrder, setSortOrder] = useState(Number(mapping.sortOrder ?? index));
+  return <article className="grid gap-3 border border-[#d7dce5] p-4 md:grid-cols-[minmax(0,1fr)_7rem_auto_auto]"><div className="min-w-0"><p className="font-bold text-[#162237]">{text(addon?.name) || "Add-on"}</p><p className="mt-1 text-xs text-[#607089]">{text(ruleName(mapping.pricingRuleId))}</p></div><label className="text-xs font-bold text-[#52647e]">Price<input value={price} onChange={(event) => setPrice(event.target.value)} className="field mt-1" /></label><div className="flex items-end gap-1"><button type="button" disabled={sortOrder <= 0} onClick={() => setSortOrder((current) => Math.max(0, current - 1))} className="border border-[#c9d2df] px-2 py-2 text-xs font-bold disabled:opacity-40">Up</button><button type="button" disabled={sortOrder >= total - 1} onClick={() => setSortOrder((current) => Math.min(total - 1, current + 1))} className="border border-[#c9d2df] px-2 py-2 text-xs font-bold disabled:opacity-40">Down</button></div><div className="flex flex-wrap items-end justify-end gap-2"><button type="button" onClick={() => void mutate("PATCH", "ADDON", { price, sortOrder, isActive: bool(mapping.isActive) }, text(mapping.id))} className="border border-[#2457b8] px-3 py-2 text-xs font-bold text-[#2457b8]">Save</button><button type="button" onClick={() => void mutate("PATCH", "ADDON", { isActive: !bool(mapping.isActive) }, text(mapping.id))} className="border border-[#c9d2df] px-3 py-2 text-xs font-bold">{bool(mapping.isActive) ? "Disable" : "Enable"}</button><button type="button" onClick={() => void mutate("DELETE", "ADDON", {}, text(mapping.id))} className="border border-[#e3c5c0] px-3 py-2 text-xs font-bold text-[#a53025]">Remove</button></div></article>;
+}
+
+type ArtworkFormat = "CDR";
 type PageInstructionDraft = { pageNumber: number; label: string; colorMode: string; notes: string; required: boolean };
 type RequirementDraft = {
   pricingRuleId: string; artworkRequired: boolean; acceptedFormats: ArtworkFormat[]; minFileSize: string; maxFileSize: string; maxFiles: string;
@@ -37,14 +45,13 @@ type RequirementDraft = {
   additionalInstructions: string; notes: string; isActive: boolean;
 };
 
-const blankRequirement: RequirementDraft = { pricingRuleId: "", artworkRequired: true, acceptedFormats: ["PDF", "CDR"], minFileSize: "", maxFileSize: "100", maxFiles: "1", designWidth: "", designHeight: "", designUnit: "mm", bleedWidth: "", bleedHeight: "", safeAreaWidth: "", safeAreaHeight: "", finalWidth: "", finalHeight: "", orientation: "ANY", pageInstructions: [], multiplePageInstructions: "", additionalInstructions: "", notes: "", isActive: true };
+const blankRequirement: RequirementDraft = { pricingRuleId: "", artworkRequired: true, acceptedFormats: ["CDR"], minFileSize: "", maxFileSize: "100", maxFiles: "1", designWidth: "", designHeight: "", designUnit: "mm", bleedWidth: "", bleedHeight: "", safeAreaWidth: "", safeAreaHeight: "", finalWidth: "", finalHeight: "", orientation: "ANY", pageInstructions: [], multiplePageInstructions: "", additionalInstructions: "", notes: "", isActive: true };
 
 export function ArtworkRequirementsPanel({ rows, pricingRules, mutate }: { rows: Row[]; pricingRules: Row[]; mutate: Mutation }) {
   const [form, setForm] = useState<RequirementDraft>(blankRequirement);
   const [editingId, setEditingId] = useState("");
   const assign = <K extends keyof RequirementDraft>(key: K, value: RequirementDraft[K]) => setForm((current) => ({ ...current, [key]: value }));
   const reset = () => { setForm(blankRequirement); setEditingId(""); };
-  const toggleFormat = (format: ArtworkFormat) => assign("acceptedFormats", form.acceptedFormats.includes(format) ? form.acceptedFormats.filter((item) => item !== format) : [...form.acceptedFormats, format]);
   const addPage = () => assign("pageInstructions", [...form.pageInstructions, { pageNumber: form.pageInstructions.length + 1, label: "", colorMode: "", notes: "", required: true }]);
   const updatePage = (index: number, patch: Partial<PageInstructionDraft>) => assign("pageInstructions", form.pageInstructions.map((page, pageIndex) => pageIndex === index ? { ...page, ...patch } : page));
   const removePage = (index: number) => assign("pageInstructions", form.pageInstructions.filter((_, pageIndex) => pageIndex !== index).map((page, pageIndex) => ({ ...page, pageNumber: pageIndex + 1 })));
@@ -61,16 +68,16 @@ export function ArtworkRequirementsPanel({ rows, pricingRules, mutate }: { rows:
     const pages = Array.isArray(row.pageInstructions) ? row.pageInstructions.filter((page): page is Row => Boolean(page && typeof page === "object")) : [];
     setEditingId(text(row.id));
     setForm({
-      pricingRuleId: text(row.pricingRuleId), artworkRequired: bool(row.artworkRequired), acceptedFormats: (Array.isArray(row.acceptedFormats) ? row.acceptedFormats : ["CDR"]).filter((format): format is ArtworkFormat => format === "CDR" || format === "PDF"),
+      pricingRuleId: text(row.pricingRuleId), artworkRequired: bool(row.artworkRequired), acceptedFormats: ["CDR"],
       minFileSize: text(row.minFileSize), maxFileSize: text(row.maxFileSize), maxFiles: text(row.maxFiles || 1), designWidth: text(row.designWidth), designHeight: text(row.designHeight), designUnit: text(row.designUnit || "mm"), bleedWidth: text(row.bleedWidth), bleedHeight: text(row.bleedHeight), safeAreaWidth: text(row.safeAreaWidth), safeAreaHeight: text(row.safeAreaHeight), finalWidth: text(row.finalWidth), finalHeight: text(row.finalHeight), orientation: text(row.orientation || "ANY"),
       pageInstructions: pages.map((page, index) => ({ pageNumber: index + 1, label: text(page.label), colorMode: text(page.colorMode), notes: text(page.notes), required: page.required !== false })), multiplePageInstructions: text(row.multiplePageInstructions), additionalInstructions: text(row.additionalInstructions), notes: text(row.notes), isActive: bool(row.isActive),
     });
   }
   const ruleName = (id: unknown) => pricingRules.find((rule) => text(rule.id) === text(id))?.name ?? "Product default";
-  return <div><Title title="Artwork requirements" description="Control accepted formats, dimensions, and ordered PDF pages for the product default or an exact pricing configuration." />
+  return <div><Title title="Artwork requirements" description="Control CDR dimensions and ordered artwork pages for the product default or an exact pricing configuration." />
     <form className="mt-5 grid gap-3 sm:grid-cols-2" onSubmit={(event) => void submit(event)}>
       <Field label="Pricing configuration"><select value={form.pricingRuleId} onChange={(event) => assign("pricingRuleId", event.target.value)} className="field"><option value="">Product default</option>{pricingRules.map((rule) => <option key={text(rule.id)} value={text(rule.id)}>{text(rule.name)}</option>)}</select></Field>
-      <fieldset className="border border-[#d7dce5] p-3"><legend className="px-1 text-sm font-semibold text-[#263753]">Accepted formats</legend><div className="flex gap-5"><Check label="PDF" checked={form.acceptedFormats.includes("PDF")} onChange={() => toggleFormat("PDF")} /><Check label="CDR" checked={form.acceptedFormats.includes("CDR")} onChange={() => toggleFormat("CDR")} /></div>{!form.acceptedFormats.length ? <p className="mt-2 text-xs font-semibold text-[#a53025]">Select at least one format.</p> : null}</fieldset>
+      <fieldset className="border border-[#d7dce5] p-3"><legend className="px-1 text-sm font-semibold text-[#263753]">Accepted format</legend><p className="text-sm font-bold text-[#2457b8]">CorelDRAW (.cdr) only</p></fieldset>
       <Field label="Maximum size (MB)"><input required type="number" min="1" value={form.maxFileSize} onChange={(event) => assign("maxFileSize", event.target.value)} className="field" /></Field>
       <Field label="Maximum files"><input required type="number" min="1" value={form.maxFiles} onChange={(event) => assign("maxFiles", event.target.value)} className="field" /></Field>
       <DimensionFields label="Full design size" width={form.designWidth} height={form.designHeight} onWidth={(value) => assign("designWidth", value)} onHeight={(value) => assign("designHeight", value)} />

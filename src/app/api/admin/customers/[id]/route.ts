@@ -3,13 +3,25 @@ import { z } from "zod";
 
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
 import { db } from "@/lib/db/server";
-import { customers } from "@/lib/db/schema";
+import { addresses, customers, inquiries, orders, quotes } from "@/lib/db/schema";
 import { requireRole } from "@/lib/permissions";
 
 const customerUpdateSchema = z.object({ companyName: z.string().trim().min(2).max(160).optional(), contactName: z.string().trim().min(2).max(120).optional(), phone: z.string().trim().max(30).optional(), gstNumber: z.string().trim().max(30).nullable().optional(), status: z.enum(["ACTIVE", "INACTIVE"]).optional() });
 
 export async function GET(request: Request, ctx: RouteContext<"/api/admin/customers/[id]">) {
-  try { await requireRole(request, ["ADMIN"]); const { id } = await ctx.params; const [customer] = await db.select().from(customers).where(eq(customers.id, id)).limit(1); return customer ? jsonOk(customer) : jsonError("Customer not found", 404); } catch (error) { return error instanceof Response ? error : handleApiError(error); }
+  try {
+    await requireRole(request, ["ADMIN"]);
+    const { id } = await ctx.params;
+    const [customer] = await db.select().from(customers).where(eq(customers.id, id)).limit(1);
+    if (!customer) return jsonError("Customer not found", 404);
+    const [addressRows, orderRows, quoteRows, inquiryRows] = await Promise.all([
+      db.select().from(addresses).where(eq(addresses.customerId, id)),
+      db.select().from(orders).where(eq(orders.customerId, id)),
+      db.select().from(quotes).where(eq(quotes.customerId, id)),
+      db.select().from(inquiries).where(eq(inquiries.customerId, id)),
+    ]);
+    return jsonOk({ customer, addresses: addressRows, orders: orderRows, quotes: quoteRows, inquiries: inquiryRows });
+  } catch (error) { return error instanceof Response ? error : handleApiError(error); }
 }
 
 export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/customers/[id]">) {

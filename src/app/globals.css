@@ -1,4 +1,17 @@
 @import "tailwindcss";
+
+.control {
+  width: 100%;
+  border: 1px solid #c9d2df;
+  background: #fff;
+  padding: 0.625rem 0.75rem;
+  font-weight: 400;
+  outline: none;
+}
+
+.control:focus {
+  border-color: #2457b8;
+}
 @import "swagger-ui-react/swagger-ui.css";
 
 :root {

@@ -6,7 +6,7 @@ dotenv.config();
 
 async function main() {
 const { db, pool } = await import("../src/lib/db");
-const { addons, artworkRequirements, categories, pricingRules, productAddons, productContentItems, productContentSections, productDeliveryRules, productImages, productVariants, products } = await import("../src/lib/db/schema");
+const { addons, artworkRequirements, businessSettings, categories, pricingRules, productAddons, productContentItems, productContentSections, productDeliveryRules, productImages, productVariants, products } = await import("../src/lib/db/schema");
 const { sql } = await import("drizzle-orm");
 const { catalogCategories, catalogProducts } = await import("../src/lib/catalog");
 const { businessCardProducts } = await import("../src/lib/business-cards");
@@ -21,6 +21,8 @@ const categoryIds = new Map(catalogCategories.map((category) => [category.slug, 
 const pdfProducts = [
   ["paper-job", "Paper Job", "printing"], ["cover-job", "Cover Job", "printing"], ["gsm-130-170", "130 GSM - 170 GSM", "printing"], ["sticker-mix-hm", "Sticker Mix - HM", "labels-stickers"], ["mix-250gsm", "250 GSM Mix", "labels-stickers"], ["pamphlets", "Pamphlets", "printing"], ["sticker-print", "Stikar Print", "labels-stickers"], ["doctor-file-job", "Doctor File Job", "stationery"], ["job-250gsm", "250 GSM Job", "printing"],
 ] as const;
+
+await db.insert(businessSettings).values({ id: "primary", businessName: "Mahavir Card", addressLine1: "Khadia Golwad", addressLine2: "Opp. Jain Digamber Mandir", city: "Ahmedabad", state: "Gujarat", postalCode: "380001", phone: "+91 94263 71150", email: "mahavircard2011@gmail.com", whatsapp: "+91 94263 71150", footerText: "All kind printing solutions for businesses." }).onConflictDoNothing();
 
 await db.insert(categories).values(catalogCategories.map((category, index) => ({ id: categoryIds.get(category.slug)!, name: category.name, slug: category.slug, description: category.description, sortOrder: index }))).onConflictDoUpdate({ target: categories.slug, set: { name: categories.name, description: categories.description, updatedAt: new Date() } });
 
@@ -59,7 +61,7 @@ for (const [index, product] of businessCardProducts.entries()) {
     productClass: "Visiting Cards",
     productionTime: "2-3 working days",
     artworkRequired: true,
-    artworkInstructions: "Upload a production-ready PDF or CorelDRAW file using the configured dimensions and page order.",
+    artworkInstructions: "Upload a production-ready CorelDRAW (.cdr) file using the configured dimensions and page order.",
     referenceQuantity: 1000,
     referenceWeight: "1.000",
     referenceWeightUnit: "KG",
@@ -91,12 +93,12 @@ function visitingCardPages(slug: string) {
   return pages;
 }
 
-const multiplePageInstructions = "Upload all artwork pages in one PDF and keep them in the displayed order. Use the same 93 x 56 mm full-design size on every page. Front/back jobs must place the front first and back second. Include B&W separation pages only for finishes selected in the order.";
+const multiplePageInstructions = "Keep all artwork pages in one CDR file and in the displayed order. Use the same 93 x 56 mm full-design size on every page. Front/back jobs must place the front first and back second. Include B&W separation pages only for finishes selected in the order.";
 const artworkRows = businessCardProducts.map((product) => ({
   id: uuidFor(`artwork:${product.slug}:product`), productId: productIds.get(product.slug)!, scopeKey: "PRODUCT", artworkRequired: true,
-  acceptedFormats: ["PDF", "CDR"] as Array<"PDF" | "CDR">, maxFileSize: 100, maxFiles: 1, designWidth: "93", designHeight: "56", designUnit: "mm",
+  acceptedFormats: ["CDR"] as Array<"CDR">, maxFileSize: 100, maxFiles: 1, designWidth: "93", designHeight: "56", designUnit: "mm",
   safeAreaWidth: "82", safeAreaHeight: "45", finalWidth: "90", finalHeight: "53", orientation: "ANY", pageInstructions: visitingCardPages(product.slug),
-  multiplePageInstructions, additionalInstructions: "Keep all text and important content inside the safe area. Convert fonts to curves before exporting CDR artwork. PDF artwork must preserve the configured page order.",
+  multiplePageInstructions, additionalInstructions: "Keep all text and important content inside the safe area. Convert fonts to curves and preserve the configured page order in the CDR artwork.",
   notes: "Visiting-card production artwork rule seeded from the standard card specification.", isActive: true,
 }));
 await db.insert(artworkRequirements).values(artworkRows).onConflictDoUpdate({ target: artworkRequirements.id, set: {
@@ -122,7 +124,7 @@ const sectionRows = businessCardProducts.flatMap((product) => [
 await db.insert(productContentSections).values(sectionRows).onConflictDoUpdate({ target: productContentSections.id, set: { title: sql`excluded."title"`, sortOrder: sql`excluded."sortOrder"`, updatedAt: new Date() } });
 const contentItems = businessCardProducts.flatMap((product) => [
   { id: uuidFor(`content-item:${product.slug}:quantity`), sectionId: uuidFor(`content:${product.slug}:details`), label: "Reference quantity", content: "1,000 cards is configured as the reference quantity.", sortOrder: 0 },
-  { id: uuidFor(`content-item:${product.slug}:artwork`), sectionId: uuidFor(`content:${product.slug}:artwork`), label: "Artwork", content: "Supply a final PDF or CDR file using the configured design size, safe area, final size, and page order.", sortOrder: 0 },
+  { id: uuidFor(`content-item:${product.slug}:artwork`), sectionId: uuidFor(`content:${product.slug}:artwork`), label: "Artwork", content: "Supply a final CDR file using the configured design size, safe area, final size, and page order.", sortOrder: 0 },
 ]);
 await db.insert(productContentItems).values(contentItems).onConflictDoUpdate({ target: productContentItems.id, set: { label: sql`excluded."label"`, content: sql`excluded."content"`, sortOrder: sql`excluded."sortOrder"`, updatedAt: new Date() } });
 

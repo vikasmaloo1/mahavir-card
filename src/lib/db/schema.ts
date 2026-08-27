@@ -209,6 +209,24 @@ export const brandingAssets = pgTable(
   (table) => [index("branding_assets_type_idx").on(table.assetType)],
 );
 
+export const businessSettings = pgTable("business_settings", {
+  id: text("id").primaryKey().default("primary"),
+  businessName: text("businessName").notNull().default("Mahavir Card"),
+  addressLine1: text("addressLine1"),
+  addressLine2: text("addressLine2"),
+  city: text("city"),
+  state: text("state"),
+  postalCode: text("postalCode"),
+  phone: text("phone"),
+  email: text("email"),
+  whatsapp: text("whatsapp"),
+  businessHours: text("businessHours"),
+  footerText: text("footerText"),
+  logoAssetId: uuid("logoAssetId").references(() => brandingAssets.id, { onDelete: "set null" }),
+  updatedBy: uuid("updatedBy").references(() => user.id, { onDelete: "set null" }),
+  ...timestamps,
+});
+
 export const productContentSections = pgTable(
   "product_content_sections",
   {
@@ -270,7 +288,7 @@ export const artworkRequirements = pgTable(
     pricingRuleId: uuid("pricingRuleId").references(() => pricingRules.id, { onDelete: "cascade" }),
     scopeKey: text("scopeKey").notNull(),
     artworkRequired: boolean("artworkRequired").notNull().default(false),
-    acceptedFormats: jsonb("acceptedFormats").$type<Array<"CDR" | "PDF">>().notNull().default(["CDR"]),
+    acceptedFormats: jsonb("acceptedFormats").$type<Array<"CDR">>().notNull().default(["CDR"]),
     minFileSize: integer("minFileSize"),
     maxFileSize: integer("maxFileSize"),
     maxFiles: integer("maxFiles").notNull().default(1),
@@ -371,7 +389,10 @@ export const quotes = pgTable("quotes", {
   phone: text("phone"),
   companyName: text("companyName"),
   notes: text("notes"),
+  internalNotes: text("internalNotes"),
+  customerMessage: text("customerMessage"),
   subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull().default("0"),
+  discountAmount: numeric("discountAmount", { precision: 12, scale: 2 }).notNull().default("0"),
   tax: numeric("tax", { precision: 12, scale: 2 }).notNull().default("0"),
   total: numeric("total", { precision: 12, scale: 2 }).notNull().default("0"),
   validUntil: timestamp("validUntil", { withTimezone: true }),
@@ -500,6 +521,7 @@ export const inquiries = pgTable("inquiries", {
   phone: text("phone"),
   subject: text("subject"),
   message: text("message").notNull(),
+  internalNotes: text("internalNotes"),
   requirement: jsonb("requirement").$type<Record<string, unknown>>().notNull().default({}),
   ...timestamps,
 });

@@ -80,7 +80,7 @@ const optionalDimension = z.string().regex(/^\d+(\.\d{1,3})?$/).nullable().optio
 export const artworkRequirementSchema = z.object({
   pricingRuleId: z.string().uuid().nullable().optional(),
   artworkRequired: z.boolean().default(false),
-  acceptedFormats: z.array(z.enum(["CDR", "PDF"])).min(1).max(2).default(["CDR"]).transform((formats) => [...new Set(formats)]),
+  acceptedFormats: z.array(z.literal("CDR")).length(1).default(["CDR"]),
   minFileSize: z.number().int().positive().nullable().optional(),
   maxFileSize: z.number().int().positive().nullable().optional(),
   maxFiles: z.number().int().min(1).max(10).default(1),
@@ -277,11 +277,36 @@ export const adminUpdateSchema = z.object({
 
 export const adminQuoteUpdateSchema = z.object({
   status: z.enum(["NEW", "REVIEWING", "QUOTE_CREATED", "SENT_TO_CUSTOMER", "CUSTOMER_APPROVED", "CUSTOMER_REJECTED", "EXPIRED", "CONVERTED_TO_ORDER", "CANCELLED"]).optional(),
-  subtotal: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
-  tax: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
-  total: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
   notes: z.string().trim().max(3000).optional(),
+  internalNotes: z.string().trim().max(5000).nullable().optional(),
+  customerMessage: z.string().trim().max(3000).nullable().optional(),
+  discountAmount: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
+  tax: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
   validUntil: z.coerce.date().nullable().optional(),
+});
+
+export const adminQuoteItemSchema = z.object({
+  productId: z.string().uuid().nullable().optional(),
+  variantId: z.string().uuid().nullable().optional(),
+  description: z.string().trim().min(2).max(500),
+  configuration: metadata,
+  quantity: z.number().int().positive().max(1_000_000),
+  unitPrice: z.string().regex(/^\d+(\.\d{1,2})?$/),
+});
+
+export const businessSettingsSchema = z.object({
+  businessName: z.string().trim().min(2).max(160),
+  addressLine1: z.string().trim().max(200).nullable().optional(),
+  addressLine2: z.string().trim().max(200).nullable().optional(),
+  city: z.string().trim().max(100).nullable().optional(),
+  state: z.string().trim().max(100).nullable().optional(),
+  postalCode: z.string().trim().max(20).nullable().optional(),
+  phone: z.string().trim().max(30).nullable().optional(),
+  email: z.email().nullable().optional(),
+  whatsapp: z.string().trim().max(30).nullable().optional(),
+  businessHours: z.string().trim().max(500).nullable().optional(),
+  footerText: z.string().trim().max(1000).nullable().optional(),
+  logoAssetId: z.string().uuid().nullable().optional(),
 });
 
 export const adminOrderUpdateSchema = z.object({
