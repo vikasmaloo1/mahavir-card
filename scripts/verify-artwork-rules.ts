@@ -1,6 +1,8 @@
 import { config as loadEnv } from "dotenv";
 import { Client } from "pg";
 
+import { rateCatalog } from "../src/lib/rate-catalog";
+
 loadEnv({ path: ".env.local", quiet: true });
 
 type ArtworkRuleRow = {
@@ -12,9 +14,12 @@ type ArtworkRuleRow = {
   safeAreaHeight: string | null;
   finalWidth: string | null;
   finalHeight: string | null;
-  pageInstructions: Array<{ pageNumber: number; label: string }>;
-  multiplePageInstructions: string | null;
+  maxFiles: number;
 };
+
+function dimension(value: number | undefined) {
+  return value === undefined ? null : value.toFixed(3);
+}
 
 async function main() {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required");
@@ -32,28 +37,29 @@ async function main() {
         ar."safeAreaHeight",
         ar."finalWidth",
         ar."finalHeight",
-        ar."pageInstructions",
-        ar."multiplePageInstructions"
+        ar."maxFiles"
       from products p
       inner join artwork_requirements ar
-        on ar."productId" = p.id and ar."scopeKey" = 'PRODUCT'
-      where p.slug like 'business-card-%' and p."isActive" = true
+        on ar."productId" = p.id and ar."isActive" = true
+      where p."productReference" like 'RATE.xlsx/%'
+        and p."isActive" = true
       order by p."sortOrder", p.name
     `);
 
-    if (result.rows.length !== 11) throw new Error(`Expected 11 visiting-card artwork rules, found ${result.rows.length}`);
+    const expected = new Map(rateCatalog.flatMap((category) => category.items.map((item) => [item.slug, item] as const)));
+    if (result.rows.length !== expected.size) throw new Error(`Expected ${expected.size} RATE.xlsx artwork rules, found ${result.rows.length}`);
 
     for (const rule of result.rows) {
-      const formats = new Set(rule.acceptedFormats);
-      if (!formats.has("PDF") || !formats.has("CDR")) throw new Error(`${rule.slug} must accept PDF and CDR`);
-      if (rule.designWidth !== "93.000" || rule.designHeight !== "56.000") throw new Error(`${rule.slug} has an incorrect full-design size`);
-      if (rule.safeAreaWidth !== "82.000" || rule.safeAreaHeight !== "45.000") throw new Error(`${rule.slug} has an incorrect safe-area size`);
-      if (rule.finalWidth !== "90.000" || rule.finalHeight !== "53.000") throw new Error(`${rule.slug} has an incorrect final size`);
-      if (!rule.pageInstructions.length || rule.pageInstructions[0]?.pageNumber !== 1) throw new Error(`${rule.slug} is missing ordered page instructions`);
-      if (!rule.multiplePageInstructions) throw new Error(`${rule.slug} is missing multi-page instructions`);
+      const item = expected.get(rule.slug);
+      if (!item) throw new Error(`${rule.slug} is not present in RATE.xlsx catalog data`);
+      if (rule.acceptedFormats.length !== 1 || rule.acceptedFormats[0] !== "CDR") throw new Error(`${rule.slug} must accept CDR only`);
+      if (rule.designWidth !== dimension(item.artwork.design?.[0]) || rule.designHeight !== dimension(item.artwork.design?.[1])) throw new Error(`${rule.slug} full-design size differs from its workbook tab`);
+      if (rule.safeAreaWidth !== dimension(item.artwork.safe?.[0]) || rule.safeAreaHeight !== dimension(item.artwork.safe?.[1])) throw new Error(`${rule.slug} safe-area size differs from its workbook tab`);
+      if (rule.finalWidth !== dimension(item.artwork.final?.[0]) || rule.finalHeight !== dimension(item.artwork.final?.[1])) throw new Error(`${rule.slug} final size differs from its workbook tab`);
+      if (rule.maxFiles !== item.artwork.slots.length) throw new Error(`${rule.slug} requires ${item.artwork.slots.length} artwork files, found ${rule.maxFiles}`);
     }
 
-    console.log(`Artwork rule verification passed for ${result.rows.length} visiting-card products.`);
+    console.log(`Artwork verification passed for ${result.rows.length} RATE.xlsx products.`);
   } finally {
     await client.end();
   }

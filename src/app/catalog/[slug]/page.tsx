@@ -11,7 +11,7 @@ import { StorefrontHeader } from "@/components/storefront-header";
 import { type CatalogProduct, type ConfigField } from "@/lib/catalog";
 import { db } from "@/lib/db/server";
 import { artworkRequirements, categories, pricingRules, products, productVariants } from "@/lib/db/schema";
-import { deriveStartingPrice, type StartingPrice } from "@/lib/product-listing-pricing";
+import { conciseProductSpecification, deriveStartingPrice, type StartingPrice } from "@/lib/product-listing-pricing";
 import { auth } from "@/lib/auth/server";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +37,7 @@ async function getDatabaseCatalogProduct(slug: string, authenticated: boolean): 
     name: row.product.name,
     slug: row.product.slug,
     shortDescription: row.product.shortDescription ?? "Configure the details for your print job.",
-    description: row.product.description ?? "Choose the options you need and request a quote for the confirmed price.",
+    description: conciseProductSpecification(row.product.name, row.product.description, row.category?.name ?? null),
     unit: row.product.referenceQuantity ? `${row.product.referenceQuantity.toLocaleString("en-IN")} units` : "Configured quantity",
     turnaround: row.product.productionTime ?? "Confirmed after review",
     color: "blue",

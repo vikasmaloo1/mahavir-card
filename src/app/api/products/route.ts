@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     const [rules, addonRows, artworkRows, slotRows] = productIds.length ? await Promise.all([
       db.select({ productId: pricingRules.productId, variantId: pricingRules.variantId, variantActive: productVariants.isActive, conditions: pricingRules.conditions, priceFormula: pricingRules.priceFormula, productionTime: pricingRules.productionTime, sortOrder: pricingRules.sortOrder, taxInclusive: pricingRules.taxInclusive, isActive: pricingRules.isActive }).from(pricingRules).leftJoin(productVariants, eq(pricingRules.variantId, productVariants.id)).where(and(inArray(pricingRules.productId, productIds), eq(pricingRules.isActive, true))).orderBy(asc(pricingRules.sortOrder)),
       db.select({ productId: productAddons.productId }).from(productAddons).where(and(inArray(productAddons.productId, productIds), eq(productAddons.isActive, true))),
-      db.select({ id: artworkRequirements.id, productId: artworkRequirements.productId, pricingRuleId: artworkRequirements.pricingRuleId, artworkRequired: artworkRequirements.artworkRequired, acceptedFormats: artworkRequirements.acceptedFormats, designWidth: artworkRequirements.designWidth, designHeight: artworkRequirements.designHeight, designUnit: artworkRequirements.designUnit, safeAreaWidth: artworkRequirements.safeAreaWidth, safeAreaHeight: artworkRequirements.safeAreaHeight }).from(artworkRequirements).where(and(inArray(artworkRequirements.productId, productIds), eq(artworkRequirements.isActive, true))).orderBy(asc(artworkRequirements.createdAt)),
+      db.select({ id: artworkRequirements.id, productId: artworkRequirements.productId, pricingRuleId: artworkRequirements.pricingRuleId, artworkRequired: artworkRequirements.artworkRequired, acceptedFormats: artworkRequirements.acceptedFormats, designWidth: artworkRequirements.designWidth, designHeight: artworkRequirements.designHeight, designUnit: artworkRequirements.designUnit, safeAreaWidth: artworkRequirements.safeAreaWidth, safeAreaHeight: artworkRequirements.safeAreaHeight, finalWidth: artworkRequirements.finalWidth, finalHeight: artworkRequirements.finalHeight }).from(artworkRequirements).where(and(inArray(artworkRequirements.productId, productIds), eq(artworkRequirements.isActive, true))).orderBy(asc(artworkRequirements.createdAt)),
       db.select({ requirementId: artworkSlots.artworkRequirementId, productId: artworkRequirements.productId, name: artworkSlots.name, required: artworkSlots.required, sortOrder: artworkSlots.sortOrder }).from(artworkSlots).innerJoin(artworkRequirements, eq(artworkSlots.artworkRequirementId, artworkRequirements.id)).where(and(inArray(artworkRequirements.productId, productIds), eq(artworkRequirements.isActive, true), eq(artworkSlots.isActive, true))).orderBy(asc(artworkSlots.sortOrder)),
     ]) : [[], [], [], []];
     const startingPrices = authenticated ? deriveStartingPriceMap(pageData.map(({ product }) => product), rules) : new Map();
@@ -43,16 +43,19 @@ export async function GET(request: Request) {
       const requirement = requirements.find((row) => !row.pricingRuleId) ?? requirements[0];
       const requiredFiles = requirement ? slotRows.filter((row) => row.requirementId === requirement.id && row.required).map((row) => row.name) : [];
       const formats = requirement?.acceptedFormats?.map((format) => format.toUpperCase()) ?? [];
+      const configuration = product.configuration as { size?: unknown } | null;
       const artworkSummary = requirement ? {
         formatLabel: formats.length === 1 ? `${formats[0]} only` : formats.join(" / "),
         fullDesign: formatDimensions(requirement.designWidth, requirement.designHeight, requirement.designUnit),
         safeArea: formatDimensions(requirement.safeAreaWidth, requirement.safeAreaHeight, requirement.designUnit),
+        finalSize: formatDimensions(requirement.finalWidth, requirement.finalHeight, requirement.designUnit),
         requiredFiles,
       } : null;
       return {
         ...product,
         category: categoryData,
         listingSpecification: conciseProductSpecification(product.name, product.shortDescription, categoryData?.name ?? null),
+        productSize: typeof configuration?.size === "string" && configuration.size.trim() ? configuration.size.trim() : null,
         productionTime: product.productionTime || productionTimeMap.get(product.id) || null,
         ...(authenticated ? startingPrices.get(product.id) : { startingPrice: null, startingQuantity: null, currency: "INR", priceLabel: "Login to view price", priceState: "LOGIN", taxInclusive: null }),
         hasAddons: productAddonsMap.has(product.id),

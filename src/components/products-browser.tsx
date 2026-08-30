@@ -7,8 +7,8 @@ import { useSearchParams } from "next/navigation";
 
 import { ProductImage } from "@/components/product-image";
 
-type ArtworkSummary = { formatLabel: string; fullDesign: string | null; safeArea: string | null; requiredFiles: string[] };
-type Product = { id: string; name: string; slug: string; imageUrl: string | null; category: { name: string; slug: string } | null; listingSpecification: string | null; productionTime: string | null; priceLabel: string; priceState: "STARTING" | "CUSTOM_QUOTE" | "CONTACT" | "LOGIN"; taxInclusive: boolean | null; orderable: boolean; quoteable: boolean; hasAddons: boolean; hasArtworkRequirement: boolean; artworkSummary: ArtworkSummary | null };
+type ArtworkSummary = { formatLabel: string; fullDesign: string | null; safeArea: string | null; finalSize: string | null; requiredFiles: string[] };
+type Product = { id: string; name: string; slug: string; imageUrl: string | null; category: { name: string; slug: string } | null; listingSpecification: string | null; productSize: string | null; productionTime: string | null; priceLabel: string; priceState: "STARTING" | "CUSTOM_QUOTE" | "CONTACT" | "LOGIN"; taxInclusive: boolean | null; orderable: boolean; quoteable: boolean; hasAddons: boolean; hasArtworkRequirement: boolean; artworkSummary: ArtworkSummary | null };
 type Category = { id: string; name: string; slug: string };
 type Pagination = { page: number; limit: number; total: number; totalPages: number };
 
@@ -80,9 +80,10 @@ export function ProductsBrowser() {
       {loading ? <ProductRowsSkeleton /> : null}
 
       {!loading && !error ? <section className="mt-5 space-y-2.5">
-        <div className="hidden grid-cols-[minmax(24rem,1.45fr)_11rem_minmax(17rem,1fr)_minmax(17rem,.9fr)] gap-5 px-4 py-2 text-xs font-bold uppercase text-[var(--mc-muted)] xl:grid"><span>Product and specification</span><span>Price</span><span>Production and artwork</span><span>Actions</span></div>
-        {items.map((item) => <article key={item.id} className="grid gap-4 rounded-lg border border-[var(--mc-line)] bg-[var(--mc-paper)] px-4 py-4 shadow-[0_5px_16px_rgba(16,33,63,0.035)] sm:grid-cols-2 xl:grid-cols-[minmax(24rem,1.45fr)_11rem_minmax(17rem,1fr)_minmax(17rem,.9fr)] xl:items-center">
-          <div className="flex min-w-0 gap-4"><Link href={`/catalog/${item.slug}`} className="relative h-[76px] w-[92px] shrink-0 overflow-hidden rounded-md bg-[var(--mc-accent-soft)]"><ProductImage src={item.imageUrl || "/images/mahavir-print-assortment.png"} alt={`${item.name} print sample`} slug={item.slug} /></Link><div className="min-w-0 self-center"><p className="text-xs font-bold uppercase text-[var(--mc-accent)]">{item.category?.name ?? "Print product"}</p><h2 className="mt-1 text-[18px] font-bold leading-6 text-[var(--mc-ink)]"><Link href={`/catalog/${item.slug}`}>{item.name}</Link></h2>{item.listingSpecification ? <p className="mt-1 line-clamp-2 text-sm leading-5 text-[var(--mc-muted)]">{item.listingSpecification}</p> : null}</div></div>
+        <div className="hidden grid-cols-[minmax(15rem,.9fr)_minmax(18rem,1.1fr)_10rem_minmax(12rem,.7fr)_minmax(16rem,.8fr)] gap-5 px-4 py-2 text-xs font-bold uppercase text-[var(--mc-muted)] xl:grid"><span>Product</span><span>Specification</span><span>Price</span><span>Production</span><span>Actions</span></div>
+        {items.map((item) => <article key={item.id} className="grid gap-4 rounded-lg border border-[var(--mc-line)] bg-[var(--mc-paper)] px-4 py-4 shadow-[0_5px_16px_rgba(16,33,63,0.035)] sm:grid-cols-2 xl:grid-cols-[minmax(15rem,.9fr)_minmax(18rem,1.1fr)_10rem_minmax(12rem,.7fr)_minmax(16rem,.8fr)] xl:items-center">
+          <div className="flex min-w-0 gap-4"><Link href={`/catalog/${item.slug}`} className="relative h-[76px] w-[92px] shrink-0 overflow-hidden rounded-md bg-[var(--mc-accent-soft)]"><ProductImage src={item.imageUrl || "/images/mahavir-print-assortment.png"} alt={`${item.name} print sample`} slug={item.slug} /></Link><div className="min-w-0 self-center"><p className="text-xs font-bold uppercase text-[var(--mc-accent)]">{item.category?.name ?? "Print product"}</p><h2 className="mt-1 text-[18px] font-bold leading-6 text-[var(--mc-ink)]"><Link href={`/catalog/${item.slug}`}>{item.name}</Link></h2></div></div>
+          <ProductSpecification item={item} />
           <div><p className="text-xs font-bold uppercase text-[var(--mc-muted)] xl:hidden">Price</p><p className="mt-1 text-[18px] font-bold leading-6 text-[var(--mc-ink)] xl:mt-0">{item.priceLabel}</p>{item.taxInclusive ? <p className="mt-1 text-xs text-[var(--mc-muted)]">GST included</p> : null}</div>
           <ProductMeta item={item} />
           <div className="flex flex-wrap gap-2"><Link href={`/catalog/${item.slug}`} className="inline-flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)]">Configure <ArrowRight size={16} /></Link>{item.orderable ? <Link href={`/catalog/${item.slug}?intent=buy`} className="rounded-full border border-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-[var(--mc-accent)]">Buy now</Link> : null}{item.quoteable ? <Link href={`/catalog/${item.slug}?intent=quote`} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--mc-line)] px-4 py-2.5 text-sm font-bold text-[var(--mc-muted)]"><FileText size={15} />Request quote</Link> : null}</div>
@@ -94,11 +95,21 @@ export function ProductsBrowser() {
   </main>;
 }
 
+function ProductSpecification({ item }: { item: Product }) {
+  const artwork = item.artworkSummary;
+  return <div className="min-w-0 space-y-1 text-[13px] leading-5 text-[var(--mc-muted)]">
+    <p className="text-xs font-bold uppercase text-[var(--mc-muted)] xl:hidden">Specification</p>
+    {item.listingSpecification ? <p className="line-clamp-2 text-sm font-medium text-[var(--mc-ink)]">{item.listingSpecification}</p> : null}
+    {item.productSize ? <p><strong className="font-semibold text-[var(--mc-ink)]">Size:</strong> {item.productSize}</p> : null}
+    {artwork ? <><p className="flex items-center gap-1.5"><FileUp size={14} />{artwork.formatLabel}</p>{artwork.fullDesign ? <p><strong className="font-semibold text-[var(--mc-ink)]">Full:</strong> {artwork.fullDesign}{artwork.safeArea ? ` · Safe: ${artwork.safeArea}` : ""}</p> : null}{artwork.finalSize ? <p><strong className="font-semibold text-[var(--mc-ink)]">Final:</strong> {artwork.finalSize}</p> : null}</> : null}
+  </div>;
+}
+
 function ProductMeta({ item }: { item: Product }) {
   const files = item.artworkSummary?.requiredFiles ?? [];
   return <div className="space-y-1 text-[13px] leading-5 text-[var(--mc-muted)]">
     {item.productionTime ? <p className="inline-flex items-center gap-1.5 font-semibold text-[var(--mc-ink)]"><Clock3 size={14} />{item.productionTime}</p> : null}
-    {item.artworkSummary ? <><p className="flex items-center gap-1.5"><FileUp size={14} />{item.artworkSummary.formatLabel}</p>{item.artworkSummary.fullDesign ? <p><strong className="font-semibold text-[var(--mc-ink)]">Full:</strong> {item.artworkSummary.fullDesign}{item.artworkSummary.safeArea ? ` · Safe: ${item.artworkSummary.safeArea}` : ""}</p> : null}{files.length ? <p className="flex items-center gap-1.5"><FileText size={14} /><span className="truncate">{files[0]}{files.length > 1 ? ` +${files.length - 1}` : ""}</span></p> : null}</> : item.hasArtworkRequirement ? <p className="flex items-center gap-1.5"><FileUp size={14} />Artwork required</p> : null}
+    {files.length ? <p className="flex items-center gap-1.5"><FileText size={14} /><span className="truncate">{files[0]}{files.length > 1 ? ` +${files.length - 1}` : ""}</span></p> : item.hasArtworkRequirement ? <p className="flex items-center gap-1.5"><FileUp size={14} />Artwork required</p> : null}
     {item.hasAddons ? <p className="flex items-center gap-1.5"><Sparkles size={14} />Add-on available</p> : null}
   </div>;
 }

@@ -118,11 +118,11 @@ async function main() {
           additionalInstructions: [item.artwork.black ? `Recommended rich black: ${item.artwork.black}.` : null, "Use high-resolution imagery and convert fonts to curves."].filter(Boolean).join(" "),
           notes: `Imported from RATE.xlsx Sheet ${categoryIndex + 1}.`, isActive: true,
         }).onConflictDoUpdate({ target: artworkRequirements.id, set: {
-          productId, pricingRuleId: ruleId, artworkRequired: true, acceptedFormats: ["CDR"], maxFileSize: 100,
+          productId, pricingRuleId: ruleId, scopeKey: `PRICING_RULE:${ruleId}`, artworkRequired: true, acceptedFormats: ["CDR"], maxFileSize: 100,
           maxFiles: item.artwork.slots.length, designWidth: item.artwork.design?.[0]?.toString() ?? null,
-          designHeight: item.artwork.design?.[1]?.toString() ?? null, safeAreaWidth: item.artwork.safe?.[0]?.toString() ?? null,
+          designHeight: item.artwork.design?.[1]?.toString() ?? null, designUnit: "mm", safeAreaWidth: item.artwork.safe?.[0]?.toString() ?? null,
           safeAreaHeight: item.artwork.safe?.[1]?.toString() ?? null, finalWidth: item.artwork.final?.[0]?.toString() ?? null,
-          finalHeight: item.artwork.final?.[1]?.toString() ?? null,
+          finalHeight: item.artwork.final?.[1]?.toString() ?? null, orientation: "ANY",
           pageInstructions: item.artwork.slots.map((entry, index) => ({ pageNumber: index + 1, label: entry.name, notes: entry.instructions ?? null, required: true })),
           multiplePageInstructions: item.artwork.slots.length > 1 ? "Upload each named production separation in its matching CDR slot." : null,
           additionalInstructions: [item.artwork.black ? `Recommended rich black: ${item.artwork.black}.` : null, "Use high-resolution imagery and convert fonts to curves."].filter(Boolean).join(" "),
@@ -177,7 +177,7 @@ async function main() {
 
         const sectionId = uuidFor(`rate-content:${item.slug}:technical`);
         await tx.insert(productContentSections).values({ id: sectionId, productId, title: "Technical specifications", sortOrder: 0 }).onConflictDoUpdate({ target: productContentSections.id, set: { title: "Technical specifications", sortOrder: 0, updatedAt: new Date() } });
-        const content = [item.size ? `Size: ${item.size}` : null, item.referenceQuantity ? `Reference quantity: ${item.referenceQuantity.toLocaleString("en-IN")}` : null, item.productionTime ? `Production: ${item.productionTime}` : null].filter(Boolean).join(" · ") || "Configured from the current RATE.xlsx source.";
+        const content = [item.size ? `Size: ${item.size}` : null, item.productionTime ? `Production: ${item.productionTime}` : null].filter(Boolean).join(" · ") || "Configured from the current RATE.xlsx source.";
         await tx.insert(productContentItems).values({ id: uuidFor(`rate-content-item:${item.slug}:technical`), sectionId, label: "Current specification", content, sortOrder: 0 }).onConflictDoUpdate({ target: productContentItems.id, set: { label: "Current specification", content, sortOrder: 0, updatedAt: new Date() } });
       }
     }

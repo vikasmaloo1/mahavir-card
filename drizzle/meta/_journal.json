@@ -120,6 +120,13 @@
       "when": 1787837924340,
       "tag": "0016_noisy_johnny_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1788116681797,
+      "tag": "0017_rate_catalog_specs",
+      "breakpoints": true
     }
   ]
 }
