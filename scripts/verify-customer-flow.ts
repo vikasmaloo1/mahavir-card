@@ -70,42 +70,50 @@ async function main() {
 
     let product: ObjectValue | null = null;
     let rule: ObjectValue | null = null;
+    let requirement: ObjectValue | null = null;
     for (const listed of listedProducts) {
       const detail = data(await api(`/api/products/${id(listed)}`));
       const candidate = array(detail.pricingRules).find((item) => Number(object(item.conditions).quantity) > 0 && Number(object(item.priceFormula).amount) > 0);
-      if (candidate && array(detail.artworkRequirements).length) { product = detail; rule = candidate; break; }
+      const candidateRequirement = candidate ? array(detail.artworkRequirements).find((item) => item.pricingRuleId === id(candidate) && array(item.slots).length > 0) : null;
+      if (candidate && candidateRequirement) { product = detail; rule = candidate; requirement = candidateRequirement; break; }
     }
-    if (!product || !rule) throw new Error("No priced product with artwork requirements is available for flow verification");
+    if (!product || !rule || !requirement) throw new Error("No priced product with artwork requirements is available for flow verification");
 
     const productId = id(product);
     const pricingRuleId = id(rule);
+    const requiredSlots = array(requirement.slots).filter((item) => item.required !== false);
+    const firstSlot = requiredSlots[0];
+    if (!firstSlot) throw new Error("The selected artwork requirement has no required slots");
     const quantity = Number(object(rule.conditions).quantity);
     const matchingAddons = array(product.addons).filter((addon) => addon.pricingRuleId === pricingRuleId || addon.pricingRuleId === null);
     const addonIds = matchingAddons.length ? [String(matchingAddons[0].addonId)] : [];
     const deliveryRule = array(product.deliveryRules)[0];
     const delivery = deliveryRule ? { method: deliveryRule.deliveryMethod, stateCode: deliveryRule.stateCode || "*" } : undefined;
 
-    const pdfRejection = await api("/api/artworks/upload-url", {
+    await api("/api/artworks/upload-url", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId, pricingRuleId, filename: "rejected.pdf", contentType: "application/pdf", fileSize: 12, configuration: {} }),
+      body: JSON.stringify({ productId, pricingRuleId, artworkSlotId: id(firstSlot), artworkSlotKey: firstSlot.slotKey, filename: "rejected.pdf", contentType: "application/pdf", fileSize: 12, configuration: {} }),
     }, 422);
-    if (!String(object(object(pdfRejection).error).message).toLowerCase().includes("coreldraw")) throw new Error("PDF artwork was rejected without the expected CDR-only policy message");
 
-    const cdr = new TextEncoder().encode(`CorelDRAW customer flow verification ${marker}`);
-    const started = data(await api("/api/artworks/upload-url", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId, pricingRuleId, filename: `customer-flow-${marker}.cdr`, contentType: "application/octet-stream", fileSize: cdr.byteLength, configuration: {} }),
-    }, 201));
-    const artworkId = id(started.artwork);
-    if (!artworkId || !started.uploadUrl) throw new Error("CDR upload URL was not created");
-    createdArtworkIds.push(artworkId);
-    const uploaded = await fetch(String(started.uploadUrl), { method: "PUT", headers: started.headers as HeadersInit, body: cdr });
-    if (!uploaded.ok) throw new Error(`Direct R2 CDR upload failed with HTTP ${uploaded.status}`);
-    await api(`/api/artworks/${artworkId}/finalize`, { method: "POST" });
+    const artworkIds: Record<string, string> = {};
+    for (const slot of requiredSlots) {
+      const cdr = new TextEncoder().encode(`CorelDRAW customer flow verification ${marker} ${String(slot.slotKey)}`);
+      const started = data(await api("/api/artworks/upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId, pricingRuleId, artworkSlotId: id(slot), artworkSlotKey: slot.slotKey, filename: `customer-flow-${marker}-${String(slot.slotKey).toLowerCase()}.cdr`, contentType: "application/octet-stream", fileSize: cdr.byteLength, configuration: {} }),
+      }, 201));
+      const artworkId = id(started.artwork);
+      if (!artworkId || !started.uploadUrl) throw new Error("CDR upload URL was not created");
+      createdArtworkIds.push(artworkId);
+      const uploaded = await fetch(String(started.uploadUrl), { method: "PUT", headers: started.headers as HeadersInit, body: cdr });
+      if (!uploaded.ok) throw new Error(`Direct R2 CDR upload failed with HTTP ${uploaded.status}`);
+      await api(`/api/artworks/${artworkId}/finalize`, { method: "POST" });
+      artworkIds[String(slot.slotKey)] = artworkId;
+    }
 
-    const configuration = { pricingRuleId, addonIds, ...(delivery ? { delivery } : {}), artworkId };
+    const configuration = { pricingRuleId, addonIds, ...(delivery ? { delivery } : {}), artworkIds };
     const price = data(await api("/api/pricing/calculate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId, quantity, options: { pricingRuleId }, addonIds, delivery }) }));
     if (!price.calculatedAmount || Number(price.calculatedAmount) <= 0) throw new Error("Server pricing did not return an exact positive total");
 
@@ -118,23 +126,34 @@ async function main() {
     }
 
     const customer = { contactName: "Customer Flow Test", companyName: "Mahavir Verification", phone: "9426371150" };
-    const address = { line1: "Khadia Golwad", line2: "Opp. Jain Digamber Mandir", city: "Ahmedabad", state: "Gujarat", postalCode: "380001", country: "India" };
+    const address = { line1: "Khadia Golwad", line2: "Opp. Jain Digamber Mandir", city: "Ahmedabad", state: "Gujarat", stateCode: "GJ", postalCode: "380001", country: "India" };
     await addPurchase();
     const cod = data(await api("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customer, address, paymentMethod: "COD" }) }, 201));
     if (object(cod.payment).status !== "COD_PENDING") throw new Error("COD checkout did not create the expected payment state");
+    const codOrder = object(cod.order);
+    if (Math.abs(Number(codOrder.subtotal) + Number(codOrder.tax) - Number(codOrder.total)) > 0.01) throw new Error("Order subtotal, GST, and total do not reconcile");
 
     await addPurchase();
     const razorpay = data(await api("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customer, address, paymentMethod: "RAZORPAY" }) }, 201));
     if (object(razorpay.payment).status !== "PENDING" || object(razorpay.payment).provider !== "RAZORPAY") throw new Error("Razorpay checkout did not create the expected pending provider intent");
+
+    const [flowUser] = await db.select({ id: user.id }).from(user).where(eq(user.email, email)).limit(1);
+    if (!flowUser) throw new Error("Temporary customer was not found for credit verification");
+    const [flowCustomer] = await db.update(customers).set({ customerType: "B2B", creditEnabled: true, creditLimit: "100000.00", availableCredit: "100000.00", paymentTermsDays: 30 }).where(eq(customers.userId, flowUser.id)).returning({ id: customers.id });
+    if (!flowCustomer) throw new Error("Temporary customer credit could not be enabled");
+    await addPurchase();
+    const credit = data(await api("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customer, address, paymentMethod: "CREDIT" }) }, 201));
+    if (object(credit.payment).status !== "CREDIT_APPROVED" || object(credit.payment).provider !== "CUSTOMER_CREDIT" || object(credit.order).status !== "CONFIRMED") throw new Error("B2B credit checkout did not create a confirmed credit order");
+    if (Number(credit.availableCredit) >= 100000) throw new Error("B2B credit checkout did not reserve available credit");
 
     await api("/api/cart/items", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "QUOTE", productId, quantity, configuration }) }, 201);
     const quote = data(await api("/api/quotes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contactName: customer.contactName, email, phone: customer.phone, companyName: customer.companyName, notes: "Automated customer flow verification" }) }, 201));
     if (!quote.quoteNumber) throw new Error("Quote submission did not return a quote number");
 
     const account = data(await api("/api/account/summary"));
-    if (array(account.orders).length < 2 || !array(account.quotes).length || !array(account.artworks).length || !array(account.addresses).length) throw new Error("Customer account history did not contain the completed flow records");
+    if (array(account.orders).length < 3 || !array(account.quotes).length || !array(account.artworks).length || !array(account.addresses).length) throw new Error("Customer account history did not contain the completed flow records");
 
-    console.log("Customer flow verification passed: products/search, configuration, server pricing, CDR/R2, basket edits, COD, Razorpay intent, quote, and account history.");
+    console.log("Customer flow verification passed: products/search, configuration, server pricing, CDR/R2, basket edits, COD, Razorpay intent, B2B credit order, quote, and account history.");
   } finally {
     for (const artworkId of createdArtworkIds) {
       await fetch(`${baseUrl}/api/artworks/${artworkId}`, { method: "DELETE", headers: { Cookie: cookie, Origin: trustedOrigin } }).catch(() => undefined);

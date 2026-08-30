@@ -17,12 +17,12 @@ type Item = {
   pricingSnapshot: { applicableRule?: string | null; addons?: Array<{ name: string }>; delivery?: { method?: string | null } };
   product: { name: string; slug: string };
 };
-type CartData = { items: Item[]; summary: { total: string; taxInclusive: boolean; hasUnavailableItems: boolean } };
+type CartData = { items: Item[]; summary: { priceBeforeTax: string; tax: string; total: string; taxInclusive: boolean; hasTaxBreakdown: boolean; hasUnavailableItems: boolean } };
 
 const money = formatInr;
 
 export function PurchaseCart() {
-  const [data, setData] = useState<CartData>({ items: [], summary: { total: "0.00", taxInclusive: true, hasUnavailableItems: false } });
+  const [data, setData] = useState<CartData>({ items: [], summary: { priceBeforeTax: "0.00", tax: "0.00", total: "0.00", taxInclusive: true, hasTaxBreakdown: false, hasUnavailableItems: false } });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState("");
@@ -85,6 +85,6 @@ export function PurchaseCart() {
       </article>) : <div className="rounded-lg border border-dashed border-[var(--mc-line)] bg-white p-8"><h2 className="font-bold">Your purchase basket is empty.</h2><p className="mt-2 text-sm text-[var(--mc-muted)]">Add an orderable product with an exact server price.</p><Link href="/products" className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[var(--mc-accent)]">Browse products <ArrowRight size={16} /></Link></div>}
       {error ? <p role="alert" className="rounded-lg border border-[#efb7b7] bg-[#fff4f4] p-3 text-sm text-[#9b2525]">{error}</p> : null}
     </section>
-    <aside className="h-fit rounded-lg border border-[var(--mc-line)] bg-white p-5 xl:sticky xl:top-[116px]"><p className="text-xs font-bold uppercase text-[var(--mc-muted)]">Purchase basket</p><div className="mt-5 flex justify-between border-y border-[var(--mc-line)] py-4"><span>{data.items.length} line{data.items.length === 1 ? "" : "s"}</span><strong className="text-xl">{money(data.summary.total)}</strong></div>{data.summary.taxInclusive ? <p className="mt-3 text-xs text-[var(--mc-muted)]">Price includes applicable GST/taxes.</p> : null}<Link href="/checkout" className={`mt-5 flex items-center justify-center gap-2 rounded-full px-4 py-3.5 text-sm font-bold ${data.items.length && !data.summary.hasUnavailableItems ? "bg-[var(--mc-accent)] text-white hover:bg-[var(--mc-accent-dark)]" : "pointer-events-none bg-[#dfe7f4] text-[#74839a]"}`}>Checkout <ArrowRight size={16} /></Link><Link href="/quote" className="mt-3 block text-center text-sm font-bold text-[var(--mc-muted)]">Open quote basket</Link></aside>
+    <aside className="h-fit rounded-lg border border-[var(--mc-line)] bg-white p-5 xl:sticky xl:top-[116px]"><p className="text-xs font-bold uppercase text-[var(--mc-muted)]">Purchase basket</p><div className="mt-5 border-y border-[var(--mc-line)] py-4"><div className="flex justify-between"><span>{data.items.length} line{data.items.length === 1 ? "" : "s"}</span><strong className="text-xl">{money(data.summary.total)}</strong></div>{data.summary.hasTaxBreakdown ? <div className="mt-3 space-y-1.5 border-t border-[var(--mc-line)] pt-3 text-sm text-[var(--mc-muted)]"><p className="flex justify-between"><span>Price before GST</span><strong className="text-[var(--mc-ink)]">{money(data.summary.priceBeforeTax)}</strong></p><p className="flex justify-between"><span>GST</span><strong className="text-[var(--mc-ink)]">{money(data.summary.tax)}</strong></p></div> : null}</div>{data.summary.taxInclusive ? <p className="mt-3 text-xs text-[var(--mc-muted)]">Price includes applicable GST/taxes.</p> : null}<Link href="/checkout" className={`mt-5 flex items-center justify-center gap-2 rounded-full px-4 py-3.5 text-sm font-bold ${data.items.length && !data.summary.hasUnavailableItems ? "bg-[var(--mc-accent)] text-white hover:bg-[var(--mc-accent-dark)]" : "pointer-events-none bg-[#dfe7f4] text-[#74839a]"}`}>Checkout <ArrowRight size={16} /></Link><Link href="/quote" className="mt-3 block text-center text-sm font-bold text-[var(--mc-muted)]">Open quote basket</Link></aside>
   </div>;
 }

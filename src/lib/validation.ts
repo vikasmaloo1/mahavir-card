@@ -245,13 +245,13 @@ export const adminPricingSchema = z.object({
 export const paymentSchema = z.object({
   orderId: z.string().uuid(),
   customerId: z.string().uuid().nullable().optional(),
-  method: z.enum(["RAZORPAY", "COD"]),
+  method: z.enum(["RAZORPAY", "COD", "CREDIT"]),
   amount: z.string().regex(/^\d+(\.\d{1,2})?$/),
 });
 
 export const adminPaymentSchema = paymentSchema.extend({
-  method: z.enum(["RAZORPAY", "COD", "MANUAL"]),
-  status: z.enum(["PENDING", "PAID", "FAILED", "REFUNDED", "COD_PENDING", "COD_COLLECTED"]).default("PAID"),
+  method: z.enum(["RAZORPAY", "COD", "CREDIT", "MANUAL"]),
+  status: z.enum(["PENDING", "PAID", "FAILED", "REFUNDED", "COD_PENDING", "COD_COLLECTED", "CREDIT_APPROVED"]).default("PAID"),
   provider: z.string().trim().max(80).nullable().optional(),
   providerOrderId: z.string().trim().max(160).nullable().optional(),
   providerPaymentId: z.string().trim().max(160).nullable().optional(),
@@ -271,10 +271,11 @@ export const checkoutSchema = z.object({
     line2: z.string().trim().max(200).optional(),
     city: z.string().trim().min(2).max(100),
     state: z.string().trim().min(2).max(100),
+    stateCode: z.string().trim().length(2).toUpperCase(),
     postalCode: z.string().trim().regex(/^\d{6}$/, "Enter a valid 6-digit postal code"),
     country: z.string().trim().min(2).max(80).default("India"),
   }),
-  paymentMethod: z.enum(["RAZORPAY", "COD"]),
+  paymentMethod: z.enum(["RAZORPAY", "COD", "CREDIT"]),
   items: z.array(z.object({
     productId: z.string().uuid(),
     quantity: z.number().int().positive().max(1_000_000),

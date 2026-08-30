@@ -484,7 +484,7 @@ export const orders = pgTable("orders", {
   deliveryMethod: text("deliveryMethod"),
   deliveryState: text("deliveryState"),
   deliveryPrice: numeric("deliveryPrice", { precision: 12, scale: 2 }).notNull().default("0"),
-  deliveryAddress: jsonb("deliveryAddress").$type<{ line1: string; line2?: string | null; city: string; state: string; postalCode: string; country: string }>(),
+  deliveryAddress: jsonb("deliveryAddress").$type<{ line1: string; line2?: string | null; city: string; state: string; stateCode?: string; postalCode: string; country: string }>(),
   notes: text("notes"),
   ...timestamps,
 });

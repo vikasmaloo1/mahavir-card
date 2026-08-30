@@ -1,10 +1,12 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
 import { validateRequiredArtwork } from "@/lib/artwork-validation";
 import { getOwnedCart, selectionsFromConfiguration } from "@/lib/cart-service";
+import { evaluateCreditEligibility } from "@/lib/customer-credit";
 import { db } from "@/lib/db/server";
-import { addresses, cartItems, customers, orderItems, orders, payments } from "@/lib/db/schema";
+import { addresses, cartItems, customers, orderItems, orders, payments, walletTransactions } from "@/lib/db/schema";
+import { indiaStateName, isIndiaStateCode } from "@/lib/india-states";
 import { createPaymentIntent } from "@/lib/payment-service";
 import { requireUser } from "@/lib/permissions";
 import { checkoutSchema } from "@/lib/validation";
@@ -13,10 +15,13 @@ function makeNumber() {
   return `MHC-O-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 }
 
+class CreditCheckoutError extends Error {}
+
 export async function POST(request: Request) {
   try {
     const session = await requireUser(request);
     const input = await readBody(request, checkoutSchema);
+    if (!isIndiaStateCode(input.address.stateCode) || indiaStateName(input.address.stateCode) !== input.address.state) return jsonError("Select a valid Indian state", 422);
     const basket = await getOwnedCart(session.user.id, "PURCHASE");
     if (!basket.id || !basket.items.length) return jsonError("Your purchase basket is empty", 422);
     if (basket.summary.hasUnavailableItems) return jsonError("One or more basket items must be updated before checkout", 422);
@@ -31,7 +36,10 @@ export async function POST(request: Request) {
 
     const deliverySelections = basket.items.map((item) => selectionsFromConfiguration(item.configuration).delivery).filter(Boolean);
     const deliveryMethods = [...new Set(deliverySelections.map((delivery) => delivery!.method))];
-    const deliveryStates = [...new Set(deliverySelections.map((delivery) => delivery!.stateCode).filter(Boolean))];
+    const deliveryStates = [...new Set(deliverySelections.map((delivery) => delivery!.stateCode).filter((stateCode): stateCode is string => Boolean(stateCode && stateCode !== "*")))];
+    const courierStates = [...new Set(deliverySelections.filter((delivery) => delivery!.method === "COURIER").map((delivery) => delivery!.stateCode).filter((stateCode): stateCode is string => Boolean(stateCode && stateCode !== "*")))];
+    if (courierStates.length > 1) return jsonError("All courier items in one order must use the same delivery state", 422);
+    if (courierStates.length === 1 && courierStates[0] !== input.address.stateCode) return jsonError("Delivery state must match the state selected for courier pricing", 422);
     const deliveryPrice = basket.items.reduce((sum, item) => sum + Number((item.pricingSnapshot as { delivery?: { price?: string } }).delivery?.price ?? 0), 0).toFixed(2);
     const tax = basket.items.reduce((sum, item) => sum + Number((item.pricingSnapshot as { taxAmount?: string }).taxAmount ?? 0), 0).toFixed(2);
     const total = basket.summary.total;
@@ -39,10 +47,24 @@ export async function POST(request: Request) {
 
     const result = await db.transaction(async (tx) => {
       const [existingCustomer] = await tx.select().from(customers).where(eq(customers.userId, session.user.id)).limit(1);
-      const customer = existingCustomer
+      let customer = existingCustomer
         ? (await tx.update(customers).set({ ...input.customer, email: session.user.email, updatedAt: new Date() }).where(eq(customers.id, existingCustomer.id)).returning())[0]
         : (await tx.insert(customers).values({ ...input.customer, userId: session.user.id, email: session.user.email }).returning())[0];
       if (!customer) return null;
+
+      if (input.paymentMethod === "CREDIT") {
+        const eligibility = evaluateCreditEligibility(customer, total);
+        if (!eligibility.eligible) throw new CreditCheckoutError(eligibility.message);
+        const [reserved] = await tx.update(customers).set({ availableCredit: sql`${customers.availableCredit} - ${total}`, updatedAt: new Date() }).where(and(
+          eq(customers.id, customer.id),
+          eq(customers.customerType, "B2B"),
+          eq(customers.creditEnabled, true),
+          eq(customers.status, "ACTIVE"),
+          gte(customers.availableCredit, total),
+        )).returning({ availableCredit: customers.availableCredit });
+        if (!reserved) throw new CreditCheckoutError("Available credit changed. Refresh checkout and try again.");
+        customer = { ...customer, availableCredit: reserved.availableCredit };
+      }
 
       const [defaultAddress] = await tx.select().from(addresses).where(and(eq(addresses.customerId, customer.id), eq(addresses.type, "DELIVERY"), eq(addresses.isDefault, true))).limit(1);
       if (defaultAddress) {
@@ -54,7 +76,8 @@ export async function POST(request: Request) {
       const [order] = await tx.insert(orders).values({
         orderNumber: makeNumber(),
         customerId: customer.id,
-        subtotal: total,
+        status: input.paymentMethod === "CREDIT" ? "CONFIRMED" : "PENDING",
+        subtotal: basket.summary.priceBeforeTax,
         tax,
         total,
         deliveryMethod: deliveryMethods.length === 1 ? deliveryMethods[0] : deliveryMethods.length > 1 ? "MULTIPLE" : null,
@@ -82,12 +105,25 @@ export async function POST(request: Request) {
 
       const intent = createPaymentIntent(input.paymentMethod, total);
       const [payment] = await tx.insert(payments).values({ orderId: order.id, customerId: customer.id, method: input.paymentMethod, amount: total, status: intent.status, provider: intent.provider }).returning();
+      if (input.paymentMethod === "CREDIT") {
+        await tx.insert(walletTransactions).values({
+          customerId: customer.id,
+          transactionType: "CREDIT_ORDER",
+          status: "APPROVED",
+          amount: total,
+          balanceAfter: customer.availableCredit,
+          reference: order.orderNumber,
+          notes: `Credit reserved for order ${order.orderNumber}`,
+          createdBy: session.user.id,
+        });
+      }
       await tx.delete(cartItems).where(eq(cartItems.cartId, basket.id!));
-      return payment ? { order, payment } : null;
+      return payment ? { order, payment, availableCredit: input.paymentMethod === "CREDIT" ? customer.availableCredit : null } : null;
     });
 
     return result ? jsonOk(result, 201) : jsonError("Order was not created", 500);
   } catch (error) {
+    if (error instanceof CreditCheckoutError) return jsonError(error.message, 409);
     return error instanceof Response ? error : handleApiError(error);
   }
 }
