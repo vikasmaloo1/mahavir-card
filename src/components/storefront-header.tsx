@@ -11,10 +11,7 @@ export async function StorefrontHeader() {
     ["Home", "/"], ["Order now", "/products"], ["Order status", "/account#orders"],
     ["Wallet / balance", "/account/wallet"], ["Account", "/account"],
   ] : [
-    ["Home", "/"], ["Order now", "/products"], ["Visiting Card", "/products?category=visiting-card"],
-    ["Premium Card", "/products?category=premium-card"], ["Art Card", "/products?category=art-card"],
-    ["Letterhead / Envelope", "/products?category=letterhead-envelope"], ["Brochure", "/products?category=brochure"],
-    ["Leaflet / Cover", "/products?category=leaflet-cover"], ["Sticker", "/products?category=sticker"],
+    ["Home", "/"], ["Order now", "/products"], ["Request quote", "/quote"],
   ];
   return (
     <header className="sticky top-0 z-30 border-b border-[var(--mc-line)] border-t-[3px] border-t-[var(--mc-accent)] bg-[var(--mc-paper)]/95 shadow-[0_8px_28px_rgba(16,33,63,0.05)] backdrop-blur">

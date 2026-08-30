@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ArrowRight, Minus, Pencil, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { formatInr } from "@/lib/formatting";
+
 type Item = {
   id: string;
   productId: string;
@@ -17,7 +19,7 @@ type Item = {
 };
 type CartData = { items: Item[]; summary: { total: string; taxInclusive: boolean; hasUnavailableItems: boolean } };
 
-function money(value: string | null) { return `Rs ${Number(value ?? 0).toLocaleString("en-IN")}`; }
+const money = formatInr;
 
 export function PurchaseCart() {
   const [data, setData] = useState<CartData>({ items: [], summary: { total: "0.00", taxInclusive: true, hasUnavailableItems: false } });
@@ -76,7 +78,7 @@ export function PurchaseCart() {
       {data.items.length ? <div className="flex justify-end"><button type="button" onClick={() => void clear()} disabled={Boolean(busyId)} className="text-sm font-bold text-[var(--mc-muted)] hover:text-[var(--mc-accent)]">Clear basket</button></div> : null}
       {data.items.length ? data.items.map((item) => <article key={item.id} className="rounded-lg border border-[var(--mc-line)] bg-white p-4 shadow-sm sm:p-5">
         <div className="flex gap-4"><div className="grid size-11 shrink-0 place-items-center rounded-lg bg-[var(--mc-accent-soft)] text-[var(--mc-accent)]"><ShoppingBag size={19} /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-lg font-bold">{item.product.name}</p><p className="mt-1 text-sm text-[var(--mc-muted)]">{item.pricingSnapshot.applicableRule ?? "Configured print job"}</p></div><p className="text-lg font-bold text-[var(--mc-accent-dark)]">{item.calculatedAmount ? money(item.calculatedAmount) : "Unavailable"}</p></div>
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[var(--mc-muted)]">{item.pricingSnapshot.addons?.length ? <span>{item.pricingSnapshot.addons.map((addon) => addon.name).join(", ")}</span> : <span>No add-ons</span>}{item.pricingSnapshot.delivery?.method ? <span>{item.pricingSnapshot.delivery.method.replaceAll("_", " ")}</span> : null}</div>
+          {item.pricingSnapshot.addons?.length || item.pricingSnapshot.delivery?.method ? <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[var(--mc-muted)]">{item.pricingSnapshot.addons?.length ? <span>{item.pricingSnapshot.addons.map((addon) => addon.name).join(", ")}</span> : null}{item.pricingSnapshot.delivery?.method ? <span>{item.pricingSnapshot.delivery.method.replaceAll("_", " ")}</span> : null}</div> : null}
           {!item.available ? <p className="mt-3 rounded-lg bg-[#fff7e8] p-3 text-sm font-semibold text-[#805910]">{item.message}</p> : null}
           <div className="mt-4 flex flex-wrap items-center gap-2"><span className="mr-1 text-sm font-semibold">Quantity</span><button type="button" onClick={() => void updateQuantity(item, item.quantity - 1)} disabled={busyId === item.id || item.quantity <= 1} className="grid size-9 place-items-center rounded-full border border-[var(--mc-line)]" aria-label="Decrease quantity"><Minus size={14} /></button><span className="min-w-12 text-center text-sm font-bold">{item.quantity.toLocaleString("en-IN")}</span><button type="button" onClick={() => void updateQuantity(item, item.quantity + 1)} disabled={busyId === item.id} className="grid size-9 place-items-center rounded-full border border-[var(--mc-line)]" aria-label="Increase quantity"><Plus size={14} /></button><Link href={`/catalog/${item.product.slug}?editItem=${item.id}&kind=PURCHASE`} className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-[var(--mc-line)] px-3 py-2 text-sm font-bold text-[var(--mc-accent)]"><Pencil size={14} />Edit options</Link><button type="button" onClick={() => void remove(item.id)} disabled={busyId === item.id} className="grid size-9 place-items-center rounded-full text-[#a53025]" aria-label={`Remove ${item.product.name}`}><Trash2 size={17} /></button></div>
         </div></div>

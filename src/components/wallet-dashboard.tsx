@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import { CreditCard, WalletCards } from "lucide-react";
 
+import { formatInr } from "@/lib/formatting";
+
 type WalletData = { customer: { walletBalance: string; creditEnabled: boolean; creditLimit: string; availableCredit: string; paymentTermsDays: number }; transactions: Array<{ id: string; transactionType: string; status: string; amount: string; reference: string | null; createdAt: string }> };
-const money = (value: string) => `Rs ${Number(value).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+const money = formatInr;
 
 export function WalletDashboard() {
   const [data, setData] = useState<WalletData | null>(null);

@@ -3,6 +3,8 @@
 import { CheckCircle2, FileBox, RefreshCw, Trash2, UploadCloud } from "lucide-react";
 import { useRef, useState } from "react";
 
+import { formatDimensions } from "@/lib/formatting";
+
 export type ArtworkRequirement = {
   id: string;
   artworkRequired: boolean;
@@ -28,7 +30,6 @@ export type ArtworkSlot = { id: string; slotKey: string; name: string; required:
 export type UploadedArtwork = { id: string; originalFileName: string; fileSize: number; fileType: string; status: string; uploadedAt: string; previewUrl?: string | null; artworkSlotId?: string | null; artworkSlotKey?: string };
 
 function bytes(value: number) { return `${(value / 1024 / 1024).toFixed(value < 1024 * 1024 ? 1 : 0)} MB`; }
-function dimensions(width: string | null, height: string | null, unit: string | null) { return width && height ? `${width} x ${height} ${unit || "mm"}` : null; }
 function formatLabel() { return "CDR"; }
 
 export function ArtworkUploader({ productId, pricingRuleId, requirement, slot, showRequirements = true, configuration, artwork, onUploaded, onRemoved }: { productId: string; pricingRuleId: string | null; requirement: ArtworkRequirement; slot?: ArtworkSlot; showRequirements?: boolean; configuration: Record<string, string>; artwork: UploadedArtwork | null; onUploaded: (artwork: UploadedArtwork) => void; onRemoved: () => void }) {
@@ -84,9 +85,9 @@ export function ArtworkUploader({ productId, pricingRuleId, requirement, slot, s
     if (!response.ok) { const payload = await response.json().catch(() => null); setError(payload?.error?.message || "Could not remove the file."); return; }
     onRemoved();
   }
-  const full = dimensions(requirement.designWidth, requirement.designHeight, requirement.designUnit);
-  const safe = dimensions(requirement.safeAreaWidth, requirement.safeAreaHeight, requirement.designUnit);
-  const final = dimensions(requirement.finalWidth, requirement.finalHeight, requirement.designUnit);
+  const full = formatDimensions(requirement.designWidth, requirement.designHeight, requirement.designUnit || "mm");
+  const safe = formatDimensions(requirement.safeAreaWidth, requirement.safeAreaHeight, requirement.designUnit || "mm");
+  const final = formatDimensions(requirement.finalWidth, requirement.finalHeight, requirement.designUnit || "mm");
   const pages = requirement.pageInstructions ?? [];
   const maximumMb = slot?.maxFileSize ?? requirement.maxFileSize;
   return <section className="border border-[#d4dbe7] bg-[#fbfcff] p-4 sm:p-5"><input ref={input} type="file" accept=".cdr" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; event.currentTarget.value = ""; if (file) upload(file); }} />

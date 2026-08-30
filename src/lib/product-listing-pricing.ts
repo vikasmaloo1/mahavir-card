@@ -1,3 +1,5 @@
+import { formatInr } from "@/lib/formatting";
+
 export type ListingProduct = {
   id: string;
   orderable: boolean;
@@ -48,10 +50,6 @@ function isCustomerVisible(rule: ListingPricingRule) {
     && visibility !== "ADMIN";
 }
 
-function formatRupees(value: number) {
-  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: Number.isInteger(value) ? 0 : 2 }).format(value);
-}
-
 export function deriveStartingPrice(product: ListingProduct, rules: ListingPricingRule[]): StartingPrice {
   const fallback: StartingPrice = product.quoteable
     ? { startingPrice: null, startingQuantity: null, currency: "INR", priceLabel: "Custom quote", priceState: "CUSTOM_QUOTE", taxInclusive: null }
@@ -77,10 +75,32 @@ export function deriveStartingPrice(product: ListingProduct, rules: ListingPrici
     startingPrice: lowest.amount,
     startingQuantity: lowest.quantity,
     currency: "INR",
-    priceLabel: `Starts from \u20b9${formatRupees(lowest.amount)}${lowest.quantity ? ` / ${lowest.quantity.toLocaleString("en-IN")}` : ""}`,
+    priceLabel: `Starts from ${formatInr(lowest.amount)}${lowest.quantity ? ` / ${lowest.quantity.toLocaleString("en-IN")}` : ""}`,
     priceState: "STARTING",
     taxInclusive: true,
   };
+}
+
+export function conciseProductSpecification(name: string, description: string | null, categoryName: string | null) {
+  let summary = description?.trim() ?? "";
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escapedCategory = categoryName?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  summary = summary
+    .replace(new RegExp(`^${escapedName}\\s*(?:[-:|\u00b7]\\s*)?`, "i"), "")
+    .replace(new RegExp(`^${escapedCategory ? `${escapedCategory}\\s*(?:[-:|\u00b7]\\s*)?` : "(?!)"}`, "i"), "")
+    .replace(/\s*for (?:a )?reference batch of [\d,]+(?:\s+(?:cards|pieces|pcs|units))?\.?/gi, "")
+    .replace(/\s*reference quantity:\s*[\d,]+\.?/gi, "")
+    .trim()
+    .replace(/^[,.;:\-\u00b7\s]+|[,;:\-\u00b7\s]+$/g, "");
+
+  if (summary) return summary.charAt(0).toUpperCase() + summary.slice(1);
+
+  const normalizedName = name.toLowerCase();
+  const subject = categoryName?.toLowerCase().includes("card") ? "visiting card" : "print job";
+  if (/front[\s-]*back|both[\s-]*side|f[\s-]*b/.test(normalizedName)) return `Front-and-back ${subject} printing.`;
+  if (/single[\s-]*side|\bsingle\b/.test(normalizedName)) return `Single-side ${subject} printing.`;
+  return categoryName ? `${categoryName} specification.` : "Production-ready print specification.";
 }
 
 export function deriveStartingPriceMap(products: ListingProduct[], rules: ListingPricingRule[]) {

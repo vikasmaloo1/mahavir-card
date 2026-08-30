@@ -87,7 +87,7 @@ export function LoginForm() {
       router.replace("/account");
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Something went wrong. Please try again.");
+      setError(caught instanceof Error ? caught.message : "We couldn't sign you in. Check your connection and try again.");
     } finally {
       setLoading(false);
     }

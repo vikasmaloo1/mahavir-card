@@ -32,5 +32,5 @@ export function handleApiError(error: unknown) {
   }
 
   console.error(error);
-  return jsonError("Something went wrong", 500);
+  return jsonError("We couldn't complete this request right now. Please try again.", 500);
 }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { deriveStartingPrice, type ListingPricingRule, type ListingProduct } from "../src/lib/product-listing-pricing";
+import { conciseProductSpecification, deriveStartingPrice, type ListingPricingRule, type ListingProduct } from "../src/lib/product-listing-pricing";
 
 const product: ListingProduct = { id: "product-1", orderable: true, quoteable: true, referenceQuantity: 1000, pricesTaxInclusive: true };
 const rule = (amount: unknown, extra: Partial<ListingPricingRule> = {}): ListingPricingRule => ({
@@ -49,4 +49,14 @@ test("quote-only and unpriced products never display zero", () => {
 test("add-ons and delivery are not inputs to listing price derivation", () => {
   const result = deriveStartingPrice(product, [rule("250", { priceFormula: { amount: "250", unit: "batch", addonAmount: "100", deliveryAmount: "80" } })]);
   assert.equal(result.startingPrice, 250);
+});
+
+test("rounds customer-facing starting prices to whole rupees", () => {
+  assert.equal(deriveStartingPrice(product, [rule("283.2")]).priceLabel, "Starts from \u20b9283 / 1,000");
+  assert.equal(deriveStartingPrice(product, [rule("283.8")]).priceLabel, "Starts from \u20b9284 / 1,000");
+});
+
+test("removes repeated product names and reference quantities from listing copy", () => {
+  assert.equal(conciseProductSpecification("NT Single", "NT Single for a reference batch of 1,000 cards.", "Visiting Card"), "Single-side visiting card printing.");
+  assert.equal(conciseProductSpecification("NT Front Back", "NT Front Back for a reference batch of 1,000 cards.", "Visiting Card"), "Front-and-back visiting card printing.");
 });
