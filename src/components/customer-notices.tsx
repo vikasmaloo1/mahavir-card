@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, CircleAlert, Info, ShieldCheck } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 export type CustomerNoticeItem = {
   id: string;
@@ -39,69 +38,22 @@ export function CustomerNotices({ placement = "GLOBAL" }: { placement?: "GLOBAL"
     };
   }, [placement]);
 
-  const isStatic = useMemo(() => {
-    return items.length > 0 && items.every((item) => item.animationType === "STATIC");
-  }, [items]);
-
   if (!loaded || !items.length) return null;
 
-  // Single static notice layout if all are static or only 1 static
-  if (isStatic) {
-    return (
-      <aside
-        className="relative z-20 border-b border-[#d7e1f2] bg-[#f5f8ff] text-[var(--mc-ink)]"
-        aria-label="Important notices"
-      >
-        <div className="mx-auto flex max-w-[1440px] flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between lg:px-8">
-          {items.map((item) => {
-            const Icon = item.tone === "WARNING" ? CircleAlert : item.tone === "SUCCESS" ? ShieldCheck : Info;
-            return (
-              <div key={item.id} className="flex items-center gap-2.5 text-xs sm:text-sm">
-                <span
-                  className={`inline-flex size-5 shrink-0 items-center justify-center rounded-full ${
-                    item.tone === "WARNING"
-                      ? "bg-[#fff2e0] text-[#9c5b16]"
-                      : item.tone === "SUCCESS"
-                      ? "bg-[#eaf6ed] text-[#1c693a]"
-                      : "bg-[#eaf1ff] text-[var(--mc-accent)]"
-                  }`}
-                >
-                  <Icon size={13} />
-                </span>
-                <span className="font-semibold text-[var(--mc-ink)]">{item.title}</span>
-                <span className="hidden text-[var(--mc-muted)] md:inline">{item.message}</span>
-                {item.linkLabel && item.linkUrl ? (
-                  <Link
-                    href={item.linkUrl}
-                    className="ml-2 inline-flex items-center gap-1 font-bold text-[var(--mc-accent)] hover:underline"
-                  >
-                    {item.linkLabel}
-                    <ArrowRight size={13} />
-                  </Link>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-      </aside>
-    );
-  }
-
-  // Continuous moving notice ticker
   return (
     <aside
-      className="group relative z-20 overflow-hidden border-b border-[#d7e1f2] bg-[#f5f8ff] py-2 text-xs sm:text-[13px] text-[var(--mc-ink)]"
-      aria-label="Continuous announcement ticker"
+      className="group relative z-20 h-9 sm:h-10 w-full overflow-hidden border-b border-[#d7e1f2] bg-[#f0f4fa] text-[var(--mc-ink)] select-none"
+      aria-label="Important notices ticker"
     >
-      <div className="flex w-full overflow-hidden">
-        <div className="animate-ticker-continuous flex shrink-0 items-center">
+      <div className="flex h-full w-full items-center overflow-hidden">
+        <div className="animate-ticker-continuous flex shrink-0 items-center whitespace-nowrap text-xs sm:text-[13px] text-[#10213f]">
           {/* First set of notices */}
           {items.map((item) => (
-            <NoticeTickerItem key={`first-${item.id}`} item={item} />
+            <NoticeTickerItem key={`track1-${item.id}`} item={item} />
           ))}
-          {/* Duplicate set for seamless infinite looping without gaps */}
+          {/* Second duplicate set for seamless infinite loop */}
           {items.map((item) => (
-            <NoticeTickerItem key={`second-${item.id}`} item={item} ariaHidden />
+            <NoticeTickerItem key={`track2-${item.id}`} item={item} ariaHidden />
           ))}
         </div>
       </div>
@@ -110,49 +62,46 @@ export function CustomerNotices({ placement = "GLOBAL" }: { placement?: "GLOBAL"
 }
 
 function NoticeTickerItem({ item, ariaHidden }: { item: CustomerNoticeItem; ariaHidden?: boolean }) {
-  const Icon = item.tone === "WARNING" ? CircleAlert : item.tone === "SUCCESS" ? ShieldCheck : Info;
-
   return (
-    <div
-      className="flex shrink-0 items-center gap-2.5 px-6"
-      aria-hidden={ariaHidden}
-    >
+    <span className="inline-flex items-center gap-2 px-5 sm:px-6" aria-hidden={ariaHidden}>
+      {/* Subtle indicator dot */}
       <span
-        className={`inline-flex size-5 shrink-0 items-center justify-center rounded-full ${
+        className={`size-1.5 shrink-0 rounded-full ${
           item.tone === "WARNING"
-            ? "bg-[#fff2e0] text-[#9c5b16]"
+            ? "bg-[#d97706]"
             : item.tone === "SUCCESS"
-            ? "bg-[#eaf6ed] text-[#1c693a]"
-            : "bg-[#eaf1ff] text-[var(--mc-accent)]"
+            ? "bg-[#16a34a]"
+            : "bg-[var(--mc-accent)]"
         }`}
-      >
-        <Icon size={13} />
-      </span>
+        aria-hidden="true"
+      />
 
-      <strong className="whitespace-nowrap font-bold text-[var(--mc-ink)]">
-        {item.title}
-      </strong>
+      {/* Notice Title */}
+      <strong className="font-bold text-[#10213f]">{item.title}</strong>
 
+      {/* Notice Message (Short) */}
       {item.message ? (
-        <span className="whitespace-nowrap text-[var(--mc-muted)] font-normal">
+        <span className="font-normal text-[#5d6f8d]">
           {item.message}
         </span>
       ) : null}
 
+      {/* Inline CTA Action Link */}
       {item.linkLabel && item.linkUrl ? (
         <Link
           href={item.linkUrl}
           tabIndex={ariaHidden ? -1 : 0}
-          className="ml-1 inline-flex shrink-0 items-center gap-1 rounded-full border border-[#c7d7f3] bg-white px-2.5 py-0.5 text-xs font-bold text-[var(--mc-accent)] hover:border-[var(--mc-accent)] hover:bg-[var(--mc-accent-soft)]"
+          className="ml-1.5 inline-flex items-center gap-0.5 font-bold text-[var(--mc-accent)] hover:underline"
         >
           <span>{item.linkLabel}</span>
-          <ArrowRight size={11} />
+          <span aria-hidden="true">&rarr;</span>
         </Link>
       ) : null}
 
-      <span className="mx-2 text-[#9bb0ce] select-none" aria-hidden="true">
-        {"\u2022"}
+      {/* Subtle dot divider */}
+      <span className="ml-5 sm:ml-6 text-[#9bb0ce] select-none" aria-hidden="true">
+        {"\u00b7"}
       </span>
-    </div>
+    </span>
   );
 }
