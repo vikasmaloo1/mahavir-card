@@ -44,20 +44,21 @@ const fixed = (slug: string, name: string, amount: number, productionTime: strin
 const ntCourier = { GJ: 40, RJ: 60 } as const;
 const standardCourier = { GJ: 60, RJ: 80 } as const;
 const premiumCourier = { GJ: 80, RJ: 100 } as const;
+const cornerCutAddon = { code: "CORNER_CUT", name: "Corner Cut", amount: 100, referenceQuantity: 1000 } as const;
 
 export const rateCatalog: RateCatalogCategory[] = [
   {
     slug: "visiting-card", name: "Visiting Card", description: "Standard, tearable, thermal matt, texture, and UV visiting cards.",
     items: [
-      fixedCard("nt-single", "NT Single", 240, "2-3 working days", visitingCardArtwork([slot("DESIGN", "Design artwork")]), { delivery: ntCourier }),
-      fixedCard("nt-front-back", "NT Front Back", 280, "3-4 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")]), { delivery: ntCourier }),
-      fixedCard("tearable-single-side", "Tearable Single Side Art Card 250 GSM", 210, "2-3 working days", visitingCardArtwork([slot("FRONT", "Front design")]), { delivery: standardCourier }),
-      fixedCard("tearable-front-back-without-lamination", "Tearable Front Back Without Lamination", 300, "3-4 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")]), { delivery: standardCourier }),
-      fixedCard("tearable-front-back-with-lamination", "Tearable Front Back With Lamination", 320, "4-5 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")]), { delivery: standardCourier }),
-      fixedCard("400-gsm-thermal-matt-single-front-back", "400 GSM Thermal Matt Single + Front Back", 480, "4-5 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")], [92, 54], "C30 M0 Y0 K100"), { addon: { code: "CORNER_CUT", name: "Corner Cut", amount: 300 }, delivery: premiumCourier }),
-      fixedCard("350-gsm-thermal-matt-texture", "350 GSM Thermal Matt Texture", 700, "4-5 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")], [92, 54], "C30 M0 Y0 K100"), { delivery: premiumCourier }),
-      fixedCard("400-gsm-thermal-matt-single-side-uv", "400 GSM Thermal Matt Single Side UV", 570, "5-7 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("SPOT_UV", "Spot UV separation", "Black and white only")], [92, 54], "C30 M0 Y0 K100"), { delivery: premiumCourier }),
-      fixedCard("400-gsm-thermal-matt-front-back-uv", "400 GSM Thermal Matt Front Back UV", 670, "5-7 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design"), slot("FRONT_SPOT_UV", "Front Spot UV separation", "Black and white only"), slot("BACK_SPOT_UV", "Back Spot UV separation", "Black and white only")], [92, 54], "C30 M0 Y0 K100"), { addon: { code: "CORNER_CUT", name: "Corner Cut", amount: 300 }, delivery: premiumCourier }),
+      fixedCard("nt-single", "NT Single", 240, "2-3 working days", visitingCardArtwork([slot("DESIGN", "Design artwork")]), { delivery: ntCourier, quoteable: false }),
+      fixedCard("nt-front-back", "NT Front Back", 280, "3-4 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")]), { delivery: ntCourier, quoteable: false }),
+      fixedCard("tearable-single-side", "Tearable Single Side Art Card 250 GSM", 210, "2-3 working days", visitingCardArtwork([slot("FRONT", "Front design")]), { delivery: standardCourier, quoteable: false }),
+      fixedCard("tearable-front-back-without-lamination", "Tearable Front Back Without Lamination", 300, "3-4 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")]), { delivery: standardCourier, quoteable: false }),
+      fixedCard("tearable-front-back-with-lamination", "Tearable Front Back With Lamination", 320, "4-5 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")]), { delivery: standardCourier, quoteable: false }),
+      fixedCard("400-gsm-thermal-matt-single-front-back", "400 GSM Thermal Matt Single + Front Back", 480, "4-5 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")], [92, 54], "C30 M0 Y0 K100"), { addon: cornerCutAddon, delivery: premiumCourier, quoteable: false }),
+      fixedCard("350-gsm-thermal-matt-texture", "350 GSM Thermal Matt Texture", 700, "4-5 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")], [92, 54], "C30 M0 Y0 K100"), { addon: cornerCutAddon, delivery: premiumCourier, quoteable: false }),
+      fixedCard("400-gsm-thermal-matt-single-side-uv", "400 GSM Thermal Matt Single Side UV", 570, "5-7 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("SPOT_UV", "Spot UV separation", "Black and white only")], [92, 54], "C30 M0 Y0 K100"), { addon: cornerCutAddon, delivery: premiumCourier, quoteable: false }),
+      fixedCard("400-gsm-thermal-matt-front-back-uv", "400 GSM Thermal Matt Front Back UV", 670, "5-7 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design"), slot("FRONT_SPOT_UV", "Front Spot UV separation", "Black and white only"), slot("BACK_SPOT_UV", "Back Spot UV separation", "Black and white only")], [92, 54], "C30 M0 Y0 K100"), { addon: cornerCutAddon, delivery: premiumCourier, quoteable: false }),
     ],
   },
   {

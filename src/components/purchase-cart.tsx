@@ -5,6 +5,7 @@ import { ArrowRight, Minus, Pencil, Plus, ShoppingBag, Trash2 } from "lucide-rea
 import { useCallback, useEffect, useState } from "react";
 
 import { formatInr } from "@/lib/formatting";
+import { stepProductQuantity } from "@/lib/quantity-helper";
 
 type Item = {
   id: string;
@@ -15,7 +16,7 @@ type Item = {
   available: boolean;
   message: string | null;
   pricingSnapshot: { applicableRule?: string | null; addons?: Array<{ name: string }>; delivery?: { method?: string | null } };
-  product: { name: string; slug: string };
+  product: { name: string; slug: string; categorySlug?: string };
 };
 type CartData = { items: Item[]; summary: { priceBeforeTax: string; tax: string; total: string; taxInclusive: boolean; hasTaxBreakdown: boolean; hasUnavailableItems: boolean } };
 
@@ -47,9 +48,11 @@ export function PurchaseCart() {
     return () => window.clearTimeout(timer);
   }, [load]);
 
-  async function updateQuantity(item: Item, quantity: number) {
+  async function updateQuantity(item: Item, direction: "UP" | "DOWN") {
+    const nextQty = stepProductQuantity(item.quantity, direction, item.product.categorySlug, item.product.slug);
+    if (nextQty === item.quantity) return;
     setBusyId(item.id); setError("");
-    const response = await fetch(`/api/cart/items/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quantity: Math.max(1, quantity) }) });
+    const response = await fetch(`/api/cart/items/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quantity: nextQty }) });
     const payload = await response.json().catch(() => null);
     if (!response.ok) setError(payload?.error?.message ?? "Could not update this item");
     else await load();
@@ -80,7 +83,7 @@ export function PurchaseCart() {
         <div className="flex gap-4"><div className="grid size-11 shrink-0 place-items-center rounded-lg bg-[var(--mc-accent-soft)] text-[var(--mc-accent)]"><ShoppingBag size={19} /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-lg font-bold">{item.product.name}</p><p className="mt-1 text-sm text-[var(--mc-muted)]">{item.pricingSnapshot.applicableRule ?? "Configured print job"}</p></div><p className="text-lg font-bold text-[var(--mc-accent-dark)]">{item.calculatedAmount ? money(item.calculatedAmount) : "Unavailable"}</p></div>
           {item.pricingSnapshot.addons?.length || item.pricingSnapshot.delivery?.method ? <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[var(--mc-muted)]">{item.pricingSnapshot.addons?.length ? <span>{item.pricingSnapshot.addons.map((addon) => addon.name).join(", ")}</span> : null}{item.pricingSnapshot.delivery?.method ? <span>{item.pricingSnapshot.delivery.method.replaceAll("_", " ")}</span> : null}</div> : null}
           {!item.available ? <p className="mt-3 rounded-lg bg-[#fff7e8] p-3 text-sm font-semibold text-[#805910]">{item.message}</p> : null}
-          <div className="mt-4 flex flex-wrap items-center gap-2"><span className="mr-1 text-sm font-semibold">Quantity</span><button type="button" onClick={() => void updateQuantity(item, item.quantity - 1)} disabled={busyId === item.id || item.quantity <= 1} className="grid size-9 place-items-center rounded-full border border-[var(--mc-line)]" aria-label="Decrease quantity"><Minus size={14} /></button><span className="min-w-12 text-center text-sm font-bold">{item.quantity.toLocaleString("en-IN")}</span><button type="button" onClick={() => void updateQuantity(item, item.quantity + 1)} disabled={busyId === item.id} className="grid size-9 place-items-center rounded-full border border-[var(--mc-line)]" aria-label="Increase quantity"><Plus size={14} /></button><Link href={`/catalog/${item.product.slug}?editItem=${item.id}&kind=PURCHASE`} className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-[var(--mc-line)] px-3 py-2 text-sm font-bold text-[var(--mc-accent)]"><Pencil size={14} />Edit options</Link><button type="button" onClick={() => void remove(item.id)} disabled={busyId === item.id} className="grid size-9 place-items-center rounded-full text-[#a53025]" aria-label={`Remove ${item.product.name}`}><Trash2 size={17} /></button></div>
+          <div className="mt-4 flex flex-wrap items-center gap-2"><span className="mr-1 text-sm font-semibold">Quantity</span><button type="button" onClick={() => void updateQuantity(item, "DOWN")} disabled={busyId === item.id || item.quantity <= 500} className="grid size-9 place-items-center rounded-full border border-[var(--mc-line)] hover:bg-[#f3f6fa]" aria-label="Decrease quantity"><Minus size={14} /></button><span className="min-w-12 text-center text-sm font-bold">{item.quantity.toLocaleString("en-IN")}</span><button type="button" onClick={() => void updateQuantity(item, "UP")} disabled={busyId === item.id} className="grid size-9 place-items-center rounded-full border border-[var(--mc-line)] hover:bg-[#f3f6fa]" aria-label="Increase quantity"><Plus size={14} /></button><Link href={`/catalog/${item.product.slug}?editItem=${item.id}&kind=PURCHASE`} className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-[var(--mc-line)] px-3 py-2 text-sm font-bold text-[var(--mc-accent)]"><Pencil size={14} />Edit options</Link><button type="button" onClick={() => void remove(item.id)} disabled={busyId === item.id} className="grid size-9 place-items-center rounded-full text-[#a53025]" aria-label={`Remove ${item.product.name}`}><Trash2 size={17} /></button></div>
         </div></div>
       </article>) : <div className="rounded-lg border border-dashed border-[var(--mc-line)] bg-white p-8"><h2 className="font-bold">Your purchase basket is empty.</h2><p className="mt-2 text-sm text-[var(--mc-muted)]">Add an orderable product with an exact server price.</p><Link href="/products" className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[var(--mc-accent)]">Browse products <ArrowRight size={16} /></Link></div>}
       {error ? <p role="alert" className="rounded-lg border border-[#efb7b7] bg-[#fff4f4] p-3 text-sm text-[#9b2525]">{error}</p> : null}

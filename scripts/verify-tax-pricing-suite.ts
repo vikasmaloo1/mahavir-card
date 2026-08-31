@@ -211,7 +211,112 @@ async function runSuite() {
   assert.equal(completeB2B, true, "B2B with company name must be complete");
   console.log("✓ Profile completion validation passed for B2C & B2B");
 
-  console.log("\n=== ALL 11 VERIFICATION TEST SUITES PASSED PERFECTLY ===");
+  // -------------------------------------------------------------
+  // PART 5: QUANTITY NORMALIZATION & STEPPER LOGIC
+  // -------------------------------------------------------------
+  console.log("\n--- Part 5: Quantity Normalization & Stepper Rules ---");
+  const { normalizeProductQuantity, stepProductQuantity } = await import("../src/lib/quantity-helper");
+
+  // Standard product normalization: 1000 step
+  assert.equal(normalizeProductQuantity(1, "visiting-card", "nt-single").normalizedQuantity, 1000);
+  assert.equal(normalizeProductQuantity(999, "visiting-card", "nt-single").normalizedQuantity, 1000);
+  assert.equal(normalizeProductQuantity(1000, "visiting-card", "nt-single").normalizedQuantity, 1000);
+  assert.equal(normalizeProductQuantity(1001, "visiting-card", "nt-single").normalizedQuantity, 2000);
+  assert.equal(normalizeProductQuantity(1020, "visiting-card", "nt-single").normalizedQuantity, 2000);
+  assert.equal(normalizeProductQuantity(1500, "visiting-card", "nt-single").normalizedQuantity, 2000);
+  assert.equal(normalizeProductQuantity(1999, "visiting-card", "nt-single").normalizedQuantity, 2000);
+  assert.equal(normalizeProductQuantity(2000, "visiting-card", "nt-single").normalizedQuantity, 2000);
+  assert.equal(normalizeProductQuantity(2001, "visiting-card", "nt-single").normalizedQuantity, 3000);
+  console.log("✓ Standard quantity normalization (1001->2000, 1020->2000, 1500->2000) verified");
+
+  // Special products (Art Card / Premium Card): 500 first step, then 1000
+  assert.equal(normalizeProductQuantity(1, "premium-card", "premium-400-gsm-velvet").normalizedQuantity, 500);
+  assert.equal(normalizeProductQuantity(500, "premium-card", "premium-400-gsm-velvet").normalizedQuantity, 500);
+  assert.equal(normalizeProductQuantity(501, "premium-card", "premium-400-gsm-velvet").normalizedQuantity, 1000);
+  assert.equal(normalizeProductQuantity(1000, "premium-card", "premium-400-gsm-velvet").normalizedQuantity, 1000);
+  assert.equal(normalizeProductQuantity(1001, "premium-card", "premium-400-gsm-velvet").normalizedQuantity, 2000);
+  console.log("✓ Premium / Art Card special 500-step normalization verified");
+
+  // Stepper stepProductQuantity
+  assert.equal(stepProductQuantity(1000, "UP", "visiting-card", "nt-single"), 2000);
+  assert.equal(stepProductQuantity(2000, "DOWN", "visiting-card", "nt-single"), 1000);
+  assert.equal(stepProductQuantity(1000, "DOWN", "visiting-card", "nt-single"), 1000);
+  assert.equal(stepProductQuantity(500, "UP", "premium-card", "premium-400-gsm-velvet"), 1000);
+  assert.equal(stepProductQuantity(1000, "DOWN", "premium-card", "premium-400-gsm-velvet"), 500);
+  console.log("✓ Stepper stepProductQuantity verified");
+
+  // -------------------------------------------------------------
+  // PART 6: CORNER CUT ADDON ON ALL 4 THERMAL MATT CARDS & SCALING
+  // -------------------------------------------------------------
+  console.log("\n--- Part 6: Corner Cut Addon on 4 Thermal Matt Cards & Scaling ---");
+  const { productAddons, addons } = await import("../src/lib/db/schema");
+  const thermalMattSlugs = [
+    "400-gsm-thermal-matt-single-front-back",
+    "350-gsm-thermal-matt-texture",
+    "400-gsm-thermal-matt-single-side-uv",
+    "400-gsm-thermal-matt-front-back-uv",
+  ];
+
+  for (const tmSlug of thermalMattSlugs) {
+    const [tmProd] = await db.select().from(products).where(eq(products.slug, tmSlug)).limit(1);
+    assert.ok(tmProd, `Product ${tmSlug} must exist`);
+    const attachedAddons = await db.select({
+      addon: addons,
+      productAddon: productAddons,
+    }).from(productAddons).innerJoin(addons, eq(productAddons.addonId, addons.id)).where(and(eq(productAddons.productId, tmProd.id), eq(productAddons.isActive, true)));
+    const cornerCut = attachedAddons.find((a) => a.addon.code === "CORNER_CUT");
+    assert.ok(cornerCut, `Corner Cut addon must be attached to ${tmSlug}`);
+    assert.equal(Number(cornerCut.productAddon.price), 100, `Corner Cut base price on ${tmSlug} must be ₹100`);
+    console.log(`✓ ${tmSlug} has Corner Cut addon configured @ ₹100/1000`);
+  }
+
+  // Verify Corner Cut scaling with calculateProductPrice (1000 -> ₹100, 2000 -> ₹200, 3000 -> ₹300)
+  const [tmSingle] = await db.select().from(products).where(eq(products.slug, "400-gsm-thermal-matt-single-front-back")).limit(1);
+  const [ccAddonRow] = await db.select().from(addons).where(eq(addons.code, "CORNER_CUT")).limit(1);
+  assert.ok(ccAddonRow, "CORNER_CUT addon row must exist");
+
+  const tm1000 = await calculateProductPrice(tmSingle.id, 1000, {}, { addonIds: [ccAddonRow.id], stateCode: "GJ" });
+  assert.ok(tm1000, "1000 cards price calc failed");
+  assert.equal(tm1000.addons[0].price, "100.00", "Corner Cut for 1000 cards must be ₹100");
+
+  const tm2000 = await calculateProductPrice(tmSingle.id, 2000, {}, { addonIds: [ccAddonRow.id], stateCode: "GJ" });
+  assert.ok(tm2000, "2000 cards price calc failed");
+  assert.equal(tm2000.addons[0].price, "200.00", "Corner Cut for 2000 cards must be ₹200");
+
+  const tm3000 = await calculateProductPrice(tmSingle.id, 3000, {}, { addonIds: [ccAddonRow.id], stateCode: "GJ" });
+  assert.ok(tm3000, "3000 cards price calc failed");
+  assert.equal(tm3000.addons[0].price, "300.00", "Corner Cut for 3000 cards must be ₹300");
+  console.log("✓ Corner Cut scaling verified: 1000 -> ₹100, 2000 -> ₹200, 3000 -> ₹300");
+
+  // -------------------------------------------------------------
+  // PART 7: COURIER SCALING BY QUANTITY
+  // -------------------------------------------------------------
+  console.log("\n--- Part 7: Courier Delivery Quantity Scaling ---");
+  // NT Single Courier: GJ is ₹40 per 1000 cards
+  // 1000 cards -> ₹40
+  // 2000 cards -> ₹80
+  // 3000 cards -> ₹120
+  const courier1000 = await calculateProductPrice(ntSingle.id, 1000, {}, { delivery: { method: "COURIER", stateCode: "GJ" }, stateCode: "GJ" });
+  assert.equal(courier1000?.delivery.price, "40.00", "Courier for 1000 cards must be ₹40");
+
+  const courier2000 = await calculateProductPrice(ntSingle.id, 2000, {}, { delivery: { method: "COURIER", stateCode: "GJ" }, stateCode: "GJ" });
+  assert.equal(courier2000?.delivery.price, "80.00", "Courier for 2000 cards must be ₹80 (2 * 40)");
+
+  const courier3000 = await calculateProductPrice(ntSingle.id, 3000, {}, { delivery: { method: "COURIER", stateCode: "GJ" }, stateCode: "GJ" });
+  assert.equal(courier3000?.delivery.price, "120.00", "Courier for 3000 cards must be ₹120 (3 * 40)");
+  console.log("✓ Courier scaling verified: 1000 cards -> ₹40, 2000 cards -> ₹80, 3000 cards -> ₹120");
+
+  // -------------------------------------------------------------
+  // PART 8: VISITING CARDS QUOTEABLE STATUS
+  // -------------------------------------------------------------
+  console.log("\n--- Part 8: Visiting Cards Quoteability Check ---");
+  const visitingCards = await db.select().from(products).where(and(eq(products.productClass, "Visiting Card"), eq(products.isActive, true)));
+  for (const vc of visitingCards) {
+    assert.equal(vc.quoteable, false, `Visiting Card ${vc.slug} must have quoteable: false`);
+  }
+  console.log(`✓ All ${visitingCards.length} Visiting Card products verified with quoteable: false`);
+
+  console.log("\n=== ALL VERIFICATION TEST SUITES PASSED PERFECTLY ===");
 }
 
 runSuite().catch((err) => {

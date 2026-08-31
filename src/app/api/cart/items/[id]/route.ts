@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/permissions";
 import { cartItemUpdateSchema } from "@/lib/validation";
 import { validateRequiredArtwork } from "@/lib/artwork-validation";
 import { calculateCartSelection, purchasablePrice } from "@/lib/cart-service";
+import { normalizeProductQuantity } from "@/lib/quantity-helper";
 import { PricingValidationError } from "@/lib/pricing-service";
 
 async function ownedItem(id: string, userId: string) {
@@ -21,11 +22,18 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/cart/items
     const existing = await ownedItem(id, session.user.id);
     if (!existing) return jsonError("Basket item not found", 404);
     const input = await readBody(request, cartItemUpdateSchema);
-    const quantity = input.quantity;
+    const { normalizedQuantity } = normalizeProductQuantity(input.quantity, null, existing.product.slug);
+    const quantity = normalizedQuantity;
     const configuration = input.configuration ?? existing.configuration;
     const capable = existing.product.isActive && existing.product.status === "ACTIVE" && (existing.kind === "PURCHASE" ? existing.product.orderable : existing.product.quoteable);
     if (!capable) return jsonError("This product is no longer available for this basket", 422);
-    try { await validateRequiredArtwork(session.user.id, existing.productId, configuration); } catch (error) { return jsonError(error instanceof Error ? error.message : "Artwork validation failed", 422); }
+    if (existing.kind === "PURCHASE") {
+      try {
+        await validateRequiredArtwork(session.user.id, existing.productId, configuration);
+      } catch (error) {
+        return jsonError(error instanceof Error ? error.message : "Artwork validation failed", 422);
+      }
+    }
     const price = await calculateCartSelection(existing.productId, quantity, configuration, session.user.id);
     if (existing.kind === "PURCHASE" && !purchasablePrice(price)) return jsonError(price?.warnings[0] ?? "This configuration does not have an exact direct-purchase price", 422);
     const [item] = await db.update(cartItems).set({ quantity, jobName: input.jobName, configuration, calculatedAmount: price?.calculatedAmount ?? null, pricingSnapshot: price ?? {}, updatedAt: new Date() }).where(eq(cartItems.id, id)).returning();

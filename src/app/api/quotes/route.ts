@@ -31,13 +31,8 @@ export async function POST(request: Request) {
     const input = await readBody(request, quoteSubmitSchema);
     const basket = await getOwnedCart(session.user.id, "QUOTE");
     if (!basket.id || !basket.items.length) return jsonError("Your quote basket is empty", 422);
-    if (basket.items.some((item) => !item.available || !item.product.quoteable)) return jsonError("One or more products must be updated before quotation", 422);
-    for (const item of basket.items) {
-      try {
-        await validateRequiredArtwork(session.user.id, item.productId, item.configuration);
-      } catch (error) {
-        return jsonError(error instanceof Error ? error.message : "Artwork validation failed", 422);
-      }
+    if (basket.items.some((item) => !item.available || !item.product.quoteable)) {
+      return jsonError("One or more products in your basket cannot be quoted (e.g. Visiting Cards are direct-order only)", 422);
     }
 
     const subtotal = basket.summary.priceBeforeTax;
