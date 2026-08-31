@@ -42,11 +42,11 @@ export function CustomerNotices({ placement = "GLOBAL" }: { placement?: "GLOBAL"
 
   return (
     <aside
-      className="group relative z-20 h-9 sm:h-10 w-full overflow-hidden border-b border-[#d7e1f2] bg-[#f0f4fa] text-[var(--mc-ink)] select-none"
-      aria-label="Important notices ticker"
+      className="group relative z-20 h-11 sm:h-12 w-full overflow-hidden border-b border-[#d2ddee] bg-[#f4f7fc] text-[var(--mc-ink)] select-none shadow-[0_1px_2px_rgba(16,33,63,0.02)]"
+      aria-label="Announcements & Print Guidelines"
     >
       <div className="flex h-full w-full items-center overflow-hidden">
-        <div className="animate-ticker-continuous flex shrink-0 items-center whitespace-nowrap text-xs sm:text-[13px] text-[#10213f]">
+        <div className="animate-ticker-continuous flex shrink-0 items-center whitespace-nowrap text-[13.5px] sm:text-[14px] text-[#0f213d]">
           {/* First set of notices */}
           {items.map((item) => (
             <NoticeTickerItem key={`track1-${item.id}`} item={item} />
@@ -63,43 +63,45 @@ export function CustomerNotices({ placement = "GLOBAL" }: { placement?: "GLOBAL"
 
 function NoticeTickerItem({ item, ariaHidden }: { item: CustomerNoticeItem; ariaHidden?: boolean }) {
   return (
-    <span className="inline-flex items-center gap-2 px-5 sm:px-6" aria-hidden={ariaHidden}>
-      {/* Subtle indicator dot */}
+    <span className="inline-flex items-center gap-2.5 px-6 sm:px-8" aria-hidden={ariaHidden}>
+      {/* Subtle indicator dot/pill */}
       <span
-        className={`size-1.5 shrink-0 rounded-full ${
+        className={`size-2 shrink-0 rounded-full ${
           item.tone === "WARNING"
             ? "bg-[#d97706]"
             : item.tone === "SUCCESS"
             ? "bg-[#16a34a]"
-            : "bg-[var(--mc-accent)]"
+            : "bg-[#2864dc]"
         }`}
         aria-hidden="true"
       />
 
       {/* Notice Title */}
-      <strong className="font-bold text-[#10213f]">{item.title}</strong>
+      <strong className="font-semibold text-[#0f213d] tracking-normal">
+        {item.title}
+      </strong>
 
-      {/* Notice Message (Short) */}
+      {/* Notice Short Message / Detail */}
       {item.message ? (
-        <span className="font-normal text-[#5d6f8d]">
+        <span className="font-normal text-[#526685]">
           {item.message}
         </span>
       ) : null}
 
-      {/* Inline CTA Action Link */}
+      {/* Inline CTA Link */}
       {item.linkLabel && item.linkUrl ? (
         <Link
           href={item.linkUrl}
           tabIndex={ariaHidden ? -1 : 0}
-          className="ml-1.5 inline-flex items-center gap-0.5 font-bold text-[var(--mc-accent)] hover:underline"
+          className="ml-1.5 inline-flex items-center gap-1 font-bold text-[#2864dc] hover:underline"
         >
           <span>{item.linkLabel}</span>
           <span aria-hidden="true">&rarr;</span>
         </Link>
       ) : null}
 
-      {/* Subtle dot divider */}
-      <span className="ml-5 sm:ml-6 text-[#9bb0ce] select-none" aria-hidden="true">
+      {/* Subtle divider */}
+      <span className="ml-6 sm:ml-8 text-[#9cb0ce] select-none" aria-hidden="true">
         {"\u00b7"}
       </span>
     </span>
