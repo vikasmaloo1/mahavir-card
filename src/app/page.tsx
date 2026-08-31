@@ -4,6 +4,7 @@ import { ArrowRight, FileCheck2, FileUp, MapPin, PackageCheck, ReceiptText, Shop
 
 import { HomeCatalogSections } from "@/components/home-catalog-sections";
 import { CustomerNotices } from "@/components/customer-notices";
+import { PromotionalBanner } from "@/components/promotional-banner";
 import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { catalogCategories } from "@/lib/catalog";
@@ -37,7 +38,11 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="border-b border-[var(--mc-line)] bg-[var(--mc-paper)]">
+      <div className="mx-auto max-w-[1440px] px-4 pt-8 lg:px-8">
+        <PromotionalBanner placement="HOME_HERO_BOTTOM" />
+      </div>
+
+      <section className="border-b border-[var(--mc-line)] bg-[var(--mc-paper)] mt-8">
         <div className="mx-auto grid max-w-[1440px] gap-5 px-4 py-5 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr] lg:px-8">
           <div><p className="text-lg font-bold">Mahavir Card</p><p className="mt-1 text-sm leading-5 text-[var(--mc-muted)]">{printServices}</p></div>
           <div className="flex items-center gap-3"><ShoppingBag size={20} className="text-[var(--mc-accent)]" /><div><p className="text-[15px] font-bold">Online ordering</p><p className="mt-0.5 text-sm text-[var(--mc-muted)]">For approved print jobs</p></div></div>
@@ -47,6 +52,10 @@ export default function Home() {
       </section>
 
       <HomeCatalogSections initialCategories={catalogCategories} />
+
+      <div className="mx-auto max-w-[1440px] px-4 py-4 lg:px-8">
+        <PromotionalBanner placement="HOME_MID" />
+      </div>
 
       <section className="mx-auto max-w-[1440px] px-4 py-10 lg:px-8 lg:py-14">
         <div className="grid gap-8 lg:grid-cols-[.78fr_1.22fr] lg:items-start">

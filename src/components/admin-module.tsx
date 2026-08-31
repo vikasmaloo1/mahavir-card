@@ -7,7 +7,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { adminRequest, asItems, formattedAmount, formattedDate } from "@/lib/admin-client";
 
 type Row = Record<string, unknown>;
-type ModuleKey = "categories" | "addons" | "pricing" | "delivery" | "orders" | "quotes" | "customers" | "inquiries" | "payments" | "artworks" | "notices" | "admins";
+type ModuleKey = "categories" | "addons" | "pricing" | "delivery" | "orders" | "quotes" | "customers" | "inquiries" | "payments" | "artworks" | "notices" | "admins" | "banners";
 
 const moduleCopy: Record<ModuleKey, { title: string; description: string; endpoint: string; createLabel?: string }> = {
   categories: { title: "Categories", description: "Organize the storefront catalogue and control category availability.", endpoint: "/api/admin/categories", createLabel: "New category" },
@@ -20,7 +20,8 @@ const moduleCopy: Record<ModuleKey, { title: string; description: string; endpoi
   inquiries: { title: "Inquiries", description: "Qualify incoming print requirements and convert them to quotations.", endpoint: "/api/admin/inquiries" },
   payments: { title: "Payments", description: "Record manual payments and update COD or payment-provider records.", endpoint: "/api/admin/payments", createLabel: "Record payment" },
   artworks: { title: "Artwork", description: "Review uploaded CorelDRAW artwork and communicate approval decisions.", endpoint: "/api/admin/artworks" },
-  notices: { title: "Notices", description: "Publish scheduled customer notices on the homepage and ordering area.", endpoint: "/api/admin/notices", createLabel: "New notice" },
+  notices: { title: "Notices", description: "Publish scheduled moving ticker and static notices on the storefront.", endpoint: "/api/admin/notices", createLabel: "New notice" },
+  banners: { title: "Banners", description: "Manage promotional and informational banner placements across the customer site.", endpoint: "/api/admin/banners", createLabel: "New banner" },
   admins: { title: "Administrators", description: "Create and manage restricted administrative accounts.", endpoint: "/api/admin/admins", createLabel: "New administrator" },
 };
 
@@ -35,7 +36,8 @@ const columns: Record<ModuleKey, { label: string; value: (row: Row) => string }[
   inquiries: [{ label: "Contact", value: (r) => text(r.contactName) }, { label: "Subject", value: (r) => text(r.subject) }, { label: "Email", value: (r) => text(r.email) }, { label: "Status", value: (r) => text(r.status) }, { label: "Received", value: (r) => formattedDate(r.createdAt) }],
   payments: [{ label: "Order", value: (r) => text(r.orderNumber) }, { label: "Customer", value: (r) => text(r.customerEmail) }, { label: "Method", value: (r) => text(nested(r, "payment.method")) }, { label: "Amount", value: (r) => formattedAmount(nested(r, "payment.amount")) }, { label: "Status", value: (r) => text(nested(r, "payment.status")) }],
   artworks: [{ label: "File", value: (r) => text(r.fileName) }, { label: "Type", value: (r) => text(r.extension) }, { label: "Status", value: (r) => text(r.status) }, { label: "Uploaded", value: (r) => formattedDate(r.createdAt) }],
-  notices: [{ label: "Notice", value: (r) => text(r.title) }, { label: "Placement", value: (r) => text(r.placement) }, { label: "Tone", value: (r) => text(r.tone) }, { label: "Order", value: (r) => text(r.sortOrder) }, { label: "Status", value: (r) => enabled(r.isActive) }],
+  notices: [{ label: "Notice", value: (r) => text(r.title) }, { label: "Placement", value: (r) => text(r.placement) }, { label: "Tone", value: (r) => text(r.tone) }, { label: "Animation", value: (r) => text(r.animationType) }, { label: "Priority", value: (r) => text(r.priority) }, { label: "Order", value: (r) => text(r.sortOrder) }, { label: "Status", value: (r) => enabled(r.isActive) }],
+  banners: [{ label: "Banner", value: (r) => text(r.title) }, { label: "Placement", value: (r) => text(r.placement) }, { label: "Animation", value: (r) => text(r.animationType) }, { label: "Badge", value: (r) => text(r.badge) }, { label: "Order", value: (r) => text(r.sortOrder) }, { label: "Status", value: (r) => enabled(r.isActive) }],
   admins: [{ label: "Name", value: (r) => text(nested(r, "user.name")) }, { label: "Email", value: (r) => text(nested(r, "user.email")) }, { label: "Phone", value: (r) => text(nested(r, "user.phoneNumber")) }, { label: "Access", value: (r) => text(nested(r, "admin.status")) }],
 };
 
@@ -187,7 +189,7 @@ function Actions({ section, item, saving, actionLabel, onEdit, onDelete, onConve
 function ModuleForm({ section, item, products, saving, onSubmit, onCancel }: { section: ModuleKey; item: Row | null; products: Row[]; saving: boolean; onSubmit: (data: Record<string, unknown>) => Promise<void>; onCancel: () => void }) {
   const value = (key: string) => asString(section === "payments" ? nested(item ?? {}, `payment.${key}`) : section === "admins" ? nested(item ?? {}, key === "status" ? "admin.status" : `user.${key}`) : item?.[key]);
   const [form, setForm] = useState<Record<string, string>>(() => ({
-    name: value("name"), title: value("title"), slug: value("slug"), description: value("description"), sortOrder: value("sortOrder") || "0", code: value("code"), pricingType: value("pricingType") || "FIXED", priceConfiguration: asJson(item?.priceConfiguration), productId: value("productId"), ruleType: value("ruleType") || "FIXED_PER_REFERENCE_QUANTITY", conditions: asJson(item?.conditions), priceFormula: asJson(item?.priceFormula), baseAmount: asString(object(item?.priceFormula).amount), rateUnit: asString(object(item?.priceFormula).rateUnit) || (object(item?.priceFormula).ratePaisePerSqInch ? "PAISE" : "RUPEES"), rateValue: asString(object(item?.priceFormula).ratePaisePerSqInch ?? object(item?.priceFormula).ratePerSqInch), minimumArea: asString(object(item?.priceFormula).minimumArea), minimumCharge: asString(object(item?.priceFormula).minimumCharge), bladeCharge: asString(object(item?.priceFormula).bladeCharge), referenceQuantity: asString(object(item?.conditions).quantity) || "1", taxRate: value("taxRate") || "18", productionTime: value("productionTime"), deliveryMethod: value("deliveryMethod") || "COURIER", stateCode: value("stateCode") || "GJ", price: value("price"), status: value("status") || defaultStatus(section), notes: value("notes"), internalNotes: value("internalNotes"), contactName: value("contactName"), email: value("email"), phone: value("phone"), companyName: value("companyName"), gstNumber: value("gstNumber"), message: value("message"), tone: value("tone") || "INFO", placement: value("placement") || "GLOBAL", linkLabel: value("linkLabel"), linkUrl: value("linkUrl"), startsAt: dateInput(item?.startsAt), endsAt: dateInput(item?.endsAt), method: value("method") || "MANUAL", amount: value("amount"), orderId: value("orderId"), provider: value("provider"), providerOrderId: value("providerOrderId"), providerPaymentId: value("providerPaymentId"), password: "", quantity: "1", unitPrice: "0", itemDescription: "",
+    name: value("name"), title: value("title"), slug: value("slug"), description: value("description"), sortOrder: value("sortOrder") || "0", code: value("code"), pricingType: value("pricingType") || "FIXED", priceConfiguration: asJson(item?.priceConfiguration), productId: value("productId"), ruleType: value("ruleType") || "FIXED_PER_REFERENCE_QUANTITY", conditions: asJson(item?.conditions), priceFormula: asJson(item?.priceFormula), baseAmount: asString(object(item?.priceFormula).amount), rateUnit: asString(object(item?.priceFormula).rateUnit) || (object(item?.priceFormula).ratePaisePerSqInch ? "PAISE" : "RUPEES"), rateValue: asString(object(item?.priceFormula).ratePaisePerSqInch ?? object(item?.priceFormula).ratePerSqInch), minimumArea: asString(object(item?.priceFormula).minimumArea), minimumCharge: asString(object(item?.priceFormula).minimumCharge), bladeCharge: asString(object(item?.priceFormula).bladeCharge), referenceQuantity: asString(object(item?.conditions).quantity) || "1", taxRate: value("taxRate") || "18", productionTime: value("productionTime"), deliveryMethod: value("deliveryMethod") || "COURIER", stateCode: value("stateCode") || "GJ", price: value("price"), status: value("status") || defaultStatus(section), notes: value("notes"), internalNotes: value("internalNotes"), contactName: value("contactName"), email: value("email"), phone: value("phone"), companyName: value("companyName"), gstNumber: value("gstNumber"), message: value("message"), tone: value("tone") || "INFO", placement: value("placement") || (section === "banners" ? "HOME_HERO_BOTTOM" : "GLOBAL"), animationType: value("animationType") || (section === "banners" ? "FADE" : "MARQUEE"), priority: value("priority") || "NORMAL", subtitle: value("subtitle"), badge: value("badge"), ctaLabel: value("ctaLabel"), ctaUrl: value("ctaUrl"), imageUrl: value("imageUrl"), storageKey: value("storageKey"), linkLabel: value("linkLabel"), linkUrl: value("linkUrl"), startsAt: dateInput(item?.startsAt), endsAt: dateInput(item?.endsAt), method: value("method") || "MANUAL", amount: value("amount"), orderId: value("orderId"), provider: value("provider"), providerOrderId: value("providerOrderId"), providerPaymentId: value("providerPaymentId"), password: "", quantity: "1", unitPrice: "0", itemDescription: "",
   }));
   const [formError, setFormError] = useState("");
   const toggleValue = (key: string, fallback: boolean) => asBoolean(item?.[key], fallback);
@@ -197,25 +199,78 @@ function ModuleForm({ section, item, products, saving, onSubmit, onCancel }: { s
     event.preventDefault(); setFormError("");
     try { await onSubmit(buildPayload(section, form, toggles, Boolean(item))); } catch (caught) { setFormError(message(caught)); }
   }
-  return <form onSubmit={submit} className="space-y-5"><ModuleFields section={section} form={form} toggles={toggles} products={products} update={update} setToggles={setToggles} editing={Boolean(item)} /><div className="flex flex-wrap justify-end gap-2 border-t border-[#e4e8ef] pt-5"><button type="button" onClick={onCancel} className="border border-[#c9d2df] bg-white px-4 py-2.5 text-sm font-bold text-[#24324a]">Cancel</button><button type="submit" disabled={saving} className="inline-flex items-center gap-2 bg-[#2457b8] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"><Check size={16} />{saving ? "Saving..." : "Save changes"}</button></div>{formError ? <p className="text-sm font-medium text-[#b13a2f]">{formError}</p> : null}</form>;
+  return <form onSubmit={submit} className="space-y-5"><ModuleFields section={section} form={form} toggles={toggles} products={products} update={update} setForm={setForm} setToggles={setToggles} editing={Boolean(item)} /><div className="flex flex-wrap justify-end gap-2 border-t border-[#e4e8ef] pt-5"><button type="button" onClick={onCancel} className="border border-[#c9d2df] bg-white px-4 py-2.5 text-sm font-bold text-[#24324a]">Cancel</button><button type="submit" disabled={saving} className="inline-flex items-center gap-2 bg-[#2457b8] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"><Check size={16} />{saving ? "Saving..." : "Save changes"}</button></div>{formError ? <p className="text-sm font-medium text-[#b13a2f]">{formError}</p> : null}</form>;
 }
 
-function ModuleFields({ section, form, toggles, products, update, setToggles, editing }: { section: ModuleKey; form: Record<string, string>; toggles: Record<string, boolean>; products: Row[]; update: (key: string) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void; setToggles: React.Dispatch<React.SetStateAction<Record<string, boolean>>>; editing: boolean }) {
+function ModuleFields({ section, form, toggles, products, update, setForm, setToggles, editing }: { section: ModuleKey; form: Record<string, string>; toggles: Record<string, boolean>; products: Row[]; update: (key: string) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void; setForm: React.Dispatch<React.SetStateAction<Record<string, string>>>; setToggles: React.Dispatch<React.SetStateAction<Record<string, boolean>>>; editing: boolean }) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  async function handleImageUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/admin/banners/image", { method: "POST", body: formData });
+      const payload = await res.json();
+      if (!res.ok || !payload?.success) throw new Error(payload?.error?.message || "Image upload failed.");
+      setForm((cur) => ({ ...cur, imageUrl: payload.data.imageUrl, storageKey: payload.data.storageKey }));
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Failed to upload image.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const fieldClass = "mt-1.5 w-full border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#2457b8]";
+
   if (section === "notices") {
-    const fieldClass = "mt-1.5 w-full border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#2457b8]";
     return <div className="grid gap-4 sm:grid-cols-2">
-      <label className="text-sm font-semibold">Title<input required value={form.title} onChange={update("title")} className={fieldClass} /></label>
-      <label className="text-sm font-semibold">Tone<select value={form.tone} onChange={update("tone")} className={fieldClass}><option>INFO</option><option>WARNING</option><option>SUCCESS</option></select></label>
-      <label className="text-sm font-semibold">Placement<select value={form.placement} onChange={update("placement")} className={fieldClass}><option>GLOBAL</option><option>HOME</option><option>ORDERING</option></select></label>
+      <label className="text-sm font-semibold sm:col-span-2">Title<input required value={form.title} onChange={update("title")} placeholder="e.g. CDR artwork required for applicable products" className={fieldClass} /></label>
+      <label className="text-sm font-semibold">Placement<select value={form.placement} onChange={update("placement")} className={fieldClass}><option value="GLOBAL">GLOBAL (All pages)</option><option value="HOME">HOME (Homepage only)</option><option value="ORDERING">ORDERING (Ordering & Catalog)</option></select></label>
+      <label className="text-sm font-semibold">Tone<select value={form.tone} onChange={update("tone")} className={fieldClass}><option value="INFO">INFO (Calm blue)</option><option value="WARNING">WARNING (Amber notice)</option><option value="SUCCESS">SUCCESS (Green calm)</option></select></label>
+      <label className="text-sm font-semibold">Animation type<select value={form.animationType} onChange={update("animationType")} className={fieldClass}><option value="MARQUEE">MARQUEE (Continuous moving ticker)</option><option value="STATIC">STATIC (Stationary notice bar)</option></select></label>
+      <label className="text-sm font-semibold">Priority<select value={form.priority} onChange={update("priority")} className={fieldClass}><option value="HIGH">HIGH</option><option value="NORMAL">NORMAL</option><option value="LOW">LOW</option></select></label>
       <label className="text-sm font-semibold">Display order<input required type="number" min="0" value={form.sortOrder} onChange={update("sortOrder")} className={fieldClass} /></label>
-      <label className="text-sm font-semibold sm:col-span-2">Message<textarea required rows={4} value={form.message} onChange={update("message")} className={fieldClass} /></label>
-      <label className="text-sm font-semibold">Link label<input value={form.linkLabel} onChange={update("linkLabel")} className={fieldClass} /></label>
-      <label className="text-sm font-semibold">Link URL<input value={form.linkUrl} onChange={update("linkUrl")} className={fieldClass} /></label>
-      <label className="text-sm font-semibold">Starts at<input type="datetime-local" value={form.startsAt} onChange={update("startsAt")} className={fieldClass} /></label>
-      <label className="text-sm font-semibold">Ends at<input type="datetime-local" value={form.endsAt} onChange={update("endsAt")} className={fieldClass} /></label>
-      <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={toggles.isActive} onChange={(event) => setToggles((current) => ({ ...current, isActive: event.target.checked }))} className="size-4 accent-[#2457b8]" />Published</label>
+      <label className="text-sm font-semibold sm:col-span-2">Message<textarea required rows={3} value={form.message} onChange={update("message")} placeholder="Details or file instructions for customers..." className={fieldClass} /></label>
+      <label className="text-sm font-semibold">Optional link label<input value={form.linkLabel} onChange={update("linkLabel")} placeholder="e.g. View Products / Request Quote" className={fieldClass} /></label>
+      <label className="text-sm font-semibold">Optional link URL<input value={form.linkUrl} onChange={update("linkUrl")} placeholder="e.g. /products or /quote" className={fieldClass} /></label>
+      <label className="text-sm font-semibold">Starts at (Schedule)<input type="datetime-local" value={form.startsAt} onChange={update("startsAt")} className={fieldClass} /></label>
+      <label className="text-sm font-semibold">Ends at (Schedule)<input type="datetime-local" value={form.endsAt} onChange={update("endsAt")} className={fieldClass} /></label>
+      <label className="flex items-center gap-2 text-sm font-semibold sm:col-span-2"><input type="checkbox" checked={toggles.isActive} onChange={(event) => setToggles((current) => ({ ...current, isActive: event.target.checked }))} className="size-4 accent-[#2457b8]" />Published & active</label>
     </div>;
   }
+
+  if (section === "banners") {
+    return <div className="grid gap-4 sm:grid-cols-2">
+      <label className="text-sm font-semibold sm:col-span-2">Title<input required value={form.title} onChange={update("title")} placeholder="e.g. Business printing, one place." className={fieldClass} /></label>
+      <label className="text-sm font-semibold sm:col-span-2">Subtitle / Short text<textarea rows={2} value={form.subtitle} onChange={update("subtitle")} placeholder="e.g. Visiting cards, carton packaging, custom product labels and stationery." className={fieldClass} /></label>
+      <label className="text-sm font-semibold">Placement<select value={form.placement} onChange={update("placement")} className={fieldClass}><option value="HOME_HERO_BOTTOM">HOME_HERO_BOTTOM (Below Hero)</option><option value="HOME_MID">HOME_MID (Homepage Middle Section)</option><option value="CATALOG_TOP">CATALOG_TOP (Catalog & Products Top)</option><option value="CART_CHECKOUT">CART_CHECKOUT (Cart & Quote Pages)</option><option value="GLOBAL">GLOBAL (Site-wide)</option></select></label>
+      <label className="text-sm font-semibold">Animation type<select value={form.animationType} onChange={update("animationType")} className={fieldClass}><option value="FADE">FADE (Gentle entrance fade)</option><option value="SLIDE_UP">SLIDE_UP (Gentle slide up)</option><option value="IMAGE_ZOOM">IMAGE_ZOOM (Subtle hover zoom)</option><option value="NONE">NONE (Stationary)</option></select></label>
+      <label className="text-sm font-semibold">Badge text (optional)<input value={form.badge} onChange={update("badge")} placeholder="e.g. Commercial Printing / Bulk Orders" className={fieldClass} /></label>
+      <label className="text-sm font-semibold">Display order<input required type="number" min="0" value={form.sortOrder} onChange={update("sortOrder")} className={fieldClass} /></label>
+      <label className="text-sm font-semibold">CTA label (optional)<input value={form.ctaLabel} onChange={update("ctaLabel")} placeholder="e.g. Browse Products / Request Quote" className={fieldClass} /></label>
+      <label className="text-sm font-semibold">CTA URL (optional)<input value={form.ctaUrl} onChange={update("ctaUrl")} placeholder="e.g. /products or /quote" className={fieldClass} /></label>
+      
+      <div className="sm:col-span-2 border border-[#d7e1f2] bg-[#f7f9fc] p-3.5 rounded-lg space-y-2">
+        <span className="block text-xs font-bold uppercase tracking-wider text-[#2457b8]">R2 Image Asset</span>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="text-sm font-semibold">Upload Image to R2<input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleImageUpload} disabled={uploading} className={fieldClass} /></label>
+          <label className="text-sm font-semibold">Image URL<input value={form.imageUrl} onChange={update("imageUrl")} placeholder="/images/mahavir-print-assortment.png or /api/storage/..." className={fieldClass} /></label>
+        </div>
+        {uploading ? <p className="text-xs text-[#2457b8]">Uploading banner to R2 storage...</p> : null}
+        {uploadError ? <p className="text-xs text-[#b13a2f]">{uploadError}</p> : null}
+      </div>
+
+      <label className="text-sm font-semibold">Starts at (Schedule)<input type="datetime-local" value={form.startsAt} onChange={update("startsAt")} className={fieldClass} /></label>
+      <label className="text-sm font-semibold">Ends at (Schedule)<input type="datetime-local" value={form.endsAt} onChange={update("endsAt")} className={fieldClass} /></label>
+      <label className="flex items-center gap-2 text-sm font-semibold sm:col-span-2"><input type="checkbox" checked={toggles.isActive} onChange={(event) => setToggles((current) => ({ ...current, isActive: event.target.checked }))} className="size-4 accent-[#2457b8]" />Active and visible</label>
+    </div>;
+  }
+
   const toggle = (key: string, label: string) => <label className="flex items-center gap-2 text-sm font-semibold text-[#263753]"><input type="checkbox" checked={toggles[key]} onChange={(event) => setToggles((current) => ({ ...current, [key]: event.target.checked }))} className="size-4 accent-[#2457b8]" />{label}</label>;
   const field = (label: string, key: string, options: { type?: string; required?: boolean; placeholder?: string } = {}) => <label className="block text-sm font-semibold text-[#263753]"><span>{label}</span><input type={options.type ?? "text"} required={options.required} value={form[key] ?? ""} onChange={update(key)} placeholder={options.placeholder} className="mt-1.5 w-full border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#2457b8]" /></label>;
   const area = (label: string, key: string, required = false) => <label className="block text-sm font-semibold text-[#263753]"><span>{label}</span><textarea required={required} value={form[key] ?? ""} onChange={update(key)} rows={4} className="mt-1.5 w-full border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#2457b8]" /></label>;
@@ -234,7 +289,8 @@ function ModuleFields({ section, form, toggles, products, update, setToggles, ed
 }
 
 function buildPayload(section: ModuleKey, form: Record<string, string>, toggles: Record<string, boolean>, editing: boolean): Record<string, unknown> {
-  if (section === "notices") return { title: form.title, message: form.message, tone: form.tone, placement: form.placement, linkLabel: empty(form.linkLabel) ?? null, linkUrl: empty(form.linkUrl) ?? null, startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : null, endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null, sortOrder: number(form.sortOrder), isActive: toggles.isActive };
+  if (section === "notices") return { title: form.title, message: form.message, tone: form.tone, placement: form.placement, animationType: form.animationType || "MARQUEE", priority: form.priority || "NORMAL", linkLabel: empty(form.linkLabel) ?? null, linkUrl: empty(form.linkUrl) ?? null, startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : null, endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null, sortOrder: number(form.sortOrder), isActive: toggles.isActive };
+  if (section === "banners") return { title: form.title, subtitle: empty(form.subtitle) ?? null, badge: empty(form.badge) ?? null, ctaLabel: empty(form.ctaLabel) ?? null, ctaUrl: empty(form.ctaUrl) ?? null, imageUrl: empty(form.imageUrl) ?? null, storageKey: empty(form.storageKey) ?? null, placement: form.placement || "HOME_HERO_BOTTOM", animationType: form.animationType || "FADE", startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : null, endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null, sortOrder: number(form.sortOrder), isActive: toggles.isActive };
   if (section === "categories") return { name: form.name, slug: form.slug, description: empty(form.description), sortOrder: number(form.sortOrder), isActive: toggles.isActive };
   if (section === "addons") return { name: form.name, code: form.code, description: empty(form.description), pricingType: form.pricingType, priceConfiguration: parseJson(form.priceConfiguration, "Price configuration"), isActive: toggles.isActive };
   if (section === "pricing") {

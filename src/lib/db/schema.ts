@@ -245,6 +245,8 @@ export const notices = pgTable(
     message: text("message").notNull(),
     tone: text("tone").notNull().default("INFO"),
     placement: text("placement").notNull().default("GLOBAL"),
+    animationType: text("animationType").notNull().default("MARQUEE"),
+    priority: text("priority").notNull().default("NORMAL"),
     linkLabel: text("linkLabel"),
     linkUrl: text("linkUrl"),
     startsAt: timestamp("startsAt", { withTimezone: true }),
@@ -255,6 +257,29 @@ export const notices = pgTable(
     ...timestamps,
   },
   (table) => [index("notices_active_placement_idx").on(table.isActive, table.placement, table.sortOrder)],
+);
+
+export const banners = pgTable(
+  "banners",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    title: text("title").notNull(),
+    subtitle: text("subtitle"),
+    badge: text("badge"),
+    ctaLabel: text("ctaLabel"),
+    ctaUrl: text("ctaUrl"),
+    imageUrl: text("imageUrl"),
+    storageKey: text("storageKey"),
+    placement: text("placement").notNull().default("HOME_HERO_BOTTOM"),
+    animationType: text("animationType").notNull().default("FADE"),
+    sortOrder: integer("sortOrder").notNull().default(0),
+    isActive: boolean("isActive").notNull().default(true),
+    startsAt: timestamp("startsAt", { withTimezone: true }),
+    endsAt: timestamp("endsAt", { withTimezone: true }),
+    updatedBy: uuid("updatedBy").references(() => user.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (table) => [index("banners_active_placement_idx").on(table.isActive, table.placement, table.sortOrder)],
 );
 
 export const productContentSections = pgTable(

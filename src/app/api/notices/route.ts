@@ -8,7 +8,18 @@ export async function GET(request: Request) {
   try {
     const placement = new URL(request.url).searchParams.get("placement")?.toUpperCase();
     const now = new Date();
-    const rows = await db.select({ id: notices.id, title: notices.title, message: notices.message, tone: notices.tone, placement: notices.placement, linkLabel: notices.linkLabel, linkUrl: notices.linkUrl })
+    const rows = await db.select({
+      id: notices.id,
+      title: notices.title,
+      message: notices.message,
+      tone: notices.tone,
+      placement: notices.placement,
+      animationType: notices.animationType,
+      priority: notices.priority,
+      linkLabel: notices.linkLabel,
+      linkUrl: notices.linkUrl,
+      sortOrder: notices.sortOrder,
+    })
       .from(notices)
       .where(and(
         eq(notices.isActive, true),

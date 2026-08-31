@@ -233,3 +233,92 @@ textarea:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--mc-accent) 24%, transparent);
   outline-offset: 2px;
 }
+
+/* Continuous Moving Notice Ticker & Visual Motion Pass */
+@keyframes tickerLoop {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-ticker-continuous {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: tickerLoop 42s linear infinite;
+}
+
+.animate-ticker-continuous:hover,
+.animate-ticker-continuous:focus-within {
+  animation-play-state: paused;
+}
+
+@keyframes gentleFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes gentleSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.motion-gentle-fade {
+  animation: gentleFadeIn 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.motion-gentle-slide {
+  animation: gentleSlideUp 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.motion-zoom-container {
+  overflow: hidden;
+}
+
+.motion-zoom-image {
+  transition: transform 350ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.group:hover .motion-zoom-image,
+.motion-zoom-container:hover .motion-zoom-image {
+  transform: scale(1.03);
+}
+
+.card-hover-subtle {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.card-hover-subtle:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -4px rgba(16, 33, 63, 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-ticker-continuous {
+    animation: none !important;
+    width: auto !important;
+    overflow-x: auto !important;
+  }
+
+  .motion-gentle-fade,
+  .motion-gentle-slide,
+  .motion-zoom-image,
+  .card-hover-subtle {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
+}

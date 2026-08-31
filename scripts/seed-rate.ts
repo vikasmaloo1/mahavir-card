@@ -17,8 +17,8 @@ async function main() {
   const { db, pool } = await import("../src/lib/db");
   const { sql } = await import("drizzle-orm");
   const {
-    addons, artworkRequirements, artworkSlots, businessSettings, categories, locationSurcharges,
-    pricingRules, productAddons, productContentItems, productContentSections, productDeliveryRules, products,
+    addons, artworkRequirements, artworkSlots, banners, businessSettings, categories, locationSurcharges,
+    notices, pricingRules, productAddons, productContentItems, productContentSections, productDeliveryRules, products,
   } = await import("../src/lib/db/schema");
   const { rateCatalog } = await import("../src/lib/rate-catalog");
 
@@ -190,6 +190,172 @@ async function main() {
         const content = [item.size ? `Size: ${item.size}` : null, item.productionTime ? `Production: ${item.productionTime}` : null].filter(Boolean).join(" · ") || "Configured from the current RATE.xlsx source.";
         await tx.insert(productContentItems).values({ id: uuidFor(`rate-content-item:${item.slug}:technical`), sectionId, label: "Current specification", content, sortOrder: 0 }).onConflictDoUpdate({ target: productContentItems.id, set: { label: "Current specification", content, sortOrder: 0, updatedAt: new Date() } });
       }
+    }
+
+    const defaultNotices = [
+      {
+        id: uuidFor("notice:cdr-artwork"),
+        title: "CDR artwork required for applicable products",
+        message: "Convert fonts to curves and maintain 93 x 56 mm canvas for business card jobs.",
+        tone: "INFO",
+        placement: "GLOBAL",
+        animationType: "MARQUEE",
+        priority: "HIGH",
+        linkLabel: "View Products",
+        linkUrl: "/products",
+        sortOrder: 0,
+        isActive: true,
+      },
+      {
+        id: uuidFor("notice:base-prices"),
+        title: "Base prices shown",
+        message: "GST is charged additionally as applicable on commercial print jobs at checkout.",
+        tone: "INFO",
+        placement: "GLOBAL",
+        animationType: "MARQUEE",
+        priority: "NORMAL",
+        linkLabel: null,
+        linkUrl: null,
+        sortOrder: 1,
+        isActive: true,
+      },
+      {
+        id: uuidFor("notice:bulk-orders"),
+        title: "Business & bulk printing orders welcome",
+        message: "Custom quotations available for volume quantities and specialized finishing requirements.",
+        tone: "SUCCESS",
+        placement: "GLOBAL",
+        animationType: "MARQUEE",
+        priority: "HIGH",
+        linkLabel: "Request Quote",
+        linkUrl: "/quote",
+        sortOrder: 2,
+        isActive: true,
+      },
+      {
+        id: uuidFor("notice:courier-delivery"),
+        title: "Gujarat / Rajasthan delivery available",
+        message: "Standard courier delivery available on selected product ranges with live dispatch updates.",
+        tone: "INFO",
+        placement: "GLOBAL",
+        animationType: "MARQUEE",
+        priority: "NORMAL",
+        linkLabel: null,
+        linkUrl: null,
+        sortOrder: 3,
+        isActive: true,
+      },
+      {
+        id: uuidFor("notice:cdr-single-file"),
+        title: "Upload one CDR file for applicable card jobs",
+        message: "Keep front, back and Spot UV separation pages in a single CorelDRAW file.",
+        tone: "WARNING",
+        placement: "GLOBAL",
+        animationType: "MARQUEE",
+        priority: "NORMAL",
+        linkLabel: null,
+        linkUrl: null,
+        sortOrder: 4,
+        isActive: true,
+      },
+    ];
+
+    for (const notice of defaultNotices) {
+      await tx.insert(notices).values(notice).onConflictDoUpdate({
+        target: notices.id,
+        set: {
+          title: notice.title,
+          message: notice.message,
+          tone: notice.tone,
+          placement: notice.placement,
+          animationType: notice.animationType,
+          priority: notice.priority,
+          linkLabel: notice.linkLabel,
+          linkUrl: notice.linkUrl,
+          sortOrder: notice.sortOrder,
+          isActive: notice.isActive,
+          updatedAt: new Date(),
+        },
+      });
+    }
+
+    const defaultBanners = [
+      {
+        id: uuidFor("banner:home-hero-sub"),
+        title: "Business printing, one place.",
+        subtitle: "Visiting cards, carton packaging, custom product labels and commercial stationery.",
+        badge: "Commercial Printing",
+        ctaLabel: "Browse Products",
+        ctaUrl: "/products",
+        imageUrl: "/images/mahavir-print-assortment.png",
+        storageKey: null,
+        placement: "HOME_HERO_BOTTOM",
+        animationType: "FADE",
+        sortOrder: 0,
+        isActive: true,
+      },
+      {
+        id: uuidFor("banner:home-mid"),
+        title: "Need bulk printing or custom specifications?",
+        subtitle: "Request a tailored quotation for volume runs above 10,000 units, custom packaging, or bespoke finishes.",
+        badge: "Bulk Orders & Custom",
+        ctaLabel: "Request a Quote",
+        ctaUrl: "/quote",
+        imageUrl: "/images/mahavir-print-assortment.png",
+        storageKey: null,
+        placement: "HOME_MID",
+        animationType: "SLIDE_UP",
+        sortOrder: 0,
+        isActive: true,
+      },
+      {
+        id: uuidFor("banner:catalog-top"),
+        title: "Upload your CDR artwork",
+        subtitle: "Production-ready file guidance: maintain safe margins, 300 DPI resolution, and page hierarchy for flawless offset output.",
+        badge: "File Guidance",
+        ctaLabel: "Production Guidance",
+        ctaUrl: "/quote",
+        imageUrl: "/images/mahavir-print-assortment.png",
+        storageKey: null,
+        placement: "CATALOG_TOP",
+        animationType: "FADE",
+        sortOrder: 0,
+        isActive: true,
+      },
+      {
+        id: uuidFor("banner:cart-checkout"),
+        title: "Gujarat & Rajasthan direct courier dispatch",
+        subtitle: "Secure packaging, verified dispatch timeline, and local Khadia Golwad store pickup available.",
+        badge: "Delivery & Pickup",
+        ctaLabel: "View Delivery Options",
+        ctaUrl: "/products",
+        imageUrl: "/images/mahavir-print-assortment.png",
+        storageKey: null,
+        placement: "CART_CHECKOUT",
+        animationType: "IMAGE_ZOOM",
+        sortOrder: 0,
+        isActive: true,
+      },
+    ];
+
+    for (const banner of defaultBanners) {
+      await tx.insert(banners).values(banner).onConflictDoUpdate({
+        target: banners.id,
+        set: {
+          title: banner.title,
+          subtitle: banner.subtitle,
+          badge: banner.badge,
+          ctaLabel: banner.ctaLabel,
+          ctaUrl: banner.ctaUrl,
+          imageUrl: banner.imageUrl,
+          storageKey: banner.storageKey,
+          placement: banner.placement,
+          animationType: banner.animationType,
+          sortOrder: banner.sortOrder,
+          isActive: banner.isActive,
+          updatedAt: new Date(),
+        },
+      });
     }
   });
 

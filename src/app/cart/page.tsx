@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { CustomerNotices } from "@/components/customer-notices";
+import { PromotionalBanner } from "@/components/promotional-banner";
 import { PurchaseCart } from "@/components/purchase-cart";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { auth } from "@/lib/auth/server";
@@ -11,6 +13,7 @@ export default async function CartPage() {
   return (
     <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
       <StorefrontHeader />
+      <CustomerNotices placement="ORDERING" />
       <div className="mx-auto max-w-[1120px] px-4 py-8 lg:px-8 lg:py-12">
         <header className="flex flex-col justify-between gap-4 border-b border-[var(--mc-line)] pb-6 sm:flex-row sm:items-end">
           <div>
@@ -21,6 +24,9 @@ export default async function CartPage() {
           <Link href="/quote" className="text-sm font-bold text-[var(--mc-accent)]">Open quote basket</Link>
         </header>
         <PurchaseCart />
+        <div className="mt-10">
+          <PromotionalBanner placement="CART_CHECKOUT" />
+        </div>
       </div>
     </main>
   );

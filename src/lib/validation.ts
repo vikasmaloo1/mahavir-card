@@ -247,6 +247,8 @@ export const noticeSchema = z.object({
   message: z.string().trim().min(2).max(2000),
   tone: z.enum(["INFO", "WARNING", "SUCCESS"]).default("INFO"),
   placement: z.enum(["GLOBAL", "HOME", "ORDERING"]).default("GLOBAL"),
+  animationType: z.enum(["MARQUEE", "STATIC"]).default("MARQUEE"),
+  priority: z.enum(["HIGH", "NORMAL", "LOW"]).default("NORMAL"),
   linkLabel: z.string().trim().max(80).nullable().optional(),
   linkUrl: z.string().trim().max(500).nullable().optional(),
   startsAt: z.coerce.date().nullable().optional(),
@@ -254,6 +256,26 @@ export const noticeSchema = z.object({
   sortOrder: z.number().int().min(0).default(0),
   isActive: z.boolean().default(true),
 });
+
+export const adminNoticeSchema = noticeSchema;
+
+export const bannerSchema = z.object({
+  title: z.string().trim().min(2).max(200),
+  subtitle: z.string().trim().max(1000).nullable().optional(),
+  badge: z.string().trim().max(80).nullable().optional(),
+  ctaLabel: z.string().trim().max(80).nullable().optional(),
+  ctaUrl: z.string().trim().max(500).nullable().optional(),
+  imageUrl: z.string().trim().max(1000).nullable().optional(),
+  storageKey: z.string().trim().max(500).nullable().optional(),
+  placement: z.enum(["HOME_HERO_BOTTOM", "HOME_MID", "CATALOG_TOP", "CART_CHECKOUT", "GLOBAL"]).default("HOME_HERO_BOTTOM"),
+  animationType: z.enum(["FADE", "SLIDE_UP", "IMAGE_ZOOM", "NONE"]).default("FADE"),
+  startsAt: z.coerce.date().nullable().optional(),
+  endsAt: z.coerce.date().nullable().optional(),
+  sortOrder: z.number().int().min(0).default(0),
+  isActive: z.boolean().default(true),
+});
+
+export const adminBannerSchema = bannerSchema;
 
 export const paymentSchema = z.object({
   orderId: z.string().uuid(),

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import { AdminModule } from "@/components/admin-module";
 
-const sections = ["categories", "addons", "pricing", "delivery", "orders", "quotes", "customers", "inquiries", "leads", "payments", "artworks", "notices", "admins"] as const;
+const sections = ["categories", "addons", "pricing", "delivery", "orders", "quotes", "customers", "inquiries", "leads", "payments", "artworks", "notices", "banners", "admins"] as const;
 
 export default async function AdminSectionPage({ params }: PageProps<"/admin/[section]">) {
   const { section } = await params;
