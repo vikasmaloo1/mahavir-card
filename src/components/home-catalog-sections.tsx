@@ -21,6 +21,7 @@ export function HomeCatalogSections({ initialCategories }: { initialCategories: 
   const [categories, setCategories] = useState(initialCategories);
 
   useEffect(() => {
+    if (initialCategories && initialCategories.length > 0) return;
     let active = true;
     fetch("/api/categories")
       .then((response) => response.json())
@@ -29,7 +30,7 @@ export function HomeCatalogSections({ initialCategories }: { initialCategories: 
       })
       .catch(() => undefined);
     return () => { active = false; };
-  }, []);
+  }, [initialCategories]);
 
   return (
     <section className="mx-auto max-w-[1440px] px-4 py-12 lg:px-8 lg:py-16">

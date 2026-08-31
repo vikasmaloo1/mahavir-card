@@ -1,7 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 
 import { getOwnedCart } from "@/lib/cart-service";
-import { validateRequiredArtwork } from "@/lib/artwork-validation";
 import { db } from "@/lib/db/server";
 import { cartItems, customers, quoteItems, quotes } from "@/lib/db/schema";
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";

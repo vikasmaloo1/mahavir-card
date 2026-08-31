@@ -1,4 +1,5 @@
 import { AccountDashboard } from "@/components/account-dashboard";
+import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { auth } from "@/lib/auth/server";
 import { headers } from "next/headers";
@@ -12,6 +13,7 @@ export default async function AccountPage() {
       <div className="mx-auto max-w-[1200px] px-4 py-8 lg:px-8 lg:py-12">
         <AccountDashboard />
       </div>
+      <StorefrontFooter />
     </main>
   );
 }

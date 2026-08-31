@@ -27,6 +27,10 @@ export async function readBody<T>(request: Request, schema: ZodType<T>) {
 }
 
 export function handleApiError(error: unknown) {
+  if (error instanceof Response) {
+    return error;
+  }
+
   if (error instanceof ZodError) {
     return jsonError("Validation failed", 422, error.flatten().fieldErrors);
   }

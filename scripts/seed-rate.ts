@@ -155,7 +155,8 @@ async function main() {
       await db.update(productAddons).set({ isActive: false, updatedAt: new Date() }).where(eq(productAddons.productId, productId));
       if (item.addon) {
         const addonId = uuidFor(`rate-addon:${item.addon.code}`);
-        await db.insert(addons).values({ id: addonId, name: item.addon.name, code: item.addon.code, pricingType: "FIXED", priceConfiguration: { source: "RATE.xlsx", referenceQuantity: (item.addon as any).referenceQuantity ?? 1000 }, isActive: true }).onConflictDoUpdate({ target: addons.code, set: { name: item.addon.name, priceConfiguration: { source: "RATE.xlsx", referenceQuantity: (item.addon as any).referenceQuantity ?? 1000 }, isActive: true, updatedAt: new Date() } });
+        const refQty = "referenceQuantity" in item.addon && typeof item.addon.referenceQuantity === "number" ? item.addon.referenceQuantity : 1000;
+        await db.insert(addons).values({ id: addonId, name: item.addon.name, code: item.addon.code, pricingType: "FIXED", priceConfiguration: { source: "RATE.xlsx", referenceQuantity: refQty }, isActive: true }).onConflictDoUpdate({ target: addons.code, set: { name: item.addon.name, priceConfiguration: { source: "RATE.xlsx", referenceQuantity: refQty }, isActive: true, updatedAt: new Date() } });
         await db.insert(productAddons).values({
           id: uuidFor(`rate-product-addon:${item.slug}:${item.addon.code}`), productId, pricingRuleId: ruleId,
           addonId, price: money(item.addon.amount)!, isActive: true,

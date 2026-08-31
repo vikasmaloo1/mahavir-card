@@ -5,12 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { ArtworkUploader, type ArtworkRequirement, type UploadedArtwork } from "@/components/artwork-uploader";
-import { ProductImage } from "@/components/product-image";
 import type { CatalogProduct } from "@/lib/catalog";
 import { formatInr } from "@/lib/formatting";
 import { commerceStates } from "@/lib/india-states";
 import { normalizeProductQuantity, stepProductQuantity } from "@/lib/quantity-helper";
-import { formatMoneyString } from "@/lib/tax-service";
 
 type PricingRule = { id: string; name: string; conditions: Record<string, unknown>; priceFormula: Record<string, unknown> };
 type Addon = { addonId: string; pricingRuleId: string | null; name: string; description: string | null; price: string; isDefault: boolean };
@@ -32,6 +30,7 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
   const [addonIds, setAddonIds] = useState<string[]>([]);
   const [delivery, setDelivery] = useState<Delivery | undefined>();
   const [estimate, setEstimate] = useState<Estimate>({ calculatedAmount: null, warnings: [] });
+  const [isCalculating, setIsCalculating] = useState(false);
   const [artworks, setArtworks] = useState<Record<string, UploadedArtwork>>({});
   const [status, setStatus] = useState<"idle" | "quote" | "cart">("idle");
   const [basketError, setBasketError] = useState("");
@@ -113,9 +112,18 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/pricing/calculate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId: product.id, quantity, options: { ...values, ...(selectedRuleId ? { pricingRuleId: selectedRuleId } : {}) }, addonIds, delivery }), signal: controller.signal })
-      .then((response) => response.json()).then((result) => { if (result.success) setEstimate(result.data); }).catch(() => undefined);
-    return () => controller.abort();
+    const timer = setTimeout(() => {
+      setIsCalculating(true);
+      fetch("/api/pricing/calculate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId: product.id, quantity, options: { ...values, ...(selectedRuleId ? { pricingRuleId: selectedRuleId } : {}) }, addonIds, delivery }), signal: controller.signal })
+        .then((response) => response.json())
+        .then((result) => { if (result.success) setEstimate(result.data); })
+        .catch(() => undefined)
+        .finally(() => { if (!controller.signal.aborted) setIsCalculating(false); });
+    }, 150);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [addonIds, delivery, product.id, quantity, selectedRuleId, values]);
 
   function update(id: string, value: string) { setValues((current) => ({ ...current, [id]: value })); setStatus("idle"); }
@@ -143,20 +151,192 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
     if (checkout) router.push("/checkout");
   }
 
-  return <section className="overflow-hidden rounded-lg border border-[#cfd8e8] bg-white shadow-[0_10px_30px_rgba(16,33,63,0.08)]"><div className="border-b border-[#dfe5ef] px-5 py-4"><p className="text-[13px] font-bold uppercase tracking-[0.13em] text-[#2457b8]">Configure your order</p></div><div className="space-y-5 p-5">
-    <label className="block"><span className="mb-2 block text-[13px] font-bold text-[#263753]">Job name <span className="font-normal text-[#607089]">(optional)</span></span><input value={jobName} onChange={(event) => setJobName(event.target.value)} maxLength={160} placeholder="e.g. Restaurant visiting cards" className="w-full border border-[#c9d2df] px-3 py-3 text-[15px] outline-none focus:border-[#2457b8]" /></label>
-    <label className="block"><span className="mb-2 block text-[13px] font-bold text-[#263753]">Quantity</span><div className="flex items-center border border-[#c9d2df]"><input inputMode="numeric" value={values.quantity || "1000"} onChange={(event) => update("quantity", event.target.value)} onBlur={() => update("quantity", String(quantity))} className="min-w-0 flex-1 px-3 py-3 text-[15px] outline-none" /><div className="flex gap-1 pr-2"><button type="button" onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "DOWN", product.categorySlug, product.slug)))} className="grid size-9 place-items-center border border-[#c9d2df] hover:bg-[#f3f6fa]" aria-label="Decrease quantity"><Minus size={14} /></button><button type="button" onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "UP", product.categorySlug, product.slug)))} className="grid size-9 place-items-center border border-[#c9d2df] hover:bg-[#f3f6fa]" aria-label="Increase quantity"><Plus size={14} /></button></div></div></label>
-    {product.configuration.filter((field) => field.id !== "quantity").length ? <div className="grid gap-3 sm:grid-cols-2">{product.configuration.filter((field) => field.id !== "quantity").map((field) => <label key={field.id}><span className="mb-2 block text-[13px] font-bold text-[#263753]">{field.label}</span>{field.type === "select" ? <select value={values[field.id] ?? field.defaultValue} onChange={(event) => update(field.id, event.target.value)} className="w-full border border-[#c9d2df] bg-white px-3 py-3 text-[15px] outline-none">{field.options?.map((option) => <option key={option}>{option}</option>)}</select> : <div className="flex border border-[#c9d2df]"><input inputMode={field.type === "number" ? "decimal" : undefined} value={values[field.id] ?? field.defaultValue} onChange={(event) => update(field.id, event.target.value)} className="min-w-0 flex-1 px-3 py-3 text-[15px] outline-none" />{field.suffix ? <span className="border-l border-[#c9d2df] px-3 py-3 text-sm text-[#607089]">{field.suffix}</span> : null}</div>}</label>)}</div> : null}
-    {details?.pricingRules.length && details.pricingRules.length > 1 ? <label className="block"><span className="mb-2 block text-[13px] font-bold text-[#263753]">Card stock and print</span><select value={selectedRuleId ?? ""} onChange={(event) => selectRule(event.target.value)} className="w-full border border-[#c9d2df] bg-white px-3 py-3 text-[15px] font-semibold outline-none focus:border-[#2457b8]">{details.pricingRules.map((rule) => <option key={rule.id} value={rule.id}>{rule.name}</option>)}</select></label> : null}
-    {configurationAddons.length ? <div><p className="mb-2 text-[13px] font-bold text-[#263753]">Add-ons</p><div className="space-y-2">{configurationAddons.map((addon) => <label key={addon.addonId} className="flex cursor-pointer items-start gap-3 border border-[#d9e0eb] p-3 text-[15px]"><input type="checkbox" checked={addonIds.includes(addon.addonId)} onChange={() => setAddonIds((current) => current.includes(addon.addonId) ? current.filter((id) => id !== addon.addonId) : [...current, addon.addonId])} className="mt-0.5 size-4 accent-[#2457b8]" /><span className="min-w-0 flex-1"><strong className="block text-[#162237]">{addon.name}</strong>{addon.description ? <span className="mt-1 block text-[13px] text-[#607089]">{addon.description}</span> : null}</span><span className="font-bold text-[#2457b8]">{money(addon.displayPrice)}</span></label>)}</div></div> : null}
-    {deliveryMethods.length ? <div className="grid gap-3 sm:grid-cols-2"><label><span className="mb-2 block text-[13px] font-bold text-[#263753]">Delivery</span><select value={delivery?.method ?? ""} onChange={(event) => setDelivery({ method: event.target.value as Delivery["method"], stateCode: event.target.value === "PICKUP" ? "*" : delivery?.stateCode === "*" ? "GJ" : delivery?.stateCode || "GJ" })} className="w-full border border-[#c9d2df] bg-white px-3 py-3 text-[15px] outline-none"><option value="">Choose delivery</option>{deliveryMethods.map((method) => <option key={method} value={method}>{method.replaceAll("_", " ")}</option>)}</select></label>{delivery?.method && delivery.method !== "PICKUP" ? <label><span className="mb-2 block text-[13px] font-bold text-[#263753]">Delivery state</span><select value={delivery.stateCode} onChange={(event) => setDelivery({ ...delivery, stateCode: event.target.value })} className="w-full border border-[#c9d2df] bg-white px-3 py-3 text-[15px] outline-none">{commerceStates.map(([code, state]) => <option key={code} value={code}>{state}</option>)}</select></label> : null}</div> : null}
-    {requirement ? <div className="space-y-3">{artworkSlots.length ? artworkSlots.map((slot, index) => <ArtworkUploader key={slot.id} productId={product.id} pricingRuleId={selectedRuleId} requirement={requirement} slot={slot} showRequirements={index === 0} configuration={values} artwork={artworks[slot.slotKey] ?? null} onUploaded={(uploaded) => setArtworks((current) => ({ ...current, [slot.slotKey]: uploaded }))} onRemoved={() => setArtworks((current) => { const next = { ...current }; delete next[slot.slotKey]; return next; })} />) : <ArtworkUploader productId={product.id} pricingRuleId={selectedRuleId} requirement={requirement} configuration={values} artwork={artworks.MAIN ?? null} onUploaded={(uploaded) => setArtworks((current) => ({ ...current, MAIN: uploaded }))} onRemoved={() => setArtworks((current) => { const next = { ...current }; delete next.MAIN; return next; })} />}</div> : null}
-    <div className="border-t border-[#dfe5ef] pt-5"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.12em] text-[#607089]">Grand total</p><p className="mt-1 text-2xl font-bold text-[#162237]">{estimate.calculatedAmount ? money(estimate.calculatedAmount) : "Checking price..."}</p></div><span className="text-right text-[13px] text-[#607089]">{estimate.applicableRule ?? "Server pricing"}</span></div>{estimate.productPrice ? <div className="mt-3 space-y-1.5 text-[13px] text-[#607089]"><p className="flex justify-between"><span>Base product</span><strong>{money(estimate.productPrice)}</strong></p>{Number(estimate.addonTotal || 0) > 0 ? <p className="flex justify-between"><span>Add-ons</span><strong>{money(estimate.addonTotal)}</strong></p> : null}{Number(estimate.locationSurcharge?.amount || 0) > 0 ? <p className="flex justify-between"><span>{estimate.locationSurcharge?.label ?? "Location charge"}</span><strong>{money(estimate.locationSurcharge?.amount)}</strong></p> : null}{Number(estimate.delivery?.price || 0) > 0 ? <p className="flex justify-between"><span>Courier</span><strong>{money(estimate.delivery?.price)}</strong></p> : null}{estimate.taxRate && estimate.priceBeforeTax ? <><p className="flex justify-between border-t border-[#e2e7ef] pt-2"><span>Taxable subtotal</span><strong>{money(estimate.priceBeforeTax)}</strong></p>{estimate.taxJurisdictionState === "GJ" ? <><p className="flex justify-between"><span>CGST {Number(estimate.taxRate) / 2}%</span><strong>{money(estimate.cgstAmount)}</strong></p><p className="flex justify-between"><span>SGST {Number(estimate.taxRate) / 2}%</span><strong>{money(estimate.sgstAmount)}</strong></p></> : <p className="flex justify-between"><span>IGST {Number(estimate.taxRate)}%</span><strong>{money(estimate.igstAmount || estimate.taxAmount)}</strong></p>}</> : null}</div> : null}{estimate.warnings[0] ? <p className="mt-3 border-l-2 border-[#c78b30] pl-3 text-[13px] leading-5 text-[#805910]">{estimate.warnings[0]}</p> : null}</div>
-    {basketError ? <p className="text-[15px] font-semibold text-[#a53025]">{basketError}</p> : null}
-    {editItemId ? <button type="button" onClick={() => void add(editKind)} disabled={editKind === "PURCHASE" && !directReady} className="flex w-full items-center justify-center gap-2 rounded-full bg-[#2457b8] px-4 py-3.5 text-[15px] font-bold text-white disabled:cursor-not-allowed disabled:bg-[#9bb6e8]"><Check size={16} />Update {editKind === "QUOTE" ? "quote" : "purchase"} basket</button> : <>
-      {product.orderable ? <div className="grid gap-2 sm:grid-cols-2"><button type="button" onClick={() => void add("PURCHASE", true)} disabled={!directReady} className="flex items-center justify-center gap-2 rounded-full bg-[#2457b8] px-4 py-3.5 text-[15px] font-bold text-white disabled:cursor-not-allowed disabled:bg-[#9bb6e8]">Buy now <ArrowRight size={16} /></button><button type="button" onClick={() => void add("PURCHASE")} disabled={!directReady} className="flex items-center justify-center gap-2 rounded-full border border-[#2457b8] px-4 py-3.5 text-[15px] font-bold text-[#2457b8] disabled:cursor-not-allowed disabled:text-[#9bb6e8]"><ShoppingBag size={16} />Add to basket</button></div> : null}
-      {product.quoteable ? <button type="button" onClick={() => void add("QUOTE")} className="flex w-full items-center justify-center gap-2 rounded-full border border-[#b6c4da] px-4 py-3.5 text-[15px] font-bold text-[#263753]">{status === "quote" ? <><Check size={16} />Added to quote basket</> : "Request quote"}</button> : null}
-    </>}
-    {status === "cart" ? <a href="/cart" className="block text-center text-[15px] font-bold text-[#2457b8]">View purchase basket</a> : null}{status === "quote" ? <a href="/quote" className="block text-center text-[15px] font-bold text-[#2457b8]">View quote basket</a> : null}
-  </div></section>;
+  return (
+    <>
+      <section className="overflow-hidden rounded-xl border border-[#cfd8e8] bg-white shadow-[0_10px_30px_rgba(16,33,63,0.08)] mb-20 sm:mb-0">
+        <div className="border-b border-[#dfe5ef] px-5 py-4">
+          <p className="text-[13px] font-bold uppercase tracking-[0.13em] text-[#2457b8]">Configure your order</p>
+        </div>
+        <div className="space-y-5 p-5">
+          <label className="block">
+            <span className="mb-2 block text-[13px] font-bold text-[#263753]">Job name <span className="font-normal text-[#607089]">(optional)</span></span>
+            <input value={jobName} onChange={(event) => setJobName(event.target.value)} maxLength={160} placeholder="e.g. Restaurant visiting cards" className="w-full rounded-lg border border-[#c9d2df] px-3 py-3 text-[15px] outline-none focus:border-[#2457b8]" />
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-[13px] font-bold text-[#263753]">Quantity</span>
+            <div className="flex items-center rounded-lg border border-[#c9d2df]">
+              <input inputMode="numeric" value={values.quantity || "1000"} onChange={(event) => update("quantity", event.target.value)} onBlur={() => update("quantity", String(quantity))} className="min-w-0 flex-1 px-3 py-3 text-[15px] outline-none" />
+              <div className="flex gap-1 pr-2">
+                <button type="button" onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "DOWN", product.categorySlug, product.slug)))} className="grid size-9 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors" aria-label="Decrease quantity"><Minus size={14} /></button>
+                <button type="button" onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "UP", product.categorySlug, product.slug)))} className="grid size-9 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors" aria-label="Increase quantity"><Plus size={14} /></button>
+              </div>
+            </div>
+          </label>
+          {product.configuration.filter((field) => field.id !== "quantity").length ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {product.configuration.filter((field) => field.id !== "quantity").map((field) => (
+                <label key={field.id}>
+                  <span className="mb-2 block text-[13px] font-bold text-[#263753]">{field.label}</span>
+                  {field.type === "select" ? (
+                    <select value={values[field.id] ?? field.defaultValue} onChange={(event) => update(field.id, event.target.value)} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-3 text-[15px] outline-none">
+                      {field.options?.map((option) => <option key={option}>{option}</option>)}
+                    </select>
+                  ) : (
+                    <div className="flex rounded-lg border border-[#c9d2df]">
+                      <input inputMode={field.type === "number" ? "decimal" : undefined} value={values[field.id] ?? field.defaultValue} onChange={(event) => update(field.id, event.target.value)} className="min-w-0 flex-1 px-3 py-3 text-[15px] outline-none" />
+                      {field.suffix ? <span className="border-l border-[#c9d2df] px-3 py-3 text-sm text-[#607089]">{field.suffix}</span> : null}
+                    </div>
+                  )}
+                </label>
+              ))}
+            </div>
+          ) : null}
+          {details?.pricingRules.length && details.pricingRules.length > 1 ? (
+            <label className="block">
+              <span className="mb-2 block text-[13px] font-bold text-[#263753]">Card stock and print</span>
+              <select value={selectedRuleId ?? ""} onChange={(event) => selectRule(event.target.value)} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-3 text-[15px] font-semibold outline-none focus:border-[#2457b8]">
+                {details.pricingRules.map((rule) => <option key={rule.id} value={rule.id}>{rule.name}</option>)}
+              </select>
+            </label>
+          ) : null}
+          {configurationAddons.length ? (
+            <div>
+              <p className="mb-2 text-[13px] font-bold text-[#263753]">Add-ons</p>
+              <div className="space-y-2">
+                {configurationAddons.map((addon) => (
+                  <label key={addon.addonId} className="flex cursor-pointer items-start gap-3 rounded-lg border border-[#d9e0eb] p-3 text-[15px] hover:border-[#b6c4da] transition-colors">
+                    <input type="checkbox" checked={addonIds.includes(addon.addonId)} onChange={() => setAddonIds((current) => current.includes(addon.addonId) ? current.filter((id) => id !== addon.addonId) : [...current, addon.addonId])} className="mt-0.5 size-4 accent-[#2457b8] rounded" />
+                    <span className="min-w-0 flex-1">
+                      <strong className="block text-[#162237]">{addon.name}</strong>
+                      {addon.description ? <span className="mt-1 block text-[13px] text-[#607089]">{addon.description}</span> : null}
+                    </span>
+                    <span className="font-bold text-[#2457b8]">{money(addon.displayPrice)}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {deliveryMethods.length ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label>
+                <span className="mb-2 block text-[13px] font-bold text-[#263753]">Delivery</span>
+                <select value={delivery?.method ?? ""} onChange={(event) => setDelivery({ method: event.target.value as Delivery["method"], stateCode: event.target.value === "PICKUP" ? "*" : delivery?.stateCode === "*" ? "GJ" : delivery?.stateCode || "GJ" })} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-3 text-[15px] outline-none">
+                  <option value="">Choose delivery</option>
+                  {deliveryMethods.map((method) => <option key={method} value={method}>{method.replaceAll("_", " ")}</option>)}
+                </select>
+              </label>
+              {delivery?.method && delivery.method !== "PICKUP" ? (
+                <label>
+                  <span className="mb-2 block text-[13px] font-bold text-[#263753]">Delivery state</span>
+                  <select value={delivery.stateCode} onChange={(event) => setDelivery({ ...delivery, stateCode: event.target.value })} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-3 text-[15px] outline-none">
+                    {commerceStates.map(([code, state]) => <option key={code} value={code}>{state}</option>)}
+                  </select>
+                </label>
+              ) : null}
+            </div>
+          ) : null}
+          {requirement ? (
+            <div className="space-y-3">
+              {artworkSlots.length ? artworkSlots.map((slot, index) => <ArtworkUploader key={slot.id} productId={product.id} pricingRuleId={selectedRuleId} requirement={requirement} slot={slot} showRequirements={index === 0} configuration={values} artwork={artworks[slot.slotKey] ?? null} onUploaded={(uploaded) => setArtworks((current) => ({ ...current, [slot.slotKey]: uploaded }))} onRemoved={() => setArtworks((current) => { const next = { ...current }; delete next[slot.slotKey]; return next; })} />) : <ArtworkUploader productId={product.id} pricingRuleId={selectedRuleId} requirement={requirement} configuration={values} artwork={artworks.MAIN ?? null} onUploaded={(uploaded) => setArtworks((current) => ({ ...current, MAIN: uploaded }))} onRemoved={() => setArtworks((current) => { const next = { ...current }; delete next.MAIN; return next; })} />}
+            </div>
+          ) : null}
+          <div className="border-t border-[#dfe5ef] pt-5">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#607089]">Grand total</p>
+                <p className="mt-1 text-2xl font-bold text-[#162237]">
+                  {isCalculating ? <span className="text-[#607089] text-xl font-medium animate-pulse">Calculating...</span> : estimate.calculatedAmount ? money(estimate.calculatedAmount) : "Checking price..."}
+                </p>
+              </div>
+              <span className="text-right text-[13px] text-[#607089]">{estimate.applicableRule ?? "Server pricing"}</span>
+            </div>
+            {estimate.productPrice ? (
+              <div className="mt-3 space-y-1.5 text-[13px] text-[#607089]">
+                <p className="flex justify-between"><span>Base product</span><strong>{money(estimate.productPrice)}</strong></p>
+                {Number(estimate.addonTotal || 0) > 0 ? <p className="flex justify-between"><span>Add-ons</span><strong>{money(estimate.addonTotal)}</strong></p> : null}
+                {Number(estimate.locationSurcharge?.amount || 0) > 0 ? <p className="flex justify-between"><span>{estimate.locationSurcharge?.label ?? "Location charge"}</span><strong>{money(estimate.locationSurcharge?.amount)}</strong></p> : null}
+                {Number(estimate.delivery?.price || 0) > 0 ? <p className="flex justify-between"><span>Courier</span><strong>{money(estimate.delivery?.price)}</strong></p> : null}
+                {estimate.taxRate && estimate.priceBeforeTax ? (
+                  <>
+                    <p className="flex justify-between border-t border-[#e2e7ef] pt-2"><span>Taxable subtotal</span><strong>{money(estimate.priceBeforeTax)}</strong></p>
+                    {estimate.taxJurisdictionState === "GJ" ? (
+                      <>
+                        <p className="flex justify-between"><span>CGST {Number(estimate.taxRate) / 2}%</span><strong>{money(estimate.cgstAmount)}</strong></p>
+                        <p className="flex justify-between"><span>SGST {Number(estimate.taxRate) / 2}%</span><strong>{money(estimate.sgstAmount)}</strong></p>
+                      </>
+                    ) : (
+                      <p className="flex justify-between"><span>IGST {Number(estimate.taxRate)}%</span><strong>{money(estimate.igstAmount || estimate.taxAmount)}</strong></p>
+                    )}
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+            {estimate.warnings[0] ? <p className="mt-3 border-l-2 border-[#c78b30] pl-3 text-[13px] leading-5 text-[#805910]">{estimate.warnings[0]}</p> : null}
+          </div>
+          {basketError ? <p className="text-[15px] font-semibold text-[#a53025]">{basketError}</p> : null}
+          {editItemId ? (
+            <button type="button" onClick={() => void add(editKind)} disabled={editKind === "PURCHASE" && !directReady} className="flex w-full items-center justify-center gap-2 rounded-full bg-[#2457b8] px-4 py-3.5 text-[15px] font-bold text-white shadow-sm hover:bg-[#1a4494] transition-colors disabled:cursor-not-allowed disabled:bg-[#9bb6e8]"><Check size={16} />Update {editKind === "QUOTE" ? "quote" : "purchase"} basket</button>
+          ) : (
+            <>
+              {product.orderable ? (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button type="button" onClick={() => void add("PURCHASE", true)} disabled={!directReady} className="flex items-center justify-center gap-2 rounded-full bg-[#2457b8] px-4 py-3.5 text-[15px] font-bold text-white shadow-sm hover:bg-[#1a4494] transition-colors disabled:cursor-not-allowed disabled:bg-[#9bb6e8]">Buy now <ArrowRight size={16} /></button>
+                  <button type="button" onClick={() => void add("PURCHASE")} disabled={!directReady} className="flex items-center justify-center gap-2 rounded-full border border-[#2457b8] bg-white px-4 py-3.5 text-[15px] font-bold text-[#2457b8] hover:bg-[#f0f4fc] transition-colors disabled:cursor-not-allowed disabled:text-[#9bb6e8] disabled:border-[#d0dbeb]"><ShoppingBag size={16} />Add to basket</button>
+                </div>
+              ) : null}
+              {product.quoteable ? (
+                <button type="button" onClick={() => void add("QUOTE")} className="flex w-full items-center justify-center gap-2 rounded-full border border-[#b6c4da] bg-white px-4 py-3.5 text-[15px] font-bold text-[#263753] hover:bg-[#f3f6fa] hover:border-[#2457b8] transition-colors">{status === "quote" ? <><Check size={16} />Added to quote basket</> : "Request quote"}</button>
+              ) : null}
+            </>
+          )}
+          {status === "cart" ? <a href="/cart" className="block text-center text-[15px] font-bold text-[#2457b8] hover:underline">View purchase basket &rarr;</a> : null}
+          {status === "quote" ? <a href="/quote" className="block text-center text-[15px] font-bold text-[#2457b8] hover:underline">View quote basket &rarr;</a> : null}
+        </div>
+      </section>
+
+      {/* Mobile Sticky Bottom Action Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--mc-line)] bg-white/95 p-3 backdrop-blur shadow-[0_-8px_20px_rgba(16,33,63,0.08)] sm:hidden">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--mc-muted)]">Grand Total</p>
+            <p className="text-lg font-bold text-[var(--mc-ink)]">
+              {isCalculating ? <span className="text-sm font-medium animate-pulse text-[var(--mc-muted)]">...</span> : estimate.calculatedAmount ? money(estimate.calculatedAmount) : "—"}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {product.orderable ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => void add("PURCHASE", true)}
+                  disabled={!directReady}
+                  className="flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-[#9bb6e8]"
+                >
+                  Buy now <ArrowRight size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void add("PURCHASE")}
+                  disabled={!directReady}
+                  className="grid size-10 place-items-center rounded-full border border-[var(--mc-accent)] bg-white text-[var(--mc-accent)] disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Add to basket"
+                >
+                  <ShoppingBag size={16} />
+                </button>
+              </>
+            ) : null}
+            {product.quoteable && !product.orderable ? (
+              <button
+                type="button"
+                onClick={() => void add("QUOTE")}
+                className="flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white shadow-sm"
+              >
+                Request quote
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }

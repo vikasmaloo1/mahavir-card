@@ -1,5 +1,6 @@
 import { CheckoutFlow } from "@/components/checkout-flow";
 import { CustomerNotices } from "@/components/customer-notices";
+import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { auth } from "@/lib/auth/server";
 import { headers } from "next/headers";
@@ -19,6 +20,7 @@ export default async function CheckoutPage() {
         </header>
         <CheckoutFlow />
       </div>
+      <StorefrontFooter />
     </main>
   );
 }

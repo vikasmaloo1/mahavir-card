@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CustomerNotices } from "@/components/customer-notices";
 import { PromotionalBanner } from "@/components/promotional-banner";
 import { QuoteFlow } from "@/components/quote-flow";
+import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { auth } from "@/lib/auth/server";
 import { headers } from "next/headers";
@@ -28,6 +29,7 @@ export default async function QuotePage() {
           <PromotionalBanner placement="CART_CHECKOUT" />
         </div>
       </div>
+      <StorefrontFooter />
     </main>
   );
 }

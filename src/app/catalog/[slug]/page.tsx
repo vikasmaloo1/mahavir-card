@@ -1,4 +1,4 @@
-import { ArrowLeft, Clock3, FileUp, ShieldCheck } from "lucide-react";
+import { Clock3, FileUp, ShieldCheck } from "lucide-react";
 import { and, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";

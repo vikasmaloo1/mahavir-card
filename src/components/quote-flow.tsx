@@ -54,28 +54,31 @@ export function QuoteFlow() {
   const [quoteNumber, setQuoteNumber] = useState("");
   const [addedAnimationId, setAddedAnimationId] = useState<string | null>(null);
 
+  const loadAccount = useCallback(async () => {
+    try {
+      const response = await fetch("/api/account/summary", { cache: "no-store" });
+      const account = await response.json().catch(() => null);
+      if (account?.success) {
+        setForm((current) => ({
+          ...current,
+          contactName: account.data.customer?.contactName ?? account.data.user.name ?? "",
+          email: account.data.user.email ?? "",
+          phone: account.data.customer?.phone ?? account.data.user.phoneNumber ?? "",
+          companyName: account.data.customer?.companyName ?? "",
+        }));
+      }
+    } catch {
+      // Ignored
+    }
+  }, []);
+
   const loadBasket = useCallback(async () => {
     try {
-      const [cartResponse, accountResponse] = await Promise.all([
-        fetch("/api/cart?kind=QUOTE", { cache: "no-store" }),
-        fetch("/api/account/summary", { cache: "no-store" }),
-      ]);
+      const cartResponse = await fetch("/api/cart?kind=QUOTE", { cache: "no-store" });
       const cartPayload = await cartResponse.json();
       if (cartResponse.status === 401) throw new Error("Sign in to view your quote basket.");
       if (!cartResponse.ok || !cartPayload.success) throw new Error(cartPayload.error?.message ?? "Could not load your quote basket");
       setBasketItems(cartPayload.data.items || []);
-      if (accountResponse.ok) {
-        const account = await accountResponse.json();
-        if (account.success) {
-          setForm((current) => ({
-            ...current,
-            contactName: account.data.customer?.contactName ?? account.data.user.name ?? "",
-            email: account.data.user.email ?? "",
-            phone: account.data.customer?.phone ?? account.data.user.phoneNumber ?? "",
-            companyName: account.data.customer?.companyName ?? "",
-          }));
-        }
-      }
       setError("");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not load your quote basket");
@@ -107,9 +110,13 @@ export function QuoteFlow() {
   }, []);
 
   useEffect(() => {
-    void loadBasket();
-    void loadCatalog();
-  }, [loadBasket, loadCatalog]);
+    const timer = window.setTimeout(() => {
+      void loadAccount();
+      void loadBasket();
+      void loadCatalog();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadAccount, loadBasket, loadCatalog]);
 
   const filteredProducts = useMemo(() => {
     if (!searchQuery.trim()) return catalogProducts;
@@ -391,7 +398,7 @@ export function QuoteFlow() {
                   const isJustAdded = addedAnimationId === product.id;
 
                   return (
-                    <article key={product.id} className="flex flex-wrap items-center justify-between gap-4 py-3.5 hover:bg-[#f9fafc] px-2 rounded transition-colors">
+                    <article key={product.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-3.5 hover:bg-[#f9fafc] px-3 rounded-lg transition-colors border-b last:border-b-0 border-[#edf1f7]">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="rounded bg-[#edf2f8] px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-[#2457b8]">
@@ -406,13 +413,13 @@ export function QuoteFlow() {
                         ) : null}
                       </div>
 
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-1 sm:pt-0">
                         {/* Quantity Stepper */}
                         <div className="flex items-center rounded-lg border border-[#c9d2df] bg-white">
                           <button
                             type="button"
                             onClick={() => handleProductQuantityStep(product.id, "DOWN", categorySlug, product.slug)}
-                            className="grid size-8 place-items-center hover:bg-[#f3f6fa]"
+                            className="grid size-8 place-items-center hover:bg-[#f3f6fa] transition-colors"
                             aria-label="Decrease quantity"
                           >
                             <Minus size={13} />
@@ -427,7 +434,7 @@ export function QuoteFlow() {
                           <button
                             type="button"
                             onClick={() => handleProductQuantityStep(product.id, "UP", categorySlug, product.slug)}
-                            className="grid size-8 place-items-center hover:bg-[#f3f6fa]"
+                            className="grid size-8 place-items-center hover:bg-[#f3f6fa] transition-colors"
                             aria-label="Increase quantity"
                           >
                             <Plus size={13} />
@@ -439,7 +446,7 @@ export function QuoteFlow() {
                           type="button"
                           onClick={() => void handleQuickAdd(product)}
                           disabled={isBusy}
-                          className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all ${
+                          className={`inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-all shadow-sm ${
                             isJustAdded
                               ? "bg-[#207a3c] text-white"
                               : "bg-[#2457b8] text-white hover:bg-[#1a4494]"
