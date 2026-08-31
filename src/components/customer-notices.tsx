@@ -61,7 +61,7 @@ export function CustomerNotices({ placement = "GLOBAL" }: { placement?: "GLOBAL"
     if (!sequenceRef.current || !marqueeItems.length) return;
 
     const updateDuration = (width: number) => {
-      const pixelsPerSecond = window.innerWidth < 640 ? 27 : 31;
+      const pixelsPerSecond = window.innerWidth < 640 ? 45 : 45;
       setAnimationDurationSeconds(Math.max(60, Math.ceil(width / pixelsPerSecond)));
     };
     const observer = new ResizeObserver(([entry]) => updateDuration(entry.contentRect.width));
