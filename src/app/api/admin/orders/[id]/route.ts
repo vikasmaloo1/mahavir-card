@@ -1,8 +1,8 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
 import { db } from "@/lib/db/server";
-import { artworks, customers, orderItems, orders, payments, storedDocuments, walletTransactions } from "@/lib/db/schema";
+import { artworks, customers, orderItems, orders, orderStatusEvents, payments, storedDocuments, walletTransactions } from "@/lib/db/schema";
 import { requireRole } from "@/lib/permissions";
 import { adminOrderUpdateSchema } from "@/lib/validation";
 import { canTransition } from "@/lib/workflows";
@@ -13,14 +13,15 @@ export async function GET(request: Request, ctx: RouteContext<"/api/admin/orders
     const { id } = await ctx.params;
     const [order] = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
     if (!order) return jsonError("Order not found", 404);
-    const [items, payment, artworkRows, documents, customer] = await Promise.all([
+    const [items, payment, artworkRows, documents, customer, history] = await Promise.all([
       db.select().from(orderItems).where(eq(orderItems.orderId, id)),
       db.select().from(payments).where(eq(payments.orderId, id)).limit(1),
       db.select().from(artworks).where(eq(artworks.orderId, id)),
       db.select().from(storedDocuments).where(eq(storedDocuments.orderId, id)),
       order.customerId ? db.select().from(customers).where(eq(customers.id, order.customerId)).limit(1) : Promise.resolve([]),
+      db.select().from(orderStatusEvents).where(eq(orderStatusEvents.orderId, id)).orderBy(asc(orderStatusEvents.createdAt)),
     ]);
-    return jsonOk({ order, items, payment: payment[0] ?? null, artworks: artworkRows, documents, customer: customer[0] ?? null });
+    return jsonOk({ order, items, payment: payment[0] ?? null, artworks: artworkRows, documents, customer: customer[0] ?? null, history });
   } catch (error) { return error instanceof Response ? error : handleApiError(error); }
 }
 
@@ -55,6 +56,7 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/orde
       }
 
       const [order] = await tx.update(orders).set({ ...input, updatedAt: new Date() }).where(eq(orders.id, id)).returning();
+      if (order && input.status && input.status !== existing.status) await tx.insert(orderStatusEvents).values({ orderId: id, status: input.status, notes: input.notes ?? null, changedBy: session.user.id });
       return { order };
     });
     if ("error" in result) {

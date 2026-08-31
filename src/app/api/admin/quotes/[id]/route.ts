@@ -32,6 +32,8 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/quot
     const input = await readBody(request, adminQuoteUpdateSchema);
     const [existing] = await db.select().from(quotes).where(eq(quotes.id, id)).limit(1);
     if (!existing) return jsonError("Quote not found", 404);
+    const financialEdit = (input.discountAmount !== undefined && Number(input.discountAmount) !== Number(existing.discountAmount)) || (input.tax !== undefined && Number(input.tax) !== Number(existing.tax));
+    if (financialEdit && !["NEW", "REVIEWING", "QUOTE_CREATED"].includes(existing.status)) return jsonError("A sent quotation cannot be repriced. Create a revised quote instead.", 409);
     if (input.status && !canTransition("quote", existing.status, input.status)) return jsonError(`Cannot move a quote from ${existing.status} to ${input.status}`, 409);
     const [quote] = await db.update(quotes).set({ ...input, updatedAt: new Date() }).where(eq(quotes.id, id)).returning();
     if (!quote) return jsonError("Quote not found", 404);

@@ -1,7 +1,7 @@
 import { config as loadEnv } from "dotenv";
 import { and, eq, ilike, or } from "drizzle-orm";
 
-import { artworks, customers, inquiries, orders, quotes, user } from "../src/lib/db/schema";
+import { admins, artworks, customers, inquiries, orders, quotes, user } from "../src/lib/db/schema";
 
 loadEnv({ path: ".env.local", quiet: true });
 
@@ -9,6 +9,7 @@ const baseUrl = process.env.CUSTOMER_FLOW_BASE_URL || "http://localhost:3005";
 const trustedOrigin = process.env.BETTER_AUTH_URL || baseUrl;
 const marker = crypto.randomUUID().slice(0, 8);
 const email = `customer-flow-${marker}@example.com`;
+const adminEmail = `customer-flow-admin-${marker}@example.com`;
 const password = `Flow-${crypto.randomUUID()}-9a`;
 const createdArtworkIds: string[] = [];
 
@@ -49,6 +50,14 @@ async function main() {
   const cookie = setCookies.filter(Boolean).map((value) => value.split(";", 1)[0]).join("; ");
   if (!cookie) throw new Error("Temporary customer signup did not return a session cookie");
 
+  const adminSignUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, { method: "POST", headers: { "Content-Type": "application/json", Origin: trustedOrigin }, body: JSON.stringify({ name: "Customer Flow Admin", email: adminEmail, password }) });
+  if (!adminSignUp.ok) throw new Error(`Temporary admin signup failed with HTTP ${adminSignUp.status}`);
+  const adminCookies = typeof adminSignUp.headers.getSetCookie === "function" ? adminSignUp.headers.getSetCookie() : [adminSignUp.headers.get("set-cookie") || ""];
+  const adminCookie = adminCookies.filter(Boolean).map((value) => value.split(";", 1)[0]).join("; ");
+  const [adminUser] = await db.select({ id: user.id }).from(user).where(eq(user.email, adminEmail)).limit(1);
+  if (!adminCookie || !adminUser) throw new Error("Temporary admin session was not created");
+  await db.insert(admins).values({ userId: adminUser.id, status: "ACTIVE" });
+
   async function api(path: string, options: RequestInit = {}, expected = 200) {
     const headers = new Headers(options.headers);
     headers.set("Cookie", cookie);
@@ -56,6 +65,17 @@ async function main() {
     const response = await fetch(`${baseUrl}${path}`, { ...options, headers });
     const payload = await response.json().catch(() => null);
     if (response.status !== expected) throw new Error(`${options.method || "GET"} ${path} returned HTTP ${response.status}: ${String(object(object(payload).error).message || "request failed")}`);
+    return payload;
+  }
+
+  async function adminApi(path: string, options: RequestInit = {}, expected = 200) {
+    const headers = new Headers(options.headers);
+    headers.set("Cookie", adminCookie);
+    headers.set("Origin", trustedOrigin);
+    if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+    const response = await fetch(`${baseUrl}${path}`, { ...options, headers });
+    const payload = await response.json().catch(() => null);
+    if (response.status !== expected) throw new Error(`ADMIN ${options.method || "GET"} ${path} returned HTTP ${response.status}: ${String(object(object(payload).error).message || "request failed")}`);
     return payload;
   }
 
@@ -134,8 +154,15 @@ async function main() {
     if (Math.abs(Number(codOrder.subtotal) + Number(codOrder.tax) - Number(codOrder.total)) > 0.01) throw new Error("Order subtotal, GST, and total do not reconcile");
 
     await addPurchase();
-    const razorpay = data(await api("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customer, address, paymentMethod: "RAZORPAY" }) }, 201));
-    if (object(razorpay.payment).status !== "PENDING" || object(razorpay.payment).provider !== "RAZORPAY") throw new Error("Razorpay checkout did not create the expected pending provider intent");
+    const razorpayConfigured = Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET && process.env.RAZORPAY_WEBHOOK_SECRET);
+    if (razorpayConfigured) {
+      const razorpay = data(await api("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customer, address, paymentMethod: "RAZORPAY" }) }, 201));
+      if (object(razorpay.payment).status !== "PENDING" || object(razorpay.payment).provider !== "RAZORPAY" || !object(razorpay.razorpay).orderId) throw new Error("Razorpay checkout did not create a provider-backed order");
+    } else {
+      await api("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customer, address, paymentMethod: "RAZORPAY" }) }, 503);
+      const pendingBasket = data(await api("/api/cart?kind=PURCHASE"));
+      for (const item of array(pendingBasket.items)) await api(`/api/cart/items/${id(item)}`, { method: "DELETE" });
+    }
 
     const [flowUser] = await db.select({ id: user.id }).from(user).where(eq(user.email, email)).limit(1);
     if (!flowUser) throw new Error("Temporary customer was not found for credit verification");
@@ -149,15 +176,40 @@ async function main() {
     await api("/api/cart/items", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "QUOTE", productId, quantity, configuration }) }, 201);
     const quote = data(await api("/api/quotes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contactName: customer.contactName, email, phone: customer.phone, companyName: customer.companyName, notes: "Automated customer flow verification" }) }, 201));
     if (!quote.quoteNumber) throw new Error("Quote submission did not return a quote number");
+    const quoteId = id(quote);
+    for (const status of ["REVIEWING", "QUOTE_CREATED", "SENT_TO_CUSTOMER"]) await adminApi(`/api/admin/quotes/${quoteId}`, { method: "PATCH", body: JSON.stringify({ status }) });
+    const customerQuote = data(await api(`/api/account/quotes/${quoteId}`));
+    if (object(customerQuote.quote).status !== "SENT_TO_CUSTOMER") throw new Error("Customer did not receive the admin-sent quotation status");
+    await api(`/api/account/quotes/${quoteId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision: "APPROVE", message: "Approved by customer flow verification" }) });
+    const convertedOrder = data(await adminApi(`/api/admin/quotes/${quoteId}/convert-to-order`, { method: "POST" }, 201));
+    const customerOrder = data(await api(`/api/account/orders/${id(convertedOrder)}`));
+    if (object(customerOrder.order).status !== "CONFIRMED" || !array(customerOrder.history).length) throw new Error("Converted order and status history were not synchronized to the customer account");
+
+    const topUp = data(await api("/api/account/wallet/top-up", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ amount: 250 }) }, 201));
+    const walletList = data(await adminApi("/api/admin/wallet?status=PENDING"));
+    const walletRow = array(walletList.items).find((row) => id(object(row).transaction) === id(topUp));
+    if (!walletRow) throw new Error("Customer wallet request did not appear in admin");
+    await adminApi(`/api/admin/wallet/${id(topUp)}`, { method: "PATCH", body: JSON.stringify({ decision: "APPROVED", notes: "Automated verification" }) });
+    const wallet = data(await api("/api/account/wallet/top-up"));
+    if (Number(object(wallet.customer).walletBalance) < 250 || !array(wallet.transactions).some((transaction) => id(transaction) === id(topUp) && transaction.status === "APPROVED")) throw new Error("Admin wallet approval did not synchronize to the customer balance");
 
     const account = data(await api("/api/account/summary"));
-    if (array(account.orders).length < 3 || !array(account.quotes).length || !array(account.artworks).length || !array(account.addresses).length) throw new Error("Customer account history did not contain the completed flow records");
+    if (array(account.orders).length < (razorpayConfigured ? 3 : 2) || !array(account.quotes).length || !array(account.artworks).length || !array(account.addresses).length) throw new Error("Customer account history did not contain the completed flow records");
 
-    console.log("Customer flow verification passed: products/search, configuration, server pricing, CDR/R2, basket edits, COD, Razorpay intent, B2B credit order, quote, and account history.");
+    const customerLogout = await fetch(`${baseUrl}/api/auth/sign-out`, { method: "POST", headers: { Cookie: cookie, Origin: trustedOrigin, "Content-Type": "application/json" }, body: "{}" });
+    if (!customerLogout.ok || (await fetch(`${baseUrl}/api/account/summary`, { headers: { Cookie: cookie, Origin: trustedOrigin } })).status !== 401) throw new Error("Customer logout did not invalidate the protected session");
+    const adminLogout = await fetch(`${baseUrl}/api/auth/sign-out`, { method: "POST", headers: { Cookie: adminCookie, Origin: trustedOrigin, "Content-Type": "application/json" }, body: "{}" });
+    if (!adminLogout.ok || (await fetch(`${baseUrl}/api/admin/session`, { headers: { Cookie: adminCookie, Origin: trustedOrigin } })).status !== 401) throw new Error("Admin logout did not invalidate the protected session");
+
+    console.log(`Customer/admin synchronization passed: catalog, pricing, CDR/R2, COD, ${razorpayConfigured ? "Razorpay provider order" : "safe Razorpay configuration failure"}, B2B credit, quote approval/conversion, status history, wallet approval, account history, and logout invalidation.`);
   } finally {
     for (const artworkId of createdArtworkIds) {
-      await fetch(`${baseUrl}/api/artworks/${artworkId}`, { method: "DELETE", headers: { Cookie: cookie, Origin: trustedOrigin } }).catch(() => undefined);
+      const [artwork] = await db.select({ storageKey: artworks.storageKey }).from(artworks).where(eq(artworks.id, artworkId)).limit(1);
+      if (artwork?.storageKey) await storage.deleteObject(artwork.storageKey).catch(() => undefined);
+      await db.delete(artworks).where(eq(artworks.id, artworkId));
     }
+    const [testAdmin] = await db.select({ id: user.id }).from(user).where(eq(user.email, adminEmail)).limit(1);
+    if (testAdmin) await db.delete(user).where(eq(user.id, testAdmin.id));
     const [testUser] = await db.select({ id: user.id }).from(user).where(eq(user.email, email)).limit(1);
     if (testUser) {
       const [customer] = await db.select({ id: customers.id }).from(customers).where(eq(customers.userId, testUser.id)).limit(1);

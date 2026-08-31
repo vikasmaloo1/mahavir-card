@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 
 import { handleApiError, jsonError, jsonOk } from "@/lib/api";
 import { db } from "@/lib/db/server";
-import { orderItems, orders, quoteItems, quotes } from "@/lib/db/schema";
+import { orderItems, orders, orderStatusEvents, quoteItems, quotes } from "@/lib/db/schema";
 import { requireRole } from "@/lib/permissions";
 
 export async function POST(request: Request, ctx: RouteContext<"/api/admin/quotes/[id]/convert-to-order">) {
@@ -28,6 +28,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/admin/quote
         notes: quote.notes,
       }).returning();
       if (!created) return null;
+      await tx.insert(orderStatusEvents).values({ orderId: created.id, status: created.status, notes: `Created from quote ${quote.quoteNumber}` });
       await tx.insert(orderItems).values(items.map((item) => ({
         orderId: created.id,
         productId: item.productId,

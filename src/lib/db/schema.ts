@@ -489,6 +489,19 @@ export const orders = pgTable("orders", {
   ...timestamps,
 });
 
+export const orderStatusEvents = pgTable(
+  "order_status_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orderId: uuid("orderId").notNull().references(() => orders.id, { onDelete: "cascade" }),
+    status: text("status").notNull(),
+    notes: text("notes"),
+    changedBy: uuid("changedBy").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("order_status_events_order_idx").on(table.orderId, table.createdAt)],
+);
+
 export const orderItems = pgTable("order_items", {
   id: uuid("id").defaultRandom().primaryKey(),
   orderId: uuid("orderId")
@@ -609,7 +622,7 @@ export const paymentTransactions = pgTable("payment_transactions", {
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull().default("0"),
   rawData: jsonb("rawData").$type<Record<string, unknown>>().notNull().default({}),
   ...timestamps,
-});
+}, (table) => [uniqueIndex("payment_transactions_transaction_idx").on(table.transactionId)]);
 
 export const walletTransactions = pgTable(
   "wallet_transactions",

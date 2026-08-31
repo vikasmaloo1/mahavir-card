@@ -40,8 +40,9 @@ export async function POST(request: Request) {
       }
     }
 
-    const subtotal = basket.items.reduce((sum, item) => sum + Number(item.calculatedAmount ?? 0), 0).toFixed(2);
-    const tax = basket.items.reduce((sum, item) => sum + Number((item.pricingSnapshot as { taxAmount?: string }).taxAmount ?? 0), 0).toFixed(2);
+    const subtotal = basket.summary.priceBeforeTax;
+    const tax = basket.summary.tax;
+    const total = basket.summary.total;
     const [customer] = await db.select({ id: customers.id }).from(customers).where(eq(customers.userId, session.user.id)).limit(1);
     const result = await db.transaction(async (tx) => {
       const [quote] = await tx.insert(quotes).values({
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
         notes: input.notes,
         subtotal,
         tax,
-        total: subtotal,
+        total,
       }).returning();
       if (!quote) return null;
 

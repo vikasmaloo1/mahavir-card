@@ -1,7 +1,11 @@
 import { AccountDashboard } from "@/components/account-dashboard";
 import { StorefrontHeader } from "@/components/storefront-header";
+import { auth } from "@/lib/auth/server";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
-export default function AccountPage() {
+export default async function AccountPage() {
+  if (!await auth.api.getSession({ headers: await headers() })) redirect("/login");
   return (
     <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
       <StorefrontHeader />

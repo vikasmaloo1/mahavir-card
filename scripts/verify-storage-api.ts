@@ -35,7 +35,8 @@ async function main() {
   try {
     const products = list((await api("/api/admin/products?limit=100")).payload);
     const categories = list((await api("/api/admin/categories")).payload);
-    if (!products[0] || !categories[0]) throw new Error("A product and category are required for storage API verification");
+    const activeCategory = categories.find((item) => item.isActive === true);
+    if (!products[0] || !activeCategory) throw new Error("An active product and category are required for storage API verification");
 
     const productId = id(products[0]); const product = data((await api(`/api/admin/products/${productId}`)).payload).data as Record<string, unknown>;
     const productImage = new FormData(); productImage.append("file", new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])], { type: "image/png" }), "r2-product-test.png"); productImage.append("altText", "R2 verification");
@@ -46,7 +47,7 @@ async function main() {
     const productFile = await fetch(`${baseUrl}/api/products/${productId}/images/${created.productImage.imageId}/file`, { redirect: "follow" });
     if (!productFile.ok) throw new Error("Public product image download failed");
 
-    const categoryId = id(categories[0]); const categoryImage = new FormData(); categoryImage.append("file", new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], { type: "image/jpeg" }), "r2-category-test.jpg"); categoryImage.append("isPrimary", "true");
+    const categoryId = id(activeCategory); const categoryImage = new FormData(); categoryImage.append("file", new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], { type: "image/jpeg" }), "r2-category-test.jpg"); categoryImage.append("isPrimary", "true");
     const uploadedCategoryImage = data((await api(`/api/admin/categories/${categoryId}/images`, { method: "POST", body: categoryImage })).payload).data as Record<string, unknown>;
     created.categoryImage = { categoryId, imageId: id(uploadedCategoryImage) };
     const categoryFile = await fetch(`${baseUrl}/api/categories/${categoryId}/images/${created.categoryImage.imageId}/file`, { redirect: "follow" });
@@ -60,15 +61,28 @@ async function main() {
     const uploadedDocument = data((await api("/api/admin/documents", { method: "POST", body: documentForm })).payload).data as Record<string, unknown>; created.documentId = id(uploadedDocument);
     const documentRedirect = await api(`/api/admin/documents/${created.documentId}/download`); const documentFile = await fetch(documentRedirect.response.headers.get("location") || ""); if (!documentFile.ok) throw new Error("Private document signed download failed");
 
-    let artworkProduct: Record<string, unknown> | undefined; let pricingRuleId: string | null = null;
+    let artworkProduct: Record<string, unknown> | undefined;
+    let pricingRuleId: string | null = null;
+    let artworkSlot: Record<string, unknown> | undefined;
     for (const candidate of products) {
       const catalog = data((await api(`/api/admin/products/${id(candidate)}/catalog`)).payload).data as Record<string, unknown>;
       const requirements = Array.isArray(catalog.artworkRequirements) ? catalog.artworkRequirements as Record<string, unknown>[] : [];
-      if (requirements.length) { artworkProduct = candidate; pricingRuleId = typeof requirements[0].pricingRuleId === "string" ? requirements[0].pricingRuleId : null; break; }
+      const pricingRules = Array.isArray(catalog.pricingRules) ? catalog.pricingRules as Record<string, unknown>[] : [];
+      for (const rule of pricingRules) {
+        const requirement = requirements.find((item) => item.pricingRuleId === id(rule) && Array.isArray(item.slots) && item.slots.length > 0);
+        const slot = requirement && Array.isArray(requirement.slots) ? requirement.slots[0] as Record<string, unknown> : undefined;
+        if (requirement && slot) {
+          artworkProduct = candidate;
+          pricingRuleId = id(rule);
+          artworkSlot = slot;
+          break;
+        }
+      }
+      if (artworkProduct) break;
     }
-    if (!artworkProduct) throw new Error("No product with artwork requirements was available for CDR verification");
+    if (!artworkProduct || !artworkSlot) throw new Error("No priced product with an artwork slot was available for CDR verification");
     const cdr = new TextEncoder().encode("CorelDRAW verification object");
-    const started = data((await api("/api/artworks/upload-url", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId: id(artworkProduct), pricingRuleId, filename: "r2-artwork-test.cdr", contentType: "application/octet-stream", fileSize: cdr.byteLength, configuration: {} }) })).payload).data as Record<string, unknown>;
+    const started = data((await api("/api/artworks/upload-url", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId: id(artworkProduct), pricingRuleId, artworkSlotId: id(artworkSlot), artworkSlotKey: artworkSlot.slotKey, filename: "r2-artwork-test.cdr", contentType: "application/octet-stream", fileSize: cdr.byteLength, configuration: {} }) })).payload).data as Record<string, unknown>;
     created.artworkId = id(data(started.artwork)); const directUpload = await fetch(String(started.uploadUrl), { method: "PUT", headers: started.headers as HeadersInit, body: cdr }); if (!directUpload.ok) throw new Error("Presigned CDR API upload failed");
     await api(`/api/artworks/${created.artworkId}/finalize`, { method: "POST" });
     const artworkRedirect = await api(`/api/artworks/${created.artworkId}/download`); const artworkFile = await fetch(artworkRedirect.response.headers.get("location") || ""); if (!artworkFile.ok) throw new Error("Private CDR signed download failed");

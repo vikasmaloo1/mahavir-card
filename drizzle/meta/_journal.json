@@ -127,6 +127,20 @@
       "when": 1788116681797,
       "tag": "0017_rate_catalog_specs",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788148772662,
+      "tag": "0018_empty_wong",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788149221138,
+      "tag": "0019_wet_jetstream",
+      "breakpoints": true
     }
   ]
 }

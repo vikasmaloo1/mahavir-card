@@ -5,9 +5,9 @@ import { validateRequiredArtwork } from "@/lib/artwork-validation";
 import { getOwnedCart, selectionsFromConfiguration } from "@/lib/cart-service";
 import { evaluateCreditEligibility } from "@/lib/customer-credit";
 import { db } from "@/lib/db/server";
-import { addresses, cartItems, customers, orderItems, orders, payments, walletTransactions } from "@/lib/db/schema";
+import { addresses, cartItems, customers, orderItems, orders, orderStatusEvents, payments, walletTransactions } from "@/lib/db/schema";
 import { indiaStateName, isIndiaStateCode } from "@/lib/india-states";
-import { createPaymentIntent } from "@/lib/payment-service";
+import { createPaymentIntent, createRazorpayOrder, PaymentConfigurationError, PaymentProviderError, razorpayPublicKey } from "@/lib/payment-service";
 import { requireUser } from "@/lib/permissions";
 import { checkoutSchema } from "@/lib/validation";
 
@@ -44,6 +44,8 @@ export async function POST(request: Request) {
     const tax = basket.items.reduce((sum, item) => sum + Number((item.pricingSnapshot as { taxAmount?: string }).taxAmount ?? 0), 0).toFixed(2);
     const total = basket.summary.total;
     const deliveryAddress = { ...input.address, line2: input.address.line2 || null, country: input.address.country || "India" };
+    const orderNumber = makeNumber();
+    const razorpayOrder = input.paymentMethod === "RAZORPAY" ? await createRazorpayOrder(total, orderNumber) : null;
 
     const result = await db.transaction(async (tx) => {
       const [existingCustomer] = await tx.select().from(customers).where(eq(customers.userId, session.user.id)).limit(1);
@@ -74,7 +76,7 @@ export async function POST(request: Request) {
       }
 
       const [order] = await tx.insert(orders).values({
-        orderNumber: makeNumber(),
+        orderNumber,
         customerId: customer.id,
         status: input.paymentMethod === "CREDIT" ? "CONFIRMED" : "PENDING",
         subtotal: basket.summary.priceBeforeTax,
@@ -87,6 +89,8 @@ export async function POST(request: Request) {
         notes: "Created through customer checkout",
       }).returning();
       if (!order) return null;
+
+      await tx.insert(orderStatusEvents).values({ orderId: order.id, status: order.status, notes: "Order placed by customer", changedBy: session.user.id });
 
       await tx.insert(orderItems).values(basket.items.map((item) => {
         const lineTotal = Number(item.calculatedAmount ?? 0);
@@ -104,7 +108,7 @@ export async function POST(request: Request) {
       }));
 
       const intent = createPaymentIntent(input.paymentMethod, total);
-      const [payment] = await tx.insert(payments).values({ orderId: order.id, customerId: customer.id, method: input.paymentMethod, amount: total, status: intent.status, provider: intent.provider }).returning();
+      const [payment] = await tx.insert(payments).values({ orderId: order.id, customerId: customer.id, method: input.paymentMethod, amount: total, status: intent.status, provider: intent.provider, providerOrderId: razorpayOrder?.id ?? null }).returning();
       if (input.paymentMethod === "CREDIT") {
         await tx.insert(walletTransactions).values({
           customerId: customer.id,
@@ -118,12 +122,14 @@ export async function POST(request: Request) {
         });
       }
       await tx.delete(cartItems).where(eq(cartItems.cartId, basket.id!));
-      return payment ? { order, payment, availableCredit: input.paymentMethod === "CREDIT" ? customer.availableCredit : null } : null;
+      return payment ? { order, payment, availableCredit: input.paymentMethod === "CREDIT" ? customer.availableCredit : null, razorpay: razorpayOrder ? { orderId: razorpayOrder.id, keyId: razorpayPublicKey(), amount: razorpayOrder.amount, currency: razorpayOrder.currency } : null } : null;
     });
 
     return result ? jsonOk(result, 201) : jsonError("Order was not created", 500);
   } catch (error) {
     if (error instanceof CreditCheckoutError) return jsonError(error.message, 409);
+    if (error instanceof PaymentConfigurationError) return jsonError(error.message, 503);
+    if (error instanceof PaymentProviderError) return jsonError(error.message, 502);
     return error instanceof Response ? error : handleApiError(error);
   }
 }

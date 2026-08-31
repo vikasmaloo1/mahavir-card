@@ -47,14 +47,14 @@ export function AdminLoginForm() {
 
       const access = await fetch("/api/admin/session", { cache: "no-store" });
       if (!access.ok) {
-        await fetch("/api/auth/sign-out", { method: "POST" }).catch(() => null);
+        await fetch("/api/auth/sign-out", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(() => null);
         throw new Error("This account does not have active administrator access");
       }
 
       router.replace("/admin");
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Something went wrong. Please try again.");
+      setError(caught instanceof Error ? caught.message : "Administrator sign-in could not be completed. Please retry.");
     } finally {
       setLoading(false);
     }

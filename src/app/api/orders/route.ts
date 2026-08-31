@@ -2,7 +2,7 @@ import { desc, eq } from "drizzle-orm";
 
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
 import { db } from "@/lib/db/server";
-import { customers, orderItems, orders } from "@/lib/db/schema";
+import { customers, orderItems, orders, orderStatusEvents } from "@/lib/db/schema";
 import { getAdminAccess, getSession } from "@/lib/permissions";
 import { orderSchema, type OrderInput } from "@/lib/validation";
 
@@ -29,13 +29,9 @@ export async function POST(request: Request) {
     const session = await getSession(request);
     if (!session) return jsonError("Authentication required", 401);
     const admin = await getAdminAccess(request);
+    if (!admin) return jsonError("Customer orders must be created through secure checkout", 403);
     const input = await readBody(request, orderSchema);
-    let customerId = input.customerId;
-    if (!admin) {
-      const [customer] = await db.select({ id: customers.id }).from(customers).where(eq(customers.userId, session.user.id)).limit(1);
-      if (!customer) return jsonError("Complete your customer profile before creating an order", 422);
-      customerId = customer.id;
-    }
+    const customerId = input.customerId;
     const items = input.items.map((item: OrderInput["items"][number]) => ({
       ...item,
       totalPrice: (item.quantity * Number(item.unitPrice)).toFixed(2),
@@ -53,6 +49,8 @@ export async function POST(request: Request) {
       }).returning();
 
       if (!order) return null;
+
+      await tx.insert(orderStatusEvents).values({ orderId: order.id, status: order.status, notes: "Order created by administrator", changedBy: session.user.id });
 
       await tx.insert(orderItems).values(items.map((item) => ({
         orderId: order.id,

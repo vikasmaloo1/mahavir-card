@@ -3,6 +3,7 @@ import Link from "next/link";
 import { FileText, Search, ShoppingBag, UserRound } from "lucide-react";
 import { headers } from "next/headers";
 
+import { CustomerAccountMenu } from "@/components/customer-account-menu";
 import { auth } from "@/lib/auth/server";
 
 export async function StorefrontHeader() {
@@ -31,7 +32,7 @@ export async function StorefrontHeader() {
         </form>
 
         <div className="flex items-center gap-1.5 text-sm sm:gap-2">
-          <Link href={session ? "/account" : "/login"} className="flex items-center gap-2 px-2 py-2 text-[var(--mc-muted)] hover:text-[var(--mc-ink)]"><UserRound size={17} /> <span className="hidden sm:inline">{session ? "Account" : "Login"}</span></Link>
+          {session ? <CustomerAccountMenu /> : <Link href="/login" className="flex items-center gap-2 px-2 py-2 text-[var(--mc-muted)] hover:text-[var(--mc-ink)]"><UserRound size={17} /> <span className="hidden sm:inline">Login</span></Link>}
           <Link href="/cart" className="grid size-9 place-items-center border border-[var(--mc-line)] bg-white text-[var(--mc-ink)] hover:border-[var(--mc-accent)]" aria-label="Purchase basket"><ShoppingBag size={17} /></Link>
           <Link href="/quote" className="flex items-center gap-2 bg-[var(--mc-accent)] px-3 py-2.5 font-semibold text-white hover:bg-[var(--mc-accent-dark)]"><FileText size={16} /> <span className="hidden sm:inline">Quote basket</span></Link>
         </div>

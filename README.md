@@ -139,11 +139,13 @@ Swagger documents methods, auth requirements, path/query parameters, request bod
 
 ## Pricing, Artwork, Payments
 
-`PRICE_LIST_2026.pdf` is the source of the seeded development price rows. The seed contains 6 categories, 25 products, and 89 PDF-derived pricing rules. React never calculates prices directly; it calls `/api/pricing/calculate`.
+`RATE.xlsx` is the source of truth for the seeded catalogue and pricing data. The seed keeps the workbook's 7 product categories and 39 active product configurations, including state delivery rates, GST settings, the outside-Ahmedabad surcharge, and configuration-level add-ons. React never calculates prices directly; it calls `/api/pricing/calculate`.
 
 Only `.cdr` customer artwork is accepted. The browser requests a short-lived signed upload URL, uploads directly to private R2 storage with genuine byte progress, and calls the finalization endpoint. Finalization checks the actual R2 object before marking artwork ready for review. CDR files are never exposed through permanent public URLs.
 
-The payment model supports `RAZORPAY` and `COD`. It creates pending intents and does not pretend that a Razorpay payment completed. Configure a real Razorpay provider and webhook verification before enabling online payments.
+The payment model supports `RAZORPAY`, `COD`, and approved B2B credit. Razorpay orders are created server-side; checkout signatures and webhook payloads are verified with HMAC before an order is confirmed or an invoice is generated. When Razorpay credentials are absent, online payment is not offered to customers. Configure the webhook endpoint as `/api/payments/razorpay/webhook` for `payment.captured` and `order.paid` events.
+
+Wallet top-up requests and B2B credit are controlled by authenticated server APIs. Customer balances, approved limits, quote decisions, order status history, and document links are immediately reflected in the corresponding admin and customer views.
 
 ## GitHub Workflow
 

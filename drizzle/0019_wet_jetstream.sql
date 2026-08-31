@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "payment_transactions_transaction_idx" ON "payment_transactions" USING btree ("transactionId");

@@ -11,8 +11,9 @@ export async function POST(request: Request, ctx: RouteContext<"/api/admin/quote
   try {
     await requireRole(request, ["ADMIN"]);
     const { id } = await ctx.params;
-    const [quote] = await db.select({ id: quotes.id }).from(quotes).where(eq(quotes.id, id)).limit(1);
+    const [quote] = await db.select({ id: quotes.id, status: quotes.status }).from(quotes).where(eq(quotes.id, id)).limit(1);
     if (!quote) return jsonError("Quote not found", 404);
+    if (!["NEW", "REVIEWING", "QUOTE_CREATED"].includes(quote.status)) return jsonError("A sent quotation cannot be changed. Create a revised quote instead.", 409);
     const input = await readBody(request, adminQuoteItemSchema);
     const [item] = await db.insert(quoteItems).values({ ...input, quoteId: id, totalPrice: (input.quantity * Number(input.unitPrice)).toFixed(2) }).returning();
     await recalculateQuote(id);

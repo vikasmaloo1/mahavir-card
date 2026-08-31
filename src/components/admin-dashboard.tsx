@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { ClipboardList, CreditCard, FileCheck2, Package, RefreshCw, UserPlus } from "lucide-react";
+import { ClipboardList, CreditCard, FileCheck2, Package, RefreshCw, UserPlus, WalletCards } from "lucide-react";
 import { useEffect, useState } from "react";
 
-type DashboardData = { ordersToday: number; pendingOrders: number; pendingQuotes: number; newInquiries: number; pendingPayments: number; pendingArtwork: number; recentOrders: { orderNumber: string; status: string; total: string }[]; recentQuotes: { quoteNumber: string; contactName: string; status: string; total: string }[] };
-const metrics = [["Orders today", "ordersToday", Package, "/admin/orders"], ["Pending orders", "pendingOrders", FileCheck2, "/admin/orders"], ["Pending quotes", "pendingQuotes", ClipboardList, "/admin/quotes"], ["New inquiries", "newInquiries", UserPlus, "/admin/inquiries"], ["Pending payments", "pendingPayments", CreditCard, "/admin/payments"], ["Pending artwork", "pendingArtwork", FileCheck2, "/admin/artworks"]] as const;
+type DashboardData = { ordersToday: number; pendingOrders: number; pendingQuotes: number; newInquiries: number; pendingPayments: number; pendingArtwork: number; pendingWalletRequests: number; recentOrders: { orderNumber: string; status: string; total: string }[]; recentQuotes: { quoteNumber: string; contactName: string; status: string; total: string }[] };
+const metrics = [["Orders today", "ordersToday", Package, "/admin/orders"], ["Pending orders", "pendingOrders", FileCheck2, "/admin/orders"], ["Pending quotes", "pendingQuotes", ClipboardList, "/admin/quotes"], ["New inquiries", "newInquiries", UserPlus, "/admin/inquiries"], ["Pending payments", "pendingPayments", CreditCard, "/admin/payments"], ["Pending artwork", "pendingArtwork", FileCheck2, "/admin/artworks"], ["Wallet requests", "pendingWalletRequests", WalletCards, "/admin/wallet"]] as const;
 
 export function AdminDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
