@@ -77,9 +77,15 @@ export async function generateQuoteDocument(quoteId: string, createdBy?: string 
       { text: `Quantity: ${item.quantity} | Unit: ${amount(item.unitPrice)} | Total: ${amount(item.totalPrice)}`, gap: 5 },
     ]),
     { text: "TOTALS", bold: true, size: 12 },
-    { text: `Subtotal: ${amount(quote.subtotal)}` },
-    { text: `Discount: ${amount(quote.discountAmount)}` },
-    { text: `GST / Tax: ${amount(quote.tax)}` },
+    { text: `Taxable subtotal: ${amount(quote.taxableSubtotal || quote.subtotal)}` },
+    ...(Number(quote.discountAmount) > 0 ? [{ text: `Discount: ${amount(quote.discountAmount)}` }] : []),
+    ...(quote.taxType === "INTER_STATE" || Number(quote.igstAmount) > 0
+      ? [{ text: `IGST (${Number(quote.igstRate || 18)}%): ${amount(quote.igstAmount || quote.tax)}` }]
+      : [
+          { text: `CGST (${Number(quote.cgstRate || 9)}%): ${amount(quote.cgstAmount)}` },
+          { text: `SGST (${Number(quote.sgstRate || 9)}%): ${amount(quote.sgstAmount)}` },
+        ]),
+    { text: `Total GST: ${amount(quote.tax)}` },
     { text: `Quotation total: ${amount(quote.total)}`, bold: true, size: 13 },
     ...(quote.customerMessage ? [{ text: `Message: ${quote.customerMessage}`, gap: 8 }] : []),
     { text: "All prices and taxes are shown as recorded in this quotation." },
@@ -106,6 +112,7 @@ export async function generateInvoiceDocument(orderId: string, createdBy?: strin
     { text: "", gap: 5 },
     { text: `Billed to: ${customer?.contactName ?? "Customer"}${customer?.companyName ? `, ${customer.companyName}` : ""}`, bold: true },
     { text: [customer?.email, customer?.phone].filter(Boolean).join(" | ") },
+    ...(customer?.gstNumber ? [{ text: `Customer GSTIN: ${customer.gstNumber}` }] : []),
     { text: `Order status: ${order.status}${payment ? ` | Payment: ${payment.status} (${payment.method})` : ""}`, gap: 10 },
     { text: "ITEMS", bold: true, size: 12 },
     ...items.flatMap((item, index) => [
@@ -113,9 +120,15 @@ export async function generateInvoiceDocument(orderId: string, createdBy?: strin
       { text: `Quantity: ${item.quantity} | Unit: ${amount(item.unitPrice)} | Total: ${amount(item.totalPrice)}`, gap: 5 },
     ]),
     { text: "TOTALS", bold: true, size: 12 },
-    { text: `Subtotal: ${amount(order.subtotal)}` },
-    { text: `Delivery: ${amount(order.deliveryPrice)}` },
-    { text: `GST / Tax: ${amount(order.tax)}` },
+    { text: `Taxable subtotal: ${amount(order.taxableSubtotal || order.subtotal)}` },
+    ...(Number(order.deliveryPrice) > 0 ? [{ text: `Delivery: ${amount(order.deliveryPrice)}` }] : []),
+    ...(order.taxType === "INTER_STATE" || Number(order.igstAmount) > 0
+      ? [{ text: `IGST (${Number(order.igstRate || 18)}%): ${amount(order.igstAmount || order.tax)}` }]
+      : [
+          { text: `CGST (${Number(order.cgstRate || 9)}%): ${amount(order.cgstAmount)}` },
+          { text: `SGST (${Number(order.sgstRate || 9)}%): ${amount(order.sgstAmount)}` },
+        ]),
+    { text: `Total GST: ${amount(order.tax)}` },
     { text: `Invoice total: ${amount(order.total)}`, bold: true, size: 13 },
     { text: "This invoice is generated from the recorded order and payment details." },
   ];

@@ -43,7 +43,13 @@ export async function POST(request: Request) {
     const subtotal = basket.summary.priceBeforeTax;
     const tax = basket.summary.tax;
     const total = basket.summary.total;
-    const [customer] = await db.select({ id: customers.id }).from(customers).where(eq(customers.userId, session.user.id)).limit(1);
+    const [customer] = await db.select().from(customers).where(eq(customers.userId, session.user.id)).limit(1);
+    const customerState = customer?.stateCode ?? "GJ";
+    const taxType = customerState === "GJ" ? "INTRA_STATE" : "INTER_STATE";
+    const cgstRate = customerState === "GJ" ? "9.000" : "0.000";
+    const sgstRate = customerState === "GJ" ? "9.000" : "0.000";
+    const igstRate = customerState === "RJ" ? "18.000" : "0.000";
+
     const result = await db.transaction(async (tx) => {
       const [quote] = await tx.insert(quotes).values({
         quoteNumber: makeNumber(),
@@ -55,13 +61,29 @@ export async function POST(request: Request) {
         companyName: input.companyName,
         notes: input.notes,
         subtotal,
+        taxableSubtotal: subtotal,
         tax,
+        taxType,
+        taxRate: "18.000",
+        cgstRate,
+        cgstAmount: basket.summary.cgst,
+        sgstRate,
+        sgstAmount: basket.summary.sgst,
+        igstRate,
+        igstAmount: basket.summary.igst,
+        taxJurisdictionState: customerState,
         total,
       }).returning();
       if (!quote) return null;
 
       await tx.insert(quoteItems).values(basket.items.map((item) => {
         const lineTotal = Number(item.calculatedAmount ?? 0);
+        const snapshot = (item.pricingSnapshot ?? {}) as Record<string, unknown>;
+        const itemTaxable = snapshot.priceBeforeTax ?? snapshot.taxableSubtotal ?? snapshot.productPrice ?? "0.00";
+        const itemTax = snapshot.taxAmount ?? "0.00";
+        const itemCgst = snapshot.cgstAmount ?? "0.00";
+        const itemSgst = snapshot.sgstAmount ?? "0.00";
+        const itemIgst = snapshot.igstAmount ?? "0.00";
         return {
           quoteId: quote.id,
           productId: item.productId,
@@ -69,11 +91,17 @@ export async function POST(request: Request) {
           jobName: item.jobName,
           configuration: item.configuration,
           quantity: item.quantity,
-          unitPrice: item.quantity ? (lineTotal / item.quantity).toFixed(2) : "0.00",
+          unitPrice: (lineTotal / item.quantity).toFixed(2),
+          taxableAmount: String(itemTaxable),
+          taxAmount: String(itemTax),
+          cgstAmount: String(itemCgst),
+          sgstAmount: String(itemSgst),
+          igstAmount: String(itemIgst),
           totalPrice: lineTotal.toFixed(2),
-          pricingSnapshot: { ...(item.pricingSnapshot as Record<string, unknown>), product: { id: item.productId, name: item.product.name, slug: item.product.slug }, quantity: item.quantity, capturedAt: new Date().toISOString() },
+          pricingSnapshot: { ...snapshot, product: { id: item.productId, name: item.product.name, slug: item.product.slug }, quantity: item.quantity, capturedAt: new Date().toISOString() },
         };
       }));
+
       await tx.delete(cartItems).where(eq(cartItems.cartId, basket.id!));
       return quote;
     });
