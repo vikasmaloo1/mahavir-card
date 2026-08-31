@@ -251,7 +251,7 @@ textarea:focus-visible {
   animation-name: tickerLoop;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
-  animation-duration: 85s;
+  animation-duration: 26s;
 }
 
 .animate-ticker-continuous:hover,
