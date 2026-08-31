@@ -121,11 +121,11 @@ export const artworkSlotSchema = z.object({
 
 export const productDeliveryRuleSchema = z.object({
   deliveryMethod: z.enum(["PICKUP", "LOCAL_DELIVERY", "COURIER"]),
-  stateCode: z.string().trim().min(1).max(100).default("*"),
+  stateCode: z.enum(["*", "GJ", "RJ"]).default("*"),
   price: z.string().regex(/^\d+(\.\d{1,2})?$/),
   isActive: z.boolean().default(true),
   sortOrder: z.number().int().min(0).default(0),
-  taxInclusive: z.boolean().default(true),
+  taxInclusive: z.boolean().default(false),
 });
 
 export const locationSurchargeSchema = z.object({
@@ -134,7 +134,7 @@ export const locationSurchargeSchema = z.object({
   city: z.string().trim().min(2).max(100).nullable().optional(),
   stateCode: z.string().trim().min(2).max(3).toUpperCase().nullable().optional(),
   amount: z.string().regex(/^\d+(\.\d{1,2})?$/),
-  taxInclusive: z.boolean().default(true),
+  taxInclusive: z.boolean().default(false),
   isActive: z.boolean().default(true),
   sortOrder: z.number().int().min(0).default(0),
 });
@@ -238,7 +238,20 @@ export const adminPricingSchema = z.object({
   taxRate: z.string().regex(/^\d+(\.\d{1,3})?$/).nullable().optional(),
   productionTime: z.string().trim().max(100).nullable().optional(),
   sortOrder: z.number().int().min(0).default(0),
-  taxInclusive: z.boolean().default(true),
+  taxInclusive: z.boolean().default(false),
+  isActive: z.boolean().default(true),
+});
+
+export const noticeSchema = z.object({
+  title: z.string().trim().min(2).max(160),
+  message: z.string().trim().min(2).max(2000),
+  tone: z.enum(["INFO", "WARNING", "SUCCESS"]).default("INFO"),
+  placement: z.enum(["GLOBAL", "HOME", "ORDERING"]).default("GLOBAL"),
+  linkLabel: z.string().trim().max(80).nullable().optional(),
+  linkUrl: z.string().trim().max(500).nullable().optional(),
+  startsAt: z.coerce.date().nullable().optional(),
+  endsAt: z.coerce.date().nullable().optional(),
+  sortOrder: z.number().int().min(0).default(0),
   isActive: z.boolean().default(true),
 });
 
@@ -301,7 +314,22 @@ export const customerOnboardingSchema = z.object({
   city: z.string().trim().min(2).max(100),
   state: z.string().trim().min(2).max(100),
   stateCode: z.string().trim().min(2).max(3).toUpperCase(),
-  gstNumber: z.string().trim().max(30).nullable().optional(),
+  gstNumber: z.string().trim().toUpperCase().regex(/^[0-9A-Z]{15}$/, "Enter a valid 15-character GSTIN").nullable().optional(),
+});
+
+export const customerProfileUpdateSchema = z.object({
+  contactName: z.string().trim().min(2).max(120),
+  companyName: z.string().trim().max(160).nullable().optional(),
+  phone: z.string().trim().min(10).max(20),
+  city: z.string().trim().min(2).max(100),
+  state: z.string().trim().min(2).max(100),
+  stateCode: z.enum(["GJ", "RJ"]),
+  gstNumber: z.string().trim().toUpperCase().regex(/^[0-9A-Z]{15}$/, "Enter a valid 15-character GSTIN").nullable().optional(),
+  address: z.object({
+    line1: z.string().trim().min(3).max(200),
+    line2: z.string().trim().max(200).nullable().optional(),
+    postalCode: z.string().trim().regex(/^\d{6}$/, "Enter a valid 6-digit postal code"),
+  }).nullable().optional(),
 });
 
 export const adminCreateSchema = z.object({

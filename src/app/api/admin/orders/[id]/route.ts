@@ -40,7 +40,8 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/orde
         if (payment?.method === "CREDIT" && payment.status === "CREDIT_APPROVED" && payment.customerId) {
           const [releasedPayment] = await tx.update(payments).set({ status: "REFUNDED", updatedAt: new Date() }).where(and(eq(payments.id, payment.id), eq(payments.status, "CREDIT_APPROVED"))).returning({ id: payments.id });
           if (releasedPayment) {
-            const [creditCustomer] = await tx.update(customers).set({ availableCredit: sql`least(${customers.creditLimit}, ${customers.availableCredit} + ${payment.amount})`, updatedAt: new Date() }).where(eq(customers.id, payment.customerId)).returning({ availableCredit: customers.availableCredit });
+            const restoredBalance = sql`least(${customers.creditLimit}, ${customers.availableCredit} + ${payment.amount})`;
+            const [creditCustomer] = await tx.update(customers).set({ availableCredit: restoredBalance, walletBalance: restoredBalance, updatedAt: new Date() }).where(eq(customers.id, payment.customerId)).returning({ availableCredit: customers.availableCredit });
             if (creditCustomer) await tx.insert(walletTransactions).values({
               customerId: payment.customerId,
               transactionType: "CREDIT_RELEASE",

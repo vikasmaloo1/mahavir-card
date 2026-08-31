@@ -40,7 +40,6 @@ function positiveInteger(value: unknown) {
 function isCustomerVisible(rule: ListingPricingRule) {
   const visibility = String(rule.conditions.visibility ?? rule.priceFormula.visibility ?? "PUBLIC").toUpperCase();
   return rule.isActive
-    && rule.taxInclusive
     && (!rule.variantId || rule.variantActive === true)
     && rule.conditions.customerVisible !== false
     && rule.priceFormula.customerVisible !== false
@@ -55,17 +54,30 @@ export function deriveStartingPrice(product: ListingProduct, rules: ListingPrici
     ? { startingPrice: null, startingQuantity: null, currency: "INR", priceLabel: "Custom quote", priceState: "CUSTOM_QUOTE", taxInclusive: null }
     : { startingPrice: null, startingQuantity: null, currency: "INR", priceLabel: "Contact us for pricing", priceState: "CONTACT", taxInclusive: null };
 
-  if (!product.orderable || !product.pricesTaxInclusive) return fallback;
+  if (!product.orderable) return fallback;
 
   const candidates = rules.filter((rule) => rule.productId === product.id && isCustomerVisible(rule)).flatMap((rule) => {
     const amount = positiveNumber(rule.priceFormula.amount);
-    if (amount === null) return [];
-    const quantity = positiveInteger(rule.conditions.quantity) ?? positiveInteger(product.referenceQuantity);
-    const unit = String(rule.priceFormula.unit ?? "batch").toLowerCase();
-    if (unit !== "batch" && unit !== "piece") return [];
-    if (unit === "piece" && quantity === null) return [];
-    const displayAmount = unit === "piece" ? amount * quantity! : amount;
-    return Number.isFinite(displayAmount) && displayAmount > 0 ? [{ amount: displayAmount, quantity }] : [];
+    const rate = positiveNumber(rule.priceFormula.ratePerSqInch);
+    const ratePaise = positiveNumber(rule.priceFormula.ratePaisePerSqInch);
+    if (amount === null && rate === null) return [];
+    if (amount === null && rate !== null) {
+      return [{
+        amount: rate,
+        quantity: null,
+        label: ratePaise !== null ? `${ratePaise.toLocaleString("en-IN")} paise / sq.in` : `${formatInr(rate)} / sq.in`,
+        taxInclusive: rule.taxInclusive,
+      }];
+    }
+    if (amount !== null) {
+      const quantity = positiveInteger(rule.conditions.quantity) ?? positiveInteger(product.referenceQuantity);
+      const unit = String(rule.priceFormula.unit ?? "batch").toLowerCase();
+      if (unit !== "batch" && unit !== "piece") return [];
+      if (unit === "piece" && quantity === null) return [];
+      const displayAmount = unit === "piece" ? amount * quantity! : amount;
+      return Number.isFinite(displayAmount) && displayAmount > 0 ? [{ amount: displayAmount, quantity, label: `Base price ${formatInr(displayAmount)}${quantity ? ` / ${quantity.toLocaleString("en-IN")}` : ""}`, taxInclusive: rule.taxInclusive }] : [];
+    }
+    return [];
   });
 
   const lowest = candidates.sort((a, b) => a.amount - b.amount || (a.quantity ?? Number.MAX_SAFE_INTEGER) - (b.quantity ?? Number.MAX_SAFE_INTEGER))[0];
@@ -75,9 +87,9 @@ export function deriveStartingPrice(product: ListingProduct, rules: ListingPrici
     startingPrice: lowest.amount,
     startingQuantity: lowest.quantity,
     currency: "INR",
-    priceLabel: `Starts from ${formatInr(lowest.amount)}${lowest.quantity ? ` / ${lowest.quantity.toLocaleString("en-IN")}` : ""}`,
+    priceLabel: lowest.label,
     priceState: "STARTING",
-    taxInclusive: true,
+    taxInclusive: lowest.taxInclusive,
   };
 }
 

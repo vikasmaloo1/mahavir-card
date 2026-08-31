@@ -6,6 +6,7 @@ import { db } from "@/lib/db/server";
 import { productDeliveryRules, products } from "@/lib/db/schema";
 import { requireRole } from "@/lib/permissions";
 import { productDeliveryRuleSchema } from "@/lib/validation";
+import { indiaStateName } from "@/lib/india-states";
 
 const createSchema = productDeliveryRuleSchema.extend({ productId: z.string().uuid() });
 const updateSchema = productDeliveryRuleSchema.partial().extend({ productId: z.string().uuid() });
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
       .innerJoin(products, eq(productDeliveryRules.productId, products.id))
       .where(where)
       .orderBy(asc(products.name), asc(productDeliveryRules.sortOrder));
-    return jsonOk(data.map(({ rule, productName, productSlug }) => ({ ...rule, productName, productSlug })));
+    return jsonOk(data.map(({ rule, productName, productSlug }) => ({ ...rule, productName, productSlug, stateName: rule.stateCode === "*" ? "All / Pickup" : indiaStateName(rule.stateCode) })));
   } catch (error) {
     return error instanceof Response ? error : handleApiError(error);
   }

@@ -2,8 +2,12 @@ import Link from "next/link";
 
 import { PurchaseCart } from "@/components/purchase-cart";
 import { StorefrontHeader } from "@/components/storefront-header";
+import { auth } from "@/lib/auth/server";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
-export default function CartPage() {
+export default async function CartPage() {
+  if (!await auth.api.getSession({ headers: await headers() })) redirect("/login");
   return (
     <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
       <StorefrontHeader />

@@ -191,7 +191,7 @@ async function main() {
     if (!walletRow) throw new Error("Customer wallet request did not appear in admin");
     await adminApi(`/api/admin/wallet/${id(topUp)}`, { method: "PATCH", body: JSON.stringify({ decision: "APPROVED", notes: "Automated verification" }) });
     const wallet = data(await api("/api/account/wallet/top-up"));
-    if (Number(object(wallet.customer).walletBalance) < 250 || !array(wallet.transactions).some((transaction) => id(transaction) === id(topUp) && transaction.status === "APPROVED")) throw new Error("Admin wallet approval did not synchronize to the customer balance");
+    if (Number(object(wallet.customer).availableBalance) < 250 || !array(wallet.transactions).some((transaction) => id(transaction) === id(topUp) && transaction.status === "APPROVED")) throw new Error("Admin balance approval did not synchronize to the customer balance");
 
     const account = data(await api("/api/account/summary"));
     if (array(account.orders).length < (razorpayConfigured ? 3 : 2) || !array(account.quotes).length || !array(account.artworks).length || !array(account.addresses).length) throw new Error("Customer account history did not contain the completed flow records");

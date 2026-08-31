@@ -3,6 +3,7 @@ import { and, desc, eq, isNull, or } from "drizzle-orm";
 import { handleApiError, jsonOk } from "@/lib/api";
 import { db } from "@/lib/db/server";
 import { addresses, artworks, customers, inquiries, orders, quotes } from "@/lib/db/schema";
+import { isCustomerProfileComplete } from "@/lib/customer-profile";
 import { requireUser } from "@/lib/permissions";
 
 export async function GET(request: Request) {
@@ -13,6 +14,10 @@ export async function GET(request: Request) {
       companyName: customers.companyName,
       contactName: customers.contactName,
       phone: customers.phone,
+      city: customers.city,
+      state: customers.state,
+      stateCode: customers.stateCode,
+      gstNumber: customers.gstNumber,
       customerType: customers.customerType,
       creditEnabled: customers.creditEnabled,
       creditLimit: customers.creditLimit,
@@ -28,7 +33,7 @@ export async function GET(request: Request) {
       db.select({ id: artworks.id, fileName: artworks.fileName, status: artworks.status, createdAt: artworks.createdAt }).from(artworks).where(customerId ? or(eq(artworks.uploadedBy, session.user.id), eq(artworks.customerId, customerId)) : eq(artworks.uploadedBy, session.user.id)).orderBy(desc(artworks.createdAt)),
       customerId ? db.select({ id: addresses.id, label: addresses.type, line1: addresses.line1, line2: addresses.line2, city: addresses.city, state: addresses.state, stateCode: addresses.stateCode, postalCode: addresses.postalCode, country: addresses.country }).from(addresses).where(eq(addresses.customerId, customerId)).orderBy(desc(addresses.createdAt)) : Promise.resolve([]),
     ]);
-    return jsonOk({ user: { name: session.user.name, email: session.user.email, phoneNumber: session.user.phoneNumber }, customer, orders: customerOrders, quotes: customerQuotes, inquiries: customerInquiries, artworks: customerArtwork, addresses: customerAddresses });
+    return jsonOk({ user: { name: session.user.name, email: session.user.email, phoneNumber: session.user.phoneNumber }, customer, profileComplete: isCustomerProfileComplete(customer), orders: customerOrders, quotes: customerQuotes, inquiries: customerInquiries, artworks: customerArtwork, addresses: customerAddresses });
   } catch (error) {
     return error instanceof Response ? error : handleApiError(error);
   }

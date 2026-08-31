@@ -12,6 +12,8 @@ export const indiaStates = [
 ] as const;
 
 export type IndiaStateCode = typeof indiaStates[number][0];
+export const commerceStates = [["GJ", "Gujarat"], ["RJ", "Rajasthan"]] as const;
+export type CommerceStateCode = typeof commerceStates[number][0];
 
 export function indiaStateName(code: string) {
   return indiaStates.find(([candidate]) => candidate === code.toUpperCase())?.[1] ?? null;
@@ -19,6 +21,10 @@ export function indiaStateName(code: string) {
 
 export function isIndiaStateCode(code: string): code is IndiaStateCode {
   return indiaStates.some(([candidate]) => candidate === code.toUpperCase());
+}
+
+export function isCommerceStateCode(code: string): code is CommerceStateCode {
+  return commerceStates.some(([candidate]) => candidate === code.toUpperCase());
 }
 
 export function normalizedCity(value: string) {

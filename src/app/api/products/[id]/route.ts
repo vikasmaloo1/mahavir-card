@@ -4,13 +4,14 @@ import { handleApiError, jsonError, jsonOk } from "@/lib/api";
 import { db } from "@/lib/db/server";
 import { addons, artworkRequirements, artworkSlots, pricingRules, productAddons, productContentItems, productContentSections, productDeliveryRules, productImages, products, productVariants } from "@/lib/db/schema";
 import { deriveStartingPrice } from "@/lib/product-listing-pricing";
-import { getSession } from "@/lib/permissions";
+import { requireUser } from "@/lib/permissions";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function GET(request: Request, ctx: RouteContext<"/api/products/[id]">) {
   try {
-    const authenticated = Boolean(await getSession(request));
+    await requireUser(request);
+    const authenticated = true;
     const { id } = await ctx.params;
     const [product] = await db.select().from(products).where(and(uuidPattern.test(id) ? eq(products.id, id) : eq(products.slug, id), eq(products.isActive, true), eq(products.status, "ACTIVE"))).limit(1);
     if (!product) return jsonError("Product not found", 404);

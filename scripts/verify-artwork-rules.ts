@@ -56,7 +56,7 @@ async function main() {
       if (rule.designWidth !== dimension(item.artwork.design?.[0]) || rule.designHeight !== dimension(item.artwork.design?.[1])) throw new Error(`${rule.slug} full-design size differs from its workbook tab`);
       if (rule.safeAreaWidth !== dimension(item.artwork.safe?.[0]) || rule.safeAreaHeight !== dimension(item.artwork.safe?.[1])) throw new Error(`${rule.slug} safe-area size differs from its workbook tab`);
       if (rule.finalWidth !== dimension(item.artwork.final?.[0]) || rule.finalHeight !== dimension(item.artwork.final?.[1])) throw new Error(`${rule.slug} final size differs from its workbook tab`);
-      if (rule.maxFiles !== item.artwork.slots.length) throw new Error(`${rule.slug} requires ${item.artwork.slots.length} artwork files, found ${rule.maxFiles}`);
+      if (rule.maxFiles !== 1) throw new Error(`${rule.slug} must accept one CDR file containing its required artwork pages, found ${rule.maxFiles} upload slots`);
     }
 
     console.log(`Artwork verification passed for ${result.rows.length} RATE.xlsx products.`);

@@ -12,7 +12,7 @@ const customerUpdateSchema = z.object({
   customerType: z.enum(["B2B", "B2C"]).optional(), city: z.string().trim().max(100).nullable().optional(),
   state: z.string().trim().max(100).nullable().optional(), stateCode: z.string().trim().max(3).toUpperCase().nullable().optional(),
   creditEnabled: z.boolean().optional(), creditLimit: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
-  availableCredit: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(), walletBalance: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
+  availableCredit: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
   paymentTermsDays: z.number().int().min(0).max(365).optional(), status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
 });
 
@@ -34,5 +34,12 @@ export async function GET(request: Request, ctx: RouteContext<"/api/admin/custom
 }
 
 export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/customers/[id]">) {
-  try { await requireRole(request, ["ADMIN"]); const { id } = await ctx.params; const input = await readBody(request, customerUpdateSchema); const [customer] = await db.update(customers).set({ ...input, updatedAt: new Date() }).where(eq(customers.id, id)).returning(); return customer ? jsonOk(customer) : jsonError("Customer not found", 404); } catch (error) { return error instanceof Response ? error : handleApiError(error); }
+  try {
+    await requireRole(request, ["ADMIN"]);
+    const { id } = await ctx.params;
+    const input = await readBody(request, customerUpdateSchema);
+    const balance = input.availableCredit;
+    const [customer] = await db.update(customers).set({ ...input, ...(balance === undefined ? {} : { walletBalance: balance }), updatedAt: new Date() }).where(eq(customers.id, id)).returning();
+    return customer ? jsonOk(customer) : jsonError("Customer not found", 404);
+  } catch (error) { return error instanceof Response ? error : handleApiError(error); }
 }

@@ -21,6 +21,10 @@ export type CalculatedPrice = {
   locationSurcharge: { amount: string; label: string | null };
   taxInclusive: boolean;
   taxAmount: string;
+  cgstAmount: string;
+  sgstAmount: string;
+  igstAmount: string;
+  taxJurisdictionState: string | null;
   priceBeforeTax: string | null;
   taxRate: string | null;
   currency: "INR";
@@ -33,6 +37,15 @@ export type CalculatedPrice = {
 export class PricingValidationError extends Error {}
 
 function money(value: number) { return value.toFixed(2); }
+
+function taxableComponent(amount: number, taxInclusive: boolean, taxRate: number) {
+  if (taxInclusive) {
+    const net = amount / (1 + taxRate / 100);
+    return { net, tax: amount - net, gross: amount };
+  }
+  const tax = amount * taxRate / 100;
+  return { net: amount, tax, gross: amount + tax };
+}
 
 function positive(value: unknown, label: string) {
   const result = Number(value);
@@ -78,9 +91,9 @@ async function calculateBasePrice(productId: string, quantity: number, options: 
 }
 
 async function locationCharge(productId: string, ruleId: string | null, userId?: string) {
-  if (!userId) return { amount: 0, label: null as string | null, taxInclusive: true };
+  if (!userId) return { amount: 0, label: null as string | null, taxInclusive: true, stateCode: null as string | null };
   const [customer] = await db.select({ city: customers.city, stateCode: customers.stateCode }).from(customers).where(eq(customers.userId, userId)).limit(1);
-  if (!customer) return { amount: 0, label: null as string | null, taxInclusive: true };
+  if (!customer) return { amount: 0, label: null as string | null, taxInclusive: true, stateCode: null as string | null };
   const rules = await db.select().from(locationSurcharges).where(and(eq(locationSurcharges.productId, productId), eq(locationSurcharges.isActive, true), ruleId ? or(eq(locationSurcharges.pricingRuleId, ruleId), isNull(locationSurcharges.pricingRuleId)) : isNull(locationSurcharges.pricingRuleId))).orderBy(asc(locationSurcharges.sortOrder));
   const city = customer.city ? normalizedCity(customer.city) : null;
   const stateCode = customer.stateCode?.toUpperCase() ?? null;
@@ -91,7 +104,9 @@ async function locationCharge(productId: string, ruleId: string | null, userId?:
     if (rule.locationScope === "OUTSIDE_STATE") return Boolean(stateCode && rule.stateCode && stateCode !== rule.stateCode.toUpperCase());
     return false;
   });
-  return matched ? { amount: Number(matched.amount), label: matched.locationScope === "OUTSIDE_CITY" ? `Outside ${matched.city} charge` : "Location charge", taxInclusive: matched.taxInclusive } : { amount: 0, label: null, taxInclusive: true };
+  return matched
+    ? { amount: Number(matched.amount), label: matched.locationScope === "OUTSIDE_CITY" ? `Outside ${matched.city} charge` : "Location charge", taxInclusive: matched.taxInclusive, stateCode }
+    : { amount: 0, label: null, taxInclusive: true, stateCode };
 }
 
 export async function calculateProductPrice(productId: string, quantity: number, options: Record<string, unknown>, input: PriceCalculationInput = {}): Promise<CalculatedPrice | null> {
@@ -115,9 +130,24 @@ export async function calculateProductPrice(productId: string, quantity: number,
     if (!rule) throw new PricingValidationError("This delivery option is not available for the selected state");
     delivery = { method: rule.deliveryMethod, stateCode, price: money(Number(rule.price)), taxInclusive: rule.taxInclusive };
   }
-  const total = base.amount === null ? null : base.amount + addonTotal + Number(delivery.price) + surcharge.amount;
   const taxRate = base.taxRate;
-  const taxAmount = total !== null && taxRate !== null ? total - total / (1 + taxRate / 100) : 0;
-  const priceBeforeTax = total !== null ? total - taxAmount : null;
-  return { calculatedAmount: total === null ? null : money(total), productPrice: base.amount === null ? null : money(base.amount), addonTotal: money(addonTotal), addons: selectedAddons.map((addon) => ({ addonId: addon.addonId, name: addon.name, price: addon.price, pricingType: addon.pricingType })), delivery: { method: delivery.method, stateCode: delivery.stateCode, price: delivery.price }, locationSurcharge: { amount: money(surcharge.amount), label: surcharge.label }, taxInclusive: product.pricesTaxInclusive && base.taxInclusive && selectedAddons.every((addon) => addon.taxInclusive) && delivery.taxInclusive && surcharge.taxInclusive, taxAmount: money(taxAmount), priceBeforeTax: priceBeforeTax === null ? null : money(priceBeforeTax), taxRate: taxRate === null ? null : taxRate.toFixed(3), currency: "INR", pricingDetails: { ...base.details, referenceQuantity: product.referenceQuantity, referenceWeight: product.referenceWeight, referenceWeightUnit: product.referenceWeightUnit }, applicableRule: base.rule, applicableRuleId: base.ruleId, warnings: base.warnings };
+  const allTaxInclusive = product.pricesTaxInclusive && base.taxInclusive && selectedAddons.every((addon) => addon.taxInclusive) && delivery.taxInclusive && surcharge.taxInclusive;
+  if (base.amount === null) {
+    return { calculatedAmount: null, productPrice: null, addonTotal: money(addonTotal), addons: selectedAddons.map((addon) => ({ addonId: addon.addonId, name: addon.name, price: addon.price, pricingType: addon.pricingType })), delivery: { method: delivery.method, stateCode: delivery.stateCode, price: delivery.price }, locationSurcharge: { amount: money(surcharge.amount), label: surcharge.label }, taxInclusive: allTaxInclusive, taxAmount: "0.00", cgstAmount: "0.00", sgstAmount: "0.00", igstAmount: "0.00", taxJurisdictionState: null, priceBeforeTax: null, taxRate: taxRate === null ? null : taxRate.toFixed(3), currency: "INR", pricingDetails: { ...base.details, referenceQuantity: product.referenceQuantity, referenceWeight: product.referenceWeight, referenceWeightUnit: product.referenceWeightUnit }, applicableRule: base.rule, applicableRuleId: base.ruleId, warnings: base.warnings };
+  }
+  const rate = taxRate ?? 0;
+  const components = [
+    taxableComponent(base.amount, base.taxInclusive, rate),
+    ...selectedAddons.map((addon) => taxableComponent(Number(addon.price), addon.taxInclusive, rate)),
+    taxableComponent(Number(delivery.price), delivery.taxInclusive, rate),
+    taxableComponent(surcharge.amount, surcharge.taxInclusive, rate),
+  ];
+  const priceBeforeTax = components.reduce((sum, component) => sum + component.net, 0);
+  const taxAmount = components.reduce((sum, component) => sum + component.tax, 0);
+  const total = components.reduce((sum, component) => sum + component.gross, 0);
+  const taxJurisdictionState = (delivery.method === "COURIER" ? delivery.stateCode : surcharge.stateCode)?.toUpperCase() ?? null;
+  const cgstAmount = taxJurisdictionState === "GJ" ? taxAmount / 2 : 0;
+  const sgstAmount = taxJurisdictionState === "GJ" ? taxAmount / 2 : 0;
+  const igstAmount = taxJurisdictionState === "RJ" ? taxAmount : 0;
+  return { calculatedAmount: money(total), productPrice: money(taxableComponent(base.amount, base.taxInclusive, rate).net), addonTotal: money(selectedAddons.reduce((sum, addon) => sum + taxableComponent(Number(addon.price), addon.taxInclusive, rate).net, 0)), addons: selectedAddons.map((addon) => ({ addonId: addon.addonId, name: addon.name, price: money(taxableComponent(Number(addon.price), addon.taxInclusive, rate).net), pricingType: addon.pricingType })), delivery: { method: delivery.method, stateCode: delivery.stateCode, price: money(taxableComponent(Number(delivery.price), delivery.taxInclusive, rate).net) }, locationSurcharge: { amount: money(taxableComponent(surcharge.amount, surcharge.taxInclusive, rate).net), label: surcharge.label }, taxInclusive: allTaxInclusive, taxAmount: money(taxAmount), cgstAmount: money(cgstAmount), sgstAmount: money(sgstAmount), igstAmount: money(igstAmount), taxJurisdictionState, priceBeforeTax: money(priceBeforeTax), taxRate: taxRate === null ? null : taxRate.toFixed(3), currency: "INR", pricingDetails: { ...base.details, referenceQuantity: product.referenceQuantity, referenceWeight: product.referenceWeight, referenceWeightUnit: product.referenceWeightUnit }, applicableRule: base.rule, applicableRuleId: base.ruleId, warnings: base.warnings };
 }

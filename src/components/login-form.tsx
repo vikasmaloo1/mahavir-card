@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, LockKeyhole, Mail, Smartphone, UserRound } from 
 import { FormEvent, useState } from "react";
 
 import { isValidIndianPhoneNumber, normalizePhoneNumber } from "@/lib/phone";
-import { indiaStates } from "@/lib/india-states";
+import { commerceStates } from "@/lib/india-states";
 
 type Method = "email" | "phone";
 
@@ -57,7 +57,7 @@ export function LoginForm() {
         const phoneResult = await phoneResponse.json().catch(() => null);
         if (!phoneResponse.ok) throw new Error(messageFrom(phoneResult, "Account created, but the mobile number could not be saved"));
 
-        const selectedState = indiaStates.find(([code]) => code === stateCode);
+        const selectedState = commerceStates.find(([code]) => code === stateCode);
         const profileResponse = await fetch("/api/account/profile", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -146,7 +146,7 @@ export function LoginForm() {
                   <UserRound size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--mc-muted)]" />
                   <input required autoComplete="name" minLength={2} value={name} onChange={(event) => setName(event.target.value)} className={`${fieldClass} pl-11`} />
                 </div>
-              </label>{customerType === "B2B" ? <label className="block"><span className="mb-2 block text-sm font-semibold">Company name</span><input required value={companyName} onChange={(event) => setCompanyName(event.target.value)} className={fieldClass} /></label> : null}<div className="grid gap-4 sm:grid-cols-2"><label className="block"><span className="mb-2 block text-sm font-semibold">City</span><input required autoComplete="address-level2" value={city} onChange={(event) => setCity(event.target.value)} className={fieldClass} /></label><label className="block"><span className="mb-2 block text-sm font-semibold">State</span><select required autoComplete="address-level1" value={stateCode} onChange={(event) => setStateCode(event.target.value)} className={fieldClass}>{indiaStates.map(([code, state]) => <option key={code} value={code}>{state}</option>)}</select></label></div></>
+              </label>{customerType === "B2B" ? <label className="block"><span className="mb-2 block text-sm font-semibold">Company name</span><input required value={companyName} onChange={(event) => setCompanyName(event.target.value)} className={fieldClass} /></label> : null}<div className="grid gap-4 sm:grid-cols-2"><label className="block"><span className="mb-2 block text-sm font-semibold">City</span><input required autoComplete="address-level2" value={city} onChange={(event) => setCity(event.target.value)} className={fieldClass} /></label><label className="block"><span className="mb-2 block text-sm font-semibold">State</span><select required autoComplete="address-level1" value={stateCode} onChange={(event) => setStateCode(event.target.value)} className={fieldClass}>{commerceStates.map(([code, state]) => <option key={code} value={code}>{state}</option>)}</select></label></div></>
             )}
 
             {(method === "email" || isSignup) && (

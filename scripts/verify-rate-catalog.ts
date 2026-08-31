@@ -18,10 +18,13 @@ async function main() {
   if (categoryCount.value !== 7 || expectedCount.value !== 7) throw new Error(`Expected only 7 active RATE.xlsx categories, found ${categoryCount.value}.`);
   if (productCount.value !== 39) throw new Error(`Expected 39 active RATE.xlsx configurations, found ${productCount.value}.`);
   if (cornerMappings.length !== 2 || cornerMappings.some((mapping) => Number(mapping.price) !== 300)) throw new Error(`Corner Cut must have 2 active mappings at Rs 300; found ${JSON.stringify(cornerMappings)}.`);
-  if (deliveryRows.length !== 117) throw new Error(`Expected 117 active delivery rows for 39 products, found ${deliveryRows.length}.`);
-  if (deliveryRows.filter((row) => row.method === "PICKUP" && row.stateCode === "*" && Number(row.price) === 0).length !== 39) throw new Error("Every active product must have free pickup.");
-  if (deliveryRows.filter((row) => row.method === "COURIER" && row.stateCode === "GJ" && Number(row.price) === 80).length !== 39) throw new Error("Every active product must have the configured Gujarat courier price.");
-  if (deliveryRows.filter((row) => row.method === "COURIER" && row.stateCode === "*" && Number(row.price) === 120).length !== 39) throw new Error("Every active product must have the configured other-state courier price.");
+  if (deliveryRows.length !== 45) throw new Error(`Expected 45 explicit delivery rows for 15 approved products, found ${deliveryRows.length}.`);
+  if (deliveryRows.filter((row) => row.method === "PICKUP" && row.stateCode === "*" && Number(row.price) === 0).length !== 15) throw new Error("Every courier-enabled product must have free pickup.");
+  if (deliveryRows.filter((row) => row.method === "COURIER" && row.stateCode === "GJ" && Number(row.price) === 60).length !== 5) throw new Error("Five standard visiting cards must use the Gujarat Rs 60 courier rule.");
+  if (deliveryRows.filter((row) => row.method === "COURIER" && row.stateCode === "RJ" && Number(row.price) === 80).length !== 5) throw new Error("Five standard visiting cards must use the Rajasthan Rs 80 courier rule.");
+  if (deliveryRows.filter((row) => row.method === "COURIER" && row.stateCode === "GJ" && Number(row.price) === 80).length !== 10) throw new Error("Ten premium/thermal cards must use the Gujarat Rs 80 courier rule.");
+  if (deliveryRows.filter((row) => row.method === "COURIER" && row.stateCode === "RJ" && Number(row.price) === 100).length !== 10) throw new Error("Ten premium/thermal cards must use the Rajasthan Rs 100 courier rule.");
+  if (deliveryRows.some((row) => row.method === "COURIER" && !["GJ", "RJ"].includes(row.stateCode))) throw new Error("Courier rules must only expose Gujarat and Rajasthan.");
   if (surchargeRows.length !== 1 || surchargeRows[0].product !== "nt-single" || surchargeRows[0].scope !== "OUTSIDE_CITY" || surchargeRows[0].city !== "Ahmedabad" || Number(surchargeRows[0].amount) !== 10) throw new Error(`NT Single outside-Ahmedabad surcharge is incorrect: ${JSON.stringify(surchargeRows)}.`);
   if (cardTaxRows.length !== 15 || cardTaxRows.some((row) => Number(row.taxRate) !== 18)) throw new Error("All Sheet 1 and Sheet 2 prices must carry the workbook 18% GST rate.");
   console.log(JSON.stringify({ activeCategories: categoryCount.value, activeProducts: productCount.value, cornerCutMappings: cornerMappings, deliveryRows: deliveryRows.length, ntSingleOutsideAhmedabad: surchargeRows[0], gstVerifiedProducts: cardTaxRows.length }, null, 2));

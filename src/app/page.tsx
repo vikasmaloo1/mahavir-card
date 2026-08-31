@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, FileCheck2, FileUp, MapPin, PackageCheck, ReceiptText, ShoppingBag } from "lucide-react";
 
 import { HomeCatalogSections } from "@/components/home-catalog-sections";
+import { CustomerNotices } from "@/components/customer-notices";
 import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { catalogCategories } from "@/lib/catalog";
@@ -14,6 +15,7 @@ export default function Home() {
   return (
     <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
       <StorefrontHeader />
+      <CustomerNotices placement="HOME" />
 
       <section className="border-b border-[var(--mc-line)] bg-white">
         <div className="mx-auto grid max-w-[1440px] gap-7 px-4 py-8 lg:grid-cols-[.86fr_1.14fr] lg:items-center lg:px-8 lg:py-11">
@@ -39,7 +41,7 @@ export default function Home() {
         <div className="mx-auto grid max-w-[1440px] gap-5 px-4 py-5 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr] lg:px-8">
           <div><p className="text-lg font-bold">Mahavir Card</p><p className="mt-1 text-sm leading-5 text-[var(--mc-muted)]">{printServices}</p></div>
           <div className="flex items-center gap-3"><ShoppingBag size={20} className="text-[var(--mc-accent)]" /><div><p className="text-[15px] font-bold">Online ordering</p><p className="mt-0.5 text-sm text-[var(--mc-muted)]">For approved print jobs</p></div></div>
-          <div className="flex items-center gap-3"><FileUp size={20} className="text-[var(--mc-accent)]" /><div><p className="text-[15px] font-bold">PDF or CDR artwork</p><p className="mt-0.5 text-sm text-[var(--mc-muted)]">Product-specific upload rules</p></div></div>
+          <div className="flex items-center gap-3"><FileUp size={20} className="text-[var(--mc-accent)]" /><div><p className="text-[15px] font-bold">CDR artwork</p><p className="mt-0.5 text-sm text-[var(--mc-muted)]">Product-specific upload rules</p></div></div>
           <div className="flex items-center gap-3"><ReceiptText size={20} className="text-[var(--mc-accent)]" /><div><p className="text-[15px] font-bold">Custom quotations</p><p className="mt-0.5 text-sm text-[var(--mc-muted)]">For complex and bulk work</p></div></div>
         </div>
       </section>

@@ -11,7 +11,7 @@ export function CustomerAccountMenu() {
       <UserRound size={17} /><span className="hidden sm:inline">Account</span><ChevronDown size={14} className="transition group-open:rotate-180" />
     </summary>
     <div className="absolute right-0 top-full z-50 mt-2 w-52 border border-[var(--mc-line)] bg-white p-2 shadow-[0_16px_38px_rgba(16,33,63,0.14)]">
-      <MenuLink href="/account" icon={<UserRound size={16} />}>Profile</MenuLink>
+      <MenuLink href="/account/profile" icon={<UserRound size={16} />}>Profile</MenuLink>
       <MenuLink href="/account#orders" icon={<Package size={16} />}>Orders</MenuLink>
       <MenuLink href="/account#quotes" icon={<FileText size={16} />}>Quotes</MenuLink>
       <MenuLink href="/account/wallet" icon={<WalletCards size={16} />}>Wallet / balance</MenuLink>

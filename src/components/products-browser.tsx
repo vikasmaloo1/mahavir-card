@@ -86,10 +86,11 @@ export function ProductsBrowser() {
           <ProductSpecification item={item} />
           <div><p className="text-xs font-bold uppercase text-[var(--mc-muted)] xl:hidden">Price</p><p className="mt-1 text-[18px] font-bold leading-6 text-[var(--mc-ink)] xl:mt-0">{item.priceLabel}</p>{item.taxInclusive ? <p className="mt-1 text-xs text-[var(--mc-muted)]">GST included</p> : null}</div>
           <ProductMeta item={item} />
-          <div className="flex flex-wrap gap-2"><Link href={`/catalog/${item.slug}`} className="inline-flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)]">Configure <ArrowRight size={16} /></Link>{item.orderable ? <Link href={`/catalog/${item.slug}?intent=buy`} className="rounded-full border border-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-[var(--mc-accent)]">Buy now</Link> : null}{item.quoteable ? <Link href={`/catalog/${item.slug}?intent=quote`} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--mc-line)] px-4 py-2.5 text-sm font-bold text-[var(--mc-muted)]"><FileText size={15} />Request quote</Link> : null}</div>
+          <div className="flex flex-wrap gap-2"><Link href={`/catalog/${item.slug}${item.orderable ? "?intent=buy" : ""}`} className="inline-flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)]">{item.orderable ? "Order now" : "View details"} <ArrowRight size={16} /></Link>{item.quoteable ? <Link href={`/catalog/${item.slug}?intent=quote`} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--mc-line)] px-4 py-2.5 text-sm font-bold text-[var(--mc-muted)]"><FileText size={15} />Request quote</Link> : null}</div>
         </article>)}
         {!items.length ? <div className="rounded-lg border border-[var(--mc-line)] bg-[var(--mc-paper)] px-5 py-12 text-center text-[15px] text-[var(--mc-muted)]">No products match these filters.</div> : null}
         {pagination.totalPages > 1 ? <nav aria-label="Product pages" className="flex items-center justify-between border-t border-[var(--mc-line)] pt-5"><button type="button" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} className="rounded-full border border-[var(--mc-line)] bg-white px-5 py-2.5 text-sm font-bold text-[var(--mc-accent)] disabled:cursor-not-allowed disabled:opacity-40">Previous</button><p className="text-sm font-semibold text-[var(--mc-muted)]">Page {pagination.page} of {pagination.totalPages}</p><button type="button" disabled={page >= pagination.totalPages} onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))} className="rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">Next</button></nav> : null}
+        <p className="border-t border-[var(--mc-line)] pt-4 text-right text-xs font-medium text-[var(--mc-muted)]">Base prices shown above are exclusive of GST. Applicable GST is added at checkout.</p>
       </section> : null}
     </div>
   </main>;
@@ -106,10 +107,8 @@ function ProductSpecification({ item }: { item: Product }) {
 }
 
 function ProductMeta({ item }: { item: Product }) {
-  const files = item.artworkSummary?.requiredFiles ?? [];
   return <div className="space-y-1 text-[13px] leading-5 text-[var(--mc-muted)]">
     {item.productionTime ? <p className="inline-flex items-center gap-1.5 font-semibold text-[var(--mc-ink)]"><Clock3 size={14} />{item.productionTime}</p> : null}
-    {files.length ? <p className="flex items-center gap-1.5"><FileText size={14} /><span className="truncate">{files[0]}{files.length > 1 ? ` +${files.length - 1}` : ""}</span></p> : item.hasArtworkRequirement ? <p className="flex items-center gap-1.5"><FileUp size={14} />Artwork required</p> : null}
     {item.hasAddons ? <p className="flex items-center gap-1.5"><Sparkles size={14} />Add-on available</p> : null}
   </div>;
 }

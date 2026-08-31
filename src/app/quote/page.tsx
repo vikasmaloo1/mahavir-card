@@ -2,8 +2,12 @@ import Link from "next/link";
 
 import { QuoteFlow } from "@/components/quote-flow";
 import { StorefrontHeader } from "@/components/storefront-header";
+import { auth } from "@/lib/auth/server";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
-export default function QuotePage() {
+export default async function QuotePage() {
+  if (!await auth.api.getSession({ headers: await headers() })) redirect("/login");
   return (
     <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
       <StorefrontHeader />

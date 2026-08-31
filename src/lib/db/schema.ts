@@ -237,6 +237,26 @@ export const businessSettings = pgTable("business_settings", {
   ...timestamps,
 });
 
+export const notices = pgTable(
+  "notices",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    title: text("title").notNull(),
+    message: text("message").notNull(),
+    tone: text("tone").notNull().default("INFO"),
+    placement: text("placement").notNull().default("GLOBAL"),
+    linkLabel: text("linkLabel"),
+    linkUrl: text("linkUrl"),
+    startsAt: timestamp("startsAt", { withTimezone: true }),
+    endsAt: timestamp("endsAt", { withTimezone: true }),
+    sortOrder: integer("sortOrder").notNull().default(0),
+    isActive: boolean("isActive").notNull().default(true),
+    updatedBy: uuid("updatedBy").references(() => user.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (table) => [index("notices_active_placement_idx").on(table.isActive, table.placement, table.sortOrder)],
+);
+
 export const productContentSections = pgTable(
   "product_content_sections",
   {

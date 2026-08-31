@@ -6,7 +6,7 @@ import { getOwnedCart, selectionsFromConfiguration } from "@/lib/cart-service";
 import { evaluateCreditEligibility } from "@/lib/customer-credit";
 import { db } from "@/lib/db/server";
 import { addresses, cartItems, customers, orderItems, orders, orderStatusEvents, payments, walletTransactions } from "@/lib/db/schema";
-import { indiaStateName, isIndiaStateCode } from "@/lib/india-states";
+import { indiaStateName, isCommerceStateCode } from "@/lib/india-states";
 import { createPaymentIntent, createRazorpayOrder, PaymentConfigurationError, PaymentProviderError, razorpayPublicKey } from "@/lib/payment-service";
 import { requireUser } from "@/lib/permissions";
 import { checkoutSchema } from "@/lib/validation";
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   try {
     const session = await requireUser(request);
     const input = await readBody(request, checkoutSchema);
-    if (!isIndiaStateCode(input.address.stateCode) || indiaStateName(input.address.stateCode) !== input.address.state) return jsonError("Select a valid Indian state", 422);
+    if (!isCommerceStateCode(input.address.stateCode) || indiaStateName(input.address.stateCode) !== input.address.state) return jsonError("Select Gujarat or Rajasthan", 422);
     const basket = await getOwnedCart(session.user.id, "PURCHASE");
     if (!basket.id || !basket.items.length) return jsonError("Your purchase basket is empty", 422);
     if (basket.summary.hasUnavailableItems) return jsonError("One or more basket items must be updated before checkout", 422);
@@ -49,15 +49,20 @@ export async function POST(request: Request) {
 
     const result = await db.transaction(async (tx) => {
       const [existingCustomer] = await tx.select().from(customers).where(eq(customers.userId, session.user.id)).limit(1);
+      const customerValues = { ...input.customer, email: session.user.email, city: input.address.city, state: input.address.state, stateCode: input.address.stateCode, updatedAt: new Date() };
       let customer = existingCustomer
-        ? (await tx.update(customers).set({ ...input.customer, email: session.user.email, updatedAt: new Date() }).where(eq(customers.id, existingCustomer.id)).returning())[0]
-        : (await tx.insert(customers).values({ ...input.customer, userId: session.user.id, email: session.user.email }).returning())[0];
+        ? (await tx.update(customers).set(customerValues).where(eq(customers.id, existingCustomer.id)).returning())[0]
+        : (await tx.insert(customers).values({ ...customerValues, userId: session.user.id }).returning())[0];
       if (!customer) return null;
 
       if (input.paymentMethod === "CREDIT") {
         const eligibility = evaluateCreditEligibility(customer, total);
         if (!eligibility.eligible) throw new CreditCheckoutError(eligibility.message);
-        const [reserved] = await tx.update(customers).set({ availableCredit: sql`${customers.availableCredit} - ${total}`, updatedAt: new Date() }).where(and(
+        const [reserved] = await tx.update(customers).set({
+          availableCredit: sql`${customers.availableCredit} - ${total}`,
+          walletBalance: sql`${customers.availableCredit} - ${total}`,
+          updatedAt: new Date(),
+        }).where(and(
           eq(customers.id, customer.id),
           eq(customers.customerType, "B2B"),
           eq(customers.creditEnabled, true),

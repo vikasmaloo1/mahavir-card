@@ -17,9 +17,13 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/wall
       const [transaction] = await tx.update(walletTransactions).set({ status: input.decision, notes: input.notes ?? null, updatedAt: new Date() }).where(and(eq(walletTransactions.id, id), eq(walletTransactions.transactionType, "TOP_UP"), eq(walletTransactions.status, "PENDING"))).returning();
       if (!transaction) return null;
       if (input.decision === "REJECTED") return transaction;
-      const [customer] = await tx.update(customers).set({ walletBalance: sql`${customers.walletBalance} + ${transaction.amount}`, updatedAt: new Date() }).where(eq(customers.id, transaction.customerId)).returning({ walletBalance: customers.walletBalance });
+      const [customer] = await tx.update(customers).set({
+        availableCredit: sql`${customers.availableCredit} + ${transaction.amount}`,
+        walletBalance: sql`${customers.availableCredit} + ${transaction.amount}`,
+        updatedAt: new Date(),
+      }).where(eq(customers.id, transaction.customerId)).returning({ availableCredit: customers.availableCredit });
       if (!customer) throw new Error("Customer account was not found");
-      const [completed] = await tx.update(walletTransactions).set({ balanceAfter: customer.walletBalance, createdBy: admin.user.id, updatedAt: new Date() }).where(eq(walletTransactions.id, transaction.id)).returning();
+      const [completed] = await tx.update(walletTransactions).set({ balanceAfter: customer.availableCredit, createdBy: admin.user.id, updatedAt: new Date() }).where(eq(walletTransactions.id, transaction.id)).returning();
       return completed;
     });
     return result ? jsonOk(result) : jsonError("This top-up request was already reviewed or does not exist", 409);
