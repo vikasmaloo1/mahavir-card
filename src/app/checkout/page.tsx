@@ -1,4 +1,5 @@
 import { CheckoutFlow } from "@/components/checkout-flow";
+import { CustomerNotices } from "@/components/customer-notices";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { auth } from "@/lib/auth/server";
 import { headers } from "next/headers";
@@ -9,6 +10,7 @@ export default async function CheckoutPage() {
   return (
     <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
       <StorefrontHeader />
+      <CustomerNotices placement="ORDERING" />
       <div className="mx-auto max-w-[1120px] px-4 py-8 lg:px-8 lg:py-12">
         <header className="border-b border-[var(--mc-line)] pb-6">
           <p className="text-xs font-bold uppercase text-[var(--mc-accent)]">Secure checkout</p>

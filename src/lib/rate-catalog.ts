@@ -41,6 +41,7 @@ const artCardArtwork = (slots: RateCatalogItem["artwork"]["slots"]): RateCatalog
 const premiumArtwork = (slots: RateCatalogItem["artwork"]["slots"]): RateCatalogItem["artwork"] => ({ design: [93.5, 54], safe: [83, 47], final: [90, 53], black: "C50 M20 Y20 K100", slots });
 const fixedCard = (slug: string, name: string, amount: number, productionTime: string, artwork: RateCatalogItem["artwork"], extra: Partial<RateCatalogItem> = {}): RateCatalogItem => ({ slug, name, amount, taxRate: 18, productionTime, referenceQuantity: 1000, referenceWeight: 1, ruleType: "FIXED_PER_REFERENCE_QUANTITY", shortDescription: `${name} for a reference batch of 1,000 cards.`, artwork, ...extra });
 const fixed = (slug: string, name: string, amount: number, productionTime: string | undefined, size?: string): RateCatalogItem => ({ slug, name, amount, taxRate: 18, productionTime, size, referenceQuantity: 1000, ruleType: "FIXED", shortDescription: [name, size].filter(Boolean).join(" · "), artwork: { slots: [slot("DESIGN", "Design artwork")] } });
+const ntCourier = { GJ: 40, RJ: 60 } as const;
 const standardCourier = { GJ: 60, RJ: 80 } as const;
 const premiumCourier = { GJ: 80, RJ: 100 } as const;
 
@@ -48,8 +49,8 @@ export const rateCatalog: RateCatalogCategory[] = [
   {
     slug: "visiting-card", name: "Visiting Card", description: "Standard, tearable, thermal matt, texture, and UV visiting cards.",
     items: [
-      fixedCard("nt-single", "NT Single", 240, "2-3 working days", visitingCardArtwork([slot("DESIGN", "Design artwork")]), { delivery: standardCourier }),
-      fixedCard("nt-front-back", "NT Front Back", 280, "3-4 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")]), { delivery: standardCourier }),
+      fixedCard("nt-single", "NT Single", 240, "2-3 working days", visitingCardArtwork([slot("DESIGN", "Design artwork")]), { delivery: ntCourier }),
+      fixedCard("nt-front-back", "NT Front Back", 280, "3-4 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")]), { delivery: ntCourier }),
       fixedCard("tearable-single-side", "Tearable Single Side Art Card 250 GSM", 210, "2-3 working days", visitingCardArtwork([slot("FRONT", "Front design")]), { delivery: standardCourier }),
       fixedCard("tearable-front-back-without-lamination", "Tearable Front Back Without Lamination", 300, "3-4 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")]), { delivery: standardCourier }),
       fixedCard("tearable-front-back-with-lamination", "Tearable Front Back With Lamination", 320, "4-5 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")]), { delivery: standardCourier }),

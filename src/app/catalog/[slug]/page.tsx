@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 
 import { ProductConfigurator } from "@/components/product-configurator";
 import { ProductImage } from "@/components/product-image";
+import { CustomerNotices } from "@/components/customer-notices";
 import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { type CatalogProduct, type ConfigField } from "@/lib/catalog";
@@ -60,7 +61,9 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   if (!product) notFound();
   const descriptor = product.categorySlug === "business-cards" ? "Offset printing \u00b7 Business cards" : product.categorySlug === "packaging" ? "Packaging \u00b7 Printed boxes and bags" : product.categorySlug === "labels-stickers" ? "Labels and stickers \u00b7 Product printing" : `${product.category} \u00b7 Commercial printing`;
 
-  return <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]"><StorefrontHeader />
+  return <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
+    <StorefrontHeader />
+    <CustomerNotices placement="ORDERING" />
     <div className="mx-auto max-w-[1440px] px-4 py-7 xl:px-8"><div className="flex flex-wrap items-center justify-between gap-3"><a href="/products" className="inline-flex items-center gap-2 text-[15px] font-semibold text-[var(--mc-muted)] hover:text-[var(--mc-accent)]"><ArrowLeft size={17} /> All products</a><p className="text-sm font-semibold text-[var(--mc-muted)]">{descriptor}</p></div>
       <div className="mt-6 grid gap-7 xl:grid-cols-[minmax(0,.52fr)_minmax(0,1fr)] xl:items-start"><section><div className="relative aspect-[1.1] overflow-hidden rounded-lg border border-[#d5deeb] bg-[#edf2f8] sm:aspect-[1.25]"><ProductImage src={product.imageUrl} alt={`${product.name} printed sample`} slug={product.slug} priority /><div className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-2 text-xs font-bold uppercase text-[#2457b8]">{product.category}</div></div>
         <div className="grid gap-5 border-b border-[#dfe5ef] py-6 sm:grid-cols-3"><div><Clock3 size={20} className="text-[#2457b8]" /><p className="mt-2 text-xs font-bold uppercase text-[#607089]">Turnaround</p><p className="mt-1 text-[15px] font-bold">{product.turnaround}</p></div><div><ShieldCheck size={20} className="text-[#2457b8]" /><p className="mt-2 text-xs font-bold uppercase text-[#607089]">Purchase route</p><p className="mt-1 text-[15px] font-bold">{product.orderable ? "Buy now or request quote" : "Quote confirmed by team"}</p></div><div><FileUp size={20} className="text-[#2457b8]" /><p className="mt-2 text-xs font-bold uppercase text-[#607089]">Artwork</p><p className="mt-1 text-[15px] font-bold">{product.artworkFormatLabel}</p></div></div>

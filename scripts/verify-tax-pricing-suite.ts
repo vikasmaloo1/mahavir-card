@@ -103,9 +103,9 @@ async function runSuite() {
   console.log("NT Single delivery rules:", ntDeliveryRules.map((r) => `${r.deliveryMethod} [${r.stateCode}]: ₹${r.price}`));
   const gjRule = ntDeliveryRules.find((r) => r.deliveryMethod === "COURIER" && r.stateCode === "GJ");
   const rjRule = ntDeliveryRules.find((r) => r.deliveryMethod === "COURIER" && r.stateCode === "RJ");
-  assert.ok(gjRule && Number(gjRule.price) === 60, "Visiting Card GJ Courier must be ₹60");
-  assert.ok(rjRule && Number(rjRule.price) === 80, "Visiting Card RJ Courier must be ₹80");
-  console.log("✓ Visiting Card Delivery Rules verified (GJ: ₹60, RJ: ₹80)");
+  assert.ok(gjRule && Number(gjRule.price) === 40, "Visiting Card GJ Courier must be ₹40");
+  assert.ok(rjRule && Number(rjRule.price) === 60, "Visiting Card RJ Courier must be ₹60");
+  console.log("✓ Visiting Card NT Single Delivery Rules verified (GJ: ₹40, RJ: ₹60)");
 
   // Verify Premium Card Delivery Rules
   const [premium400] = await db.select().from(products).where(eq(products.slug, "premium-400-gsm-velvet")).limit(1);
@@ -129,8 +129,8 @@ async function runSuite() {
   // -------------------------------------------------------------
   console.log("\n--- Part 3: Real Business Scenarios via calculateProductPrice ---");
 
-  // Scenario A: Customer Gujarat, Business Card NT Single 1000, Courier (₹60)
-  // Base ₹240 + Courier ₹60 = ₹300 taxable -> CGST 9% (₹27.00) + SGST 9% (₹27.00) -> Total ₹354.00
+  // Scenario A: Customer Gujarat, Business Card NT Single 1000, Courier (₹40)
+  // Base ₹240 + Courier ₹40 = ₹280 taxable -> CGST 9% (₹25.20) + SGST 9% (₹25.20) -> Total ₹330.40
   const scenA = await calculateProductPrice(ntSingle.id, 1000, {}, {
     stateCode: "GJ",
     delivery: { method: "COURIER", stateCode: "GJ" },
@@ -138,16 +138,16 @@ async function runSuite() {
   console.log("Scenario A result:", scenA);
   assert.ok(scenA, "Scenario A calculation must succeed");
   assert.equal(scenA.productPrice, "240.00");
-  assert.equal(scenA.delivery.price, "60.00");
-  assert.equal(scenA.priceBeforeTax, "300.00");
-  assert.equal(scenA.cgstAmount, "27.00");
-  assert.equal(scenA.sgstAmount, "27.00");
+  assert.equal(scenA.delivery.price, "40.00");
+  assert.equal(scenA.priceBeforeTax, "280.00");
+  assert.equal(scenA.cgstAmount, "25.20");
+  assert.equal(scenA.sgstAmount, "25.20");
   assert.equal(scenA.igstAmount, "0.00");
-  assert.equal(scenA.grandTotal, "354.00");
-  console.log("✓ Scenario A PASSED: NT Single + GJ Courier -> Base ₹240 + Courier ₹60 + CGST ₹27 + SGST ₹27 = ₹354.00");
+  assert.equal(scenA.grandTotal, "330.40");
+  console.log("✓ Scenario A PASSED: NT Single + GJ Courier -> Base ₹240 + Courier ₹40 + CGST ₹25.20 + SGST ₹25.20 = ₹330.40");
 
-  // Scenario B: Customer Rajasthan, Business Card NT Single 1000, Courier (₹80)
-  // Base ₹240 + Courier ₹80 = ₹320 taxable -> IGST 18% (₹57.60) -> Total ₹377.60
+  // Scenario B: Customer Rajasthan, Business Card NT Single 1000, Courier (₹60)
+  // Base ₹240 + Courier ₹60 = ₹300 taxable -> IGST 18% (₹54.00) -> Total ₹354.00
   const scenB = await calculateProductPrice(ntSingle.id, 1000, {}, {
     stateCode: "RJ",
     delivery: { method: "COURIER", stateCode: "RJ" },
@@ -155,13 +155,13 @@ async function runSuite() {
   console.log("Scenario B result:", scenB);
   assert.ok(scenB, "Scenario B calculation must succeed");
   assert.equal(scenB.productPrice, "240.00");
-  assert.equal(scenB.delivery.price, "80.00");
-  assert.equal(scenB.priceBeforeTax, "320.00");
+  assert.equal(scenB.delivery.price, "60.00");
+  assert.equal(scenB.priceBeforeTax, "300.00");
   assert.equal(scenB.cgstAmount, "0.00");
   assert.equal(scenB.sgstAmount, "0.00");
-  assert.equal(scenB.igstAmount, "57.60");
-  assert.equal(scenB.grandTotal, "377.60");
-  console.log("✓ Scenario B PASSED: NT Single + RJ Courier -> Base ₹240 + Courier ₹80 + IGST ₹57.60 = ₹377.60");
+  assert.equal(scenB.igstAmount, "54.00");
+  assert.equal(scenB.grandTotal, "354.00");
+  console.log("✓ Scenario B PASSED: NT Single + RJ Courier -> Base ₹240 + Courier ₹60 + IGST ₹54.00 = ₹354.00");
 
   // Scenario C: Sticker square-inch calculation
   // 1000 cards, 10 sq.in each, min charge ₹250

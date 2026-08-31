@@ -67,12 +67,12 @@ export function CustomerNotices({ placement = "GLOBAL" }: { placement?: "GLOBAL"
 
   return (
     <aside
-      className="group relative z-20 h-12 sm:h-[50px] w-full overflow-hidden border-b border-[#d4deeb] bg-[#f4f7fc] text-[var(--mc-ink)] select-none shadow-[0_1px_2px_rgba(16,33,63,0.03)]"
+      className="group relative z-20 h-[46px] sm:h-[50px] md:h-[52px] w-full overflow-hidden border-b border-[#cbd5e1] bg-[#f8fafc] text-[var(--mc-ink)] select-none shadow-[0_1px_3px_rgba(15,23,42,0.04)]"
       aria-label="Announcements and Customer Notices"
     >
       <div className="flex h-full w-full items-center overflow-hidden">
         <div
-          className="animate-ticker-continuous flex shrink-0 items-center whitespace-nowrap text-[14px] sm:text-[15.5px] text-[#0f213d]"
+          className="animate-ticker-continuous flex shrink-0 items-center whitespace-nowrap text-[15px] sm:text-[16.5px] md:text-[17px] tracking-tight"
           style={{ animationDuration: `${animationDurationSeconds}s` }}
         >
           {/* First sequence of notices */}
@@ -90,29 +90,35 @@ export function CustomerNotices({ placement = "GLOBAL" }: { placement?: "GLOBAL"
 }
 
 function NoticeTickerItem({ item, ariaHidden }: { item: CustomerNoticeItem; ariaHidden?: boolean }) {
+  const hasTitle = Boolean(item.title?.trim());
+  const hasMessage = Boolean(item.message?.trim());
+  const messageStartsWithDash = item.message?.trim().startsWith("—") || item.message?.trim().startsWith("-");
+
   return (
-    <span className="inline-flex items-center px-4 sm:px-6" aria-hidden={ariaHidden}>
-      {/* Subtle indicator bullet */}
+    <span className="inline-flex items-center" aria-hidden={ariaHidden}>
+      {/* Subtle accent indicator bullet */}
       <span
-        className={`size-2 mr-2.5 shrink-0 rounded-full ${
+        className={`size-2 sm:size-2.5 mr-2.5 shrink-0 rounded-full ${
           item.tone === "WARNING"
             ? "bg-[#d97706]"
             : item.tone === "SUCCESS"
             ? "bg-[#16a34a]"
-            : "bg-[#2864dc]"
+            : "bg-[#2563eb]"
         }`}
         aria-hidden="true"
       />
 
-      {/* Notice Title */}
-      <span className="font-semibold text-[#0f213d] tracking-normal">
-        {item.title}
-      </span>
+      {/* Notice Title (Bold / Semibold with High Contrast) */}
+      {hasTitle ? (
+        <span className="font-bold text-[#0f172a]">
+          {item.title}
+        </span>
+      ) : null}
 
-      {/* Notice Message / Detail */}
-      {item.message ? (
-        <span className="font-normal text-[#4c5f7a] ml-1.5">
-          {item.message}
+      {/* Notice Message / Supporting Text (Medium Weight) */}
+      {hasMessage ? (
+        <span className="font-medium text-[#334155] ml-1.5">
+          {hasTitle && !messageStartsWithDash ? `— ${item.message}` : item.message}
         </span>
       ) : null}
 
@@ -121,7 +127,7 @@ function NoticeTickerItem({ item, ariaHidden }: { item: CustomerNoticeItem; aria
         <Link
           href={item.linkUrl}
           tabIndex={ariaHidden ? -1 : 0}
-          className="ml-2 inline-flex items-center gap-0.5 font-semibold text-[#2457b8] hover:underline"
+          className="ml-2.5 inline-flex items-center gap-1 font-semibold text-[#1d4ed8] hover:text-[#1e40af] hover:underline"
         >
           <span>{item.linkLabel}</span>
           <span aria-hidden="true">&rarr;</span>
@@ -129,7 +135,7 @@ function NoticeTickerItem({ item, ariaHidden }: { item: CustomerNoticeItem; aria
       ) : null}
 
       {/* Single clean separator between notices */}
-      <span className="ml-8 sm:ml-12 text-[#9bb0ce] select-none text-base" aria-hidden="true">
+      <span className="mx-6 sm:mx-8 text-base sm:text-lg font-bold text-[#94a3b8] select-none" aria-hidden="true">
         {"\u00b7"}
       </span>
     </span>
