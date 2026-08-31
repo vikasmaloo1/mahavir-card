@@ -84,7 +84,15 @@ export function ProductsBrowser() {
         {items.map((item) => <article key={item.id} className="grid gap-4 rounded-lg border border-[var(--mc-line)] bg-[var(--mc-paper)] px-4 py-4 shadow-[0_5px_16px_rgba(16,33,63,0.035)] sm:grid-cols-2 xl:grid-cols-[minmax(15rem,.9fr)_minmax(18rem,1.1fr)_10rem_minmax(12rem,.7fr)_minmax(16rem,.8fr)] xl:items-center">
           <div className="flex min-w-0 gap-4"><Link href={`/catalog/${item.slug}`} className="relative h-[76px] w-[92px] shrink-0 overflow-hidden rounded-md bg-[var(--mc-accent-soft)]"><ProductImage src={item.imageUrl || "/images/mahavir-print-assortment.png"} alt={`${item.name} print sample`} slug={item.slug} /></Link><div className="min-w-0 self-center"><p className="text-xs font-bold uppercase text-[var(--mc-accent)]">{item.category?.name ?? "Print product"}</p><h2 className="mt-1 text-[18px] font-bold leading-6 text-[var(--mc-ink)]"><Link href={`/catalog/${item.slug}`}>{item.name}</Link></h2></div></div>
           <ProductSpecification item={item} />
-          <div><p className="text-xs font-bold uppercase text-[var(--mc-muted)] xl:hidden">Price</p><p className="mt-1 text-[18px] font-bold leading-6 text-[var(--mc-ink)] xl:mt-0">{item.priceLabel}</p>{item.taxInclusive ? <p className="mt-1 text-xs text-[var(--mc-muted)]">GST included</p> : null}</div>
+          <div>
+            <p className="text-xs font-bold uppercase text-[var(--mc-muted)] xl:hidden">Price</p>
+            <p className="mt-1 text-[18px] font-bold leading-6 text-[var(--mc-ink)] xl:mt-0">{item.priceLabel}</p>
+            {item.taxInclusive ? (
+              <p className="mt-0.5 text-xs text-[var(--mc-muted)]">GST included</p>
+            ) : item.priceState === "STARTING" ? (
+              <p className="mt-0.5 text-xs font-medium text-[var(--mc-muted)]">GST extra as applicable</p>
+            ) : null}
+          </div>
           <ProductMeta item={item} />
           <div className="flex flex-wrap gap-2"><Link href={`/catalog/${item.slug}${item.orderable ? "?intent=buy" : ""}`} className="inline-flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)]">{item.orderable ? "Order now" : "View details"} <ArrowRight size={16} /></Link>{item.quoteable ? <Link href={`/catalog/${item.slug}?intent=quote`} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--mc-line)] px-4 py-2.5 text-sm font-bold text-[var(--mc-muted)]"><FileText size={15} />Request quote</Link> : null}</div>
         </article>)}
