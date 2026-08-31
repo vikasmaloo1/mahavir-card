@@ -248,7 +248,10 @@ textarea:focus-visible {
   display: flex;
   width: max-content;
   will-change: transform;
-  animation: tickerLoop 85s linear infinite;
+  animation-name: tickerLoop;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-duration: 85s;
 }
 
 .animate-ticker-continuous:hover,

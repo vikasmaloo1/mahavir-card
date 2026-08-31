@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export type CustomerNoticeItem = {
   id: string;
@@ -38,21 +38,54 @@ export function CustomerNotices({ placement = "GLOBAL" }: { placement?: "GLOBAL"
     };
   }, [placement]);
 
-  if (!loaded || !items.length) return null;
+  // Clean deduplication and priority ordering
+  const displayItems = useMemo(() => {
+    const priorityWeight = { HIGH: 0, NORMAL: 1, LOW: 2 };
+    const seen = new Set<string>();
+
+    const unique = items.filter((item) => {
+      const key = `${item.title.trim().toLowerCase()}|${(item.message || "").trim().toLowerCase()}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    return unique.sort((a, b) => {
+      const pA = priorityWeight[a.priority || "NORMAL"];
+      const pB = priorityWeight[b.priority || "NORMAL"];
+      if (pA !== pB) return pA - pB;
+      return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+    });
+  }, [items]);
+
+  // Calculate dynamic, content-aware slow duration for calm reading speed
+  const animationDurationSeconds = useMemo(() => {
+    if (!displayItems.length) return 60;
+    const totalChars = displayItems.reduce((sum, item) => {
+      return sum + item.title.length + (item.message?.length || 0) + (item.linkLabel?.length || 0) + 20;
+    }, 0);
+    // Move at roughly 35-40px per second (~0.35s per character of track)
+    return Math.max(35, Math.round(totalChars * 0.38));
+  }, [displayItems]);
+
+  if (!loaded || !displayItems.length) return null;
 
   return (
     <aside
-      className="group relative z-20 h-11 sm:h-12 w-full overflow-hidden border-b border-[#d2ddee] bg-[#f4f7fc] text-[var(--mc-ink)] select-none shadow-[0_1px_2px_rgba(16,33,63,0.02)]"
-      aria-label="Announcements & Print Guidelines"
+      className="group relative z-20 h-12 sm:h-[50px] w-full overflow-hidden border-b border-[#d4deeb] bg-[#f4f7fc] text-[var(--mc-ink)] select-none shadow-[0_1px_2px_rgba(16,33,63,0.03)]"
+      aria-label="Announcements and Customer Notices"
     >
       <div className="flex h-full w-full items-center overflow-hidden">
-        <div className="animate-ticker-continuous flex shrink-0 items-center whitespace-nowrap text-[13.5px] sm:text-[14px] text-[#0f213d]">
-          {/* First set of notices */}
-          {items.map((item) => (
+        <div
+          className="animate-ticker-continuous flex shrink-0 items-center whitespace-nowrap text-[14px] sm:text-[15.5px] text-[#0f213d]"
+          style={{ animationDuration: `${animationDurationSeconds}s` }}
+        >
+          {/* First sequence of notices */}
+          {displayItems.map((item) => (
             <NoticeTickerItem key={`track1-${item.id}`} item={item} />
           ))}
-          {/* Second duplicate set for seamless infinite loop */}
-          {items.map((item) => (
+          {/* Second duplicate sequence for seamless 100% infinite continuous loop */}
+          {displayItems.map((item) => (
             <NoticeTickerItem key={`track2-${item.id}`} item={item} ariaHidden />
           ))}
         </div>
@@ -63,10 +96,10 @@ export function CustomerNotices({ placement = "GLOBAL" }: { placement?: "GLOBAL"
 
 function NoticeTickerItem({ item, ariaHidden }: { item: CustomerNoticeItem; ariaHidden?: boolean }) {
   return (
-    <span className="inline-flex items-center gap-2.5 px-6 sm:px-8" aria-hidden={ariaHidden}>
-      {/* Subtle indicator dot/pill */}
+    <span className="inline-flex items-center px-4 sm:px-6" aria-hidden={ariaHidden}>
+      {/* Subtle indicator bullet */}
       <span
-        className={`size-2 shrink-0 rounded-full ${
+        className={`size-2 mr-2.5 shrink-0 rounded-full ${
           item.tone === "WARNING"
             ? "bg-[#d97706]"
             : item.tone === "SUCCESS"
@@ -77,31 +110,31 @@ function NoticeTickerItem({ item, ariaHidden }: { item: CustomerNoticeItem; aria
       />
 
       {/* Notice Title */}
-      <strong className="font-semibold text-[#0f213d] tracking-normal">
+      <span className="font-semibold text-[#0f213d] tracking-normal">
         {item.title}
-      </strong>
+      </span>
 
-      {/* Notice Short Message / Detail */}
+      {/* Notice Message / Detail */}
       {item.message ? (
-        <span className="font-normal text-[#526685]">
+        <span className="font-normal text-[#4c5f7a] ml-1.5">
           {item.message}
         </span>
       ) : null}
 
-      {/* Inline CTA Link */}
+      {/* Inline CTA Action */}
       {item.linkLabel && item.linkUrl ? (
         <Link
           href={item.linkUrl}
           tabIndex={ariaHidden ? -1 : 0}
-          className="ml-1.5 inline-flex items-center gap-1 font-bold text-[#2864dc] hover:underline"
+          className="ml-2 inline-flex items-center gap-0.5 font-semibold text-[#2457b8] hover:underline"
         >
           <span>{item.linkLabel}</span>
           <span aria-hidden="true">&rarr;</span>
         </Link>
       ) : null}
 
-      {/* Subtle divider */}
-      <span className="ml-6 sm:ml-8 text-[#9cb0ce] select-none" aria-hidden="true">
+      {/* Single clean separator between notices */}
+      <span className="ml-8 sm:ml-12 text-[#9bb0ce] select-none text-base" aria-hidden="true">
         {"\u00b7"}
       </span>
     </span>
