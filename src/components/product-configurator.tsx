@@ -26,6 +26,8 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
   const defaults = useMemo(() => Object.fromEntries(product.configuration.map((field) => [field.id, field.defaultValue])), [product.configuration]);
   const [values, setValues] = useState<Record<string, string>>(defaults);
   const [details, setDetails] = useState<ProductDetails | null>(null);
+  const [detailsError, setDetailsError] = useState("");
+  const [detailsVersion, setDetailsVersion] = useState(0);
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
   const [addonIds, setAddonIds] = useState<string[]>([]);
   const [delivery, setDelivery] = useState<Delivery | undefined>();
@@ -61,8 +63,9 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/products/${product.id}`, { cache: "no-store" }).then((response) => response.json()).then((payload) => {
-      if (!active || !payload.success) return;
+    fetch(`/api/products/${product.id}`, { cache: "no-store" }).then(async (response) => ({ response, payload: await response.json().catch(() => null) })).then(({ response, payload }) => {
+      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "Product options could not be loaded");
+      if (!active) return;
       const next = payload.data as ProductDetails;
       setDetails(next);
       const initialRule = next.pricingRules[0];
@@ -76,9 +79,9 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
       }
       const pickup = next.deliveryRules.find((rule) => rule.deliveryMethod === "PICKUP");
       if (pickup) setDelivery({ method: "PICKUP", stateCode: "*" });
-    }).catch(() => undefined);
+    }).catch((caught) => { if (active) setDetailsError(caught instanceof Error ? caught.message : "Product options could not be loaded"); });
     return () => { active = false; };
-  }, [defaults, product.id]);
+  }, [defaults, detailsVersion, product.id]);
 
   useEffect(() => {
     if (!editItemId || !details) return;
@@ -116,8 +119,11 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
       setIsCalculating(true);
       fetch("/api/pricing/calculate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId: product.id, quantity, options: { ...values, ...(selectedRuleId ? { pricingRuleId: selectedRuleId } : {}) }, addonIds, delivery }), signal: controller.signal })
         .then((response) => response.json())
-        .then((result) => { if (result.success) setEstimate(result.data); })
-        .catch(() => undefined)
+        .then((result) => {
+          if (result.success) setEstimate(result.data);
+          else setEstimate({ calculatedAmount: null, warnings: [result.error?.message ?? "This price could not be calculated. Review the selected options."] });
+        })
+        .catch(() => setEstimate({ calculatedAmount: null, warnings: ["Pricing is temporarily unavailable. Check your connection and retry."] }))
         .finally(() => { if (!controller.signal.aborted) setIsCalculating(false); });
     }, 150);
     return () => {
@@ -162,6 +168,7 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
             <span className="mb-2 block text-[13px] font-bold text-[#263753]">Job name <span className="font-normal text-[#607089]">(optional)</span></span>
             <input value={jobName} onChange={(event) => setJobName(event.target.value)} maxLength={160} placeholder="e.g. Restaurant visiting cards" className="w-full rounded-lg border border-[#c9d2df] px-3 py-3 text-[15px] outline-none focus:border-[#2457b8]" />
           </label>
+          {detailsError ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#efc4be] bg-[#fff6f4] p-3 text-sm text-[#a53025]"><span>{detailsError}</span><button type="button" onClick={() => { setDetailsError(""); setDetailsVersion((version) => version + 1); }} className="rounded-full border border-[#d99d95] bg-white px-3 py-1.5 font-bold">Retry</button></div> : null}
           <label className="block">
             <span className="mb-2 block text-[13px] font-bold text-[#263753]">Quantity</span>
             <div className="flex items-center rounded-lg border border-[#c9d2df]">

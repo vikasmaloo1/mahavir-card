@@ -19,18 +19,22 @@ const categoryFocus: Record<string, string> = {
 
 export function HomeCatalogSections({ initialCategories }: { initialCategories: Category[] }) {
   const [categories, setCategories] = useState(initialCategories);
+  const [loading, setLoading] = useState(!initialCategories.length);
+  const [error, setError] = useState("");
+  const [requestVersion, setRequestVersion] = useState(0);
 
   useEffect(() => {
-    if (initialCategories && initialCategories.length > 0) return;
     let active = true;
     fetch("/api/categories")
-      .then((response) => response.json())
-      .then((payload) => {
-        if (active && payload.success) setCategories(payload.data);
+      .then(async (response) => ({ response, payload: await response.json().catch(() => null) }))
+      .then(({ response, payload }) => {
+        if (!response.ok || !payload?.success) throw new Error("request_failed");
+        if (active) setCategories(payload.data);
       })
-      .catch(() => undefined);
+      .catch(() => { if (active) setError("Product families could not be loaded. Check your connection and retry."); })
+      .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [initialCategories]);
+  }, [requestVersion]);
 
   return (
     <section className="mx-auto max-w-[1440px] px-4 py-12 lg:px-8 lg:py-16">
@@ -41,7 +45,9 @@ export function HomeCatalogSections({ initialCategories }: { initialCategories: 
         </div>
         <Link href="/products" className="hidden items-center gap-2 text-[15px] font-bold text-[var(--mc-accent)] sm:inline-flex">Order now <ArrowRight size={17} /></Link>
       </div>
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {error && !categories.length ? <div role="alert" className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--mc-line)] bg-white p-4 text-sm font-semibold"><span>{error}</span><button type="button" onClick={() => { setError(""); setLoading(true); setRequestVersion((version) => version + 1); }} className="rounded-full bg-[var(--mc-accent)] px-4 py-2 text-white">Retry</button></div> : null}
+      {loading && !categories.length ? <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="Loading product families">{Array.from({ length: 7 }, (_, index) => <div key={index} className="grid min-h-36 animate-pulse grid-cols-[7.25rem_1fr] overflow-hidden rounded-lg border border-[var(--mc-line)] bg-white"><div className="bg-[#e4ebf7]" /><div className="space-y-3 p-5"><div className="h-3 w-8 rounded bg-[#d8e2f2]" /><div className="h-5 w-36 rounded bg-[#d8e2f2]" /><div className="h-3 w-full rounded bg-[#e4ebf7]" /></div></div>)}</div> : null}
+      {categories.length ? <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {categories.map((category, index) => (
           <Link key={category.slug} href={"/products?category=" + category.slug} className="group grid min-h-36 grid-cols-[7.25rem_1fr] overflow-hidden rounded-lg border border-[var(--mc-line)] bg-[var(--mc-paper)] shadow-[0_8px_24px_rgba(16,33,63,0.05)] transition hover:border-[var(--mc-accent)] hover:shadow-[0_14px_34px_rgba(40,100,220,0.14)]">
             <div className="relative overflow-hidden bg-[var(--mc-accent-soft)]"><Image src={category.imageUrl || "/images/mahavir-print-assortment.png"} alt="" fill sizes="112px" className="object-cover transition duration-300 group-hover:scale-[1.03]" style={{ objectPosition: category.imageUrl ? "50% 50%" : categoryFocus[category.slug] ?? "50% 55%" }} /></div>
@@ -55,7 +61,7 @@ export function HomeCatalogSections({ initialCategories }: { initialCategories: 
             </div>
           </Link>
         ))}
-      </div>
+      </div> : null}
       <Link href="/products" className="mt-5 inline-flex items-center gap-2 text-[15px] font-bold text-[var(--mc-accent)] sm:hidden">Order now <ArrowRight size={17} /></Link>
     </section>
   );

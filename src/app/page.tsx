@@ -7,7 +7,6 @@ import { CustomerNotices } from "@/components/customer-notices";
 import { PromotionalBanner } from "@/components/promotional-banner";
 import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
-import { catalogCategories } from "@/lib/catalog";
 
 const localContext = "Ahmedabad \u00b7 Commercial printing \u00b7 Business and bulk orders";
 const printServices = "Offset printing \u00b7 Business cards \u00b7 Packaging \u00b7 Labels";
@@ -51,7 +50,7 @@ export default function Home() {
         </div>
       </section>
 
-      <HomeCatalogSections initialCategories={catalogCategories} />
+      <HomeCatalogSections initialCategories={[]} />
 
       <div className="mx-auto max-w-[1440px] px-4 py-4 lg:px-8">
         <PromotionalBanner placement="HOME_MID" />

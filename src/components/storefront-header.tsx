@@ -27,7 +27,7 @@ export async function StorefrontHeader() {
 
         <form action="/products" className="hidden min-w-0 max-w-xl flex-1 items-center rounded-lg border border-[var(--mc-line)] bg-white px-3 md:flex">
           <Search size={17} className="text-[var(--mc-muted)] shrink-0" />
-          <input name="q" placeholder="Search business cards, boxes, labels..." className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-[#8b9bb5]" />
+          <input name="search" placeholder="Search visiting cards, brochures, stickers..." className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-[#8b9bb5]" />
           <button type="submit" className="border-l border-[var(--mc-line)] pl-3 text-xs font-bold uppercase tracking-[0.12em] text-[var(--mc-muted)] hover:text-[var(--mc-accent)]">Find</button>
         </form>
 
@@ -40,7 +40,7 @@ export async function StorefrontHeader() {
 
       <form action="/products" className="mx-4 mb-3 flex items-center rounded-lg border border-[var(--mc-line)] bg-white px-3 md:hidden">
         <Search size={16} className="text-[var(--mc-muted)] shrink-0" />
-        <input name="q" placeholder="Search products..." className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-[#8b9bb5]" />
+        <input name="search" placeholder="Search products..." className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-[#8b9bb5]" />
         <button type="submit" className="border-l border-[var(--mc-line)] pl-2.5 text-xs font-bold uppercase tracking-wider text-[var(--mc-muted)] hover:text-[var(--mc-accent)]">Go</button>
       </form>
 

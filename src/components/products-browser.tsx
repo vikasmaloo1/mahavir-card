@@ -3,30 +3,43 @@
 import Link from "next/link";
 import { ArrowRight, Clock3, FileText, FileUp, RefreshCw, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 
 import { ProductImage } from "@/components/product-image";
+import { productFiltersToSearchParams, productListingHref, readProductFilters, type ProductFilters } from "@/lib/catalog-routing";
 
 type ArtworkSummary = { formatLabel: string; fullDesign: string | null; safeArea: string | null; finalSize: string | null; requiredFiles: string[] };
 type Product = { id: string; name: string; slug: string; imageUrl: string | null; category: { name: string; slug: string } | null; listingSpecification: string | null; productSize: string | null; productionTime: string | null; priceLabel: string; priceState: "STARTING" | "CUSTOM_QUOTE" | "CONTACT" | "LOGIN"; taxInclusive: boolean | null; orderable: boolean; quoteable: boolean; hasAddons: boolean; hasArtworkRequirement: boolean; artworkSummary: ArtworkSummary | null };
 type Category = { id: string; name: string; slug: string };
 type Pagination = { page: number; limit: number; total: number; totalPages: number };
 
-export function ProductsBrowser() {
-  const searchParams = useSearchParams();
+export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFilters }) {
   const [items, setItems] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
-  const [category, setCategory] = useState(() => searchParams.get("category") ?? "");
-  const [orderable, setOrderable] = useState(() => searchParams.get("orderable") === "true");
-  const [quoteable, setQuoteable] = useState(() => searchParams.get("quoteable") === "true");
-  const [page, setPage] = useState(1);
+  const [query, setQuery] = useState(initialFilters.search);
+  const [category, setCategory] = useState(initialFilters.category);
+  const [orderable, setOrderable] = useState(initialFilters.orderable);
+  const [quoteable, setQuoteable] = useState(initialFilters.quoteable);
+  const [page, setPage] = useState(initialFilters.page);
   const [requestVersion, setRequestVersion] = useState(0);
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 12, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [debouncedQuery, setDebouncedQuery] = useState(query);
+  const [debouncedQuery, setDebouncedQuery] = useState(initialFilters.search);
+
+  useEffect(() => {
+    const syncFromHistory = () => {
+      const next = readProductFilters(new URLSearchParams(window.location.search));
+      setQuery(next.search);
+      setDebouncedQuery(next.search);
+      setCategory(next.category);
+      setOrderable(next.orderable);
+      setQuoteable(next.quoteable);
+      setPage(next.page);
+    };
+    window.addEventListener("popstate", syncFromHistory);
+    return () => window.removeEventListener("popstate", syncFromHistory);
+  }, []);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -37,6 +50,14 @@ export function ProductsBrowser() {
   }, [query]);
 
   useEffect(() => {
+    const next = productFiltersToSearchParams({ category, search: debouncedQuery, orderable, quoteable, page });
+    const nextQuery = next.toString();
+    const currentQuery = window.location.search.replace(/^\?/, "");
+    if (nextQuery === currentQuery) return;
+    window.history.replaceState(null, "", nextQuery ? `/products?${nextQuery}` : "/products");
+  }, [category, debouncedQuery, orderable, page, quoteable]);
+
+  useEffect(() => {
     let active = true;
     fetch("/api/categories").then((response) => response.json()).then((payload) => { if (active && payload.success) setCategories(payload.data); }).catch(() => undefined);
     return () => { active = false; };
@@ -45,7 +66,7 @@ export function ProductsBrowser() {
   useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams();
-    if (debouncedQuery.trim()) params.set("q", debouncedQuery.trim());
+    if (debouncedQuery.trim()) params.set("search", debouncedQuery.trim());
     if (category) params.set("category", category);
     if (orderable) params.set("orderable", "true");
     if (quoteable) params.set("quoteable", "true");
@@ -77,7 +98,14 @@ export function ProductsBrowser() {
   }, [category, debouncedQuery, orderable, page, quoteable, requestVersion]);
 
   const hasFilters = Boolean(query || category || orderable || quoteable);
-  const clear = () => { setQuery(""); setCategory(""); setOrderable(false); setQuoteable(false); setPage(1); };
+  const clear = () => { setQuery(""); setDebouncedQuery(""); setCategory(""); setOrderable(false); setQuoteable(false); setPage(1); };
+  const listingHref = productListingHref({ category, search: debouncedQuery, orderable, quoteable, page });
+  const productHref = (item: Product, intent?: "buy" | "quote") => {
+    const params = new URLSearchParams();
+    if (intent) params.set("intent", intent);
+    params.set("returnTo", listingHref);
+    return `/catalog/${item.slug}?${params}`;
+  };
 
   return <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
     <div className="mx-auto max-w-[1440px] px-4 py-7 lg:px-8 lg:py-10">
@@ -102,7 +130,7 @@ export function ProductsBrowser() {
       {items.length ? <section className={`mt-5 space-y-3 transition-opacity duration-200 ${loading ? "opacity-60" : "opacity-100"}`}>
         <div className="hidden grid-cols-[minmax(15rem,.9fr)_minmax(18rem,1.1fr)_10rem_minmax(12rem,.7fr)_minmax(16rem,.8fr)] gap-5 px-4 py-2 text-xs font-bold uppercase text-[var(--mc-muted)] xl:grid"><span>Product</span><span>Specification</span><span>Price</span><span>Production</span><span>Actions</span></div>
         {items.map((item) => <article key={item.id} className="grid gap-4 rounded-xl border border-[var(--mc-line)] bg-[var(--mc-paper)] p-4 shadow-[0_5px_16px_rgba(16,33,63,0.035)] sm:grid-cols-2 xl:grid-cols-[minmax(15rem,.9fr)_minmax(18rem,1.1fr)_10rem_minmax(12rem,.7fr)_minmax(16rem,.8fr)] xl:items-center">
-          <div className="flex min-w-0 gap-3.5"><Link href={`/catalog/${item.slug}`} className="relative h-[76px] w-[92px] shrink-0 overflow-hidden rounded-lg bg-[var(--mc-accent-soft)]"><ProductImage src={item.imageUrl || "/images/mahavir-print-assortment.png"} alt={`${item.name} print sample`} slug={item.slug} /></Link><div className="min-w-0 self-center"><p className="text-xs font-bold uppercase text-[var(--mc-accent)]">{item.category?.name ?? "Print product"}</p><h2 className="mt-1 text-[17px] font-bold leading-snug text-[var(--mc-ink)]"><Link href={`/catalog/${item.slug}`} className="hover:text-[var(--mc-accent)] transition-colors">{item.name}</Link></h2></div></div>
+          <div className="flex min-w-0 gap-3.5"><Link href={productHref(item)} className="relative h-[76px] w-[92px] shrink-0 overflow-hidden rounded-lg bg-[var(--mc-accent-soft)]"><ProductImage src={item.imageUrl || "/images/mahavir-print-assortment.png"} alt={`${item.name} print sample`} slug={item.slug} /></Link><div className="min-w-0 self-center"><p className="text-xs font-bold uppercase text-[var(--mc-accent)]">{item.category?.name ?? "Print product"}</p><h2 className="mt-1 text-[17px] font-bold leading-snug text-[var(--mc-ink)]"><Link href={productHref(item)} className="hover:text-[var(--mc-accent)] transition-colors">{item.name}</Link></h2></div></div>
           <ProductSpecification item={item} />
           <div>
             <p className="text-xs font-bold uppercase text-[var(--mc-muted)] xl:hidden">Price</p>
@@ -115,8 +143,8 @@ export function ProductsBrowser() {
           </div>
           <ProductMeta item={item} />
           <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0 sm:col-span-2 xl:col-span-1">
-            <Link href={`/catalog/${item.slug}${item.orderable ? "?intent=buy" : ""}`} className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm">{item.orderable ? "Order now" : "View details"} <ArrowRight size={16} /></Link>
-            {item.quoteable ? <Link href={`/catalog/${item.slug}?intent=quote`} className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-4 py-2.5 text-sm font-bold text-[var(--mc-muted)] hover:text-[var(--mc-ink)] hover:border-[var(--mc-accent)] transition-colors"><FileText size={15} />Request quote</Link> : null}
+            <Link href={productHref(item, item.orderable ? "buy" : undefined)} className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm">{item.orderable ? "Order now" : "View details"} <ArrowRight size={16} /></Link>
+            {item.quoteable ? <Link href={productHref(item, "quote")} className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-4 py-2.5 text-sm font-bold text-[var(--mc-muted)] hover:text-[var(--mc-ink)] hover:border-[var(--mc-accent)] transition-colors"><FileText size={15} />Request quote</Link> : null}
           </div>
         </article>)}
         {pagination.totalPages > 1 ? <nav aria-label="Product pages" className="flex items-center justify-between border-t border-[var(--mc-line)] pt-5"><button type="button" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} className="rounded-full border border-[var(--mc-line)] bg-white px-5 py-2.5 text-sm font-bold text-[var(--mc-accent)] disabled:cursor-not-allowed disabled:opacity-40 hover:bg-[var(--mc-surface)] transition-colors">Previous</button><p className="text-sm font-semibold text-[var(--mc-muted)]">Page {pagination.page} of {pagination.totalPages}</p><button type="button" disabled={page >= pagination.totalPages} onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))} className="rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm">Next</button></nav> : null}

@@ -7,13 +7,15 @@ import { formatDimensions } from "@/lib/formatting";
 import { getSession, requireRole } from "@/lib/permissions";
 import { conciseProductSpecification, deriveStartingPriceMap } from "@/lib/product-listing-pricing";
 import { productSchema } from "@/lib/validation";
+import { resolveCategorySlug } from "@/lib/catalog-routing";
 
 export async function GET(request: Request) {
   try {
     const authenticated = Boolean(await getSession(request));
     const params = new URL(request.url).searchParams;
-    const search = params.get("q")?.trim();
-    const category = params.get("category")?.trim();
+    const search = (params.get("search") ?? params.get("q"))?.trim();
+    const requestedCategory = params.get("category")?.trim();
+    const category = resolveCategorySlug(requestedCategory) ?? requestedCategory;
     const orderable = params.get("orderable");
     const quoteable = params.get("quoteable");
     const conditions = [eq(products.isActive, true), eq(products.status, "ACTIVE")];

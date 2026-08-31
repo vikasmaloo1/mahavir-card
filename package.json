@@ -23,6 +23,7 @@
     "customer-flow:verify": "node --conditions=react-server --import tsx scripts/verify-customer-flow.ts",
     "test:storage": "node --conditions=react-server --import tsx --test tests/storage-policies.test.ts",
     "test:listing-pricing": "node --import tsx --test tests/product-listing-pricing.test.ts",
+    "test:catalog-routing": "node --import tsx --test tests/catalog-routing.test.ts",
     "test:customer-flow": "node --import tsx --test tests/customer-flow-validation.test.ts",
     "test:payments": "node --conditions=react-server --import tsx --test tests/payment-security.test.ts"
   },

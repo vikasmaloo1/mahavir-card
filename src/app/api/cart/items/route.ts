@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     const [product] = await db.select().from(products).where(eq(products.id, input.productId)).limit(1);
     if (!product?.isActive) return jsonError("Product is not available", 422);
     if (input.kind === "PURCHASE" && !product.orderable) return jsonError("This product is available only for quotes", 422);
+    if (input.kind === "QUOTE" && !product.quoteable) return jsonError("This product is available only for direct ordering", 422);
     const { normalizedQuantity } = normalizeProductQuantity(input.quantity, null, product.slug);
     const quantity = normalizedQuantity;
     if (input.kind === "PURCHASE") {

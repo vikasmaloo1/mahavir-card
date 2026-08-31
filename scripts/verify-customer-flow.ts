@@ -80,6 +80,65 @@ async function main() {
   }
 
   try {
+    const canonicalCategories = ["visiting-card", "premium-card", "art-card", "letterhead-envelope", "brochure", "leaflet-cover", "sticker"];
+    for (const categorySlug of canonicalCategories) {
+      const categoryListing = data(await api(`/api/products?category=${categorySlug}&page=1&limit=50`));
+      const categoryProducts = array(categoryListing.items);
+      if (!categoryProducts.length || categoryProducts.some((item) => object(item.category).slug !== categorySlug)) {
+        throw new Error(`Category API did not return a consistent ${categorySlug} result`);
+      }
+    }
+
+    const legacyCategory = data(await api("/api/products?category=business-cards&page=1&limit=50"));
+    if (!array(legacyCategory.items).length || array(legacyCategory.items).some((item) => object(item.category).slug !== "visiting-card")) {
+      throw new Error("Legacy business-cards API alias did not resolve to Visiting Card");
+    }
+
+    const directSearch = data(await api("/api/products?category=visiting-card&search=NT&page=1&limit=50"));
+    if (!array(directSearch.items).length || array(directSearch.items).some((item) => object(item.category).slug !== "visiting-card")) {
+      throw new Error("Combined category and search API filtering failed");
+    }
+
+    const anonymousProductsResponse = await fetch(`${baseUrl}/api/products?category=visiting-card&page=1&limit=50`, { headers: { Origin: trustedOrigin } });
+    const anonymousProductsPayload = await anonymousProductsResponse.json().catch(() => null);
+    const anonymousProducts = array(data(anonymousProductsPayload).items);
+    if (!anonymousProductsResponse.ok || !anonymousProducts.length || anonymousProducts.some((item) => item.startingPrice !== null || item.priceLabel !== "Login to view price" || "priceFormula" in item)) {
+      throw new Error("Anonymous product API exposed pricing or failed to return the protected catalogue");
+    }
+
+    const protectedProducts = await fetch(`${baseUrl}/products?category=visiting-card`, { headers: { Origin: trustedOrigin }, redirect: "manual" });
+    if (![302, 303, 307, 308].includes(protectedProducts.status) || !String(protectedProducts.headers.get("location") ?? "").startsWith("/login")) {
+      throw new Error("Unauthenticated product browsing did not redirect to customer login");
+    }
+
+    for (const path of [
+      "/products?category=visiting-card",
+      "/products?category=premium-card",
+      "/products?category=art-card",
+      "/products?category=letterhead-envelope",
+      "/products?category=brochure",
+      "/products?category=leaflet-cover",
+      "/products?category=sticker",
+      "/products?category=visiting-card&search=single",
+    ]) {
+      const route = await fetch(`${baseUrl}${path}`, { headers: { Cookie: cookie, Origin: trustedOrigin }, redirect: "manual" });
+      if (route.status !== 200) throw new Error(`Authenticated direct route ${path} returned HTTP ${route.status}`);
+    }
+
+    const legacyRoute = await fetch(`${baseUrl}/products?category=business-cards`, { headers: { Cookie: cookie, Origin: trustedOrigin }, redirect: "manual" });
+    if (![302, 303, 307, 308].includes(legacyRoute.status) || !String(legacyRoute.headers.get("location") ?? "").includes("category=visiting-card")) {
+      throw new Error("Legacy business-cards page did not redirect to the canonical Visiting Card URL");
+    }
+
+    const visitingListing = data(await api("/api/products?category=visiting-card&page=1&limit=50"));
+    const directOnlyVisitingCard = array(visitingListing.items).find((item) => item.quoteable === false);
+    if (!directOnlyVisitingCard) throw new Error("No direct-only Visiting Card was available for quoteability verification");
+    await api("/api/cart/items", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "QUOTE", productId: id(directOnlyVisitingCard), quantity: 1000, configuration: { quantity: "1000" } }),
+    }, 422);
+
     const listing = data(await api("/api/products?orderable=true&quoteable=true&page=1&limit=50"));
     const listedProducts = array(listing.items);
     if (!listedProducts.length) throw new Error("No orderable and quoteable product is available for flow verification");
@@ -193,6 +252,26 @@ async function main() {
     const wallet = data(await api("/api/account/wallet/top-up"));
     if (Number(object(wallet.customer).availableBalance) < 250 || !array(wallet.transactions).some((transaction) => id(transaction) === id(topUp) && transaction.status === "APPROVED")) throw new Error("Admin balance approval did not synchronize to the customer balance");
 
+    const gstNumber = "24ABCDE1234F1Z5";
+    await api("/api/account/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contactName: customer.contactName,
+        companyName: customer.companyName,
+        phone: customer.phone,
+        city: address.city,
+        state: address.state,
+        stateCode: address.stateCode,
+        gstNumber,
+        address: { line1: address.line1, line2: address.line2, postalCode: address.postalCode },
+      }),
+    });
+    const profile = data(await api("/api/account/profile"));
+    if (object(profile.customer).customerType !== "B2B" || object(profile.customer).stateCode !== "GJ" || object(profile.customer).city !== "Ahmedabad" || object(profile.customer).gstNumber !== gstNumber || object(profile.address).postalCode !== "380001" || profile.profileComplete !== true) {
+      throw new Error("Customer profile edit did not persist type, state, city, GSTIN, address, or completion state");
+    }
+
     const account = data(await api("/api/account/summary"));
     if (array(account.orders).length < (razorpayConfigured ? 3 : 2) || !array(account.quotes).length || !array(account.artworks).length || !array(account.addresses).length) throw new Error("Customer account history did not contain the completed flow records");
 
@@ -201,7 +280,7 @@ async function main() {
     const adminLogout = await fetch(`${baseUrl}/api/auth/sign-out`, { method: "POST", headers: { Cookie: adminCookie, Origin: trustedOrigin, "Content-Type": "application/json" }, body: "{}" });
     if (!adminLogout.ok || (await fetch(`${baseUrl}/api/admin/session`, { headers: { Cookie: adminCookie, Origin: trustedOrigin } })).status !== 401) throw new Error("Admin logout did not invalidate the protected session");
 
-    console.log(`Customer/admin synchronization passed: catalog, pricing, CDR/R2, COD, ${razorpayConfigured ? "Razorpay provider order" : "safe Razorpay configuration failure"}, B2B credit, quote approval/conversion, status history, wallet approval, account history, and logout invalidation.`);
+    console.log(`Customer/admin synchronization passed: canonical/legacy category routes, search filters, anonymous price protection, catalog, pricing, CDR/R2, COD, ${razorpayConfigured ? "Razorpay provider order" : "safe Razorpay configuration failure"}, B2B credit, quote approval/conversion, profile persistence, status history, wallet approval, account history, and logout invalidation.`);
   } finally {
     for (const artworkId of createdArtworkIds) {
       const [artwork] = await db.select({ storageKey: artworks.storageKey }).from(artworks).where(eq(artworks.id, artworkId)).limit(1);
