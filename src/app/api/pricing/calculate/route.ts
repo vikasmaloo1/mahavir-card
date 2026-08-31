@@ -7,7 +7,12 @@ export async function POST(request: Request) {
   try {
     const session = await requireUser(request);
     const input = await readBody(request, pricingCalculateSchema);
-    const price = await calculateProductPrice(input.productId, input.quantity, input.options, { addonIds: input.addonIds, delivery: input.delivery, userId: session.user.id });
+    const price = await calculateProductPrice(input.productId, input.quantity, input.options, {
+      addonIds: input.addonIds,
+      delivery: input.delivery,
+      userId: session.user.id,
+      stateCode: input.stateCode,
+    });
     return price ? jsonOk(price) : jsonError("Product not found", 404);
   } catch (error) {
     if (error instanceof Response) return error;

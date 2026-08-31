@@ -59,17 +59,19 @@ export async function PATCH(request: Request) {
     if (!isCommerceStateCode(input.stateCode) || indiaStateName(input.stateCode) !== input.state) return jsonError("Select Gujarat or Rajasthan", 422);
     const [existing] = await db.select().from(customers).where(eq(customers.userId, session.user.id)).limit(1);
     if (!existing) return jsonError("Complete account signup before editing your profile", 404);
-    if (existing.customerType === "B2B" && !input.companyName) return jsonError("Company name is required for B2B accounts", 422);
+    const targetCustomerType = input.customerType ?? existing.customerType;
+    if (targetCustomerType === "B2B" && !input.companyName?.trim()) return jsonError("Company name is required for B2B accounts", 422);
 
     const result = await db.transaction(async (tx) => {
       const [customer] = await tx.update(customers).set({
         contactName: input.contactName,
-        companyName: input.companyName || input.contactName,
+        companyName: input.companyName?.trim() || input.contactName,
         phone: input.phone,
+        customerType: targetCustomerType,
         city: input.city,
         state: input.state,
         stateCode: input.stateCode,
-        gstNumber: input.gstNumber || null,
+        gstNumber: input.gstNumber?.trim() || null,
         updatedAt: new Date(),
       }).where(eq(customers.id, existing.id)).returning();
       if (!customer) return null;

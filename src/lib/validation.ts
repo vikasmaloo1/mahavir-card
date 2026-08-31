@@ -214,6 +214,7 @@ export const pricingCalculateSchema = z.object({
   quantity: z.number().int().positive().max(1_000_000),
   options: metadata,
   addonIds: z.array(z.string().uuid()).max(50).default([]),
+  stateCode: z.string().trim().max(10).optional(),
   delivery: z.object({
     method: z.enum(["PICKUP", "LOCAL_DELIVERY", "COURIER"]),
     stateCode: z.string().trim().min(1).max(100).default("*"),
@@ -340,13 +341,14 @@ export const customerOnboardingSchema = z.object({
 });
 
 export const customerProfileUpdateSchema = z.object({
+  customerType: z.enum(["B2B", "B2C"]).optional(),
   contactName: z.string().trim().min(2).max(120),
   companyName: z.string().trim().max(160).nullable().optional(),
   phone: z.string().trim().min(10).max(20),
   city: z.string().trim().min(2).max(100),
   state: z.string().trim().min(2).max(100),
   stateCode: z.enum(["GJ", "RJ"]),
-  gstNumber: z.string().trim().toUpperCase().regex(/^[0-9A-Z]{15}$/, "Enter a valid 15-character GSTIN").nullable().optional(),
+  gstNumber: z.string().trim().toUpperCase().regex(/^[0-9A-Z]{15}$/, "Enter a valid 15-character GSTIN").nullable().optional().or(z.literal("")),
   address: z.object({
     line1: z.string().trim().min(3).max(200),
     line2: z.string().trim().max(200).nullable().optional(),

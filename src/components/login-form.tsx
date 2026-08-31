@@ -41,10 +41,14 @@ export function LoginForm() {
       if (isSignup) {
         if (!isValidIndianPhoneNumber(phoneNumber)) throw new Error("Enter a valid 10-digit Indian mobile number");
 
+        const normalizedPhone = normalizePhoneNumber(phoneNumber);
+        const digitsOnly = normalizedPhone.replace(/\D/g, "");
+        const finalEmail = email.trim() || `${digitsOnly}@customer.mahavircard.com`;
+
         const signup = await fetch("/api/auth/sign-up/email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: name.trim(), email: email.trim(), password }),
+          body: JSON.stringify({ name: name.trim(), email: finalEmail, password }),
         });
         const result = await signup.json().catch(() => null);
         if (!signup.ok) throw new Error(messageFrom(result, "Could not create the account"));
@@ -52,7 +56,7 @@ export function LoginForm() {
         const phoneResponse = await fetch("/api/account/phone", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phoneNumber: normalizePhoneNumber(phoneNumber) }),
+          body: JSON.stringify({ phoneNumber: normalizedPhone }),
         });
         const phoneResult = await phoneResponse.json().catch(() => null);
         if (!phoneResponse.ok) throw new Error(messageFrom(phoneResult, "Account created, but the mobile number could not be saved"));
@@ -151,10 +155,12 @@ export function LoginForm() {
 
             {(method === "email" || isSignup) && (
               <label className="block">
-                <span className="mb-2 block text-sm font-semibold">Email address</span>
+                <span className="mb-2 block text-sm font-semibold">
+                  Email address {isSignup ? <span className="font-normal text-[var(--mc-muted)]">(optional)</span> : null}
+                </span>
                 <div className="relative">
                   <Mail size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--mc-muted)]" />
-                  <input required type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className={`${fieldClass} pl-11`} />
+                  <input required={!isSignup} type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className={`${fieldClass} pl-11`} />
                 </div>
               </label>
             )}

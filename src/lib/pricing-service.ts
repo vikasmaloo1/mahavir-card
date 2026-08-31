@@ -1,30 +1,37 @@
-import "server-only";
-
 import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
 
 import { db } from "@/lib/db/server";
 import { addons, customers, locationSurcharges, pricingRules, productAddons, productDeliveryRules, products, productVariants } from "@/lib/db/schema";
 import { normalizedCity } from "@/lib/india-states";
+import { calculateTax, formatMoneyString, type TaxJurisdiction } from "@/lib/tax-service";
 
 type RuleData = { quantity?: number; specification?: string; [key: string]: unknown };
 type FormulaData = { amount?: string; unit?: "batch" | "piece" | "reference_batch_area"; ratePerSqInch?: number; minimumArea?: number | null; minimumCharge?: number | null; bladeCharge?: number | null; [key: string]: unknown };
 
 export type DeliverySelection = { method: "PICKUP" | "LOCAL_DELIVERY" | "COURIER"; stateCode?: string };
-export type PriceCalculationInput = { addonIds?: string[]; delivery?: DeliverySelection; userId?: string };
+export type PriceCalculationInput = { addonIds?: string[]; delivery?: DeliverySelection; userId?: string; stateCode?: string };
 
 export type CalculatedPrice = {
   calculatedAmount: string | null;
+  grandTotal?: string | null;
   productPrice: string | null;
   addonTotal: string;
   addons: Array<{ addonId: string; name: string; price: string; pricingType: string }>;
   delivery: { method: string | null; stateCode: string | null; price: string };
   locationSurcharge: { amount: string; label: string | null };
   taxInclusive: boolean;
+  taxableSubtotal?: string | null;
   taxAmount: string;
   cgstAmount: string;
   sgstAmount: string;
   igstAmount: string;
+  cgstRate?: number;
+  sgstRate?: number;
+  igstRate?: number;
+  taxType?: TaxJurisdiction;
   taxJurisdictionState: string | null;
+  customerState?: "GJ" | "RJ";
+  stateName?: string;
   priceBeforeTax: string | null;
   taxRate: string | null;
   currency: "INR";
@@ -36,14 +43,14 @@ export type CalculatedPrice = {
 
 export class PricingValidationError extends Error {}
 
-function money(value: number) { return value.toFixed(2); }
+function money(value: number) { return formatMoneyString(value); }
 
 function taxableComponent(amount: number, taxInclusive: boolean, taxRate: number) {
   if (taxInclusive) {
     const net = amount / (1 + taxRate / 100);
     return { net, tax: amount - net, gross: amount };
   }
-  const tax = amount * taxRate / 100;
+  const tax = (amount * taxRate) / 100;
   return { net: amount, tax, gross: amount + tax };
 }
 
@@ -56,7 +63,14 @@ function positive(value: unknown, label: string) {
 async function calculateBasePrice(productId: string, quantity: number, options: Record<string, unknown>) {
   const rules = await db.select().from(pricingRules).where(and(eq(pricingRules.productId, productId), eq(pricingRules.isActive, true))).orderBy(asc(pricingRules.createdAt));
   const requestedRuleId = typeof options.pricingRuleId === "string" ? options.pricingRuleId : undefined;
-  const matching = rules.map((rule) => ({ rule, conditions: rule.conditions as RuleData, formula: rule.priceFormula as FormulaData })).filter(({ rule, conditions }) => requestedRuleId ? rule.id === requestedRuleId : (!conditions.specification || conditions.specification === options.specification)).sort((a, b) => Math.abs((a.conditions.quantity ?? quantity) - quantity) - Math.abs((b.conditions.quantity ?? quantity) - quantity));
+  const matching = rules
+    .map((rule) => ({ rule, conditions: rule.conditions as RuleData, formula: rule.priceFormula as FormulaData }))
+    .filter(({ rule, conditions }) => {
+      if (requestedRuleId) return rule.id === requestedRuleId;
+      if (options.specification) return !conditions.specification || conditions.specification === options.specification;
+      return true;
+    })
+    .sort((a, b) => Math.abs((a.conditions.quantity ?? quantity) - quantity) - Math.abs((b.conditions.quantity ?? quantity) - quantity));
   const selected = matching[0];
   if (selected?.rule.ruleType === "PER_SQ_INCH") {
     const width = positive(options.width, "Width");
@@ -90,9 +104,7 @@ async function calculateBasePrice(productId: string, quantity: number, options: 
   return { amount: Number(variant.basePrice) * quantity, rule: variant.name, ruleId: null, taxInclusive: true, taxRate: null, details: { quantity, source: "BASE_VARIANT" }, warnings: [] };
 }
 
-async function locationCharge(productId: string, ruleId: string | null, userId?: string) {
-  if (!userId) return { amount: 0, label: null as string | null, taxInclusive: true, stateCode: null as string | null };
-  const [customer] = await db.select({ city: customers.city, stateCode: customers.stateCode }).from(customers).where(eq(customers.userId, userId)).limit(1);
+async function locationCharge(productId: string, ruleId: string | null, customer: { city: string | null; stateCode: string | null } | null) {
   if (!customer) return { amount: 0, label: null as string | null, taxInclusive: true, stateCode: null as string | null };
   const rules = await db.select().from(locationSurcharges).where(and(eq(locationSurcharges.productId, productId), eq(locationSurcharges.isActive, true), ruleId ? or(eq(locationSurcharges.pricingRuleId, ruleId), isNull(locationSurcharges.pricingRuleId)) : isNull(locationSurcharges.pricingRuleId))).orderBy(asc(locationSurcharges.sortOrder));
   const city = customer.city ? normalizedCity(customer.city) : null;
@@ -112,8 +124,16 @@ async function locationCharge(productId: string, ruleId: string | null, userId?:
 export async function calculateProductPrice(productId: string, quantity: number, options: Record<string, unknown>, input: PriceCalculationInput = {}): Promise<CalculatedPrice | null> {
   const [product] = await db.select().from(products).where(and(eq(products.id, productId), eq(products.isActive, true))).limit(1);
   if (!product || product.status !== "ACTIVE") return null;
+
+  // Retrieve customer data if userId provided
+  let customer: { city: string | null; stateCode: string | null; state: string | null } | null = null;
+  if (input.userId) {
+    const [c] = await db.select({ city: customers.city, stateCode: customers.stateCode, state: customers.state }).from(customers).where(eq(customers.userId, input.userId)).limit(1);
+    if (c) customer = c;
+  }
+
   const base = await calculateBasePrice(productId, quantity, options);
-  const surcharge = await locationCharge(productId, base.ruleId, input.userId);
+  const surcharge = await locationCharge(productId, base.ruleId, customer);
   const addonIds = [...new Set(input.addonIds ?? [])];
   if (addonIds.length !== (input.addonIds ?? []).length) throw new PricingValidationError("An add-on can only be selected once");
   const configuredAddons = addonIds.length ? await db.select({ addonId: productAddons.addonId, pricingRuleId: productAddons.pricingRuleId, name: addons.name, price: productAddons.price, pricingType: addons.pricingType, taxInclusive: productAddons.taxInclusive }).from(productAddons).innerJoin(addons, eq(productAddons.addonId, addons.id)).where(and(eq(productAddons.productId, productId), eq(productAddons.isActive, true), eq(addons.isActive, true), inArray(productAddons.addonId, addonIds), base.ruleId ? or(eq(productAddons.pricingRuleId, base.ruleId), isNull(productAddons.pricingRuleId)) : isNull(productAddons.pricingRuleId))) : [];
@@ -132,10 +152,37 @@ export async function calculateProductPrice(productId: string, quantity: number,
   }
   const taxRate = base.taxRate;
   const allTaxInclusive = product.pricesTaxInclusive && base.taxInclusive && selectedAddons.every((addon) => addon.taxInclusive) && delivery.taxInclusive && surcharge.taxInclusive;
+  
   if (base.amount === null) {
-    return { calculatedAmount: null, productPrice: null, addonTotal: money(addonTotal), addons: selectedAddons.map((addon) => ({ addonId: addon.addonId, name: addon.name, price: addon.price, pricingType: addon.pricingType })), delivery: { method: delivery.method, stateCode: delivery.stateCode, price: delivery.price }, locationSurcharge: { amount: money(surcharge.amount), label: surcharge.label }, taxInclusive: allTaxInclusive, taxAmount: "0.00", cgstAmount: "0.00", sgstAmount: "0.00", igstAmount: "0.00", taxJurisdictionState: null, priceBeforeTax: null, taxRate: taxRate === null ? null : taxRate.toFixed(3), currency: "INR", pricingDetails: { ...base.details, referenceQuantity: product.referenceQuantity, referenceWeight: product.referenceWeight, referenceWeightUnit: product.referenceWeightUnit }, applicableRule: base.rule, applicableRuleId: base.ruleId, warnings: base.warnings };
+    return {
+      calculatedAmount: null,
+      grandTotal: null,
+      productPrice: null,
+      addonTotal: money(addonTotal),
+      addons: selectedAddons.map((addon) => ({ addonId: addon.addonId, name: addon.name, price: addon.price, pricingType: addon.pricingType })),
+      delivery: { method: delivery.method, stateCode: delivery.stateCode, price: delivery.price },
+      locationSurcharge: { amount: money(surcharge.amount), label: surcharge.label },
+      taxInclusive: allTaxInclusive,
+      taxableSubtotal: null,
+      taxAmount: "0.00",
+      cgstAmount: "0.00",
+      sgstAmount: "0.00",
+      igstAmount: "0.00",
+      cgstRate: 0,
+      sgstRate: 0,
+      igstRate: 0,
+      taxJurisdictionState: null,
+      priceBeforeTax: null,
+      taxRate: taxRate === null ? null : taxRate.toFixed(3),
+      currency: "INR",
+      pricingDetails: { ...base.details, referenceQuantity: product.referenceQuantity, referenceWeight: product.referenceWeight, referenceWeightUnit: product.referenceWeightUnit },
+      applicableRule: base.rule,
+      applicableRuleId: base.ruleId,
+      warnings: base.warnings,
+    };
   }
-  const rate = taxRate ?? 0;
+
+  const rate = taxRate ?? 18;
   const components = [
     taxableComponent(base.amount, base.taxInclusive, rate),
     ...selectedAddons.map((addon) => taxableComponent(Number(addon.price), addon.taxInclusive, rate)),
@@ -143,11 +190,51 @@ export async function calculateProductPrice(productId: string, quantity: number,
     taxableComponent(surcharge.amount, surcharge.taxInclusive, rate),
   ];
   const priceBeforeTax = components.reduce((sum, component) => sum + component.net, 0);
-  const taxAmount = components.reduce((sum, component) => sum + component.tax, 0);
-  const total = components.reduce((sum, component) => sum + component.gross, 0);
-  const taxJurisdictionState = (delivery.method === "COURIER" ? delivery.stateCode : surcharge.stateCode)?.toUpperCase() ?? null;
-  const cgstAmount = taxJurisdictionState === "GJ" ? taxAmount / 2 : 0;
-  const sgstAmount = taxJurisdictionState === "GJ" ? taxAmount / 2 : 0;
-  const igstAmount = taxJurisdictionState === "RJ" ? taxAmount : 0;
-  return { calculatedAmount: money(total), productPrice: money(taxableComponent(base.amount, base.taxInclusive, rate).net), addonTotal: money(selectedAddons.reduce((sum, addon) => sum + taxableComponent(Number(addon.price), addon.taxInclusive, rate).net, 0)), addons: selectedAddons.map((addon) => ({ addonId: addon.addonId, name: addon.name, price: money(taxableComponent(Number(addon.price), addon.taxInclusive, rate).net), pricingType: addon.pricingType })), delivery: { method: delivery.method, stateCode: delivery.stateCode, price: money(taxableComponent(Number(delivery.price), delivery.taxInclusive, rate).net) }, locationSurcharge: { amount: money(taxableComponent(surcharge.amount, surcharge.taxInclusive, rate).net), label: surcharge.label }, taxInclusive: allTaxInclusive, taxAmount: money(taxAmount), cgstAmount: money(cgstAmount), sgstAmount: money(sgstAmount), igstAmount: money(igstAmount), taxJurisdictionState, priceBeforeTax: money(priceBeforeTax), taxRate: taxRate === null ? null : taxRate.toFixed(3), currency: "INR", pricingDetails: { ...base.details, referenceQuantity: product.referenceQuantity, referenceWeight: product.referenceWeight, referenceWeightUnit: product.referenceWeightUnit }, applicableRule: base.rule, applicableRuleId: base.ruleId, warnings: base.warnings };
+
+  // Determine effective state for GST:
+  // 1. If courier delivery selected with explicit state, use that state
+  // 2. Else use customer profile state
+  // 3. Else use input.stateCode
+  // 4. Default to GJ
+  const effectiveStateCode = (delivery.method === "COURIER" && delivery.stateCode && delivery.stateCode !== "*"
+    ? delivery.stateCode
+    : (customer?.stateCode || input.stateCode || "GJ")
+  ).toUpperCase();
+
+  const taxResult = calculateTax({
+    taxableSubtotal: priceBeforeTax,
+    taxRate: rate,
+    stateCode: effectiveStateCode,
+    taxInclusive: false,
+  });
+
+  return {
+    calculatedAmount: taxResult.grandTotal,
+    grandTotal: taxResult.grandTotal,
+    productPrice: money(taxableComponent(base.amount, base.taxInclusive, rate).net),
+    addonTotal: money(selectedAddons.reduce((sum, addon) => sum + taxableComponent(Number(addon.price), addon.taxInclusive, rate).net, 0)),
+    addons: selectedAddons.map((addon) => ({ addonId: addon.addonId, name: addon.name, price: money(taxableComponent(Number(addon.price), addon.taxInclusive, rate).net), pricingType: addon.pricingType })),
+    delivery: { method: delivery.method, stateCode: delivery.stateCode, price: money(taxableComponent(Number(delivery.price), delivery.taxInclusive, rate).net) },
+    locationSurcharge: { amount: money(taxableComponent(surcharge.amount, surcharge.taxInclusive, rate).net), label: surcharge.label },
+    taxInclusive: allTaxInclusive,
+    taxableSubtotal: taxResult.taxableSubtotal,
+    taxAmount: taxResult.taxAmount,
+    cgstAmount: taxResult.cgstAmount,
+    sgstAmount: taxResult.sgstAmount,
+    igstAmount: taxResult.igstAmount,
+    cgstRate: taxResult.cgstRate,
+    sgstRate: taxResult.sgstRate,
+    igstRate: taxResult.igstRate,
+    taxType: taxResult.taxType,
+    taxJurisdictionState: taxResult.customerState,
+    customerState: taxResult.customerState,
+    stateName: taxResult.stateName,
+    priceBeforeTax: taxResult.taxableSubtotal,
+    taxRate: taxResult.taxRate,
+    currency: "INR",
+    pricingDetails: { ...base.details, referenceQuantity: product.referenceQuantity, referenceWeight: product.referenceWeight, referenceWeightUnit: product.referenceWeightUnit },
+    applicableRule: base.rule,
+    applicableRuleId: base.ruleId,
+    warnings: base.warnings,
+  };
 }
