@@ -234,7 +234,24 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
-/* Continuous Moving Notice Ticker & Visual Motion Pass */
+/* Single premium customer announcement ticker */
+.customer-notice-strip {
+  height: 48px;
+  font-size: 14.5px;
+  line-height: 1;
+}
+
+.ticker-title,
+.ticker-message,
+.ticker-cta {
+  letter-spacing: 0;
+}
+
+.ticker-static .ticker-message {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 @keyframes tickerLoop {
   0% {
     transform: translate3d(0, 0, 0);
@@ -248,15 +265,26 @@ textarea:focus-visible {
   display: flex;
   width: max-content;
   will-change: transform;
-  animation-name: tickerLoop;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  animation-duration: 60s;
+  animation: tickerLoop var(--ticker-duration, 90s) linear infinite;
 }
 
 .animate-ticker-continuous:hover,
 .animate-ticker-continuous:focus-within {
   animation-play-state: paused;
+}
+
+@media (min-width: 640px) {
+  .customer-notice-strip {
+    height: 50px;
+    font-size: 16px;
+  }
+}
+
+@media (min-width: 768px) {
+  .customer-notice-strip {
+    height: 52px;
+    font-size: 17px;
+  }
 }
 
 @keyframes gentleFadeIn {
@@ -312,8 +340,27 @@ textarea:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .animate-ticker-continuous {
     animation: none !important;
-    width: auto !important;
-    overflow-x: auto !important;
+    justify-content: center;
+    width: 100% !important;
+    min-width: 0;
+    transform: none !important;
+  }
+
+  .animate-ticker-continuous .ticker-sequence[aria-hidden="true"],
+  .animate-ticker-continuous .ticker-notice:not(:first-child),
+  .animate-ticker-continuous .ticker-separator {
+    display: none;
+  }
+
+  .animate-ticker-continuous .ticker-sequence,
+  .animate-ticker-continuous .ticker-notice {
+    min-width: 0;
+    max-width: calc(100vw - 2rem);
+  }
+
+  .animate-ticker-continuous .ticker-message {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .motion-gentle-fade,
