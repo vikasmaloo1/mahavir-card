@@ -58,16 +58,10 @@ export function CustomerNotices({ placement = "GLOBAL" }: { placement?: "GLOBAL"
     });
   }, [items]);
 
-  // Optimal reading speed: 22–28 seconds for one complete content cycle
+  // Reading pace: 60 seconds per loop cycle
   const animationDurationSeconds = useMemo(() => {
-    if (!displayItems.length) return 24;
-    const totalChars = displayItems.reduce((sum, item) => {
-      return sum + item.title.length + (item.message?.length || 0) + (item.linkLabel?.length || 0) + 15;
-    }, 0);
-    // Smooth, comfortable pace (roughly 22–28s)
-    const calculated = Math.round(18 + totalChars * 0.02);
-    return Math.min(28, Math.max(22, calculated));
-  }, [displayItems]);
+    return 60;
+  }, []);
 
   if (!loaded || !displayItems.length) return null;
 
