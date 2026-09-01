@@ -32,6 +32,25 @@ export async function POST(request: Request) {
     await db.insert(carts).values({ userId: session.user.id, kind: input.kind }).onConflictDoNothing();
     const [cart] = await db.select().from(carts).where(and(eq(carts.userId, session.user.id), eq(carts.kind, input.kind))).limit(1);
     if (!cart) return jsonError("Basket was not created", 500);
+
+    const existingItems = await db.select().from(cartItems).where(and(eq(cartItems.cartId, cart.id), eq(cartItems.productId, input.productId)));
+    const existing = input.kind === "QUOTE" ? existingItems[0] : existingItems.find((it) => JSON.stringify(it.configuration) === JSON.stringify(input.configuration));
+
+    if (existing) {
+      const combinedQuantity = existing.quantity + quantity;
+      const { normalizedQuantity: finalQuantity } = normalizeProductQuantity(combinedQuantity, null, product.slug);
+      const updatedPrice = await calculateCartSelection(input.productId, finalQuantity, input.configuration, session.user.id);
+      const [updatedItem] = await db.update(cartItems).set({
+        quantity: finalQuantity,
+        jobName: input.jobName ?? existing.jobName,
+        configuration: { ...(existing.configuration as object || {}), ...(input.configuration || {}), quantity: String(finalQuantity) },
+        calculatedAmount: updatedPrice?.calculatedAmount ?? null,
+        pricingSnapshot: updatedPrice ?? {},
+        updatedAt: new Date(),
+      }).where(eq(cartItems.id, existing.id)).returning();
+      return updatedItem ? jsonOk(updatedItem, 200) : jsonError("Basket item was not updated", 500);
+    }
+
     const [item] = await db.insert(cartItems).values({ cartId: cart.id, productId: input.productId, quantity, jobName: input.jobName ?? null, configuration: input.configuration, calculatedAmount: price?.calculatedAmount ?? null, pricingSnapshot: price ?? {} }).returning();
     return item ? jsonOk(item, 201) : jsonError("Basket item was not created", 500);
   } catch (error) {

@@ -21,7 +21,7 @@ export type ProductFilters = {
   category: string;
   search: string;
   orderable: boolean;
-  quoteable: boolean;
+  quoteable?: boolean;
   page: number;
 };
 

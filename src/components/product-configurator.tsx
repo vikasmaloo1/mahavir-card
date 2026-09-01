@@ -284,20 +284,12 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
           {editItemId ? (
             <button type="button" onClick={() => void add(editKind)} disabled={editKind === "PURCHASE" && !directReady} className="flex w-full items-center justify-center gap-2 rounded-full bg-[#2457b8] px-4 py-3.5 text-[15px] font-bold text-white shadow-sm hover:bg-[#1a4494] transition-colors disabled:cursor-not-allowed disabled:bg-[#9bb6e8]"><Check size={16} />Update {editKind === "QUOTE" ? "quote" : "purchase"} basket</button>
           ) : (
-            <>
-              {product.orderable ? (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <button type="button" onClick={() => void add("PURCHASE", true)} disabled={!directReady} className="flex items-center justify-center gap-2 rounded-full bg-[#2457b8] px-4 py-3.5 text-[15px] font-bold text-white shadow-sm hover:bg-[#1a4494] transition-colors disabled:cursor-not-allowed disabled:bg-[#9bb6e8]">Buy now <ArrowRight size={16} /></button>
-                  <button type="button" onClick={() => void add("PURCHASE")} disabled={!directReady} className="flex items-center justify-center gap-2 rounded-full border border-[#2457b8] bg-white px-4 py-3.5 text-[15px] font-bold text-[#2457b8] hover:bg-[#f0f4fc] transition-colors disabled:cursor-not-allowed disabled:text-[#9bb6e8] disabled:border-[#d0dbeb]"><ShoppingBag size={16} />Add to basket</button>
-                </div>
-              ) : null}
-              {product.quoteable ? (
-                <button type="button" onClick={() => void add("QUOTE")} className="flex w-full items-center justify-center gap-2 rounded-full border border-[#b6c4da] bg-white px-4 py-3.5 text-[15px] font-bold text-[#263753] hover:bg-[#f3f6fa] hover:border-[#2457b8] transition-colors">{status === "quote" ? <><Check size={16} />Added to quote basket</> : "Request quote"}</button>
-              ) : null}
-            </>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button type="button" onClick={() => void add("PURCHASE", true)} disabled={!directReady} className="flex items-center justify-center gap-2 rounded-full bg-[#2457b8] px-4 py-3.5 text-[15px] font-bold text-white shadow-sm hover:bg-[#1a4494] transition-colors disabled:cursor-not-allowed disabled:bg-[#9bb6e8]">Buy now <ArrowRight size={16} /></button>
+              <button type="button" onClick={() => void add("PURCHASE")} disabled={!directReady} className="flex items-center justify-center gap-2 rounded-full border border-[#2457b8] bg-white px-4 py-3.5 text-[15px] font-bold text-[#2457b8] hover:bg-[#f0f4fc] transition-colors disabled:cursor-not-allowed disabled:text-[#9bb6e8] disabled:border-[#d0dbeb]"><ShoppingBag size={16} />Add to basket</button>
+            </div>
           )}
           {status === "cart" ? <a href="/cart" className="block text-center text-[15px] font-bold text-[#2457b8] hover:underline">View purchase basket &rarr;</a> : null}
-          {status === "quote" ? <a href="/quote" className="block text-center text-[15px] font-bold text-[#2457b8] hover:underline">View quote basket &rarr;</a> : null}
         </div>
       </section>
 
@@ -311,36 +303,23 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {product.orderable ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => void add("PURCHASE", true)}
-                  disabled={!directReady}
-                  className="flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-[#9bb6e8]"
-                >
-                  Buy now <ArrowRight size={15} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void add("PURCHASE")}
-                  disabled={!directReady}
-                  className="grid size-10 place-items-center rounded-full border border-[var(--mc-accent)] bg-white text-[var(--mc-accent)] disabled:cursor-not-allowed disabled:opacity-40"
-                  aria-label="Add to basket"
-                >
-                  <ShoppingBag size={16} />
-                </button>
-              </>
-            ) : null}
-            {product.quoteable && !product.orderable ? (
-              <button
-                type="button"
-                onClick={() => void add("QUOTE")}
-                className="flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white shadow-sm"
-              >
-                Request quote
-              </button>
-            ) : null}
+            <button
+              type="button"
+              onClick={() => void add("PURCHASE", true)}
+              disabled={!directReady}
+              className="flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-[#9bb6e8]"
+            >
+              Buy now <ArrowRight size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => void add("PURCHASE")}
+              disabled={!directReady}
+              className="grid size-10 place-items-center rounded-full border border-[var(--mc-accent)] bg-white text-[var(--mc-accent)] disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Add to basket"
+            >
+              <ShoppingBag size={16} />
+            </button>
           </div>
         </div>
       </div>
