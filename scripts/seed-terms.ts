@@ -21,18 +21,6 @@ const db = drizzle(pool);
 
 const defaultTerms = [
   {
-    title: "B2B Printing & Prohibited Content Policy",
-    titleGu: "B2B પ્રિન્ટીંગ અને પ્રતિબંધિત સામગ્રી નીતિ",
-    titleHi: "B2B प्रिंटिंग और प्रतिबंधित सामग्री नीति",
-    content: "IMPORTANT : - Mahavir Card is a B2B Company, which prints orders from Printing Press only, and these orders shall not contain Duplicate / Fake, Prohibited Content or without the permission or related organisation, will be sole responsibility of Printing Press / Channel Partner only. And if any Printing Agency Knowingly or unknowingly orders duplicate / Fake or prohibited content then its membership will be discontinued for lifetime.",
-    contentGu: "મહત્વપૂર્ણ : - મહાવીર કાર્ડ એ માત્ર પ્રિન્ટીંગ પ્રેસ માટેનું B2B પ્લેટફોર્મ છે, અને આ ઓર્ડરમાં કોઈપણ ડુપ્લિકેટ/નકલી, પ્રતિબંધિત સામગ્રી કે સંબંધિત સંસ્થાની પરવાનગી વગરની સામગ્રી હોવી જોઈએ નહીં, જેની સંપૂર્ણ જવાબદારી પ્રિન્ટીંગ પ્રેસ / ચેનલ પાર્ટનરની રહેશે. જો કોઈ પ્રિન્ટીંગ એજન્સી જાણી જોઈને કે અજાણતાં નકલી કે પ્રતિબંધિત સામગ્રી ઓર્ડર કરશે તો તેની સદસ્યતા આજીવન રદ કરવામાં આવશે.",
-    contentHi: "महत्वपूर्ण : - महावीर कार्ड केवल प्रिंटिंग प्रेस के लिए एक B2B कंपनी है, और इन ऑर्डरों में कोई डुप्लिकेट/नकली, प्रतिबंधित सामग्री या संबंधित संगठन की अनुमति के बिना सामग्री नहीं होनी चाहिए, जिसकी पूरी ज़िम्मेदारी प्रिंटिंग प्रेस / चैनल पार्टनर की होगी। यदि कोई प्रिंटिंग एजेंसी जानबूझकर या अनजाने में नकली या प्रतिबंधित सामग्री का ऑर्डर देती है तो उसकी सदस्यता आजीवन समाप्त कर दी जाएगी।",
-    category: "LEGAL",
-    isImportant: true,
-    sortOrder: 1,
-    isActive: true,
-  },
-  {
     title: "Color Matching & Job Profiling",
     titleGu: "કલર મેચિંગ અને જોબ પ્રોફાઇલિંગ",
     titleHi: "कलर मैचिंग और जॉब प्रोफाइलिंग",
@@ -41,7 +29,7 @@ const defaultTerms = [
     contentHi: "महत्वपूर्ण : - पहले किए गए किसी भी प्रिंटिंग से वही रंग कभी मेल नहीं खाएगा (चाहे वह हमारे द्वारा किया गया हो या कहीं और से, चाहे वह डिजिटल हो या ऑफसेट)। यदि आप भविष्य में समान रंग की प्रिंटिंग चाहते हैं, तो हमारे पास जॉब प्रोफाइल सेव करवाएं, जॉब प्रोफाइलिंग के लिए अतिरिक्त शुल्क देय होगा।",
     category: "COLOR_QUALITY",
     isImportant: true,
-    sortOrder: 2,
+    sortOrder: 1,
     isActive: true,
   },
   {
@@ -53,7 +41,7 @@ const defaultTerms = [
     contentHi: "महत्वपूर्ण : - मैं स्वीकार करता/करती हूँ कि महावीर कार्ड की ज़िम्मेदारी माल कंपनी के गोदाम से बाहर निकलते ही समाप्त हो जाती है।",
     category: "DISPATCH_TRANSIT",
     isImportant: true,
-    sortOrder: 3,
+    sortOrder: 2,
     isActive: true,
   },
   {
@@ -64,6 +52,18 @@ const defaultTerms = [
     contentGu: "મહત્વપૂર્ણ : - ક્લબ પ્રિન્ટીંગવાળા તમામ ઉત્પાદનોમાં (જેમ કે વિઝીટીંગ કાર્ડ, એટીએમ પાઉચ, લેટર હેડ, કવર વગેરે) કલરમાં સામાન્ય તફાવત (૧૦-૧૫%) અને કટીંગમાં ±૧.૫ mm થી ૨ mm સુધીનો તફાવત ગેંગ-રન પ્રિન્ટીંગનો સામાન્ય હિસ્સો છે.",
     contentHi: "महत्वपूर्ण : - क्लब प्रिंटिंग वाले सभी उत्पादों में (जैसे विजिटिंग कार्ड, एटीएम पाउच, लेटर हेड, लिफाफे आदि) रंग में मामूली अंतर (10-15%) और कटिंग में ±1.5 मिमी से 2 मिमी तक का अंतर गैंग-रन प्रिंटिंग में स्वाभाविक और मान्य है।",
     category: "COLOR_QUALITY",
+    isImportant: true,
+    sortOrder: 3,
+    isActive: true,
+  },
+  {
+    title: "Prohibited Content & Design Liability",
+    titleGu: "પ્રતિબંધિત સામગ્રી અને ડિઝાઇન જવાબદારી",
+    titleHi: "प्रतिबंधित सामग्री और डिजाइन दायित्व",
+    content: "IMPORTANT : - Orders shall not contain Duplicate / Fake, Prohibited Content or material without the permission of the related organisation, which will be the sole responsibility of the customer. We strictly do not accept fake certificates, government identity documents, illegal currency copies, defamatory material, or copyrighted logos without verified written authorization. The customer bears sole and complete legal liability for all submitted designs.",
+    contentGu: "મહત્વપૂર્ણ : - ઓર્ડરમાં કોઈપણ ડુપ્લિકેટ/નકલી, પ્રતિબંધિત સામગ્રી કે સંબંધિત સંસ્થાની પરવાનગી વગરની સામગ્રી હોવી જોઈએ નહીં, જેની સંપૂર્ણ જવાબદારી ગ્રાહકની રહેશે. કાનૂની પરવાનગી વગર નકલી ઓળખપત્રો, સરકારી દસ્તાવેજો, ચલણી નોટો કે કૉપિરાઇટ કરેલા લોગો છાપવાની સખત મનાઈ છે. સબમિટ કરેલી આર્ટવર્ક માટે ગ્રાહક પોતે ૧૦૦% કાનૂની રીતે જવાબદાર રહેશે.",
+    contentHi: "महत्वपूर्ण : - ऑर्डर में कोई डुप्लिकेट/नकली, प्रतिबंधित सामग्री या संबंधित संगठन की अनुमति के बिना सामग्री नहीं होनी चाहिए, जिसकी पूरी ज़िम्मेदारी ग्राहक की होगी। कानूनी अनुमति के बिना नकली पहचान पत्र, सरकारी दस्तावेज, मुद्रा या कॉपीराइट सामग्री छापना सख्त वर्जित है। सबमिट की गई आर्टवर्क के लिए ग्राहक पूरी तरह कानूनी रूप से जिम्मेदार रहेगा।",
+    category: "LEGAL",
     isImportant: true,
     sortOrder: 4,
     isActive: true,
@@ -83,7 +83,7 @@ const defaultTerms = [
   {
     title: "Artwork & CorelDRAW (CDR) Guidelines",
     titleGu: "આર્ટવર્ક અને કોરલડ્રો (CDR) ફાઇલ નિયમો",
-    titleHi: "आर्टवर्क और कोरलड्रॉ (CDR) फ़ाइल दिशानिर्देश",
+    titleHi: "આર્ટવર્ક और कोरलड्रॉ (CDR) फ़ाइल दिशानिर्देश",
     content: "All print production is executed strictly from client-submitted CorelDRAW (CDR) vector artwork. Customers must convert all text and fonts to curves (Ctrl+Q) and verify contact numbers, dimensions, orientation, and spelling before submitting. The company accepts no liability for layout, spelling, or typographical errors present in customer-submitted files.",
     contentGu: "તમામ પ્રિન્ટીંગ ઓર્ડર ગ્રાહક દ્વારા અપલોડ કરાયેલ કોરલડ્રો (CDR) ફાઇલ મુજબ જ પ્રોસેસ થાય છે. ફાઇલ સબમિટ કરતાં પહેલાં તમામ ફોન્ટ્સને કર્વ્ઝ (Ctrl+Q) કરવા તેમજ સ્પેલિંગ, મોબાઈલ નંબર અને સાઈઝ ચકાસવી ગ્રાહકની પોતાની જવાબદારી છે. ફાઇલમાં રહેલી કોઈપણ ભૂલ માટે કંપની જવાબદાર રહેશે નહીં.",
     contentHi: "सभी प्रिंटिंग ऑर्डर ग्राहक द्वारा अपलोड की गई कोरलड्रॉ (CDR) फ़ाइल के अनुसार ही तैयार होते हैं। फ़ाइल जमा करने से पहले सभी फोंट को कर्व्स (Ctrl+Q) में बदलना और स्पेलिंग, मोबाइल नंबर तथा साइज की जांच करना ग्राहक की ज़िम्मेदारी है। फ़ाइल में मौजूद किसी भी त्रुटि के लिए कंपनी जिम्मेदार नहीं होगी।",
@@ -131,7 +131,7 @@ const defaultTerms = [
 ];
 
 async function seed() {
-  console.log("Seeding Terms & Conditions matching user layout...");
+  console.log("Seeding Terms & Conditions (both B2B & B2C friendly)...");
   
   for (const item of defaultTerms) {
     const [existing] = await db
