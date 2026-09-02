@@ -240,21 +240,32 @@ async function runSuite() {
   assert.equal(normalizeProductQuantity(2001, "visiting-card", "nt-single").normalizedQuantity, 3000);
   console.log("✓ Standard quantity normalization (1001->2000, 1020->2000, 1500->2000) verified");
 
-  // Special products (Art Card / Premium Card): 500 first step, then 1000
+  // Special products (Art Card / Premium Card): 500 increments
   assert.equal(normalizeProductQuantity(1, "premium-card", "premium-400-gsm-velvet").normalizedQuantity, 500);
   assert.equal(normalizeProductQuantity(500, "premium-card", "premium-400-gsm-velvet").normalizedQuantity, 500);
   assert.equal(normalizeProductQuantity(501, "premium-card", "premium-400-gsm-velvet").normalizedQuantity, 1000);
   assert.equal(normalizeProductQuantity(1000, "premium-card", "premium-400-gsm-velvet").normalizedQuantity, 1000);
-  assert.equal(normalizeProductQuantity(1001, "premium-card", "premium-400-gsm-velvet").normalizedQuantity, 2000);
-  console.log("✓ Premium / Art Card special 500-step normalization verified");
+  assert.equal(normalizeProductQuantity(1001, "premium-card", "premium-400-gsm-velvet").normalizedQuantity, 1500);
+  assert.equal(normalizeProductQuantity(1501, "premium-card", "premium-400-gsm-velvet").normalizedQuantity, 2000);
+  // Drip-off is standard 1000
+  assert.equal(normalizeProductQuantity(1001, "premium-card", "premium-400-gsm-dripoff-front-back").normalizedQuantity, 2000);
+  console.log("✓ Premium / Art Card special 500-increment normalization verified");
 
   // Stepper stepProductQuantity
   assert.equal(stepProductQuantity(1000, "UP", "visiting-card", "nt-single"), 2000);
   assert.equal(stepProductQuantity(2000, "DOWN", "visiting-card", "nt-single"), 1000);
   assert.equal(stepProductQuantity(1000, "DOWN", "visiting-card", "nt-single"), 1000);
   assert.equal(stepProductQuantity(500, "UP", "premium-card", "premium-400-gsm-velvet"), 1000);
+  assert.equal(stepProductQuantity(1000, "UP", "premium-card", "premium-400-gsm-velvet"), 1500);
+  assert.equal(stepProductQuantity(1500, "UP", "premium-card", "premium-400-gsm-velvet"), 2000);
+  assert.equal(stepProductQuantity(2000, "DOWN", "premium-card", "premium-400-gsm-velvet"), 1500);
+  assert.equal(stepProductQuantity(1500, "DOWN", "premium-card", "premium-400-gsm-velvet"), 1000);
   assert.equal(stepProductQuantity(1000, "DOWN", "premium-card", "premium-400-gsm-velvet"), 500);
-  console.log("✓ Stepper stepProductQuantity verified");
+  assert.equal(stepProductQuantity(500, "DOWN", "premium-card", "premium-400-gsm-velvet"), 500);
+  // Drip-off uses 1000 step
+  assert.equal(stepProductQuantity(1000, "UP", "premium-card", "premium-400-gsm-dripoff-front-back"), 2000);
+  assert.equal(stepProductQuantity(1000, "DOWN", "premium-card", "premium-400-gsm-dripoff-front-back"), 1000);
+  console.log("✓ Stepper stepProductQuantity verified (500 increments for premium/art, 1000 for drip-off/standard)");
 
   // -------------------------------------------------------------
   // PART 6: CORNER CUT ADDON ON SPECIFIC THERMAL MATT CARDS & SCALING
@@ -434,12 +445,33 @@ async function runSuite() {
   assert.equal(blade3.taxableSubtotal, "400.00"); // 250 + 150 = 400
   console.log("✓ Blade pricing verified: ₹50 / blade (1 -> ₹50, 2 -> ₹100, 3 -> ₹150) separated from base price");
 
-  // 6. Premium Card Corner Cut included by default
+  // 6. Premium Card Corner Cut included by default & 500 Quantity Pricing
   const [premCard] = await db.select().from(products).where(eq(products.slug, "premium-400-gsm-velvet")).limit(1);
   assert.ok(premCard, "Premium Card Velvet product must exist");
+  assert.equal(premCard.referenceQuantity, 500, "Premium 400 GSM Velvet reference quantity must be 500");
   const premAddons = await db.select().from(productAddons).where(and(eq(productAddons.productId, premCard.id), eq(productAddons.isActive, true)));
   assert.equal(premAddons.length, 0, "Premium Card should have no separate add-on charge for Corner Cut");
-  console.log("✓ Premium Card verified: Corner cut included by default without double charge");
+
+  // ₹746 for 500 cards
+  const calcPrem500 = await calculateProductPrice(premCard.id, 500, {}, { stateCode: "GJ" });
+  assert.equal(calcPrem500?.productPrice, "746.00", "Premium 400 GSM Velvet for 500 cards must be ₹746.00");
+
+  // 1000 cards = 2 * 746 = 1492
+  const calcPrem1000 = await calculateProductPrice(premCard.id, 1000, {}, { stateCode: "GJ" });
+  assert.equal(calcPrem1000?.productPrice, "1492.00", "Premium 400 GSM Velvet for 1000 cards must be ₹1492.00");
+
+  // 1500 cards = 3 * 746 = 2238
+  const calcPrem1500 = await calculateProductPrice(premCard.id, 1500, {}, { stateCode: "GJ" });
+  assert.equal(calcPrem1500?.productPrice, "2238.00", "Premium 400 GSM Velvet for 1500 cards must be ₹2238.00");
+
+  // Drip-off is for 1000 cards
+  const [dripOff] = await db.select().from(products).where(eq(products.slug, "premium-400-gsm-dripoff-front-back")).limit(1);
+  assert.ok(dripOff, "Drip-Off product must exist");
+  assert.equal(dripOff.referenceQuantity, 1000, "Drip-Off reference quantity must be 1000");
+  const calcDrip1000 = await calculateProductPrice(dripOff.id, 1000, {}, { stateCode: "GJ" });
+  assert.equal(calcDrip1000?.productPrice, "1102.00", "Drip-Off for 1000 cards must be ₹1102.00");
+
+  console.log("✓ Premium Card verified: 500 quantity pricing for velvet/UV/foil, 1000 for drip-off, corner cut included");
 
   console.log("\n=== ALL VERIFICATION TEST SUITES PASSED PERFECTLY ===");
 }

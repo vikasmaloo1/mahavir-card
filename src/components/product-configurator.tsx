@@ -8,7 +8,7 @@ import { ArtworkUploader, type ArtworkRequirement, type UploadedArtwork } from "
 import type { CatalogProduct } from "@/lib/catalog";
 import { formatInr } from "@/lib/formatting";
 import { commerceStates } from "@/lib/india-states";
-import { normalizeProductQuantity, stepProductQuantity } from "@/lib/quantity-helper";
+import { isSpecialQuantityProduct, normalizeProductQuantity, stepProductQuantity } from "@/lib/quantity-helper";
 
 type PricingRule = { id: string; name: string; conditions: Record<string, unknown>; priceFormula: Record<string, unknown> };
 type Addon = { addonId: string; pricingRuleId: string | null; name: string; description: string | null; price: string; isDefault: boolean };
@@ -54,7 +54,8 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
   const [status, setStatus] = useState<"idle" | "quote" | "cart">("idle");
   const [basketError, setBasketError] = useState("");
   const [jobName, setJobName] = useState("");
-  const quantity = useMemo(() => normalizeProductQuantity(values.quantity || (product.categorySlug === "art-card" && product.slug !== "art-card-both-side-lamination" ? 500 : 1000), product.categorySlug, product.slug).normalizedQuantity, [product.categorySlug, product.slug, values.quantity]);
+  const defaultQty = useMemo(() => isSpecialQuantityProduct(product.categorySlug, product.slug) ? 500 : 1000, [product.categorySlug, product.slug]);
+  const quantity = useMemo(() => normalizeProductQuantity(values.quantity || defaultQty, product.categorySlug, product.slug).normalizedQuantity, [defaultQty, product.categorySlug, product.slug, values.quantity]);
   const requirement = requirementFor(details, selectedRuleId);
   const artworkSlots = requirement?.slots?.length ? requirement.slots : [];
   const requiredArtworkKeys = artworkSlots.length ? artworkSlots.filter((slot) => slot.required).map((slot) => slot.slotKey) : ["MAIN"];
@@ -204,7 +205,7 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
           <label className="block">
             <span className="mb-2 block text-[13px] font-bold text-[#263753]">Quantity</span>
             <div className="flex items-center rounded-lg border border-[#c9d2df]">
-              <input inputMode="numeric" value={values.quantity || (product.categorySlug === "art-card" && product.slug !== "art-card-both-side-lamination" ? "500" : "1000")} onChange={(event) => update("quantity", event.target.value)} onBlur={() => update("quantity", String(quantity))} className="min-w-0 flex-1 px-3 py-3 text-[15px] outline-none" />
+              <input inputMode="numeric" value={values.quantity || String(defaultQty)} onChange={(event) => update("quantity", event.target.value)} onBlur={() => update("quantity", String(quantity))} className="min-w-0 flex-1 px-3 py-3 text-[15px] outline-none" />
               <div className="flex gap-1 pr-2">
                 <button type="button" onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "DOWN", product.categorySlug, product.slug)))} className="grid size-9 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors" aria-label="Decrease quantity"><Minus size={14} /></button>
                 <button type="button" onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "UP", product.categorySlug, product.slug)))} className="grid size-9 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors" aria-label="Increase quantity"><Plus size={14} /></button>

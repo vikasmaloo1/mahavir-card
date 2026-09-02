@@ -14,6 +14,9 @@ export function isSpecialQuantityProduct(categorySlug?: string | null, productSl
   // The LAST Art Card configuration (both-side lamination) is 1000 quantity
   if (prod === "art-card-both-side-lamination") return false;
 
+  // The Drip-Off Premium Card is 1000 quantity
+  if (prod === "premium-400-gsm-dripoff-front-back" || prod.includes("drip-off") || prod.includes("dripoff")) return false;
+
   return (
     cat === "premium-card" ||
     cat === "art-card" ||
@@ -21,8 +24,7 @@ export function isSpecialQuantityProduct(categorySlug?: string | null, productSl
     prod.startsWith("premium-") ||
     prod.startsWith("art-") ||
     prod.includes("velvet") ||
-    prod.includes("spot-uv") ||
-    prod.includes("drip-off")
+    prod.includes("spot-uv")
   );
 }
 
@@ -33,10 +35,10 @@ export function isSpecialQuantityProduct(categorySlug?: string | null, productSl
  *   - Step: 1000
  *   - 1001 -> 2000, 1020 -> 2000, 1500 -> 2000, 1999 -> 2000
  *
- * Premium Card & Art Card special rule:
- *   - Allowed: 500, 1000, 2000, 3000, 4000...
- *   - 500 is allowed as a special first quantity.
- *   - 501 -> 1000, 700 -> 1000, 999 -> 1000, 1001 -> 2000, 1500 -> 2000
+ * Premium Card & Art Card special rule (except 1000-quantity configs):
+ *   - Min: 500
+ *   - Step: 500
+ *   - Allowed: 500, 1000, 1500, 2000, 2500...
  */
 export function normalizeProductQuantity(
   input: number | string | null | undefined,
@@ -52,7 +54,7 @@ export function normalizeProductQuantity(
       normalizedQuantity: minQty,
       isValid: false,
       minimumQuantity: minQty,
-      step: 1000,
+      step: minQty,
       message: `Quantity must be at least ${minQty.toLocaleString("en-IN")}.`,
     };
   }
@@ -66,13 +68,13 @@ export function normalizeProductQuantity(
         step: 500,
       };
     }
-    // Greater than 500: normalize to next multiple of 1000 (e.g. 501..1000 -> 1000, 1001..2000 -> 2000)
-    const normalized = Math.ceil(num / 1000) * 1000;
+    // Increments of 500 (500, 1000, 1500, 2000, 2500...)
+    const normalized = Math.ceil(num / 500) * 500;
     return {
       normalizedQuantity: normalized,
       isValid: num === normalized,
       minimumQuantity: 500,
-      step: 1000,
+      step: 500,
     };
   }
 
@@ -109,13 +111,9 @@ export function stepProductQuantity(
 
   if (isSpecial) {
     if (direction === "UP") {
-      if (normalizedQuantity < 500) return 500;
-      if (normalizedQuantity === 500) return 1000;
-      return normalizedQuantity + 1000;
+      return Math.max(500, normalizedQuantity + 500);
     } else {
-      if (normalizedQuantity <= 500) return 500;
-      if (normalizedQuantity === 1000) return 500;
-      return Math.max(500, normalizedQuantity - 1000);
+      return Math.max(500, normalizedQuantity - 500);
     }
   }
 

@@ -152,9 +152,12 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
 function ProductSpecification({ item }: { item: Product }) {
   const artwork = item.artworkSummary;
   const isPremium = item.category?.slug === "premium-card" || item.slug.startsWith("premium-");
-  const specText = item.listingSpecification && item.listingSpecification.toLowerCase() !== item.name.toLowerCase()
+  const rawSpec = item.listingSpecification && item.listingSpecification.toLowerCase() !== item.name.toLowerCase()
     ? item.listingSpecification
     : null;
+  const specText = rawSpec && isPremium
+    ? rawSpec.replace(/corner\s*cut\s*included\s*by\s*default\.?/gi, "").trim().replace(/^[,.;:\-\u00b7\s]+|[,;:\-\u00b7\s]+$/g, "") || null
+    : rawSpec;
   const artworkLabel = artwork?.formatLabel?.toLowerCase().includes("cdr") ? "CDR required" : artwork?.formatLabel ? `${artwork.formatLabel} required` : null;
 
   return <div className="min-w-0 space-y-1 text-[13px] leading-5 text-[var(--mc-muted)]">
