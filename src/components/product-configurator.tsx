@@ -43,6 +43,15 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
   const requiredArtworkKeys = artworkSlots.length ? artworkSlots.filter((slot) => slot.required).map((slot) => slot.slotKey) : ["MAIN"];
   const artworkReady = !requirement?.artworkRequired || requiredArtworkKeys.every((key) => Boolean(artworks[key]));
   const directReady = product.orderable && Boolean(estimate.calculatedAmount) && estimate.warnings.length === 0 && artworkReady;
+
+  const blockingReasons = useMemo(() => {
+    const reasons: string[] = [];
+    if (isCalculating) return ["Price is being calculated\u2026"];
+    if (!estimate.calculatedAmount && estimate.warnings.length === 0) reasons.push("Price could not be calculated. Review your configuration.");
+    if (estimate.warnings.length > 0) reasons.push(estimate.warnings[0]);
+    if (requirement?.artworkRequired && !artworkReady) reasons.push("Upload your CDR artwork file to enable ordering.");
+    return reasons;
+  }, [isCalculating, estimate, requirement, artworkReady]);
   const configurationAddons = useMemo(() => {
     const scoped = details?.addons.filter((addon) => addon.pricingRuleId === selectedRuleId) ?? [];
     const available = scoped.length ? scoped : details?.addons.filter((addon) => addon.pricingRuleId === null) ?? [];
@@ -281,6 +290,13 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
             {estimate.warnings[0] ? <p className="mt-3 border-l-2 border-[#c78b30] pl-3 text-[13px] leading-5 text-[#805910]">{estimate.warnings[0]}</p> : null}
           </div>
           {basketError ? <p className="text-[15px] font-semibold text-[#a53025]">{basketError}</p> : null}
+          {!directReady && blockingReasons.length > 0 ? (
+            <div role="alert" className="rounded-lg border border-[#f0c060] bg-[#fffbea] px-4 py-3 text-[13px] font-medium text-[#7c5c00]">
+              {blockingReasons.map((reason, index) => (
+                <p key={index} className={index > 0 ? "mt-1" : ""}>{reason}</p>
+              ))}
+            </div>
+          ) : null}
           {editItemId ? (
             <button type="button" onClick={() => void add(editKind)} disabled={editKind === "PURCHASE" && !directReady} className="flex w-full items-center justify-center gap-2 rounded-full bg-[#2457b8] px-4 py-3.5 text-[15px] font-bold text-white shadow-sm hover:bg-[#1a4494] transition-colors disabled:cursor-not-allowed disabled:bg-[#9bb6e8]"><Check size={16} />Update {editKind === "QUOTE" ? "quote" : "purchase"} basket</button>
           ) : (
@@ -295,6 +311,9 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
 
       {/* Mobile Sticky Bottom Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--mc-line)] bg-white/95 p-3 backdrop-blur shadow-[0_-8px_20px_rgba(16,33,63,0.08)] sm:hidden">
+        {!directReady && blockingReasons.length > 0 ? (
+          <p className="mb-2 text-center text-[12px] font-medium text-[#7c5c00]">{blockingReasons[0]}</p>
+        ) : null}
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--mc-muted)]">Grand Total</p>

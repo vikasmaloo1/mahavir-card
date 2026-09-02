@@ -1,7 +1,5 @@
-"use client";
-
+import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 export function BackButton({
   fallbackHref = "/products",
@@ -12,20 +10,10 @@ export function BackButton({
   label?: string;
   className?: string;
 }) {
-  const router = useRouter();
-
-  function handleClick() {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-    } else {
-      router.push(fallbackHref);
-    }
-  }
-
   return (
-    <button type="button" onClick={handleClick} className={className} aria-label={label}>
+    <Link href={fallbackHref} className={className} aria-label={label}>
       <ArrowLeft size={17} />
       <span>{label}</span>
-    </button>
+    </Link>
   );
 }
