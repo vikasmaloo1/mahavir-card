@@ -17,7 +17,8 @@ async function main() {
   const cardTaxRows = await db.select({ slug: products.slug, taxRate: pricingRules.taxRate }).from(pricingRules).innerJoin(products, eq(pricingRules.productId, products.id)).where(and(eq(pricingRules.isActive, true), inArray(products.productReference, ["RATE.xlsx/Sheet1", "RATE.xlsx/Sheet2"])));
   if (categoryCount.value !== 7 || expectedCount.value !== 7) throw new Error(`Expected only 7 active RATE.xlsx categories, found ${categoryCount.value}.`);
   if (productCount.value !== 39) throw new Error(`Expected 39 active RATE.xlsx configurations, found ${productCount.value}.`);
-  if (cornerMappings.length !== 4 || cornerMappings.some((mapping) => Number(mapping.price) !== 100)) throw new Error(`Corner Cut must have 4 active mappings on Thermal Matt cards at Rs 100; found ${JSON.stringify(cornerMappings)}.`);
+  if (cornerMappings.length !== 3 || cornerMappings.some((mapping) => Number(mapping.price) !== 300)) throw new Error(`Corner Cut must have 3 active mappings on Thermal Matt cards at Rs 300; found ${JSON.stringify(cornerMappings)}.`);
+  if (cornerMappings.some((mapping) => mapping.product === "350-gsm-thermal-matt-texture")) throw new Error("350 GSM Thermal Matt Texture must NOT have Corner Cut add-on.");
   if (deliveryRows.length !== 45) throw new Error(`Expected 45 explicit delivery rows for 15 approved products, found ${deliveryRows.length}.`);
   if (deliveryRows.filter((row) => row.method === "PICKUP" && row.stateCode === "*" && Number(row.price) === 0).length !== 15) throw new Error("Every courier-enabled product must have free pickup.");
   if (deliveryRows.filter((row) => row.method === "COURIER" && row.stateCode === "GJ" && Number(row.price) === 40).length !== 2) throw new Error("Two NT visiting cards must use the Gujarat Rs 40 courier rule.");

@@ -10,9 +10,11 @@ import { getOwnedCart } from "@/lib/cart-service";
 export async function GET(request: Request) {
   try {
     const session = await requireUser(request);
-    const parsed = cartKindSchema.safeParse(new URL(request.url).searchParams.get("kind") ?? "PURCHASE");
+    const url = new URL(request.url);
+    const parsed = cartKindSchema.safeParse(url.searchParams.get("kind") ?? "PURCHASE");
     if (!parsed.success) return jsonError("Invalid basket type", 422);
-    return jsonOk(await getOwnedCart(session.user.id, parsed.data));
+    const stateCode = url.searchParams.get("stateCode")?.trim() || undefined;
+    return jsonOk(await getOwnedCart(session.user.id, parsed.data, stateCode));
   } catch (error) {
     return error instanceof Response ? error : handleApiError(error);
   }

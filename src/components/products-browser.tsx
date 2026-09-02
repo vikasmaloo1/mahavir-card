@@ -133,7 +133,7 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
             {item.taxInclusive ? (
               <p className="mt-0.5 text-xs text-[var(--mc-muted)]">GST included</p>
             ) : item.priceState === "STARTING" ? (
-              <p className="mt-0.5 text-xs font-medium text-[var(--mc-muted)]">GST extra as applicable</p>
+              <p className="mt-0.5 text-xs font-medium text-[var(--mc-muted)]">GST charged additionally as applicable</p>
             ) : null}
           </div>
           <ProductMeta item={item} />
@@ -142,7 +142,7 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
           </div>
         </article>)}
         {pagination.totalPages > 1 ? <nav aria-label="Product pages" className="flex items-center justify-between border-t border-[var(--mc-line)] pt-5"><button type="button" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} className="rounded-full border border-[var(--mc-line)] bg-white px-5 py-2.5 text-sm font-bold text-[var(--mc-accent)] disabled:cursor-not-allowed disabled:opacity-40 hover:bg-[var(--mc-surface)] transition-colors">Previous</button><p className="text-sm font-semibold text-[var(--mc-muted)]">Page {pagination.page} of {pagination.totalPages}</p><button type="button" disabled={page >= pagination.totalPages} onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))} className="rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm">Next</button></nav> : null}
-        <p className="border-t border-[var(--mc-line)] pt-4 text-right text-xs font-medium text-[var(--mc-muted)]">Base prices shown above are exclusive of GST. Applicable GST is added at checkout.</p>
+        <p className="border-t border-[var(--mc-line)] pt-4 text-right text-xs font-medium text-[var(--mc-muted)]">Base prices shown above are exclusive of GST. GST charged additionally as applicable.</p>
       </section> : null}
       {!loading && !items.length && !error ? <div className="mt-5 rounded-xl border border-[var(--mc-line)] bg-[var(--mc-paper)] px-5 py-12 text-center text-[15px] text-[var(--mc-muted)]">No products match these filters.</div> : null}
     </div>
@@ -151,17 +151,32 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
 
 function ProductSpecification({ item }: { item: Product }) {
   const artwork = item.artworkSummary;
+  const specText = item.listingSpecification && item.listingSpecification.toLowerCase() !== item.name.toLowerCase()
+    ? item.listingSpecification
+    : null;
+  const artworkLabel = artwork?.formatLabel?.toLowerCase().includes("cdr") ? "CDR required" : artwork?.formatLabel ? `${artwork.formatLabel} required` : null;
+
   return <div className="min-w-0 space-y-1 text-[13px] leading-5 text-[var(--mc-muted)]">
     <p className="text-xs font-bold uppercase text-[var(--mc-muted)] xl:hidden">Specification</p>
-    {item.listingSpecification ? <p className="line-clamp-2 text-sm font-medium text-[var(--mc-ink)]">{item.listingSpecification}</p> : null}
+    {specText ? <p className="line-clamp-2 text-sm font-medium text-[var(--mc-ink)]">{specText}</p> : null}
     {item.productSize ? <p><strong className="font-semibold text-[var(--mc-ink)]">Size:</strong> {item.productSize}</p> : null}
-    {artwork ? <><p className="flex items-center gap-1.5"><FileUp size={14} />{artwork.formatLabel}</p>{artwork.fullDesign ? <p><strong className="font-semibold text-[var(--mc-ink)]">Full:</strong> {artwork.fullDesign}{artwork.safeArea ? ` · Safe: ${artwork.safeArea}` : ""}</p> : null}{artwork.finalSize ? <p><strong className="font-semibold text-[var(--mc-ink)]">Final:</strong> {artwork.finalSize}</p> : null}</> : null}
+    {artwork ? <>
+      {artworkLabel ? <p className="flex items-center gap-1.5"><FileUp size={14} />{artworkLabel}</p> : null}
+      {artwork.fullDesign ? <p><strong className="font-semibold text-[var(--mc-ink)]">Full:</strong> {artwork.fullDesign}</p> : null}
+      {artwork.finalSize ? <p><strong className="font-semibold text-[var(--mc-ink)]">Final:</strong> {artwork.finalSize}</p> : null}
+    </> : null}
   </div>;
 }
 
+function cleanProductionTime(text: string | null) {
+  if (!text) return null;
+  return text.replace(/\bworking\s*days?\s+working\s*days?\b/gi, "working days").trim();
+}
+
 function ProductMeta({ item }: { item: Product }) {
+  const prodTime = cleanProductionTime(item.productionTime);
   return <div className="space-y-1 text-[13px] leading-5 text-[var(--mc-muted)]">
-    {item.productionTime ? <p className="inline-flex items-center gap-1.5 font-semibold text-[var(--mc-ink)]"><Clock3 size={14} />{item.productionTime}</p> : null}
+    {prodTime ? <p className="inline-flex items-center gap-1.5 font-semibold text-[var(--mc-ink)]"><Clock3 size={14} />{prodTime}</p> : null}
     {item.hasAddons ? <p className="flex items-center gap-1.5"><Sparkles size={14} />Add-on available</p> : null}
   </div>;
 }

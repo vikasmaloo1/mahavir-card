@@ -56,14 +56,20 @@ async function main() {
           ? `Upload one CDR file with pages in this order: ${pageSlots.map((entry, index) => `${index + 1}. ${entry.name}`).join("; ")}.`
           : pageSlots[0]?.instructions,
       }];
-      const configurationFields = item.ruleType === "PER_SQ_INCH"
+      const isThermalPrintOptions = item.slug === "400-gsm-thermal-matt-single-side-uv" || item.slug === "400-gsm-thermal-matt-single-front-back";
+      const baseQuantityField = { id: "quantity", label: "Quantity", type: "number" as const, defaultValue: String(item.referenceQuantity ?? 1000) };
+      const configurationFields: Array<{ id: string; label: string; type: "select" | "number" | "text"; options?: string[]; defaultValue: string; suffix?: string }> = item.ruleType === "PER_SQ_INCH"
         ? [
-            { id: "quantity", label: "Reference quantity", type: "number", defaultValue: String(item.referenceQuantity ?? 1) },
+            baseQuantityField,
             { id: "width", label: "Width", type: "number", defaultValue: "1", suffix: "in" },
             { id: "height", label: "Height", type: "number", defaultValue: "1", suffix: "in" },
-            ...(item.bladeCharge ? [{ id: "bladeCount", label: "Half blades", type: "number", defaultValue: "0" }] : []),
+            ...(item.bladeCharge ? [{ id: "bladeCount", label: "Half blades", type: "number" as const, defaultValue: "0" }] : []),
           ]
-        : [{ id: "quantity", label: "Quantity", type: "number", defaultValue: String(item.referenceQuantity ?? 1) }];
+        : [
+            baseQuantityField,
+            ...(isThermalPrintOptions ? [{ id: "printingSide", label: "Printing option", type: "select" as const, options: ["Single Printing", "Front Back Printing"], defaultValue: "Single Printing" }] : []),
+            ...(item.size && (category.slug === "leaflet-cover" || category.slug === "brochure") ? [{ id: "size", label: "Size", type: "select" as const, options: [item.size], defaultValue: item.size }] : []),
+          ];
 
       await db.insert(products).values({
         id: productId, categoryId, name: item.name, slug: item.slug,
@@ -94,7 +100,7 @@ async function main() {
       await db.update(pricingRules).set({ isActive: false, updatedAt: new Date() }).where(eq(pricingRules.productId, productId));
       const priceFormula = item.ruleType === "PER_SQ_INCH"
         ? {
-            ratePerSqInch: item.rateUnit === "PAISE" ? (item.ratePerSqInch ?? 0) / 100 : item.ratePerSqInch,
+            ratePerSqInch: item.rateUnit === "PAISE" ? (item.ratePerSqInch ?? 0) : item.ratePerSqInch,
             ratePaisePerSqInch: item.rateUnit === "PAISE" ? item.ratePerSqInch : null,
             rateUnit: item.rateUnit ?? "RUPEES", unit: "reference_batch_area", minimumArea: item.minimumArea ?? null,
             minimumCharge: item.minimumCharge ?? null, bladeCharge: item.bladeCharge ?? null,

@@ -18,15 +18,16 @@ export function selectionsFromConfiguration(configuration: Record<string, unknow
   return { addonIds, delivery };
 }
 
-export async function calculateCartSelection(productId: string, quantity: number, configuration: Record<string, unknown>, userId?: string) {
-  return calculateProductPrice(productId, quantity, configuration, { ...selectionsFromConfiguration(configuration), userId });
+export async function calculateCartSelection(productId: string, quantity: number, configuration: Record<string, unknown>, userId?: string, stateCodeOverride?: string) {
+  const selections = selectionsFromConfiguration(configuration);
+  return calculateProductPrice(productId, quantity, configuration, { ...selections, userId, stateCode: stateCodeOverride ?? selections.delivery?.stateCode });
 }
 
 export function purchasablePrice(price: CalculatedPrice | null) {
   return Boolean(price?.calculatedAmount && price.warnings.length === 0);
 }
 
-export async function getOwnedCart(userId: string, kind: CartKind) {
+export async function getOwnedCart(userId: string, kind: CartKind, stateCodeOverride?: string) {
   const [cart] = await db.select().from(carts).where(and(eq(carts.userId, userId), eq(carts.kind, kind))).limit(1);
   if (!cart) return { id: null, kind, items: [], summary: { itemCount: 0, productSubtotal: "0.00", addonSubtotal: "0.00", deliverySubtotal: "0.00", surchargeSubtotal: "0.00", priceBeforeTax: "0.00", tax: "0.00", cgst: "0.00", sgst: "0.00", igst: "0.00", total: "0.00", currency: "INR", taxInclusive: false, hasTaxBreakdown: false, hasUnavailableItems: false } };
 
@@ -53,7 +54,7 @@ export async function getOwnedCart(userId: string, kind: CartKind) {
     const capable = row.product.isActive && row.product.status === "ACTIVE" && (kind === "PURCHASE" ? row.product.orderable : row.product.quoteable);
     if (!capable) return { ...row, calculatedAmount: null, pricingSnapshot: row.storedPricingSnapshot, available: false, message: "This product is no longer available for this basket." };
     try {
-      const price = await calculateCartSelection(row.productId, row.quantity, row.configuration, userId);
+      const price = await calculateCartSelection(row.productId, row.quantity, row.configuration, userId, stateCodeOverride);
       const available = kind === "QUOTE" ? Boolean(price) : purchasablePrice(price);
       return {
         ...row,

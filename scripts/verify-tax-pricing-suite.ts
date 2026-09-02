@@ -164,18 +164,29 @@ async function runSuite() {
   console.log("✓ Scenario B PASSED: NT Single + RJ Courier -> Base ₹240 + Courier ₹60 + IGST ₹54.00 = ₹354.00");
 
   // Scenario C: Sticker square-inch calculation
-  // 1000 cards, 10 sq.in each, min charge ₹250
+  // 1000 cards, 3x3 = 9 sq.in each, rate = 33 -> 9 * 33 = 297 (> 250 min charge)
   const scenC = await calculateProductPrice(stickerProduct.id, 1000, { width: 3, height: 3, bladeCount: 0 }, {
     stateCode: "GJ",
   });
-  console.log("Scenario C (Sticker) result:", scenC);
+  console.log("Scenario C (Sticker 3x3) result:", scenC);
   assert.ok(scenC, "Scenario C calculation must succeed");
-  // Area = 9 sq.in * 0.33 = 2.97, minCharge is 250 -> 250 taxable -> CGST 22.50 + SGST 22.50 = 295.00
-  assert.equal(scenC.productPrice, "250.00");
-  assert.equal(scenC.cgstAmount, "22.50");
-  assert.equal(scenC.sgstAmount, "22.50");
-  assert.equal(scenC.grandTotal, "295.00");
-  console.log("✓ Scenario C PASSED: Sticker square-inch min-charge ₹250 + GST = ₹295.00");
+  assert.equal(scenC.productPrice, "297.00");
+  assert.equal(scenC.cgstAmount, "26.73");
+  assert.equal(scenC.sgstAmount, "26.73");
+  assert.equal(scenC.grandTotal, "350.46");
+  console.log("✓ Scenario C PASSED: Sticker square-inch 3x3 @ ₹33 = ₹297 + GST = ₹350.46");
+
+  // Scenario C2: Sticker square-inch min-charge calculation (2x3 = 6 sq.in * 33 = 198 < 250)
+  const scenC2 = await calculateProductPrice(stickerProduct.id, 1000, { width: 2, height: 3, bladeCount: 0 }, {
+    stateCode: "GJ",
+  });
+  console.log("Scenario C2 (Sticker 2x3 min charge) result:", scenC2);
+  assert.ok(scenC2, "Scenario C2 calculation must succeed");
+  assert.equal(scenC2.productPrice, "250.00");
+  assert.equal(scenC2.cgstAmount, "22.50");
+  assert.equal(scenC2.sgstAmount, "22.50");
+  assert.equal(scenC2.grandTotal, "295.00");
+  console.log("✓ Scenario C2 PASSED: Sticker square-inch 2x3 min-charge ₹250 + GST = ₹295.00");
 
   // -------------------------------------------------------------
   // PART 4: PROFILE COMPLETION LOGIC (Requirement 22)
@@ -246,18 +257,17 @@ async function runSuite() {
   console.log("✓ Stepper stepProductQuantity verified");
 
   // -------------------------------------------------------------
-  // PART 6: CORNER CUT ADDON ON ALL 4 THERMAL MATT CARDS & SCALING
+  // PART 6: CORNER CUT ADDON ON SPECIFIC THERMAL MATT CARDS & SCALING
   // -------------------------------------------------------------
-  console.log("\n--- Part 6: Corner Cut Addon on 4 Thermal Matt Cards & Scaling ---");
+  console.log("\n--- Part 6: Corner Cut Addon on Thermal Matt Cards & Scaling ---");
   const { productAddons, addons } = await import("../src/lib/db/schema");
-  const thermalMattSlugs = [
+  const thermalMattWithCornerCut = [
     "400-gsm-thermal-matt-single-front-back",
-    "350-gsm-thermal-matt-texture",
     "400-gsm-thermal-matt-single-side-uv",
     "400-gsm-thermal-matt-front-back-uv",
   ];
 
-  for (const tmSlug of thermalMattSlugs) {
+  for (const tmSlug of thermalMattWithCornerCut) {
     const [tmProd] = await db.select().from(products).where(eq(products.slug, tmSlug)).limit(1);
     assert.ok(tmProd, `Product ${tmSlug} must exist`);
     const attachedAddons = await db.select({
@@ -266,27 +276,38 @@ async function runSuite() {
     }).from(productAddons).innerJoin(addons, eq(productAddons.addonId, addons.id)).where(and(eq(productAddons.productId, tmProd.id), eq(productAddons.isActive, true)));
     const cornerCut = attachedAddons.find((a) => a.addon.code === "CORNER_CUT");
     assert.ok(cornerCut, `Corner Cut addon must be attached to ${tmSlug}`);
-    assert.equal(Number(cornerCut.productAddon.price), 100, `Corner Cut base price on ${tmSlug} must be ₹100`);
-    console.log(`✓ ${tmSlug} has Corner Cut addon configured @ ₹100/1000`);
+    assert.equal(Number(cornerCut.productAddon.price), 300, `Corner Cut base price on ${tmSlug} must be ₹300`);
+    console.log(`✓ ${tmSlug} has Corner Cut addon configured @ ₹300/1000`);
   }
 
-  // Verify Corner Cut scaling with calculateProductPrice (1000 -> ₹100, 2000 -> ₹200, 3000 -> ₹300)
+  // 350 GSM Texture must NOT have Corner Cut
+  const [textureProd] = await db.select().from(products).where(eq(products.slug, "350-gsm-thermal-matt-texture")).limit(1);
+  assert.ok(textureProd, "350 GSM Texture product must exist");
+  const textureAddons = await db.select({
+    addon: addons,
+    productAddon: productAddons,
+  }).from(productAddons).innerJoin(addons, eq(productAddons.addonId, addons.id)).where(and(eq(productAddons.productId, textureProd.id), eq(productAddons.isActive, true)));
+  const textureCornerCut = textureAddons.find((a) => a.addon.code === "CORNER_CUT");
+  assert.equal(textureCornerCut, undefined, "350 GSM Texture must NOT have Corner Cut addon");
+  console.log("✓ 350 GSM Texture verified: Corner Cut is NOT available");
+
+  // Verify Corner Cut scaling with calculateProductPrice (1000 -> ₹300, 2000 -> ₹600, 3000 -> ₹900)
   const [tmSingle] = await db.select().from(products).where(eq(products.slug, "400-gsm-thermal-matt-single-front-back")).limit(1);
   const [ccAddonRow] = await db.select().from(addons).where(eq(addons.code, "CORNER_CUT")).limit(1);
   assert.ok(ccAddonRow, "CORNER_CUT addon row must exist");
 
   const tm1000 = await calculateProductPrice(tmSingle.id, 1000, {}, { addonIds: [ccAddonRow.id], stateCode: "GJ" });
   assert.ok(tm1000, "1000 cards price calc failed");
-  assert.equal(tm1000.addons[0].price, "100.00", "Corner Cut for 1000 cards must be ₹100");
+  assert.equal(tm1000.addons[0].price, "300.00", "Corner Cut for 1000 cards must be ₹300");
 
   const tm2000 = await calculateProductPrice(tmSingle.id, 2000, {}, { addonIds: [ccAddonRow.id], stateCode: "GJ" });
   assert.ok(tm2000, "2000 cards price calc failed");
-  assert.equal(tm2000.addons[0].price, "200.00", "Corner Cut for 2000 cards must be ₹200");
+  assert.equal(tm2000.addons[0].price, "600.00", "Corner Cut for 2000 cards must be ₹600");
 
   const tm3000 = await calculateProductPrice(tmSingle.id, 3000, {}, { addonIds: [ccAddonRow.id], stateCode: "GJ" });
   assert.ok(tm3000, "3000 cards price calc failed");
-  assert.equal(tm3000.addons[0].price, "300.00", "Corner Cut for 3000 cards must be ₹300");
-  console.log("✓ Corner Cut scaling verified: 1000 -> ₹100, 2000 -> ₹200, 3000 -> ₹300");
+  assert.equal(tm3000.addons[0].price, "900.00", "Corner Cut for 3000 cards must be ₹900");
+  console.log("✓ Corner Cut scaling verified: 1000 -> ₹300, 2000 -> ₹600, 3000 -> ₹900");
 
   // -------------------------------------------------------------
   // PART 7: COURIER SCALING BY QUANTITY
@@ -315,6 +336,17 @@ async function runSuite() {
     assert.equal(vc.quoteable, false, `Visiting Card ${vc.slug} must have quoteable: false`);
   }
   console.log(`✓ All ${visitingCards.length} Visiting Card products verified with quoteable: false`);
+
+  // -------------------------------------------------------------
+  // PART 9: BROCHURE RULES (quoteable: false, productionTime: 4-5 working days)
+  // -------------------------------------------------------------
+  console.log("\n--- Part 9: Brochure Rules Check ---");
+  const brochures = await db.select().from(products).where(and(eq(products.productClass, "Brochure"), eq(products.isActive, true)));
+  for (const b of brochures) {
+    assert.equal(b.quoteable, false, `Brochure ${b.slug} must have quoteable: false`);
+    assert.equal(b.productionTime, "4-5 working days", `Brochure ${b.slug} productionTime must be '4-5 working days'`);
+  }
+  console.log(`✓ All ${brochures.length} Brochure products verified with quoteable: false & 4-5 working days`);
 
   console.log("\n=== ALL VERIFICATION TEST SUITES PASSED PERFECTLY ===");
 }

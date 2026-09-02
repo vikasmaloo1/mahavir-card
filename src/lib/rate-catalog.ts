@@ -44,7 +44,7 @@ const fixed = (slug: string, name: string, amount: number, productionTime: strin
 const ntCourier = { GJ: 40, RJ: 60 } as const;
 const standardCourier = { GJ: 60, RJ: 80 } as const;
 const premiumCourier = { GJ: 80, RJ: 100 } as const;
-const cornerCutAddon = { code: "CORNER_CUT", name: "Corner Cut", amount: 100, referenceQuantity: 1000 } as const;
+const cornerCutAddon = { code: "CORNER_CUT", name: "Corner Cut", amount: 300, referenceQuantity: 1000 } as const;
 
 export const rateCatalog: RateCatalogCategory[] = [
   {
@@ -56,9 +56,9 @@ export const rateCatalog: RateCatalogCategory[] = [
       fixedCard("tearable-front-back-without-lamination", "Tearable Front Back Without Lamination", 300, "3-4 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")]), { delivery: standardCourier, quoteable: false }),
       fixedCard("tearable-front-back-with-lamination", "Tearable Front Back With Lamination", 320, "4-5 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")]), { delivery: standardCourier, quoteable: false }),
       fixedCard("400-gsm-thermal-matt-single-front-back", "400 GSM Thermal Matt Single + Front Back", 480, "4-5 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")], [92, 54], "C30 M0 Y0 K100"), { addon: cornerCutAddon, delivery: premiumCourier, quoteable: false }),
-      fixedCard("350-gsm-thermal-matt-texture", "350 GSM Thermal Matt Texture", 700, "4-5 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")], [92, 54], "C30 M0 Y0 K100"), { addon: cornerCutAddon, delivery: premiumCourier, quoteable: false }),
-      fixedCard("400-gsm-thermal-matt-single-side-uv", "400 GSM Thermal Matt Single Side UV", 570, "5-7 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("SPOT_UV", "Spot UV separation", "Black and white only")], [92, 54], "C30 M0 Y0 K100"), { addon: cornerCutAddon, delivery: premiumCourier, quoteable: false }),
-      fixedCard("400-gsm-thermal-matt-front-back-uv", "400 GSM Thermal Matt Front Back UV", 670, "5-7 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design"), slot("FRONT_SPOT_UV", "Front Spot UV separation", "Black and white only"), slot("BACK_SPOT_UV", "Back Spot UV separation", "Black and white only")], [92, 54], "C30 M0 Y0 K100"), { addon: cornerCutAddon, delivery: premiumCourier, quoteable: false }),
+      fixedCard("350-gsm-thermal-matt-texture", "350 GSM Thermal Matt Texture", 700, "4-5 working days", visitingCardArtwork([slot("FRONT", "Front design"), slot("BACK", "Back design")], [92, 54], "C30 M0 Y0 K100"), { delivery: premiumCourier, quoteable: false }),
+      fixedCard("400-gsm-thermal-matt-single-side-uv", "400 GSM Thermal Matt Single Side UV", 570, "5-7 working days", visitingCardArtwork([slot("FRONT", "Front Design File"), slot("BACK", "Back Design File"), slot("SPOT_UV", "Spot UV File", "Black and white only")], [92, 54], "C30 M0 Y0 K100"), { addon: cornerCutAddon, delivery: premiumCourier, quoteable: false, shortDescription: "Single / Front Back Printing" }),
+      fixedCard("400-gsm-thermal-matt-front-back-uv", "400 GSM Thermal Matt Front Back UV", 670, "5-7 working days", visitingCardArtwork([slot("FRONT", "Front Design File"), slot("BACK", "Back Design File"), slot("SPOT_UV", "Spot UV File", "Black and white only")], [92, 54], "C30 M0 Y0 K100"), { addon: cornerCutAddon, delivery: premiumCourier, quoteable: false }),
     ],
   },
   {
@@ -81,7 +81,7 @@ export const rateCatalog: RateCatalogCategory[] = [
     ],
   },
   {
-    slug: "letterhead-envelope", name: "Letterhead / Envelope", description: "Letterheads, envelopes, and covers in the workbook paper and size combinations.",
+    slug: "letterhead-envelope", name: "Letterhead / Envelope", description: "Letterheads and envelopes in the workbook paper and size combinations.",
     items: [
       fixed("letterhead-100-alabaster", "100 Alabaster Letterhead", 1150, "2-3 working days", "210 × 297 mm"),
       fixed("letterhead-80-gsm-ss-finish", "80 GSM SS Finish Letterhead", 1100, "3-4 working days", "210 × 297 mm"),
@@ -90,35 +90,35 @@ export const rateCatalog: RateCatalogCategory[] = [
       fixed("envelope-100-alabaster", "100 Alabaster Envelope", 1450, "2-3 working days", "9.5 × 4.25 in"),
       fixed("envelope-80-gsm-ss-finish", "80 GSM SS Finish Envelope", 1400, "3-4 working days", "9.5 × 4.25 in"),
       fixed("envelope-100-gsm-ss-finish", "100 GSM SS Finish Envelope", 1550, "3-4 working days", "9.5 × 4.25 in"),
-      fixed("cover-a4-130-gsm-art-paper", "A4 130 GSM Art Paper Cover", 2100, "4-5 working days", "9.5 × 4.25 in"),
+      fixed("cover-a4-130-gsm-art-paper", "A4 130 GSM Art Paper Envelope", 2100, "4-5 working days", "9.5 × 4.25 in"),
     ],
   },
   {
     slug: "brochure", name: "Brochure", description: "250 GSM art-card brochure formats from the workbook.",
     items: [
-      fixed("brochure-a4-single-side", "A4 Single Side", 2600, undefined, "8.5 × 11.25 in"),
-      fixed("brochure-a4-both-side-without-lamination", "A4 Both Side Without Lamination", 3000, undefined, "8.5 × 11.25 in"),
-      fixed("brochure-a4-both-side-lamination", "A4 Both Side Lamination", 3600, undefined, "8.5 × 11.25 in"),
-      fixed("brochure-a8-250-tearable-single-side", "A8 250 Tearable Single Side", 1300, undefined, "8.5 × 5.5 in"),
-      fixed("brochure-a8-250-tearable-front-back", "A8 250 Tearable Front Back", 1500, undefined, "8.5 × 5.5 in"),
-      fixed("brochure-a8-250-lamination-front-back", "A8 250 Lamination Front Back", 1800, undefined, "8.5 × 5.5 in"),
-    ],
+      fixed("brochure-a4-single-side", "A4 Single Side", 2600, "4-5 working days", "8.5 × 11.25 in"),
+      fixed("brochure-a4-both-side-without-lamination", "A4 Both Side Without Lamination", 3000, "4-5 working days", "8.5 × 11.25 in"),
+      fixed("brochure-a4-both-side-lamination", "A4 Both Side Lamination", 3600, "4-5 working days", "8.5 × 11.25 in"),
+      fixed("brochure-a8-250-tearable-single-side", "A8 250 Tearable Single Side", 1300, "4-5 working days", "8.5 × 5.5 in"),
+      fixed("brochure-a8-250-tearable-front-back", "A8 250 Tearable Front Back", 1500, "4-5 working days", "8.5 × 5.5 in"),
+      fixed("brochure-a8-250-lamination-front-back", "A8 250 Lamination Front Back", 1800, "4-5 working days", "8.5 × 5.5 in"),
+    ].map((item) => ({ ...item, quoteable: false })),
   },
   {
-    slug: "leaflet-cover", name: "Leaflet / Cover", description: "A4 art-paper leaflet and cover jobs.",
+    slug: "leaflet-cover", name: "Leaflet", description: "A4 art-paper leaflet jobs.",
     items: [
-      fixed("leaflet-a4-130-gsm-single-side", "A4 130 GSM Art Paper Single Side", 1700, "4-5 working days"),
-      fixed("leaflet-a4-130-gsm-front-back", "A4 130 GSM Art Paper Front Back", 2200, "2-3 working days"),
-      fixed("leaflet-a4-170-gsm-single-or-front-back", "A4 170 GSM Art Paper Single Side or Front Back", 2400, "4-5 working days"),
+      fixed("leaflet-a4-130-gsm-single-side", "A4 130 GSM Art Paper Single Side", 1700, "4-5 working days", "8.5 × 11.25 in"),
+      fixed("leaflet-a4-130-gsm-front-back", "A4 130 GSM Art Paper Front Back", 2200, "2-3 working days", "8.5 × 11.25 in"),
+      fixed("leaflet-a4-170-gsm-single-or-front-back", "A4 170 GSM Art Paper Single Side or Front Back", 2400, "4-5 working days", "8.5 × 11.25 in"),
     ],
   },
   {
     slug: "sticker", name: "Sticker", description: "Standard and Avery stickers priced by square inch with workbook minimums and blade charges.",
     items: [
-      { slug: "sticker-without-lamination", name: "Sticker Without Lamination (80/90)", shortDescription: "Square-inch pricing · minimum charge ₹250.", ruleType: "PER_SQ_INCH", ratePerSqInch: 33, rateUnit: "PAISE", minimumCharge: 250, bladeCharge: 50, productionTime: "4-5 working days", taxRate: 18, quoteable: false, artwork: { slots: [slot("DESIGN", "Sticker design")] } },
-      { slug: "sticker-with-lamination", name: "Sticker With Lamination (80/90)", shortDescription: "Square-inch pricing · minimum charge ₹300.", ruleType: "PER_SQ_INCH", ratePerSqInch: 37, rateUnit: "PAISE", minimumCharge: 300, bladeCharge: 50, productionTime: "4-5 working days", taxRate: 18, quoteable: false, artwork: { slots: [slot("DESIGN", "Sticker design")] } },
-      { slug: "avery-sticker-without-lamination", name: "Avery Sticker Without Lamination", shortDescription: "Square-inch pricing · minimum charge ₹350.", ruleType: "PER_SQ_INCH", ratePerSqInch: 42, rateUnit: "PAISE", minimumCharge: 350, bladeCharge: 50, productionTime: "5-7 working days", taxRate: 18, quoteable: false, artwork: { slots: [slot("DESIGN", "Sticker design")] } },
-      { slug: "avery-sticker-with-lamination", name: "Avery Sticker With Lamination", shortDescription: "Square-inch pricing · minimum charge ₹400.", ruleType: "PER_SQ_INCH", ratePerSqInch: 46, rateUnit: "PAISE", minimumCharge: 400, bladeCharge: 50, productionTime: "7-10 working days", taxRate: 18, quoteable: false, artwork: { slots: [slot("DESIGN", "Sticker design")] } },
+      { slug: "sticker-without-lamination", name: "Sticker Without Lamination (80/90)", shortDescription: "Square-inch pricing · minimum charge ₹250.", ruleType: "PER_SQ_INCH", ratePerSqInch: 33, rateUnit: "PAISE", minimumCharge: 250, bladeCharge: 50, productionTime: "4-5 working days", referenceQuantity: 1000, taxRate: 18, quoteable: false, artwork: { slots: [slot("DESIGN", "Sticker design")] } },
+      { slug: "sticker-with-lamination", name: "Sticker With Lamination (80/90)", shortDescription: "Square-inch pricing · minimum charge ₹300.", ruleType: "PER_SQ_INCH", ratePerSqInch: 37, rateUnit: "PAISE", minimumCharge: 300, bladeCharge: 50, productionTime: "4-5 working days", referenceQuantity: 1000, taxRate: 18, quoteable: false, artwork: { slots: [slot("DESIGN", "Sticker design")] } },
+      { slug: "avery-sticker-without-lamination", name: "Avery Sticker Without Lamination", shortDescription: "Square-inch pricing · minimum charge ₹350.", ruleType: "PER_SQ_INCH", ratePerSqInch: 42, rateUnit: "PAISE", minimumCharge: 350, bladeCharge: 50, productionTime: "5-7 working days", referenceQuantity: 1000, taxRate: 18, quoteable: false, artwork: { slots: [slot("DESIGN", "Sticker design")] } },
+      { slug: "avery-sticker-with-lamination", name: "Avery Sticker With Lamination", shortDescription: "Square-inch pricing · minimum charge ₹400.", ruleType: "PER_SQ_INCH", ratePerSqInch: 46, rateUnit: "PAISE", minimumCharge: 400, bladeCharge: 50, productionTime: "7-10 working days", referenceQuantity: 1000, taxRate: 18, quoteable: false, artwork: { slots: [slot("DESIGN", "Sticker design")] } },
     ],
   },
 ];

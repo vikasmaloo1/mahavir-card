@@ -63,6 +63,20 @@ export function CheckoutFlow() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    if (loading || !address.stateCode) return;
+    let active = true;
+    fetch(`/api/cart?kind=PURCHASE&stateCode=${address.stateCode}`, { cache: "no-store" })
+      .then((res) => res.json())
+      .then((payload) => {
+        if (active && payload?.success) {
+          setCart(payload.data);
+        }
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [address.stateCode, loading]);
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); setSubmitting(true);
     try {

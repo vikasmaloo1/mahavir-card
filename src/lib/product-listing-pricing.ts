@@ -109,7 +109,13 @@ export function conciseProductSpecification(name: string, description: string | 
   if (summary) return summary.charAt(0).toUpperCase() + summary.slice(1);
 
   const normalizedName = name.toLowerCase();
+  if (normalizedName.includes("thermal matt") && (normalizedName.includes("single") || normalizedName.includes("uv"))) {
+    return "Single / Front Back Printing";
+  }
   const subject = categoryName?.toLowerCase().includes("card") ? "visiting card" : "print job";
+  if ((normalizedName.includes("single") && (normalizedName.includes("front") || normalizedName.includes("back") || normalizedName.includes("both"))) || /single\s*(?:\/|\+)\s*front/i.test(normalizedName)) {
+    return "Single / Front Back Printing";
+  }
   if (/front[\s-]*back|both[\s-]*side|f[\s-]*b/.test(normalizedName)) return `Front-and-back ${subject} printing.`;
   if (/single[\s-]*side|\bsingle\b/.test(normalizedName)) return `Single-side ${subject} printing.`;
   return categoryName ? `${categoryName} specification.` : "Production-ready print specification.";

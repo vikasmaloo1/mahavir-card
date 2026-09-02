@@ -76,21 +76,26 @@ async function calculateBasePrice(productId: string, quantity: number, options: 
   if (selected?.rule.ruleType === "PER_SQ_INCH") {
     const width = positive(options.width, "Width");
     const height = positive(options.height, "Height");
-    const area = width * height;
-    const rate = positive(selected.formula.ratePerSqInch, "Square-inch rate");
+    const area = Number((width * height).toFixed(4));
+    const rate = positive(selected.formula.ratePaisePerSqInch ?? (Number(selected.formula.ratePerSqInch) < 1 ? Number(selected.formula.ratePerSqInch) * 100 : selected.formula.ratePerSqInch), "Square-inch rate");
     const minimumArea = Number(selected.formula.minimumArea || 0);
     if (minimumArea > 0 && area < minimumArea) throw new PricingValidationError(`This configuration requires at least ${minimumArea} square inches`);
     const minimumCharge = Number(selected.formula.minimumCharge || 0);
     const bladeCharge = Number(selected.formula.bladeCharge || 0);
     const bladeCount = Number(options.bladeCount || 0);
     if (!Number.isInteger(bladeCount) || bladeCount < 0) throw new PricingValidationError("Blade count must be a whole number");
-    const areaPrice = Math.max(area * rate, minimumCharge);
-    const extraCharge = bladeCount * bladeCharge;
+    
+    const rawAreaPrice = area * rate;
+    const singleBatchPrice = Math.max(rawAreaPrice, minimumCharge);
+    const refQty = selected.conditions.quantity || 1000;
+    const batchMultiplier = Math.max(1, Math.ceil(quantity / refQty));
+    const areaPrice = singleBatchPrice * batchMultiplier;
+    const extraCharge = bladeCount * bladeCharge * batchMultiplier;
     const expectedQuantity = selected.conditions.quantity;
     return {
       amount: areaPrice + extraCharge, rule: selected.rule.name, ruleId: selected.rule.id,
       taxInclusive: selected.rule.taxInclusive, taxRate: selected.rule.taxRate ? Number(selected.rule.taxRate) : null,
-      details: { quantity, width, height, area, ratePerSqInch: rate, minimumArea: minimumArea || null, minimumCharge: minimumCharge || null, bladeCount, bladeCharge: bladeCharge || null, extraCharge, source: "RATE.xlsx", unit: "reference_batch_area" },
+      details: { quantity, width, height, area, ratePerSqInch: rate, baseAreaPrice: rawAreaPrice, minimumArea: minimumArea || null, minimumCharge: minimumCharge || null, bladeCount, bladeCharge: bladeCharge || null, extraCharge, source: "RATE.xlsx", unit: "reference_batch_area" },
       warnings: expectedQuantity && expectedQuantity !== quantity ? [`This rate is configured for ${expectedQuantity.toLocaleString("en-IN")} quantity.`] : [],
     };
   }
@@ -242,7 +247,7 @@ export async function calculateProductPrice(productId: string, rawQuantity: numb
   // 4. Default to GJ
   const effectiveStateCode = (delivery.method === "COURIER" && delivery.stateCode && delivery.stateCode !== "*"
     ? delivery.stateCode
-    : (customer?.stateCode || input.stateCode || "GJ")
+    : (input.stateCode || customer?.stateCode || "GJ")
   ).toUpperCase();
 
   const taxResult = calculateTax({

@@ -4,7 +4,7 @@ export const catalogCategories = [
   { slug: "art-card", name: "Art Card", aliases: ["art-cards"] },
   { slug: "letterhead-envelope", name: "Letterhead / Envelope", aliases: ["letterhead", "letterheads", "envelope", "envelopes"] },
   { slug: "brochure", name: "Brochure", aliases: ["brochures"] },
-  { slug: "leaflet-cover", name: "Leaflet / Cover", aliases: ["leaflet", "leaflets", "cover", "covers"] },
+  { slug: "leaflet-cover", name: "Leaflet", aliases: ["leaflet", "leaflets", "leaflet-cover", "cover", "covers"] },
   { slug: "sticker", name: "Sticker", aliases: ["stickers", "labels-stickers"] },
 ] as const;
 
