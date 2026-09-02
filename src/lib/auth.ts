@@ -1,7 +1,10 @@
 import { betterAuth } from "better-auth";
 import { phoneNumber } from "better-auth/plugins";
+import { Pool } from "pg";
 
-import { pool as database } from "@/lib/db";
+const database = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
 
 export const auth = betterAuth({
   appName: "Mahavir Card",

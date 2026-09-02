@@ -16,14 +16,9 @@ const pool =
     connectionTimeoutMillis: 10_000,
   });
 
-// Cache on globalThis in every environment, not just dev: this pool is shared
-// with Better Auth (see src/lib/auth.ts). Without this, a warm serverless
-// container that re-evaluates this module (e.g. via a bundler re-require)
-// could open a second 10-connection pool on top of the first, and combined
-// with Better Auth previously opening its own separate pool, concurrent
-// requests could exhaust Neon's connection limit and surface as pages
-// failing to load.
-globalForDb.mahavirPool = pool;
+if (process.env.NODE_ENV !== "production") {
+  globalForDb.mahavirPool = pool;
+}
 
 export const db = drizzle(pool, { schema });
 export { pool };
