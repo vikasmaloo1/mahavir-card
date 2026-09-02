@@ -8,12 +8,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ProductImage } from "@/components/product-image";
 import { productFiltersToSearchParams, productListingHref, readProductFilters, type ProductFilters } from "@/lib/catalog-routing";
 import { RequirementQuoteModal, type RequirementContext } from "@/components/requirement-quote-modal";
-import { normalizeProductQuantity } from "@/lib/quantity-helper";
+import { normalizeProductQuantity, stepProductQuantity } from "@/lib/quantity-helper";
+import { ArtworkUploader, type ArtworkRequirement, type UploadedArtwork } from "@/components/artwork-uploader";
 
 type ProductDetail = {
-  pricingRules: Array<{ id: string; conditions: Record<string, unknown> }>;
+  pricingRules: Array<{ id: string; name: string; conditions: Record<string, unknown> }>;
   addons: Array<{ addonId: string; pricingRuleId: string | null; isDefault: boolean }>;
   deliveryRules: Array<{ deliveryMethod: "PICKUP" | "LOCAL_DELIVERY" | "COURIER"; stateCode: string }>;
+  artworkRequirements: Array<ArtworkRequirement & { pricingRuleId: string | null }>;
 };
 
 type ArtworkSummary = { formatLabel: string; fullDesign: string | null; safeArea: string | null; finalSize: string | null; requiredFiles: string[] };
@@ -83,6 +85,7 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
   const [quickAddedId, setQuickAddedId] = useState<string | null>(null);
   const [quickError, setQuickError] = useState<Record<string, string>>({});
   const [recentProducts, setRecentProducts] = useState<RecentProduct[]>([]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [query, setQuery] = useState(initialFilters.search);
   const [category, setCategory] = useState(initialFilters.category);
@@ -573,27 +576,31 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
               loading ? "opacity-60" : "opacity-100"
             }`}
           >
-            <div className="hidden grid-cols-[minmax(15rem,.9fr)_minmax(18rem,1.1fr)_10rem_minmax(12rem,.7fr)_minmax(16rem,.8fr)] gap-5 px-4 py-2 text-xs font-bold uppercase text-[var(--mc-muted)] xl:grid">
+            <div className="hidden grid-cols-[minmax(15rem,.9fr)_minmax(20rem,1.2fr)_10rem_minmax(20rem,1fr)] gap-5 px-4 py-2 text-xs font-bold uppercase text-[var(--mc-muted)] xl:grid">
               <span>Product</span>
               <span>Specification</span>
               <span>Price</span>
-              <span>Production</span>
               <span>Actions</span>
             </div>
 
             {items.map((item) => {
               const isUnavailableInState = item.stateAvailability?.status === "UNAVAILABLE_IN_STATE";
               const quickOrderEligible = item.orderable && !item.hasArtworkRequirement && !isUnavailableInState;
+              const expandableEligible = item.orderable && item.hasArtworkRequirement && !isUnavailableInState;
               const isAddingToCart = quickActionId === `${item.id}:cart`;
               const isBuyingNow = quickActionId === `${item.id}:buy`;
               const rowError = quickError[item.id];
+              const isExpanded = expandedId === item.id;
 
               return (
-                <article
+                <div
                   key={item.id}
-                  className={`grid gap-4 rounded-xl border bg-[var(--mc-paper)] p-4 shadow-[0_5px_16px_rgba(16,33,63,0.035)] sm:grid-cols-2 xl:grid-cols-[minmax(15rem,.9fr)_minmax(18rem,1.1fr)_10rem_minmax(12rem,.7fr)_minmax(16rem,.8fr)] xl:items-center ${
+                  className={`rounded-xl border bg-[var(--mc-paper)] shadow-[0_5px_16px_rgba(16,33,63,0.035)] ${
                     isUnavailableInState ? "border-amber-200" : "border-[var(--mc-line)]"
                   }`}
+                >
+                <article
+                  className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-[minmax(15rem,.9fr)_minmax(20rem,1.2fr)_10rem_minmax(20rem,1fr)] xl:items-center"
                 >
                   {/* Product Visual + Title */}
                   <div className="flex min-w-0 gap-3.5">
@@ -643,9 +650,6 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
                       </p>
                     ) : null}
                   </div>
-
-                  {/* Production Meta */}
-                  <ProductMeta item={item} />
 
                   {/* Actions & State Fallback */}
                   <div className="flex flex-col items-start gap-2 pt-2 sm:pt-0 sm:col-span-2 xl:col-span-1">
@@ -699,17 +703,36 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
                           </Link>
                         </div>
                       )
+                    ) : expandableEligible ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm"
+                        >
+                          {isExpanded ? "Close" : "Order now"} <ArrowRight size={16} className={isExpanded ? "rotate-90 transition-transform" : "transition-transform"} />
+                        </button>
+                        <Link href={productHref(item)} className="text-xs font-bold text-[var(--mc-muted)] underline hover:text-[var(--mc-accent)]">
+                          Details
+                        </Link>
+                      </div>
                     ) : (
                       <Link
                         href={productHref(item)}
                         className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm"
                       >
-                        {item.orderable ? "Order now" : "Configure"} <ArrowRight size={16} />
+                        Configure <ArrowRight size={16} />
                       </Link>
                     )}
                     {rowError ? <p className="text-xs font-semibold text-[#a53025]">{rowError} <Link href={productHref(item)} className="underline">Configure on the product page</Link></p> : null}
                   </div>
                 </article>
+                {isExpanded ? (
+                  <div className="border-t border-[var(--mc-line)] p-4">
+                    <InlineOrderPanel item={item} onAdded={() => setExpandedId(null)} />
+                  </div>
+                ) : null}
+                </div>
               );
             })}
 
@@ -857,27 +880,154 @@ function ProductSpecification({ item }: { item: Product }) {
   );
 }
 
-function cleanProductionTime(text: string | null) {
-  if (!text) return null;
-  return text.replace(/\bworking\s*days?\s+working\s*days?\b/gi, "working days").trim();
-}
+/**
+ * Inline "order without leaving the listing" panel for products that need CDR
+ * artwork — the plain one-click quickOrder() path can't be used for these since
+ * the cart API rejects artwork-required items with no artwork attached. This
+ * mirrors product-configurator.tsx's defaulting logic (first pricing rule,
+ * its default add-ons) but keeps everything inside the row: quantity, artwork
+ * upload, and Add to basket / Buy now. "Details" still links to the full
+ * product page for anyone who wants finer control (add-ons, delivery, etc).
+ */
+function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => void }) {
+  const router = useRouter();
+  const [details, setDetails] = useState<ProductDetail | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [ruleId, setRuleId] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState(1000);
+  const [artworks, setArtworks] = useState<Record<string, UploadedArtwork>>({});
+  const [submitting, setSubmitting] = useState<"cart" | "buy" | null>(null);
+  const [submitError, setSubmitError] = useState("");
 
-function ProductMeta({ item }: { item: Product }) {
-  const prodTime = cleanProductionTime(item.productionTime);
+  useEffect(() => {
+    let active = true;
+    fetch(`/api/products/${item.id}`, { cache: "no-store" })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!active) return;
+        if (!payload?.success) throw new Error(payload?.error?.message ?? "Could not load this product's options");
+        const data = payload.data as ProductDetail;
+        setDetails(data);
+        const rule = data.pricingRules[0];
+        if (rule) {
+          setRuleId(rule.id);
+          const conditionQuantity = rule.conditions?.quantity;
+          setQuantity(conditionQuantity ? Number(conditionQuantity) : normalizeProductQuantity(undefined, null, item.slug).normalizedQuantity);
+        }
+      })
+      .catch((caught) => { if (active) setLoadError(caught instanceof Error ? caught.message : "Could not load this product's options"); })
+      .finally(() => { if (active) setLoadingDetails(false); });
+    return () => { active = false; };
+  }, [item.id, item.slug]);
+
+  const requirement = details?.artworkRequirements.find((row) => row.pricingRuleId === ruleId) ?? details?.artworkRequirements.find((row) => !row.pricingRuleId) ?? null;
+  const slots = requirement?.slots?.length ? requirement.slots : [];
+  const requiredKeys = requirement?.artworkRequired ? (slots.length ? slots.filter((slot) => slot.required).map((slot) => slot.slotKey) : ["MAIN"]) : [];
+  const artworkReady = requiredKeys.every((key) => Boolean(artworks[key]));
+
+  async function submit(checkout: boolean) {
+    setSubmitting(checkout ? "buy" : "cart");
+    setSubmitError("");
+    const artworkIds = Object.fromEntries(Object.entries(artworks).map(([slotKey, artwork]) => [slotKey, artwork.id]));
+    const configuration = { quantity: String(quantity), pricingRuleId: ruleId, ...(Object.keys(artworkIds).length ? { artworkIds } : {}), ...(artworkIds.MAIN ? { artworkId: artworkIds.MAIN } : {}) };
+    try {
+      const response = await fetch("/api/cart/items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: item.id, quantity, configuration, kind: "PURCHASE" }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "Could not add this product to your basket");
+      if (checkout) { router.push("/checkout"); return; }
+      onAdded();
+      router.push("/cart");
+    } catch (caught) {
+      setSubmitError(caught instanceof Error ? caught.message : "Could not add this product to your basket");
+    } finally {
+      setSubmitting(null);
+    }
+  }
+
+  if (loadingDetails) return <p className="text-sm text-[var(--mc-muted)]">Loading order options&hellip;</p>;
+  if (!details || loadError) return <p className="text-sm font-semibold text-[#a53025]">{loadError || "Could not load this product's options."}</p>;
+
   return (
-    <div className="space-y-1 text-[13px] leading-5 text-[var(--mc-muted)]">
-      {prodTime ? (
-        <p className="inline-flex items-center gap-1.5 font-semibold text-[var(--mc-ink)]">
-          <Clock3 size={14} />
-          {prodTime}
-        </p>
+    <div className="space-y-4">
+      {details.pricingRules.length > 1 ? (
+        <div>
+          <p className="mb-2 text-xs font-bold uppercase text-[var(--mc-muted)]">Card stock and print</p>
+          <div className="flex flex-wrap gap-2">
+            {details.pricingRules.map((rule) => (
+              <button key={rule.id} type="button" onClick={() => setRuleId(rule.id)} className={`rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors ${ruleId === rule.id ? "border-[var(--mc-accent)] bg-[var(--mc-accent)] text-white" : "border-[var(--mc-line)] bg-white text-[var(--mc-ink)] hover:bg-[var(--mc-surface)]"}`}>
+                {rule.name}
+              </button>
+            ))}
+          </div>
+        </div>
       ) : null}
-      {item.hasAddons ? (
-        <p className="flex items-center gap-1.5">
-          <Sparkles size={14} />
-          Add-on available
-        </p>
+
+      <div className="flex items-center gap-3">
+        <span className="text-xs font-bold uppercase text-[var(--mc-muted)]">Quantity</span>
+        <div className="flex items-center rounded-full border border-[var(--mc-line)] bg-white">
+          <button type="button" onClick={() => setQuantity((current) => stepProductQuantity(current, "DOWN", null, item.slug))} className="grid size-9 place-items-center hover:bg-[var(--mc-surface)]" aria-label="Decrease quantity">−</button>
+          <span className="min-w-16 text-center text-sm font-bold text-[var(--mc-ink)]">{quantity.toLocaleString("en-IN")}</span>
+          <button type="button" onClick={() => setQuantity((current) => stepProductQuantity(current, "UP", null, item.slug))} className="grid size-9 place-items-center hover:bg-[var(--mc-surface)]" aria-label="Increase quantity">+</button>
+        </div>
+      </div>
+
+      {requirement?.artworkRequired ? (
+        <div className="space-y-3">
+          {slots.length ? slots.map((slot, index) => (
+            <ArtworkUploader
+              key={slot.id}
+              productId={item.id}
+              pricingRuleId={ruleId}
+              requirement={requirement}
+              slot={slot}
+              showRequirements={index === 0}
+              configuration={{ quantity: String(quantity) }}
+              artwork={artworks[slot.slotKey] ?? null}
+              onUploaded={(uploaded) => setArtworks((current) => ({ ...current, [slot.slotKey]: uploaded }))}
+              onRemoved={() => setArtworks((current) => { const next = { ...current }; delete next[slot.slotKey]; return next; })}
+            />
+          )) : (
+            <ArtworkUploader
+              productId={item.id}
+              pricingRuleId={ruleId}
+              requirement={requirement}
+              configuration={{ quantity: String(quantity) }}
+              artwork={artworks.MAIN ?? null}
+              onUploaded={(uploaded) => setArtworks((current) => ({ ...current, MAIN: uploaded }))}
+              onRemoved={() => setArtworks((current) => { const next = { ...current }; delete next.MAIN; return next; })}
+            />
+          )}
+        </div>
       ) : null}
+
+      {submitError ? <p className="text-sm font-semibold text-[#a53025]">{submitError}</p> : null}
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={!artworkReady || submitting !== null}
+          onClick={() => void submit(true)}
+          className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Zap size={15} />
+          {submitting === "buy" ? "Starting..." : "Buy now"}
+        </button>
+        <button
+          type="button"
+          disabled={!artworkReady || submitting !== null}
+          onClick={() => void submit(false)}
+          className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-4 py-2.5 text-sm font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <ShoppingBag size={15} />
+          {submitting === "cart" ? "Adding..." : "Add to basket"}
+        </button>
+        {!artworkReady ? <p className="w-full text-xs font-medium text-[var(--mc-muted)]">Upload the required artwork to enable ordering.</p> : null}
+      </div>
     </div>
   );
 }
