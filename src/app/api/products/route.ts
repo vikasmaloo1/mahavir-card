@@ -2,7 +2,7 @@ import { and, asc, eq, ilike, inArray, or } from "drizzle-orm";
 
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
 import { db } from "@/lib/db/server";
-import { artworkRequirements, artworkSlots, categories, pricingRules, productAddons, products, productVariants } from "@/lib/db/schema";
+import { artworkRequirements, artworkSlots, categories, pricingRules, productAddons, productImages, products, productVariants } from "@/lib/db/schema";
 import { formatDimensions } from "@/lib/formatting";
 import { getSession, requireRole } from "@/lib/permissions";
 import { conciseProductSpecification, deriveStartingPriceMap } from "@/lib/product-listing-pricing";
@@ -30,16 +30,23 @@ export async function GET(request: Request) {
     const page = Math.min(Math.max(Number(params.get("page")) || 1, 1), totalPages);
     const pageData = usesPagination ? data.slice((page - 1) * limit, page * limit) : data;
     const productIds = pageData.map(({ product }) => product.id);
-    const [rules, addonRows, artworkRows, slotRows] = productIds.length ? await Promise.all([
+    const [rules, addonRows, artworkRows, slotRows, imageRows] = productIds.length ? await Promise.all([
       db.select({ productId: pricingRules.productId, variantId: pricingRules.variantId, variantActive: productVariants.isActive, conditions: pricingRules.conditions, priceFormula: pricingRules.priceFormula, productionTime: pricingRules.productionTime, sortOrder: pricingRules.sortOrder, taxInclusive: pricingRules.taxInclusive, isActive: pricingRules.isActive }).from(pricingRules).leftJoin(productVariants, eq(pricingRules.variantId, productVariants.id)).where(and(inArray(pricingRules.productId, productIds), eq(pricingRules.isActive, true))).orderBy(asc(pricingRules.sortOrder)),
       db.select({ productId: productAddons.productId }).from(productAddons).where(and(inArray(productAddons.productId, productIds), eq(productAddons.isActive, true))),
       db.select({ id: artworkRequirements.id, productId: artworkRequirements.productId, pricingRuleId: artworkRequirements.pricingRuleId, artworkRequired: artworkRequirements.artworkRequired, acceptedFormats: artworkRequirements.acceptedFormats, designWidth: artworkRequirements.designWidth, designHeight: artworkRequirements.designHeight, designUnit: artworkRequirements.designUnit, safeAreaWidth: artworkRequirements.safeAreaWidth, safeAreaHeight: artworkRequirements.safeAreaHeight, finalWidth: artworkRequirements.finalWidth, finalHeight: artworkRequirements.finalHeight }).from(artworkRequirements).where(and(inArray(artworkRequirements.productId, productIds), eq(artworkRequirements.isActive, true))).orderBy(asc(artworkRequirements.createdAt)),
       db.select({ requirementId: artworkSlots.artworkRequirementId, productId: artworkRequirements.productId, name: artworkSlots.name, required: artworkSlots.required, sortOrder: artworkSlots.sortOrder }).from(artworkSlots).innerJoin(artworkRequirements, eq(artworkSlots.artworkRequirementId, artworkRequirements.id)).where(and(inArray(artworkRequirements.productId, productIds), eq(artworkRequirements.isActive, true), eq(artworkSlots.isActive, true))).orderBy(asc(artworkSlots.sortOrder)),
-    ]) : [[], [], [], []];
+      db.select({ productId: productImages.productId, imageUrl: productImages.imageUrl, isPrimary: productImages.isPrimary, sortOrder: productImages.sortOrder }).from(productImages).where(inArray(productImages.productId, productIds)).orderBy(asc(productImages.sortOrder)),
+    ]) : [[], [], [], [], []];
     const startingPrices = authenticated ? deriveStartingPriceMap(pageData.map(({ product }) => product), rules) : new Map();
     const productAddonsMap = new Set(addonRows.map((row) => row.productId));
     const productionTimeMap = new Map<string, string>();
     for (const rule of rules) if (rule.productionTime && !productionTimeMap.has(rule.productId)) productionTimeMap.set(rule.productId, rule.productionTime);
+    const primaryImageMap = new Map<string, string>();
+    for (const img of imageRows) {
+      if (img.isPrimary || !primaryImageMap.has(img.productId)) {
+        primaryImageMap.set(img.productId, img.imageUrl);
+      }
+    }
     const items = pageData.map(({ product, category: categoryData }) => {
       const requirements = artworkRows.filter((row) => row.productId === product.id && row.artworkRequired);
       const requirement = requirements.find((row) => !row.pricingRuleId) ?? requirements[0];
@@ -55,6 +62,7 @@ export async function GET(request: Request) {
       } : null;
       return {
         ...product,
+        imageUrl: primaryImageMap.get(product.id) || product.imageUrl || null,
         category: categoryData,
         listingSpecification: conciseProductSpecification(product.name, product.shortDescription, categoryData?.name ?? null),
         productSize: typeof configuration?.size === "string" && configuration.size.trim() ? configuration.size.trim() : null,

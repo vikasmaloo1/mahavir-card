@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 
 export type BannerItem = {
   id: string;
@@ -71,11 +71,33 @@ export function PromotionalBanner({
   const banner = banners[currentIndex] || banners[0];
   const imageSrc = banner.imageUrl || "/images/home-hero-printing.jpg";
 
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    const diff = touchStartX.current - touchEndX.current;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) nextSlide();
+      else prevSlide();
+    }
+  };
+
   return (
     <section
       className={`w-full overflow-hidden ${className}`}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       aria-roledescription="carousel"
       aria-label="Promotional highlights"
     >
@@ -143,7 +165,7 @@ export function PromotionalBanner({
                   key={idx}
                   type="button"
                   onClick={() => setCurrentIndex(idx)}
-                  className={`h-2 rounded-full transition-all ${
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
                     idx === currentIndex
                       ? "w-6 bg-[#1e3a5f]"
                       : "w-2 bg-slate-200 hover:bg-slate-300"
@@ -153,12 +175,12 @@ export function PromotionalBanner({
               ))}
             </div>
 
-            {/* Arrows */}
+            {/* Circular Arrows */}
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={prevSlide}
-                className="grid size-8 place-items-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
+                className="grid size-8 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
                 aria-label="Previous promotion"
               >
                 <ChevronLeft size={16} />
@@ -166,7 +188,7 @@ export function PromotionalBanner({
               <button
                 type="button"
                 onClick={nextSlide}
-                className="grid size-8 place-items-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
+                className="grid size-8 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
                 aria-label="Next promotion"
               >
                 <ChevronRight size={16} />

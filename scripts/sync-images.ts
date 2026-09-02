@@ -293,8 +293,13 @@ async function main() {
     console.log(`  ✓ Banner inserted: ${b.title} (${b.placement} slide #${b.sortOrder + 1})`);
   }
 
-  // Also duplicate banners for HOME_MID, CATALOG_TOP, and CART_CHECKOUT so slideshow works everywhere
+  // Seed for HOME_HERO, HOME_MID, CATALOG_TOP, and CART_CHECKOUT
   for (const b of bannerData) {
+    await db.insert(banners).values({
+      id: crypto.randomUUID(),
+      ...b,
+      placement: "HOME_HERO",
+    });
     await db.insert(banners).values({
       id: crypto.randomUUID(),
       ...b,

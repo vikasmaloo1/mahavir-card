@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 export type ProductImageItem = {
   id: string;
@@ -57,10 +57,34 @@ export function ProductImageSlideshow({
     setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
   };
 
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    const diff = touchStartX.current - touchEndX.current;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0) nextSlide();
+      else prevSlide();
+    }
+  };
+
   return (
     <div className="space-y-3" aria-roledescription="carousel" aria-label={`${productName} image gallery`}>
       {/* Main Large Viewer */}
-      <div className="group relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm">
+      <div
+        className="group relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm select-none"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <Image
           key={current.id + "-" + current.imageUrl}
           src={current.imageUrl}
@@ -105,11 +129,25 @@ export function ProductImageSlideshow({
             </button>
           </div>
         )}
+
+        {/* Mobile Swipe Pagination Dots */}
+        {slides.length > 1 && (
+          <div className="absolute inset-x-0 bottom-2.5 flex items-center justify-center gap-1 sm:hidden">
+            {slides.map((_, idx) => (
+              <span
+                key={idx}
+                className={`h-1.5 rounded-full transition-all ${
+                  idx === currentIndex ? "w-4 bg-white shadow-xs" : "w-1.5 bg-white/50"
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Thumbnail Row */}
+      {/* Flexible Thumbnail Strip for N images */}
       {slides.length > 1 && (
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
           {slides.map((slide, idx) => {
             const isActive = idx === currentIndex;
             return (
@@ -117,7 +155,7 @@ export function ProductImageSlideshow({
                 key={slide.id}
                 type="button"
                 onClick={() => setCurrentIndex(idx)}
-                className={`relative aspect-[4/3] overflow-hidden rounded-xl border transition-all ${
+                className={`relative h-20 w-24 shrink-0 overflow-hidden rounded-xl border transition-all ${
                   isActive
                     ? "border-[#1e3a5f] ring-2 ring-[#1e3a5f]/20 shadow-xs"
                     : "border-slate-200 opacity-70 hover:opacity-100 hover:border-slate-400"
@@ -128,12 +166,12 @@ export function ProductImageSlideshow({
                   src={slide.imageUrl}
                   alt={slide.altText || `Thumbnail ${idx + 1}`}
                   fill
-                  sizes="120px"
+                  sizes="96px"
                   className="object-cover"
                 />
                 <span
-                  className={`absolute inset-x-0 bottom-0 py-0.5 text-center text-[10px] font-bold uppercase tracking-wider ${
-                    isActive ? "bg-[#1e3a5f] text-white" : "bg-black/50 text-white"
+                  className={`absolute inset-x-0 bottom-0 py-0.5 text-center text-[9px] font-bold uppercase tracking-wider ${
+                    isActive ? "bg-[#1e3a5f] text-white" : "bg-black/60 text-white"
                   }`}
                 >
                   {slide.label || `Photo ${idx + 1}`}

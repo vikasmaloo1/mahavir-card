@@ -91,17 +91,242 @@ function OverviewForm({ product, categories, onSave }: { product: Row | null; ca
 }
 
 function ImagesPanel({ productId, rows, onChanged }: { productId: string; rows: Row[]; onChanged: () => Promise<void> }) {
-  const [file, setFile] = useState<File | null>(null); const [altText, setAltText] = useState(""); const [isPrimary, setIsPrimary] = useState(false); const [saving, setSaving] = useState(false); const [error, setError] = useState("");
-  async function request(url: string, options: RequestInit) { const response = await fetch(url, options); const payload = await response.json().catch(() => null); if (!response.ok) throw new Error(payload?.error?.message || "Image request failed."); return payload; }
-  async function upload(event: FormEvent) { event.preventDefault(); if (!file) return; setSaving(true); setError(""); try { const body = new FormData(); body.append("file", file); body.append("altText", altText); body.append("sortOrder", String(rows.length)); body.append("isPrimary", String(isPrimary)); await request(`/api/admin/products/${productId}/images`, { method: "POST", body }); setFile(null); setAltText(""); setIsPrimary(false); await onChanged(); } catch (caught) { setError(errorMessage(caught)); } finally { setSaving(false); } }
-  async function update(row: Row, data: Row) { setError(""); try { await request(`/api/admin/products/${productId}/images/${text(row.id)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }); await onChanged(); } catch (caught) { setError(errorMessage(caught)); } }
-  async function replace(row: Row, replacement: File) { setError(""); try { const body = new FormData(); body.append("file", replacement); body.append("altText", text(row.altText)); body.append("sortOrder", text(row.sortOrder)); body.append("isPrimary", String(bool(row.isPrimary))); await request(`/api/admin/products/${productId}/images/${text(row.id)}`, { method: "PATCH", body }); await onChanged(); } catch (caught) { setError(errorMessage(caught)); } }
-  async function remove(row: Row) { setError(""); try { await request(`/api/admin/products/${productId}/images/${text(row.id)}`, { method: "DELETE" }); await onChanged(); } catch (caught) { setError(errorMessage(caught)); } }
-  return <div><PanelTitle title="Product images" description="Upload customer-visible product images to Cloudflare R2. The bucket remains private and images are delivered through temporary read URLs." />
-    <form className="mt-5 grid gap-3 sm:grid-cols-2" onSubmit={upload}><label className="text-sm font-semibold"><span>Image file</span><input required accept="image/jpeg,image/png,image/webp,image/avif" type="file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} className="mt-1.5 block w-full border border-[#c9d2df] bg-white px-3 py-2 text-sm" /></label>{input("Alt text", "altText", { altText }, () => (event) => setAltText(event.target.value))}<label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={isPrimary} onChange={(event) => setIsPrimary(event.target.checked)} className="size-4 accent-[#2457b8]" />Set as primary image</label><button disabled={saving || !file} className="inline-flex w-fit items-center gap-2 bg-[#2457b8] px-3 py-2 text-sm font-bold text-white disabled:opacity-50"><ImagePlus size={15} />{saving ? "Uploading..." : "Upload image"}</button></form>
-    {error ? <Message tone="error">{error}</Message> : null}
-    <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{rows.map((row) => <article key={text(row.id)} className="border border-[#d7dce5] p-3"><a href={text(row.imageUrl)} target="_blank" className="block h-32 overflow-hidden bg-[#f5f7fa] bg-cover bg-center" style={{ backgroundImage: `url("${text(row.imageUrl)}")` }} aria-label={text(row.altText) || "Product image"} /><p className="mt-3 truncate text-sm font-bold">{text(row.altText) || text(row.originalFilename) || "Product image"}</p><div className="mt-2 flex items-center gap-2"><span className="text-xs text-[#607089]">Order</span><input type="number" min="0" defaultValue={text(row.sortOrder)} onBlur={(event) => { if (event.target.value !== text(row.sortOrder)) void update(row, { sortOrder: number(event.target.value) }); }} className="w-16 border border-[#c9d2df] px-2 py-1 text-xs" />{bool(row.isPrimary) ? <span className="text-xs font-bold text-[#2457b8]">Primary</span> : null}</div><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => void update(row, { isPrimary: true })} disabled={bool(row.isPrimary)} className="border border-[#c9d2df] px-2 py-1.5 text-xs font-bold disabled:opacity-50">Set primary</button><label className="cursor-pointer border border-[#c9d2df] px-2 py-1.5 text-xs font-bold">Replace<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" className="sr-only" onChange={(event) => { const replacement = event.target.files?.[0]; event.currentTarget.value = ""; if (replacement) void replace(row, replacement); }} /></label><DeleteButton onClick={() => remove(row)} /></div></article>)}</div>
-  </div>;
+  const [files, setFiles] = useState<File[]>([]);
+  const [altText, setAltText] = useState("");
+  const [isPrimary, setIsPrimary] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [uploadProgress, setUploadProgress] = useState("");
+
+  async function request(url: string, options: RequestInit) {
+    const response = await fetch(url, options);
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(payload?.error?.message || "Image request failed.");
+    return payload;
+  }
+
+  async function upload(event: FormEvent) {
+    event.preventDefault();
+    if (!files.length) return;
+    setSaving(true);
+    setError("");
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setUploadProgress(`Uploading ${i + 1} of ${files.length}...`);
+        const body = new FormData();
+        body.append("file", file);
+        body.append("altText", altText || file.name.replace(/\.[^/.]+$/, ""));
+        body.append("sortOrder", String(rows.length + i));
+        body.append("isPrimary", String(isPrimary && i === 0));
+        await request(`/api/admin/products/${productId}/images`, { method: "POST", body });
+      }
+      setFiles([]);
+      setAltText("");
+      setIsPrimary(false);
+      setUploadProgress("");
+      await onChanged();
+    } catch (caught) {
+      setError(errorMessage(caught));
+    } finally {
+      setSaving(false);
+      setUploadProgress("");
+    }
+  }
+
+  async function update(row: Row, data: Row) {
+    setError("");
+    try {
+      await request(`/api/admin/products/${productId}/images/${text(row.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      await onChanged();
+    } catch (caught) {
+      setError(errorMessage(caught));
+    }
+  }
+
+  async function move(row: Row, direction: "up" | "down") {
+    const currentIndex = rows.findIndex((r) => text(r.id) === text(row.id));
+    if (currentIndex < 0) return;
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= rows.length) return;
+    const targetRow = rows[targetIndex];
+    const currentOrder = number(row.sortOrder);
+    const targetOrder = number(targetRow.sortOrder);
+
+    // Swap orders
+    await update(row, { sortOrder: targetOrder });
+    await update(targetRow, { sortOrder: currentOrder });
+  }
+
+  async function replace(row: Row, replacement: File) {
+    setError("");
+    try {
+      const body = new FormData();
+      body.append("file", replacement);
+      body.append("altText", text(row.altText));
+      body.append("sortOrder", text(row.sortOrder));
+      body.append("isPrimary", String(bool(row.isPrimary)));
+      await request(`/api/admin/products/${productId}/images/${text(row.id)}`, { method: "PATCH", body });
+      await onChanged();
+    } catch (caught) {
+      setError(errorMessage(caught));
+    }
+  }
+
+  async function remove(row: Row) {
+    setError("");
+    try {
+      await request(`/api/admin/products/${productId}/images/${text(row.id)}`, { method: "DELETE" });
+      await onChanged();
+    } catch (caught) {
+      setError(errorMessage(caught));
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex flex-col justify-between gap-2 border-b border-[#e4e8ef] pb-4 sm:flex-row sm:items-center">
+        <div>
+          <h2 className="font-bold text-[#162237]">Product image gallery</h2>
+          <p className="mt-1 text-sm text-[#607089]">
+            Add N photos per product (Main, Angles, Close-ups, Realistic Mockups). Stored in Cloudflare R2.
+          </p>
+        </div>
+        <span className="inline-flex w-fit items-center rounded-full bg-[#edf3ff] px-3 py-1 text-xs font-bold text-[#2457b8]">
+          {rows.length} {rows.length === 1 ? "Image" : "Images"} configured
+        </span>
+      </div>
+
+      <form className="mt-5 grid gap-3 sm:grid-cols-2" onSubmit={upload}>
+        <label className="text-sm font-semibold">
+          <span>Select image(s) — multiple allowed</span>
+          <input
+            required
+            multiple
+            accept="image/jpeg,image/png,image/webp,image/avif"
+            type="file"
+            onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
+            className="mt-1.5 block w-full border border-[#c9d2df] bg-white px-3 py-2 text-sm"
+          />
+        </label>
+        {input("Alt text (optional)", "altText", { altText }, () => (event) => setAltText(event.target.value))}
+        <label className="flex items-center gap-2 text-sm font-semibold">
+          <input
+            type="checkbox"
+            checked={isPrimary}
+            onChange={(event) => setIsPrimary(event.target.checked)}
+            className="size-4 accent-[#2457b8]"
+          />
+          Set first uploaded image as primary
+        </label>
+        <button
+          disabled={saving || !files.length}
+          className="inline-flex w-fit items-center gap-2 bg-[#2457b8] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+        >
+          <ImagePlus size={15} />
+          {saving ? uploadProgress || "Uploading..." : `Upload ${files.length > 1 ? `${files.length} images` : "image"}`}
+        </button>
+      </form>
+
+      {error ? <Message tone="error">{error}</Message> : null}
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {rows.map((row, idx) => (
+          <article key={text(row.id)} className="relative border border-[#d7dce5] p-3 transition hover:border-[#2457b8]">
+            <a
+              href={text(row.imageUrl)}
+              target="_blank"
+              className="relative block h-36 overflow-hidden rounded-lg bg-[#f5f7fa] bg-cover bg-center"
+              style={{ backgroundImage: `url("${text(row.imageUrl)}")` }}
+              aria-label={text(row.altText) || "Product image"}
+            >
+              {bool(row.isPrimary) ? (
+                <span className="absolute left-2 top-2 rounded-md bg-[#2457b8] px-2 py-0.5 text-[11px] font-bold text-white shadow-xs">
+                  ★ Primary Photo
+                </span>
+              ) : null}
+            </a>
+
+            <p className="mt-2.5 truncate text-sm font-bold text-[#162237]">
+              {text(row.altText) || text(row.originalFilename) || "Product photo"}
+            </p>
+
+            <div className="mt-2 flex items-center justify-between gap-2 border-t border-[#f0f2f5] pt-2">
+              <div className="flex items-center gap-1 text-xs text-[#607089]">
+                <span>Order:</span>
+                <input
+                  type="number"
+                  min="0"
+                  defaultValue={text(row.sortOrder)}
+                  onBlur={(event) => {
+                    if (event.target.value !== text(row.sortOrder)) {
+                      void update(row, { sortOrder: number(event.target.value) });
+                    }
+                  }}
+                  className="w-14 border border-[#c9d2df] px-1.5 py-0.5 text-xs text-center font-bold"
+                />
+              </div>
+
+              {/* Up / Down Move Buttons */}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={idx === 0}
+                  onClick={() => void move(row, "up")}
+                  className="rounded border border-[#c9d2df] px-2 py-0.5 text-xs font-bold hover:bg-[#f0f4fa] disabled:opacity-30"
+                  title="Move earlier"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  disabled={idx === rows.length - 1}
+                  onClick={() => void move(row, "down")}
+                  className="rounded border border-[#c9d2df] px-2 py-0.5 text-xs font-bold hover:bg-[#f0f4fa] disabled:opacity-30"
+                  title="Move later"
+                >
+                  ↓
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void update(row, { isPrimary: true })}
+                disabled={bool(row.isPrimary)}
+                className="rounded border border-[#c9d2df] px-2.5 py-1 text-xs font-bold text-[#2457b8] hover:bg-[#edf3ff] disabled:opacity-40"
+              >
+                {bool(row.isPrimary) ? "Primary" : "Make primary"}
+              </button>
+
+              <label className="cursor-pointer rounded border border-[#c9d2df] px-2.5 py-1 text-xs font-bold text-[#52647e] hover:bg-slate-50">
+                Replace
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/avif"
+                  className="sr-only"
+                  onChange={(event) => {
+                    const replacement = event.target.files?.[0];
+                    event.currentTarget.value = "";
+                    if (replacement) void replace(row, replacement);
+                  }}
+                />
+              </label>
+
+              <div className="ml-auto">
+                <DeleteButton onClick={() => remove(row)} />
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function DescriptionPanel({ rows, mutate }: { rows: Row[]; mutate: CatalogMutation }) { const [title, setTitle] = useState(""); return <div><PanelTitle title="Structured description" description="Add customer-facing sections and rows in their display order." /><form className="mt-5 flex flex-col gap-3 sm:flex-row" onSubmit={async (event) => { event.preventDefault(); await mutate("POST", "SECTION", { title, sortOrder: rows.length }); setTitle(""); }}><input required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Section title, e.g. Print specifications" className="min-w-0 flex-1 border border-[#c9d2df] px-3 py-2.5 text-sm" /><button className="inline-flex items-center justify-center gap-2 bg-[#2457b8] px-3 py-2.5 text-sm font-bold text-white"><Plus size={16} />Add section</button></form><div className="mt-6 space-y-4">{rows.map((section) => <ContentSection key={text(section.id)} section={section} mutate={mutate} />)}</div></div>; }

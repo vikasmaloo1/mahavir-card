@@ -107,7 +107,7 @@ async function getDatabaseCatalogProduct(slug: string, authenticated: boolean): 
     images: galleryImages.length
       ? galleryImages.map((img, idx) => ({
           ...img,
-          label: idx === 0 ? "Full Sample" : idx === 1 ? "Finish Close-up" : "Studio View",
+          label: idx === 0 ? "Full Sample" : idx === 1 ? "Finish Close-up" : idx === 2 ? "Studio View" : `Photo ${idx + 1}`,
         }))
       : [
           {
