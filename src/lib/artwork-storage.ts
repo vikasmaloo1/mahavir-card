@@ -68,13 +68,26 @@ export async function initiateArtworkUpload(userId: string, input: InitiateArtwo
   let replacement: typeof artworks.$inferSelect | null = null;
   if (input.replaceArtworkId) {
     const [existing] = await db.select().from(artworks).where(and(eq(artworks.id, input.replaceArtworkId), eq(artworks.uploadedBy, userId), isNull(artworks.replacedAt))).limit(1);
-    if (!existing || existing.productId !== input.productId || existing.pricingRuleId !== (input.pricingRuleId ?? null) || existing.artworkSlotKey !== slotKey) throw new Error("Artwork to replace was not found.");
-    replacement = existing;
+    if (existing) {
+      replacement = existing;
+      if (existing.storageKey) {
+        await storage.deleteObject(existing.storageKey).catch(() => undefined);
+      }
+      await db.update(artworks).set({ replacedAt: new Date(), updatedAt: new Date() }).where(eq(artworks.id, existing.id));
+    }
   } else {
+    // If customer refreshed the page or selected a new file, automatically replace existing un-ordered file for this slot
     const existing = await db.select().from(artworks).where(and(eq(artworks.uploadedBy, userId), eq(artworks.productId, input.productId), input.pricingRuleId ? eq(artworks.pricingRuleId, input.pricingRuleId) : isNull(artworks.pricingRuleId), isNull(artworks.replacedAt)));
     const active = existing.filter((item) => item.artworkSlotKey === slotKey && item.status !== "UPLOAD_FAILED" && (item.status !== "UPLOADING" || !item.uploadExpiresAt || item.uploadExpiresAt > new Date()));
-    const maximum = requirement.slots.length ? 1 : requirement.maxFiles;
-    if (active.length >= maximum) throw new Error(`This artwork slot already has a file. Replace the existing file instead.`);
+    if (active.length > 0) {
+      for (const item of active) {
+        if (item.storageKey) {
+          await storage.deleteObject(item.storageKey).catch(() => undefined);
+        }
+        await db.update(artworks).set({ replacedAt: new Date(), updatedAt: new Date() }).where(eq(artworks.id, item.id));
+      }
+      replacement = active[0];
+    }
   }
 
   const [customer] = await db.select({ id: customers.id }).from(customers).where(eq(customers.userId, userId)).limit(1);
