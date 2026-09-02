@@ -21,15 +21,27 @@ const db = drizzle(pool);
 
 const defaultTerms = [
   {
+    title: "B2B Printing & Prohibited Content Policy",
+    titleGu: "B2B પ્રિન્ટીંગ અને પ્રતિબંધિત સામગ્રી નીતિ",
+    titleHi: "B2B प्रिंटिंग और प्रतिबंधित सामग्री नीति",
+    content: "IMPORTANT : - Mahavir Card is a B2B Company, which prints orders from Printing Press only, and these orders shall not contain Duplicate / Fake, Prohibited Content or without the permission or related organisation, will be sole responsibility of Printing Press / Channel Partner only. And if any Printing Agency Knowingly or unknowingly orders duplicate / Fake or prohibited content then its membership will be discontinued for lifetime.",
+    contentGu: "મહત્વપૂર્ણ : - મહાવીર કાર્ડ એ માત્ર પ્રિન્ટીંગ પ્રેસ માટેનું B2B પ્લેટફોર્મ છે, અને આ ઓર્ડરમાં કોઈપણ ડુપ્લિકેટ/નકલી, પ્રતિબંધિત સામગ્રી કે સંબંધિત સંસ્થાની પરવાનગી વગરની સામગ્રી હોવી જોઈએ નહીં, જેની સંપૂર્ણ જવાબદારી પ્રિન્ટીંગ પ્રેસ / ચેનલ પાર્ટનરની રહેશે. જો કોઈ પ્રિન્ટીંગ એજન્સી જાણી જોઈને કે અજાણતાં નકલી કે પ્રતિબંધિત સામગ્રી ઓર્ડર કરશે તો તેની સદસ્યતા આજીવન રદ કરવામાં આવશે.",
+    contentHi: "महत्वपूर्ण : - महावीर कार्ड केवल प्रिंटिंग प्रेस के लिए एक B2B कंपनी है, और इन ऑर्डरों में कोई डुप्लिकेट/नकली, प्रतिबंधित सामग्री या संबंधित संगठन की अनुमति के बिना सामग्री नहीं होनी चाहिए, जिसकी पूरी ज़िम्मेदारी प्रिंटिंग प्रेस / चैनल पार्टनर की होगी। यदि कोई प्रिंटिंग एजेंसी जानबूझकर या अनजाने में नकली या प्रतिबंधित सामग्री का ऑर्डर देती है तो उसकी सदस्यता आजीवन समाप्त कर दी जाएगी।",
+    category: "LEGAL",
+    isImportant: true,
+    sortOrder: 1,
+    isActive: true,
+  },
+  {
     title: "Color Matching & Job Profiling",
     titleGu: "કલર મેચિંગ અને જોબ પ્રોફાઇલિંગ",
     titleHi: "कलर मैचिंग और जॉब प्रोफाइलिंग",
-    content: "Same color will never match with any printing previously done (whether it is from us or from elsewhere, whether it is digital or offset), if you want the same color printing in future, then get job profile saved with us, extra charges will be payable against job profiling.",
-    contentGu: "અગાઉ કરેલા કોઈપણ પ્રિન્ટીંગ સાથે સમાન રંગ ક્યારેય મેળ ખાશે નહીં (પછી ભલે તે અમારા દ્વારા કરવામાં આવ્યું હોય કે અન્ય જગ્યાએથી, ડિજિટલ હોય કે ઑફસેટ). જો તમને ભવિષ્યમાં સમાન રંગનું પ્રિન્ટીંગ જોઈતું હોય, તો અમારી પાસે જોબ પ્રોફાઇલ સેવ કરાવો, જોબ પ્રોફાઇલિંગ માટે વધારાનો ચાર્જ ચૂકવવો પડશે.",
-    contentHi: "पहले किए गए किसी भी प्रिंटिंग से वही रंग कभी मेल नहीं खाएगा (चाहे वह हमारे द्वारा किया गया हो या कहीं और से, चाहे वह डिजिटल हो या ऑफसेट)। यदि आप भविष्य में समान रंग की प्रिंटिंग चाहते हैं, तो हमारे पास जॉब प्रोफाइल सेव करवाएं, जॉब प्रोफाइलिंग के लिए अतिरिक्त शुल्क देय होगा।",
+    content: "IMPORTANT : - Same color will never match with any printing previously done (whether it is from us or from elsewhere, whether it is digital or offset), if you want the same color printing in future, then get job profile saved with us, extra charges will be payable against job profiling.",
+    contentGu: "મહત્વપૂર્ણ : - અગાઉ કરેલા કોઈપણ પ્રિન્ટીંગ સાથે સમાન રંગ ક્યારેય મેળ ખાશે નહીં (પછી ભલે તે અમારા દ્વારા કરવામાં આવ્યું હોય કે અન્ય જગ્યાએથી, ડિજિટલ હોય કે ઑફસેટ). જો તમને ભવિષ્યમાં સમાન રંગનું પ્રિન્ટીંગ જોઈતું હોય, તો અમારી પાસે જોબ પ્રોફાઇલ સેવ કરાવો, જોબ પ્રોફાઇલિંગ માટે વધારાનો ચાર્જ ચૂકવવો પડશે.",
+    contentHi: "महत्वपूर्ण : - पहले किए गए किसी भी प्रिंटिंग से वही रंग कभी मेल नहीं खाएगा (चाहे वह हमारे द्वारा किया गया हो या कहीं और से, चाहे वह डिजिटल हो या ऑफसेट)। यदि आप भविष्य में समान रंग की प्रिंटिंग चाहते हैं, तो हमारे पास जॉब प्रोफाइल सेव करवाएं, जॉब प्रोफाइलिंग के लिए अतिरिक्त शुल्क देय होगा।",
     category: "COLOR_QUALITY",
-    isImportant: false,
-    sortOrder: 1,
+    isImportant: true,
+    sortOrder: 2,
     isActive: true,
   },
   {
@@ -41,42 +53,30 @@ const defaultTerms = [
     contentHi: "महत्वपूर्ण : - मैं स्वीकार करता/करती हूँ कि महावीर कार्ड की ज़िम्मेदारी माल कंपनी के गोदाम से बाहर निकलते ही समाप्त हो जाती है।",
     category: "DISPATCH_TRANSIT",
     isImportant: true,
-    sortOrder: 2,
+    sortOrder: 3,
+    isActive: true,
+  },
+  {
+    title: "Club & Commercial Printing Guidelines",
+    titleGu: "ક્લબ અને કોમર્શિયલ પ્રિન્ટીંગ માર્ગદર્શિકા",
+    titleHi: "क्लब और कमर्शियल प्रिंटिंग दिशानिर्देश",
+    content: "IMPORTANT : - In all products with club printing (like visiting cards, ATM pouches, letter heads, envelopes etc.) color variations (up to 10-15%) and mechanical cutting tolerances (±1.5 mm to 2 mm) are natural in gang-run printing and fully accepted across the printing industry.",
+    contentGu: "મહત્વપૂર્ણ : - ક્લબ પ્રિન્ટીંગવાળા તમામ ઉત્પાદનોમાં (જેમ કે વિઝીટીંગ કાર્ડ, એટીએમ પાઉચ, લેટર હેડ, કવર વગેરે) કલરમાં સામાન્ય તફાવત (૧૦-૧૫%) અને કટીંગમાં ±૧.૫ mm થી ૨ mm સુધીનો તફાવત ગેંગ-રન પ્રિન્ટીંગનો સામાન્ય હિસ્સો છે.",
+    contentHi: "महत्वपूर्ण : - क्लब प्रिंटिंग वाले सभी उत्पादों में (जैसे विजिटिंग कार्ड, एटीएम पाउच, लेटर हेड, लिफाफे आदि) रंग में मामूली अंतर (10-15%) और कटिंग में ±1.5 मिमी से 2 मिमी तक का अंतर गैंग-रन प्रिंटिंग में स्वाभाविक और मान्य है।",
+    category: "COLOR_QUALITY",
+    isImportant: true,
+    sortOrder: 4,
     isActive: true,
   },
   {
     title: "Jurisdiction & Governing Law",
     titleGu: "કાનૂની ન્યાયક્ષેત્ર",
     titleHi: "कानूनी क्षेत्राधिकार",
-    content: "All the legal matters are subject to Ahmedabad Jurisdiction Only.",
-    contentGu: "તમામ કાનૂની બાબતો અને વિવાદો ફક્ત અમદાવાદ ન્યાયક્ષેત્ર હેઠળ રહેશે.",
-    contentHi: "सभी कानूनी मामले और विवाद केवल अहमदाबाद क्षेत्राधिकार के अधीन हैं।",
+    content: "IMPORTANT : - All the legal matters are subject to Ahmedabad Jurisdiction Only.",
+    contentGu: "મહત્વપૂર્ણ : - તમામ કાનૂની બાબતો અને વિવાદો ફક્ત અમદાવાદ ન્યાયક્ષેત્ર હેઠળ રહેશે.",
+    contentHi: "महत्वपूर्ण : - सभी कानूनी मामले और विवाद केवल अहमदाबाद क्षेत्राधिकार के अधीन हैं।",
     category: "LEGAL",
-    isImportant: false,
-    sortOrder: 3,
-    isActive: true,
-  },
-  {
-    title: "B2B Trade Policy & Prohibited Content",
-    titleGu: "B2B ટ્રેડ પોલિસી અને પ્રતિબંધિત સામગ્રી નિયમો",
-    titleHi: "B2B ट्रेड पॉलिसी और प्रतिबंधित सामग्री नियम",
-    content: "Mahavir Card is a dedicated B2B trade printing platform that prints orders strictly for verified printing presses, graphic designers, advertising agencies, and channel partners only. We do not accept fake certificates, government identity documents, illegal currency copies, defamatory material, or copyrighted logos without verified written authorization. The customer/partner bears sole and complete legal liability for all submitted designs.",
-    contentGu: "મહાવીર કાર્ડ એ માત્ર પ્રિન્ટીંગ પ્રેસ, ગ્રાફિક ડિઝાઇનર્સ, જાહેરાત એજન્સીઓ અને ચેનલ પાર્ટનર્સ માટેનું B2B ટ્રેડ પ્લેટફોર્મ છે. કાનૂની પરવાનગી વગર નકલી ઓળખપત્રો, સરકારી દસ્તાવેજો, ચલણી નોટો કે કૉપિરાઇટ કરેલા લોગો છાપવાની સખત મનાઈ છે. સબમિટ કરેલી આર્ટવર્ક માટે ગ્રાહક પોતે ૧૦૦% કાનૂની રીતે જવાબદાર રહેશે.",
-    contentHi: "महावीर कार्ड केवल प्रिंटिंग प्रेस, ग्राफिक डिजाइनरों, विज्ञापन एजेंसियों और चैनल भागीदारों के लिए एक B2B ट्रेड प्रिंटिंग प्लेटफॉर्म है। कानूनी अनुमति के बिना नकली पहचान पत्र, सरकारी दस्तावेज, मुद्रा या कॉपीराइट सामग्री छापना सख्त वर्जित है। सबमिट की गई आर्टवर्क के लिए ग्राहक पूरी तरह कानूनी रूप से जिम्मेदार रहेगा।",
-    category: "LEGAL",
-    isImportant: false,
-    sortOrder: 4,
-    isActive: true,
-  },
-  {
-    title: "Cutting & Trimming Tolerances",
-    titleGu: "કટીંગ અને ટ્રીમીંગ માર્જિન મર્યાદા",
-    titleHi: "कटिंग और ट्रिमिंग मार्जिन टॉलरेंस",
-    content: "In commercial offset and digital gang-run printing, a mechanical cutting tolerance of up to ±1.5 mm to 2 mm is standard across sheet finishing. All essential text, phone numbers, and critical logo elements must strictly remain within the specified safe margin (e.g. 83 × 47 mm on standard visiting cards) to prevent trimming clipping.",
-    contentGu: "કોમર્શિયલ ઑફસેટ અને ગેંગ-રન પ્રિન્ટીંગમાં ±1.5 mm થી 2 mm સુધીનો મિકેનિકલ કટીંગ તફાવત સામાન્ય ગણાય છે. તમામ મહત્વપૂર્ણ ટેક્સ્ટ, મોબાઈલ નંબર અને લોગો કટીંગમાં કપાઈ ન જાય તે માટે સેફ માર્જિન (૮૩ × ૪૭ mm) ની અંદર જ રાખવા જરૂરી છે.",
-    contentHi: "कमर्शियल ऑफसेट और गैंग-रन प्रिंटिंग में ±1.5 मिमी से 2 मिमी तक का कटिंग अंतर सामान्य माना जाता है। सभी महत्वपूर्ण टेक्स्ट, फोन नंबर और लोगो को कटिंग से सुरक्षित रखने के लिए सेफ मार्जिन (83 × 47 मिमी) के अंदर रखना अनिवार्य है।",
-    category: "COLOR_QUALITY",
-    isImportant: false,
+    isImportant: true,
     sortOrder: 5,
     isActive: true,
   },
@@ -131,7 +131,7 @@ const defaultTerms = [
 ];
 
 async function seed() {
-  console.log("Seeding Terms & Conditions...");
+  console.log("Seeding Terms & Conditions matching user layout...");
   
   for (const item of defaultTerms) {
     const [existing] = await db
@@ -157,10 +157,10 @@ async function seed() {
           updatedAt: new Date(),
         })
         .where(eq(terms.id, existing.id));
-      console.log(`Updated term: ${item.title}`);
+      console.log(`Updated term #${item.sortOrder}: ${item.title}`);
     } else {
       await db.insert(terms).values(item);
-      console.log(`Inserted term: ${item.title}`);
+      console.log(`Inserted term #${item.sortOrder}: ${item.title}`);
     }
   }
 

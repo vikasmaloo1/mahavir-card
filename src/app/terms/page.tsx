@@ -58,23 +58,6 @@ export default async function TermsPage() {
           <span className="text-[#0f172a]">Terms & Conditions</span>
         </nav>
 
-        {/* Subtle Page Header */}
-        <div className="mb-8 border-b border-slate-200 pb-6">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#2457b8]">
-              Trade Guidelines
-            </span>
-            <span className="text-slate-300">·</span>
-            <span className="text-xs text-slate-500">Ahmedabad, Gujarat</span>
-          </div>
-          <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-            Terms & Conditions
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm sm:text-[15px] text-slate-600 leading-relaxed">
-            Commercial offset & digital printing terms, quality guidelines, dispatch responsibilities, and trading conditions for Mahavir Card.
-          </p>
-        </div>
-
         {/* Interactive Multilingual Terms Viewer */}
         <TermsViewer terms={termsList} />
       </main>

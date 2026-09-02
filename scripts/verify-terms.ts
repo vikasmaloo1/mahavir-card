@@ -62,15 +62,15 @@ async function verifyTerms() {
   console.log("✓ User Term 1: Color matching & job profiling clause verified");
 
   // 4. User Required Term 2: Goods Responsibility (IMPORTANT in RED visual effect)
-  const importantTerm = allTerms.find((t) => t.isImportant === true);
-  assert.ok(importantTerm, "Important term with isImportant: true must exist");
-  assert.equal(importantTerm.isImportant, true, "Important term must have isImportant = true");
+  const godownTerm = allTerms.find((t) => t.content.toLowerCase().includes("godown"));
+  assert.ok(godownTerm, "Goods responsibility term must exist");
+  assert.equal(godownTerm.isImportant, true, "Goods responsibility term must have isImportant = true");
   assert.ok(
-    importantTerm.content.includes("I accept Mahavir Card's responsibility ceases the moment the goods leave company's godown"),
+    godownTerm.content.includes("I accept Mahavir Card's responsibility ceases the moment the goods leave company's godown"),
     "Goods responsibility clause must match exact text with Mahavir Card",
   );
-  assert.ok(importantTerm.contentGu?.includes("મહાવીર કાર્ડ"), "Gujarati translation of godown responsibility present");
-  assert.ok(importantTerm.contentHi?.includes("महावीर कार्ड"), "Hindi translation of godown responsibility present");
+  assert.ok(godownTerm.contentGu?.includes("મહાવીર કાર્ડ"), "Gujarati translation of godown responsibility present");
+  assert.ok(godownTerm.contentHi?.includes("महावीर कार्ड"), "Hindi translation of godown responsibility present");
   console.log("✓ User Term 2: Godown dispatch responsibility (Mahavir Card / isImportant) verified");
 
   // 5. User Required Term 3: Legal Jurisdiction
