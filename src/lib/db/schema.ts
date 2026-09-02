@@ -282,6 +282,26 @@ export const banners = pgTable(
   (table) => [index("banners_active_placement_idx").on(table.isActive, table.placement, table.sortOrder)],
 );
 
+export const terms = pgTable(
+  "terms",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    title: text("title").notNull(),
+    titleGu: text("titleGu"),
+    titleHi: text("titleHi"),
+    content: text("content").notNull(),
+    contentGu: text("contentGu"),
+    contentHi: text("contentHi"),
+    category: text("category").notNull().default("GENERAL"),
+    isImportant: boolean("isImportant").notNull().default(false),
+    sortOrder: integer("sortOrder").notNull().default(0),
+    isActive: boolean("isActive").notNull().default(true),
+    updatedBy: uuid("updatedBy").references(() => user.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (table) => [index("terms_active_sort_idx").on(table.isActive, table.sortOrder)],
+);
+
 export const productContentSections = pgTable(
   "product_content_sections",
   {

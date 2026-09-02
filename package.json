@@ -14,6 +14,7 @@
     "db:check": "drizzle-kit check",
     "db:seed": "tsx scripts/seed-rate.ts",
     "db:seed:rate": "tsx scripts/seed-rate.ts",
+    "db:seed:terms": "tsx scripts/seed-terms.ts",
     "vercel-build": "npm run db:deploy:vercel && next build",
     "rate:verify": "tsx scripts/verify-rate-catalog.ts",
     "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",

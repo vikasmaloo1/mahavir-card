@@ -412,5 +412,19 @@ export const artworkUpdateSchema = z.object({
   notes: z.string().trim().max(1000).optional(),
 });
 
+export const termSchema = z.object({
+  title: z.string().trim().min(2).max(250),
+  titleGu: z.string().trim().max(250).nullable().optional(),
+  titleHi: z.string().trim().max(250).nullable().optional(),
+  content: z.string().trim().min(5).max(5000),
+  contentGu: z.string().trim().max(5000).nullable().optional(),
+  contentHi: z.string().trim().max(5000).nullable().optional(),
+  category: z.string().trim().min(2).max(50).default("GENERAL"),
+  isImportant: z.boolean().default(false),
+  sortOrder: z.number().int().min(0).default(0),
+  isActive: z.boolean().default(true),
+});
+
 export type QuoteInput = z.infer<typeof quoteSchema>;
 export type OrderInput = z.infer<typeof orderSchema>;
+export type TermInput = z.infer<typeof termSchema>;

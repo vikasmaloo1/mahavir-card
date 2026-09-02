@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BarChart3, Boxes, Building2, CreditCard, FileText, FolderKanban, HardDrive, Image as ImageIcon, LayoutDashboard, LogOut, Megaphone, Package, Settings2, Truck, Users, WalletCards, WandSparkles } from "lucide-react";
+import { BarChart3, Boxes, Building2, CreditCard, FileCheck, FileText, FolderKanban, HardDrive, Image as ImageIcon, LayoutDashboard, LogOut, Megaphone, Package, Settings2, Truck, Users, WalletCards, WandSparkles } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { LogoutButton } from "@/components/logout-button";
@@ -14,7 +14,7 @@ const navGroups: readonly NavGroup[] = [
   { label: "", links: [["Dashboard", "/admin", LayoutDashboard]] },
   { label: "Catalog", links: [["Products", "/admin/products", Boxes], ["Categories", "/admin/categories", FolderKanban], ["Add-ons", "/admin/addons", Settings2], ["Pricing", "/admin/pricing", WandSparkles], ["Delivery", "/admin/delivery", Truck]] },
   { label: "Sales", links: [["Orders", "/admin/orders", Package], ["Quotes", "/admin/quotes", FileText], ["Inquiries", "/admin/inquiries", BarChart3], ["Payments", "/admin/payments", CreditCard]] },
-  { label: "Operations", links: [["Customers", "/admin/customers", Users], ["Wallet requests", "/admin/wallet", WalletCards], ["Artwork", "/admin/artworks", FileText], ["Notices", "/admin/notices", Megaphone], ["Banners", "/admin/banners", ImageIcon]] },
+  { label: "Operations", links: [["Customers", "/admin/customers", Users], ["Wallet requests", "/admin/wallet", WalletCards], ["Artwork", "/admin/artworks", FileText], ["Notices", "/admin/notices", Megaphone], ["Banners", "/admin/banners", ImageIcon], ["Terms & conditions", "/admin/terms", FileCheck]] },
   { label: "Settings", links: [["Admins", "/admin/admins", Users], ["Business settings", "/admin/business-settings", Building2], ["Storage", "/admin/storage", HardDrive]] },
 ] as const;
 const mobileLinks = navGroups.flatMap((group) => group.links);
