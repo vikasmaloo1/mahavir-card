@@ -96,13 +96,17 @@ export const rateCatalog: RateCatalogCategory[] = [
   {
     slug: "brochure", name: "Brochure", description: "250 GSM art-card brochure formats from the workbook.",
     items: [
-      fixed("brochure-a4-single-side", "A4 Single Side", 2600, "4-5 working days", "8.5 × 11.25 in"),
-      fixed("brochure-a4-both-side-without-lamination", "A4 Both Side Without Lamination", 3000, "4-5 working days", "8.5 × 11.25 in"),
-      fixed("brochure-a4-both-side-lamination", "A4 Both Side Lamination", 3600, "4-5 working days", "8.5 × 11.25 in"),
-      fixed("brochure-a8-250-tearable-single-side", "A8 250 Tearable Single Side", 1300, "4-5 working days", "8.5 × 5.5 in"),
-      fixed("brochure-a8-250-tearable-front-back", "A8 250 Tearable Front Back", 1500, "4-5 working days", "8.5 × 5.5 in"),
-      fixed("brochure-a8-250-lamination-front-back", "A8 250 Lamination Front Back", 1800, "4-5 working days", "8.5 × 5.5 in"),
-    ].map((item) => ({ ...item, quoteable: false })),
+      fixed("brochure-a4-single-side", "250 GSM A4 Single Side", 2600, "4-5 working days", "8.5 × 11.25 in"),
+      fixed("brochure-a4-both-side-without-lamination", "250 GSM A4 Both Side Without Lamination", 3000, "4-5 working days", "8.5 × 11.25 in"),
+      fixed("brochure-a4-both-side-lamination", "250 GSM A4 Both Side Lamination", 3600, "4-5 working days", "8.5 × 11.25 in"),
+      fixed("brochure-a8-250-tearable-single-side", "250 GSM A8 Tearable Single Side", 1300, "4-5 working days", "8.5 × 5.5 in"),
+      fixed("brochure-a8-250-tearable-front-back", "250 GSM A8 Tearable Front Back", 1500, "4-5 working days", "8.5 × 5.5 in"),
+      fixed("brochure-a8-250-lamination-front-back", "250 GSM A8 Lamination Front Back", 1800, "4-5 working days", "8.5 × 5.5 in"),
+    ].map((item) => ({
+      ...item,
+      quoteable: false,
+      shortDescription: `${item.name} · 250 GSM Art Card · ${item.size}`,
+    })),
   },
   {
     slug: "leaflet-cover", name: "Leaflet", description: "A4 art-paper leaflet jobs.",

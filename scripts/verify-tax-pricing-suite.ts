@@ -356,8 +356,10 @@ async function runSuite() {
   for (const b of brochures) {
     assert.equal(b.quoteable, false, `Brochure ${b.slug} must have quoteable: false`);
     assert.equal(b.productionTime, "4-5 working days", `Brochure ${b.slug} productionTime must be '4-5 working days'`);
+    assert.ok(b.name.includes("250 GSM"), `Brochure ${b.slug} name '${b.name}' must contain '250 GSM'`);
+    assert.ok((b.description || "").includes("250 GSM"), `Brochure ${b.slug} description '${b.description}' must contain '250 GSM'`);
   }
-  console.log(`✓ All ${brochures.length} Brochure products verified with quoteable: false & 4-5 working days`);
+  console.log(`✓ All ${brochures.length} Brochure products verified with quoteable: false, 4-5 working days & 250 GSM name/description`);
 
   // -------------------------------------------------------------
   // PART 10: ART CARD, BLADE PRICING, & PREMIUM CARD CHECKS
