@@ -66,13 +66,13 @@ export function PromotionalBanner({
     return () => clearInterval(interval);
   }, [banners.length, isPaused, nextSlide]);
 
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+
   if (!loaded || !banners.length) return null;
 
   const banner = banners[currentIndex] || banners[0];
   const imageSrc = banner.imageUrl || "/images/home-hero-printing.jpg";
-
-  const touchStartX = useRef(0);
-  const touchEndX = useRef(0);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;

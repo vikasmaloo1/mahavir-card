@@ -21,6 +21,8 @@ export function ProductImageSlideshow({
   categoryName: string;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
 
   // If no images provided, supply default fallback slides
   const slides: ProductImageItem[] =
@@ -56,9 +58,6 @@ export function ProductImageSlideshow({
   const prevSlide = () => {
     setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
   };
-
-  const touchStartX = useRef(0);
-  const touchEndX = useRef(0);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
