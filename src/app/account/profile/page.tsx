@@ -7,7 +7,7 @@ import { StorefrontHeader } from "@/components/storefront-header";
 import { auth } from "@/lib/auth/server";
 
 export default async function CustomerProfilePage() {
-  if (!await auth.api.getSession({ headers: await headers() })) redirect("/login");
+  if (!await auth.api.getSession({ headers: await headers() })) redirect("/login?next=%2Faccount%2Fprofile");
   return (
     <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
       <StorefrontHeader />

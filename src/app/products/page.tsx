@@ -35,12 +35,15 @@ export async function generateMetadata({ searchParams }: PageProps<"/products">)
 }
 
 export default async function ProductsPage({ searchParams }: PageProps<"/products">) {
-  if (!await auth.api.getSession({ headers: await headers() })) redirect("/login");
   const rawParams = await searchParams;
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(rawParams)) {
     if (typeof value === "string") params.set(key, value);
     else if (Array.isArray(value)) value.forEach((entry) => params.append(key, entry));
+  }
+  if (!await auth.api.getSession({ headers: await headers() })) {
+    const query = params.toString();
+    redirect(`/login?next=${encodeURIComponent(query ? `/products?${query}` : "/products")}`);
   }
   const initialFilters = readProductFilters(params);
   const canonicalParams = productFiltersToSearchParams(initialFilters);

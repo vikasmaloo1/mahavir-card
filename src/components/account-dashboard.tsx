@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, FileQuestion, FileText, MapPin, Package, Palette, RefreshCw } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, FileQuestion, FileText, MapPin, Package, Palette, RefreshCw, ShoppingBag } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { formatInr } from "@/lib/formatting";
@@ -18,10 +19,27 @@ type AccountData = {
 };
 
 export function AccountDashboard() {
+  const router = useRouter();
   const [data, setData] = useState<AccountData | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [signedOut, setSignedOut] = useState(false);
+  const [reorderingId, setReorderingId] = useState<string | null>(null);
+  const [reorderError, setReorderError] = useState("");
+
+  async function reorder(orderId: string) {
+    setReorderingId(orderId);
+    setReorderError("");
+    try {
+      const response = await fetch(`/api/orders/${orderId}/reorder`, { method: "POST" });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "This order could not be reordered");
+      router.push("/cart");
+    } catch (caught) {
+      setReorderError(caught instanceof Error ? caught.message : "This order could not be reordered");
+      setReorderingId(null);
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,7 +88,35 @@ export function AccountDashboard() {
       </section>
       <div className="mt-7 grid gap-3 sm:grid-cols-3"><Metric label="Open quotes" value={openQuotes} Icon={FileText} /><Metric label="Active orders" value={activeOrders} Icon={Package} /><Metric label="Artwork files" value={data.artworks.length} Icon={Palette} /></div>
       <div className="mt-7 grid gap-5 xl:grid-cols-2">
-        <Records id="orders" title="Orders" items={data.orders} empty="No orders yet." action="Browse products" href="/products" itemHref={(item) => `/account/orders/${item.id}`} render={(item) => <><span><strong>{item.orderNumber}</strong><small className="mt-1 block text-[var(--mc-muted)]">{labelStatus(item.status)} / {date(item.createdAt)}</small></span><strong>{formatInr(item.total)}</strong></>} />
+        <section id="orders" className="scroll-mt-36 rounded-xl border border-[var(--mc-line)] bg-white p-5 sm:p-6 shadow-sm">
+          <h2 className="font-bold text-[var(--mc-ink)]">Orders</h2>
+          {reorderError ? <p className="mt-3 rounded-lg border border-[#efb7b7] bg-[#fff4f4] p-3 text-xs font-semibold text-[#9b2525]">{reorderError}</p> : null}
+          <div className="mt-4 space-y-3">
+            {data.orders.length ? data.orders.map((item) => (
+              <div key={item.id} className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] pt-3 text-sm">
+                <Link href={`/account/orders/${item.id}`} className="min-w-0 flex-1 hover:text-[var(--mc-accent)] transition-colors">
+                  <strong>{item.orderNumber}</strong>
+                  <small className="mt-1 block text-[var(--mc-muted)]">{labelStatus(item.status)} / {date(item.createdAt)}</small>
+                </Link>
+                <strong className="shrink-0">{formatInr(item.total)}</strong>
+                <button
+                  type="button"
+                  disabled={reorderingId === item.id}
+                  onClick={() => void reorder(item.id)}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-accent)] hover:bg-[var(--mc-surface)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <ShoppingBag size={13} />
+                  {reorderingId === item.id ? "Adding..." : "Reorder"}
+                </button>
+              </div>
+            )) : (
+              <div className="border-t border-dashed border-[var(--mc-line)] pt-5 text-sm text-[var(--mc-muted)]">
+                <p>No orders yet.</p>
+                <Link href="/products" className="mt-3 inline-flex items-center gap-2 font-bold text-[var(--mc-accent)]">Browse products <ArrowRight size={15} /></Link>
+              </div>
+            )}
+          </div>
+        </section>
         <Records id="quotes" title="Quotes" items={data.quotes} empty="No quote requests yet." action="Open quote basket" href="/quote" itemHref={(item) => `/account/quotes/${item.id}`} render={(item) => <><span><strong>{item.quoteNumber}</strong><small className="mt-1 block text-[var(--mc-muted)]">{labelStatus(item.status)} / {date(item.createdAt)}</small></span><strong>{formatInr(item.total)}</strong></>} />
         <Records title="Inquiries" items={data.inquiries} empty="No inquiries yet." action="Contact Mahavir Card" href="/contact" render={(item) => <><span className="min-w-0"><strong className="block truncate">{item.subject || "General inquiry"}</strong><small className="mt-1 block text-[var(--mc-muted)]">{labelStatus(item.status)} / {date(item.createdAt)}</small></span><FileQuestion size={18} className="shrink-0 text-[var(--mc-accent)]" /></>} />
         <Records title="Artwork" items={data.artworks} empty="No CDR artwork uploaded yet." action="Choose a product" href="/products" render={(item) => <><span className="min-w-0"><strong className="block truncate">{item.fileName}</strong><small className="mt-1 block text-[var(--mc-muted)]">{labelStatus(item.status)} / {date(item.createdAt)}</small></span><Palette size={18} className="shrink-0 text-[var(--mc-accent)]" /></>} />

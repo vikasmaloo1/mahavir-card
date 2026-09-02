@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AccountPage() {
-  if (!await auth.api.getSession({ headers: await headers() })) redirect("/login");
+  if (!await auth.api.getSession({ headers: await headers() })) redirect("/login?next=%2Faccount");
   return (
     <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
       <StorefrontHeader />

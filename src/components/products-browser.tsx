@@ -1,12 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Clock3, FileUp, RefreshCw, Search, SlidersHorizontal, Sparkles, X, MapPin, AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, Check, Clock3, FileUp, RefreshCw, Search, ShoppingBag, SlidersHorizontal, Sparkles, X, MapPin, AlertCircle, Zap } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ProductImage } from "@/components/product-image";
 import { productFiltersToSearchParams, productListingHref, readProductFilters, type ProductFilters } from "@/lib/catalog-routing";
 import { RequirementQuoteModal, type RequirementContext } from "@/components/requirement-quote-modal";
+import { normalizeProductQuantity } from "@/lib/quantity-helper";
+
+type ProductDetail = {
+  pricingRules: Array<{ id: string; conditions: Record<string, unknown> }>;
+  addons: Array<{ addonId: string; pricingRuleId: string | null; isDefault: boolean }>;
+  deliveryRules: Array<{ deliveryMethod: "PICKUP" | "LOCAL_DELIVERY" | "COURIER"; stateCode: string }>;
+};
 
 type ArtworkSummary = { formatLabel: string; fullDesign: string | null; safeArea: string | null; finalSize: string | null; requiredFiles: string[] };
 type StateAvailability = {
@@ -58,7 +66,11 @@ type SearchMeta = {
 };
 
 export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFilters }) {
+  const router = useRouter();
   const [items, setItems] = useState<Product[]>([]);
+  const [quickActionId, setQuickActionId] = useState<string | null>(null);
+  const [quickAddedId, setQuickAddedId] = useState<string | null>(null);
+  const [quickError, setQuickError] = useState<Record<string, string>>({});
   const [categories, setCategories] = useState<Category[]>([]);
   const [query, setQuery] = useState(initialFilters.search);
   const [category, setCategory] = useState(initialFilters.category);
@@ -253,6 +265,54 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
     setIsQuoteModalOpen(true);
   };
 
+  /**
+   * Adds a product straight from the listing using its default configuration
+   * (first pricing rule, its default add-ons, pickup delivery if offered) —
+   * for products that need no artwork or manual configuration this reduces
+   * ordering to one or two clicks. Only offered for orderable, no-artwork
+   * products (see the "quickOrderEligible" check below); everything else
+   * keeps routing through the full product page.
+   */
+  async function quickOrder(item: Product, checkout: boolean) {
+    const actionKey = `${item.id}:${checkout ? "buy" : "cart"}`;
+    setQuickActionId(actionKey);
+    setQuickError((current) => ({ ...current, [item.id]: "" }));
+    try {
+      const detailResponse = await fetch(`/api/products/${item.id}`, { cache: "no-store" });
+      const detailPayload = await detailResponse.json().catch(() => null);
+      if (!detailResponse.ok || !detailPayload?.success) throw new Error("Could not load this product's options");
+      const details = detailPayload.data as ProductDetail;
+      const rule = details.pricingRules[0];
+      if (!rule) throw new Error("This product needs configuration on its own page");
+
+      const values: Record<string, string> = {};
+      for (const [key, value] of Object.entries(rule.conditions ?? {})) values[key] = String(value);
+      if (!values.quantity) values.quantity = String(normalizeProductQuantity(undefined, null, item.slug).normalizedQuantity);
+
+      const scopedAddons = details.addons.filter((addon) => addon.pricingRuleId === rule.id);
+      const availableAddons = scopedAddons.length ? scopedAddons : details.addons.filter((addon) => addon.pricingRuleId === null);
+      const addonIds = availableAddons.filter((addon) => addon.isDefault).map((addon) => addon.addonId);
+      const pickup = details.deliveryRules.find((deliveryRule) => deliveryRule.deliveryMethod === "PICKUP");
+      const configuration: Record<string, unknown> = { ...values, pricingRuleId: rule.id, addonIds, ...(pickup ? { delivery: { method: "PICKUP", stateCode: "*" } } : {}) };
+
+      const response = await fetch("/api/cart/items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: item.id, quantity: Number(values.quantity), configuration, kind: "PURCHASE" }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "Could not add this product to your basket");
+
+      if (checkout) { router.push("/checkout"); return; }
+      setQuickAddedId(item.id);
+      window.setTimeout(() => setQuickAddedId((current) => (current === item.id ? null : current)), 2500);
+    } catch (caught) {
+      setQuickError((current) => ({ ...current, [item.id]: caught instanceof Error ? caught.message : "Could not add this product to your basket" }));
+    } finally {
+      setQuickActionId(null);
+    }
+  }
+
   return (
     <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
       <div className="mx-auto max-w-[1440px] px-4 py-7 lg:px-8 lg:py-10">
@@ -417,6 +477,10 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
 
             {items.map((item) => {
               const isUnavailableInState = item.stateAvailability?.status === "UNAVAILABLE_IN_STATE";
+              const quickOrderEligible = item.orderable && !item.hasArtworkRequirement && !isUnavailableInState;
+              const isAddingToCart = quickActionId === `${item.id}:cart`;
+              const isBuyingNow = quickActionId === `${item.id}:buy`;
+              const rowError = quickError[item.id];
 
               return (
                 <article
@@ -478,7 +542,7 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
                   <ProductMeta item={item} />
 
                   {/* Actions & State Fallback */}
-                  <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0 sm:col-span-2 xl:col-span-1">
+                  <div className="flex flex-col items-start gap-2 pt-2 sm:pt-0 sm:col-span-2 xl:col-span-1">
                     {isUnavailableInState ? (
                       <button
                         type="button"
@@ -496,6 +560,39 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
                         <span>Request Quote</span>
                         <ArrowRight size={16} />
                       </button>
+                    ) : quickOrderEligible ? (
+                      quickAddedId === item.id ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 border border-emerald-200">
+                            <Check size={15} /> Added to basket
+                          </span>
+                          <Link href="/cart" className="text-xs font-bold text-[var(--mc-accent)] underline">View basket</Link>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={Boolean(quickActionId)}
+                            onClick={() => void quickOrder(item, true)}
+                            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <Zap size={15} />
+                            {isBuyingNow ? "Starting..." : "Buy now"}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={Boolean(quickActionId)}
+                            onClick={() => void quickOrder(item, false)}
+                            className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-4 py-2.5 text-sm font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <ShoppingBag size={15} />
+                            {isAddingToCart ? "Adding..." : "Add to basket"}
+                          </button>
+                          <Link href={productHref(item)} className="text-xs font-bold text-[var(--mc-muted)] underline hover:text-[var(--mc-accent)]">
+                            Details
+                          </Link>
+                        </div>
+                      )
                     ) : (
                       <Link
                         href={productHref(item)}
@@ -504,6 +601,7 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
                         {item.orderable ? "Order now" : "Configure"} <ArrowRight size={16} />
                       </Link>
                     )}
+                    {rowError ? <p className="text-xs font-semibold text-[#a53025]">{rowError} <Link href={productHref(item)} className="underline">Configure on the product page</Link></p> : null}
                   </div>
                 </article>
               );

@@ -7,7 +7,7 @@ import { StorefrontHeader } from "@/components/storefront-header";
 import { auth } from "@/lib/auth/server";
 
 export default async function CustomerQuotePage({ params }: PageProps<"/account/quotes/[id]">) {
-  if (!await auth.api.getSession({ headers: await headers() })) redirect("/login");
   const { id } = await params;
+  if (!await auth.api.getSession({ headers: await headers() })) redirect(`/login?next=${encodeURIComponent(`/account/quotes/${id}`)}`);
   return <div className="min-h-screen bg-[var(--mc-surface)]"><StorefrontHeader /><CustomerRecordDetail kind="quote" id={id} /><StorefrontFooter /></div>;
 }

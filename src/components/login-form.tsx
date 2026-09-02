@@ -2,12 +2,21 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, LockKeyhole, Mail, Smartphone, UserRound } from "lucide-react";
 import { FormEvent, useState } from "react";
 
 import { isValidIndianPhoneNumber, normalizePhoneNumber } from "@/lib/phone";
 import { commerceStates } from "@/lib/india-states";
+
+function isSafeNextPath(value: string | null): value is string {
+  return Boolean(value) && value!.startsWith("/") && !value!.startsWith("//");
+}
+
+/** B2B customers land directly on the product listing (fast repeat ordering); B2C lands on the account overview. */
+function destinationForCustomerType(customerType: string | null | undefined) {
+  return customerType === "B2B" ? "/products" : "/account";
+}
 
 type Method = "email" | "phone";
 
@@ -19,6 +28,8 @@ function messageFrom(payload: unknown, fallback: string) {
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextParam = searchParams.get("next");
   const [method, setMethod] = useState<Method>("email");
   const [isSignup, setIsSignup] = useState(false);
   const [name, setName] = useState("");
@@ -70,7 +81,7 @@ export function LoginForm() {
         const profileResult = await profileResponse.json().catch(() => null);
         if (!profileResponse.ok) throw new Error(messageFrom(profileResult, "Account created, but the customer profile could not be saved"));
 
-        router.replace("/account");
+        router.replace(isSafeNextPath(nextParam) ? nextParam : destinationForCustomerType(customerType));
         router.refresh();
         return;
       }
@@ -88,7 +99,16 @@ export function LoginForm() {
       const result = await response.json().catch(() => null);
       if (!response.ok) throw new Error(messageFrom(result, "Invalid login details"));
 
-      router.replace("/account");
+      if (isSafeNextPath(nextParam)) {
+        router.replace(nextParam);
+      } else {
+        // No explicit return-to: send B2B straight to the product listing (fastest repeat-order path),
+        // B2C to the account overview. Determined from the customer record, not guessed.
+        const profileResponse = await fetch("/api/account/profile", { cache: "no-store" });
+        const profilePayload = await profileResponse.json().catch(() => null);
+        const customerType = profileResponse.ok && profilePayload?.success ? profilePayload.data?.customer?.customerType : null;
+        router.replace(destinationForCustomerType(customerType));
+      }
       router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "We couldn't sign you in. Check your connection and try again.");

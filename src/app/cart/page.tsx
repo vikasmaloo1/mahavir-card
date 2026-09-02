@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CartPage() {
-  if (!await auth.api.getSession({ headers: await headers() })) redirect("/login");
+  if (!await auth.api.getSession({ headers: await headers() })) redirect("/login?next=%2Fcart");
   return (
     <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
       <StorefrontHeader />

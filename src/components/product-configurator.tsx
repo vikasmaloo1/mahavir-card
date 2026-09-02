@@ -2,6 +2,7 @@
 
 import { ArrowRight, Check, Minus, Plus, ShoppingBag, AlertCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { ArtworkUploader, type ArtworkRequirement, type UploadedArtwork } from "@/components/artwork-uploader";
@@ -54,6 +55,7 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
   const [artworks, setArtworks] = useState<Record<string, UploadedArtwork>>({});
   const [status, setStatus] = useState<"idle" | "quote" | "cart">("idle");
   const [basketError, setBasketError] = useState("");
+  const [basketSignInRequired, setBasketSignInRequired] = useState(false);
   const [jobName, setJobName] = useState("");
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [quoteContext, setQuoteContext] = useState<RequirementContext>({});
@@ -181,7 +183,11 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
     const editing = Boolean(editItemId);
     const response = await fetch(editing ? `/api/cart/items/${editItemId}` : "/api/cart/items", { method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editing ? payloadBody : { ...payloadBody, kind }) });
     const payload = await response.json();
-    if (!response.ok) { setBasketError(response.status === 401 ? "Sign in to save this item." : payload.error?.message ?? "Could not save this item."); return; }
+    if (!response.ok) {
+      setBasketSignInRequired(response.status === 401);
+      setBasketError(response.status === 401 ? "Your session has expired. Sign in to save this item." : payload.error?.message ?? "Could not save this item.");
+      return;
+    }
     setStatus(kind === "QUOTE" ? "quote" : "cart");
     if (editing) { router.push(kind === "QUOTE" ? "/quote" : "/cart"); return; }
     if (checkout) router.push("/checkout");
@@ -332,7 +338,16 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
             ) : null}
             {estimate.warnings[0] ? <p className="mt-3 border-l-2 border-[#c78b30] pl-3 text-[13px] leading-5 text-[#805910]">{estimate.warnings[0]}</p> : null}
           </div>
-          {basketError ? <p className="text-[15px] font-semibold text-[#a53025]">{basketError}</p> : null}
+          {basketError ? (
+            <p className="text-[15px] font-semibold text-[#a53025]">
+              {basketError}
+              {basketSignInRequired && typeof window !== "undefined" ? (
+                <Link href={`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`} className="ml-2 font-bold underline">
+                  Sign in
+                </Link>
+              ) : null}
+            </p>
+          ) : null}
           {estimate.warnings.some((w) => w.toLowerCase().includes("not available for the selected state") || w.toLowerCase().includes("delivery option is not available")) ? (
             <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50/80 p-4">
               <div className="flex items-start gap-3">

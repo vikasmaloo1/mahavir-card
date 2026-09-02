@@ -7,6 +7,6 @@ import { StorefrontFooter } from "@/components/storefront-footer";
 import { WalletDashboard } from "@/components/wallet-dashboard";
 
 export default async function WalletPage() {
-  if (!await auth.api.getSession({ headers: await headers() })) redirect("/login");
+  if (!await auth.api.getSession({ headers: await headers() })) redirect("/login?next=%2Faccount%2Fwallet");
   return <div className="min-h-screen bg-[var(--mc-surface)]"><StorefrontHeader /><WalletDashboard /><StorefrontFooter /></div>;
 }

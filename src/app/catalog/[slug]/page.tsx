@@ -148,7 +148,15 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   const query = await searchParams;
   if (slug === "business-cards") redirect("/products?category=visiting-card");
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) redirect("/login");
+  if (!session) {
+    const search = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+      if (typeof value === "string") search.set(key, value);
+      else if (Array.isArray(value)) value.forEach((entry) => search.append(key, entry));
+    }
+    const queryString = search.toString();
+    redirect(`/login?next=${encodeURIComponent(`/catalog/${slug}${queryString ? `?${queryString}` : ""}`)}`);
+  }
   const product = await getDatabaseCatalogProduct(slug, true);
   if (!product) notFound();
   const descriptor = `${product.category} · Commercial printing`;
