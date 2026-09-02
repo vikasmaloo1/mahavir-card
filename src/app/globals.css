@@ -15,16 +15,16 @@
 @import "swagger-ui-react/swagger-ui.css";
 
 :root {
-  /* The storefront theme is intentionally controlled from this small set. */
-  --mc-surface: #f5f8ff;
+  /* The storefront theme: Warm white / ivory backgrounds, Deep charcoal text, Print navy accents */
+  --mc-surface: #fcfbf9;
   --mc-paper: #ffffff;
-  --mc-ink: #10213f;
-  --mc-muted: #5d6f8d;
-  --mc-accent: #2864dc;
-  --mc-accent-dark: #174baa;
-  --mc-navy: #0d2042;
-  --mc-accent-soft: #eaf1ff;
-  --mc-line: #d7e1f2;
+  --mc-ink: #0f172a;
+  --mc-muted: #475569;
+  --mc-accent: #1e3a5f;
+  --mc-accent-dark: #152a45;
+  --mc-navy: #091526;
+  --mc-accent-soft: #f1f5f9;
+  --mc-line: #e2e8f0;
   --background: var(--mc-surface);
   --foreground: var(--mc-ink);
 }

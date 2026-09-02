@@ -61,7 +61,7 @@ export function CustomerNotices({ placement = "GLOBAL" }: { placement?: "GLOBAL"
     if (!sequenceRef.current || !marqueeItems.length) return;
 
     const updateDuration = (width: number) => {
-      const pixelsPerSecond = window.innerWidth < 640 ? 45 : 45;
+      const pixelsPerSecond = 36;
       setAnimationDurationSeconds(Math.max(60, Math.ceil(width / pixelsPerSecond)));
     };
     const observer = new ResizeObserver(([entry]) => updateDuration(entry.contentRect.width));
@@ -73,7 +73,7 @@ export function CustomerNotices({ placement = "GLOBAL" }: { placement?: "GLOBAL"
   if (!loaded || !displayItems.length) return null;
 
   return (
-    <aside className="customer-notice-strip relative z-20 w-full overflow-hidden border-b border-[#c7d4e7] bg-[#f7faff] text-[var(--mc-ink)] shadow-[0_2px_8px_rgba(25,55,105,0.06)]" aria-label="Customer announcements">
+    <aside className="customer-notice-strip relative z-20 w-full overflow-hidden border-b border-slate-200/80 bg-white py-2 text-slate-800 shadow-xs" aria-label="Customer announcements">
       {staticNotice ? (
         <div className="ticker-static flex h-full min-w-0 items-center justify-center overflow-hidden whitespace-nowrap px-4">
           <NoticeTickerItem item={staticNotice} staticMode />
@@ -98,20 +98,20 @@ export function CustomerNotices({ placement = "GLOBAL" }: { placement?: "GLOBAL"
 }
 
 function NoticeTickerItem({ item, ariaHidden, staticMode = false }: { item: CustomerNoticeItem; ariaHidden?: boolean; staticMode?: boolean }) {
-  const markerColor = item.tone === "WARNING" ? "bg-[#526b91]" : item.tone === "SUCCESS" ? "bg-[#2f7668]" : "bg-[#2b65c8]";
+  const markerColor = item.tone === "WARNING" ? "bg-amber-600" : item.tone === "SUCCESS" ? "bg-emerald-600" : "bg-[#1e3a5f]";
 
   return (
-    <span className={"ticker-notice inline-flex min-w-0 items-center " + (staticMode ? "max-w-full" : "")} aria-hidden={ariaHidden}>
-      <span className={"ticker-marker mr-3 size-2 shrink-0 rotate-45 " + markerColor} aria-hidden="true" />
-      {item.title?.trim() ? <span className="ticker-title shrink-0 font-extrabold uppercase text-[#10213f]">{item.title}</span> : null}
-      {item.message?.trim() ? <span className="ticker-message ml-3 min-w-0 font-medium text-[#4d5f7c]">{item.message}</span> : null}
+    <span className={"ticker-notice inline-flex min-w-0 items-center text-sm sm:text-base " + (staticMode ? "max-w-full" : "")} aria-hidden={ariaHidden}>
+      <span className={"ticker-marker mr-2.5 size-1.5 shrink-0 rotate-45 " + markerColor} aria-hidden="true" />
+      {item.title?.trim() ? <span className="ticker-title shrink-0 font-bold uppercase tracking-wider text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-800">{item.title}</span> : null}
+      {item.message?.trim() ? <span className="ticker-message ml-2.5 min-w-0 font-normal text-slate-700 text-sm sm:text-[15px]">{item.message}</span> : null}
       {item.linkLabel && item.linkUrl ? (
-        <Link href={item.linkUrl} tabIndex={ariaHidden ? -1 : 0} className="ticker-cta ml-4 inline-flex shrink-0 items-center gap-1.5 border-b border-[#7da2e8] pb-0.5 font-bold text-[#2457b8] transition-colors hover:border-[#163f8f] hover:text-[#163f8f]">
+        <Link href={item.linkUrl} tabIndex={ariaHidden ? -1 : 0} className="ticker-cta ml-3 inline-flex shrink-0 items-center gap-1 font-bold text-[#1e3a5f] hover:underline text-xs sm:text-sm">
           <span>{item.linkLabel}</span>
           <span aria-hidden="true">&rarr;</span>
         </Link>
       ) : null}
-      {!staticMode ? <span className="ticker-separator mx-8 shrink-0 text-lg font-bold text-[#9badc7] sm:mx-12 lg:mx-14" aria-hidden="true">{"\u00b7"}</span> : null}
+      {!staticMode ? <span className="ticker-separator mx-6 shrink-0 text-slate-300 font-bold sm:mx-10" aria-hidden="true">{"\u00b7"}</span> : null}
     </span>
   );
 }

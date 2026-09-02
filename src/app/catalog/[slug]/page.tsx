@@ -92,15 +92,137 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   const returnPath = safeProductReturnPath(query.returnTo);
   const categoryHref = `/products?category=${product.categorySlug}`;
 
-  return <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
-    <StorefrontHeader />
-    <CustomerNotices placement="ORDERING" />
-    <div className="mx-auto max-w-[1440px] px-4 py-7 xl:px-8"><div className="flex flex-wrap items-center justify-between gap-3"><div><BackButton fallbackHref={returnPath} label="Back to products" /><nav aria-label="Breadcrumb" className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-[var(--mc-muted)]"><Link href="/" className="hover:text-[var(--mc-accent)]">Home</Link><span>/</span><Link href={returnPath} className="hover:text-[var(--mc-accent)]">Order now</Link><span>/</span><Link href={categoryHref} className="hover:text-[var(--mc-accent)]">{product.category}</Link><span>/</span><span aria-current="page" className="font-semibold text-[var(--mc-ink)]">{product.name}</span></nav></div><p className="text-sm font-semibold text-[var(--mc-muted)]">{descriptor}</p></div>
-      <div className="mt-6 grid gap-7 xl:grid-cols-[minmax(0,.52fr)_minmax(0,1fr)] xl:items-start"><section><div className="relative aspect-[1.1] overflow-hidden rounded-lg border border-[#d5deeb] bg-[#edf2f8] sm:aspect-[1.25]"><ProductImage src={product.imageUrl} alt={`${product.name} printed sample`} slug={product.slug} priority /><div className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-2 text-xs font-bold uppercase text-[#2457b8]">{product.category}</div></div>
-        <div className="grid gap-5 border-b border-[#dfe5ef] py-6 sm:grid-cols-3"><div><Clock3 size={20} className="text-[#2457b8]" /><p className="mt-2 text-xs font-bold uppercase text-[#607089]">Turnaround</p><p className="mt-1 text-[15px] font-bold">{product.turnaround}</p></div><div><ShieldCheck size={20} className="text-[#2457b8]" /><p className="mt-2 text-xs font-bold uppercase text-[#607089]">Purchase route</p><p className="mt-1 text-[15px] font-bold">{product.orderable ? (product.quoteable ? "Buy now or request quote" : "Direct buy online") : "Quote confirmed by team"}</p></div><div><FileUp size={20} className="text-[#2457b8]" /><p className="mt-2 text-xs font-bold uppercase text-[#607089]">Artwork</p><p className="mt-1 text-[15px] font-bold">{product.artworkFormatLabel}</p></div></div>
-        <div className="pt-6"><p className="text-xs font-bold uppercase text-[#2457b8]">Product information</p><h1 className="mt-2 text-3xl font-bold sm:text-4xl">{product.name}</h1><p className="mt-3 max-w-2xl text-base leading-7 text-[#52647e]">{product.description}</p><div className="mt-5 inline-flex flex-wrap items-center gap-x-3 gap-y-1 rounded-full border border-[#c7d7f3] bg-[var(--mc-accent-soft)] px-4 py-2.5"><span className="text-xs font-bold uppercase text-[var(--mc-accent)]">Price</span><strong className="text-base">{product.priceLabel}</strong>{product.startingPrice ? <span className="text-xs text-[var(--mc-muted)]">{product.taxInclusive ? "GST included" : "GST charged additionally as applicable"}</span> : null}</div></div>
-      </section><aside className="xl:sticky xl:top-[116px]"><ProductConfigurator product={product} editItemId={typeof query.editItem === "string" ? query.editItem : undefined} editKind={query.kind === "QUOTE" ? "QUOTE" : "PURCHASE"} /></aside></div>
-    </div>
-    <StorefrontFooter />
-  </main>;
+  // Derive material finish badges from product characteristics
+  const finishes: Array<{ label: string; tone: string }> = [];
+  const lower = (product.name + " " + (product.description || "")).toLowerCase();
+  if (lower.includes("velvet")) finishes.push({ label: "Velvet Soft-Touch", tone: "bg-slate-900 text-white" });
+  if (lower.includes("thermal") || lower.includes("matt")) finishes.push({ label: "Thermal Matt", tone: "bg-slate-100 text-slate-800" });
+  if (lower.includes("spot uv") || lower.includes(" uv")) finishes.push({ label: "Selective Spot UV", tone: "bg-amber-50 text-amber-900 border border-amber-200/70" });
+  if (lower.includes("foil")) finishes.push({ label: "Metallic Foil Stamping", tone: "bg-amber-100/70 text-amber-950 font-bold" });
+  if (lower.includes("corner cut") || product.categorySlug === "premium-card") finishes.push({ label: "Corner Cut", tone: "bg-[#1e3a5f]/10 text-[#1e3a5f]" });
+  if (lower.includes("250 gsm") || product.categorySlug === "art-card" || product.categorySlug === "brochure") finishes.push({ label: "250 GSM Art Card", tone: "bg-slate-100 text-slate-700" });
+
+  // Contextual category note
+  const categoryPromo: Record<string, { headline: string; note: string }> = {
+    "visiting-card": { headline: "Tactile Business Cards", note: "Heavyweight card stocks with clean trimmed edges and high-definition offset ink density." },
+    "premium-card": { headline: "Luxury Card Finishing", note: "400 GSM card stock with velvet soft-touch, precision rounded corner cutting, and optional spot UV or foil." },
+    "art-card": { headline: "Heavy Coated Art Card", note: "250 GSM tearable art card stock calibrated for vibrant color reproduction and durable handling." },
+    "letterhead-envelope": { headline: "Executive Stationery Set", note: "Standard 100 GSM Alabaster and SS finish papers for corporate correspondence and matching envelopes." },
+    brochure: { headline: "250 GSM Art Card Brochures", note: "High-volume commercial brochure printing with sharp machine creasing and lamination options." },
+    "leaflet-cover": { headline: "Commercial Flyer Runs", note: "130 GSM and 170 GSM art paper flyers for product launches, marketing drops, and trade distribution." },
+    sticker: { headline: "Precision Die-Cut Stickers", note: "Strong adhesive backing on Avery and standard vinyl stocks, calculated by exact square inches." },
+  };
+  const promo = categoryPromo[product.categorySlug];
+
+  return (
+    <main className="mc-storefront min-h-screen bg-[#fcfbf9] text-slate-900">
+      <StorefrontHeader />
+      <CustomerNotices placement="ORDERING" />
+      <div className="mx-auto max-w-[1440px] px-4 py-8 xl:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200/80 pb-4">
+          <div>
+            <BackButton fallbackHref={returnPath} label="Back to products" />
+            <nav aria-label="Breadcrumb" className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <Link href="/" className="hover:text-[#1e3a5f]">Home</Link>
+              <span>/</span>
+              <Link href={returnPath} className="hover:text-[#1e3a5f]">Order now</Link>
+              <span>/</span>
+              <Link href={categoryHref} className="hover:text-[#1e3a5f]">{product.category}</Link>
+              <span>/</span>
+              <span aria-current="page" className="font-semibold text-slate-900">{product.name}</span>
+            </nav>
+          </div>
+          <span className="rounded-full border border-slate-200 bg-white px-3.5 py-1 text-xs font-bold text-slate-700 shadow-xs">
+            {descriptor}
+          </span>
+        </div>
+
+        <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,0.38fr)_minmax(0,0.62fr)] lg:items-start">
+          {/* LEFT: Product Presentation & Gallery (~38%) */}
+          <section className="space-y-6">
+            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <ProductImage src={product.imageUrl} alt={`${product.name} printed sample`} slug={product.slug} priority />
+              <div className="absolute left-3.5 top-3.5 flex items-center gap-2 rounded-full bg-white/95 px-3 py-1 text-xs font-bold uppercase tracking-wider text-slate-900 shadow-xs backdrop-blur-xs">
+                <span className="size-1.5 rounded-full bg-[#1e3a5f]" />
+                {product.category}
+              </div>
+            </div>
+
+            {/* Visual Finish Badges */}
+            {finishes.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {finishes.map((f) => (
+                  <span key={f.label} className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${f.tone}`}>
+                    {f.label}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Specifications Bar */}
+            <div className="grid grid-cols-3 gap-3 rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs">
+              <div>
+                <Clock3 size={18} className="text-[#1e3a5f]" />
+                <p className="mt-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Turnaround</p>
+                <p className="mt-0.5 text-xs font-bold text-slate-900">{product.turnaround}</p>
+              </div>
+              <div>
+                <ShieldCheck size={18} className="text-[#1e3a5f]" />
+                <p className="mt-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Order Route</p>
+                <p className="mt-0.5 text-xs font-bold text-slate-900">
+                  {product.orderable ? (product.quoteable ? "Buy or Quote" : "Direct Buy") : "Quote Review"}
+                </p>
+              </div>
+              <div>
+                <FileUp size={18} className="text-[#1e3a5f]" />
+                <p className="mt-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Artwork</p>
+                <p className="mt-0.5 text-xs font-bold text-slate-900">{product.artworkFormatLabel}</p>
+              </div>
+            </div>
+
+            {/* Product Overview Card */}
+            <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#1e3a5f]">
+                Product Information
+              </span>
+              <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
+                {product.name}
+              </h1>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                {product.description}
+              </p>
+
+              <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3 text-xs">
+                <span className="font-bold text-slate-500 uppercase tracking-wider">Base Rate:</span>
+                <strong className="text-base text-slate-950">{product.priceLabel}</strong>
+                {product.startingPrice ? (
+                  <span className="text-slate-400">
+                    {product.taxInclusive ? "(GST included)" : "(GST extra as applicable)"}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Contextual Category Promo */}
+            {promo && (
+              <div className="rounded-2xl border border-slate-200/80 bg-[#f8fafc] p-4 text-xs shadow-xs">
+                <p className="font-bold text-slate-900">{promo.headline}</p>
+                <p className="mt-1 text-slate-600">{promo.note}</p>
+              </div>
+            )}
+          </section>
+
+          {/* RIGHT: Configurator Workspace (~62%) */}
+          <aside className="lg:sticky lg:top-[120px]">
+            <ProductConfigurator
+              product={product}
+              editItemId={typeof query.editItem === "string" ? query.editItem : undefined}
+              editKind={query.kind === "QUOTE" ? "QUOTE" : "PURCHASE"}
+            />
+          </aside>
+        </div>
+      </div>
+      <StorefrontFooter />
+    </main>
+  );
 }
