@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type Category = {
@@ -17,6 +17,7 @@ const categoryMeta: Record<
   string,
   {
     image: string;
+    images?: string[];
     alt: string;
     badge: string;
     turnaround: string;
@@ -25,6 +26,14 @@ const categoryMeta: Record<
 > = {
   "visiting-card": {
     image: "/images/visiting-card-category.jpg",
+    images: [
+      "/images/visiting-card-category.jpg",
+      "/images/products/nt-single.jpg",
+      "/images/products/thermal-single-uv.jpg",
+      "/images/products/textured-card-350.jpg",
+      "/images/products/nt-front-back.jpg",
+      "/images/products/thermal-matt-400.jpg",
+    ],
     alt: "Luxury visiting cards with thermal matt and spot UV",
     badge: "1,000 Starting Qty",
     turnaround: "1–2 working days",
@@ -32,6 +41,12 @@ const categoryMeta: Record<
   },
   "premium-card": {
     image: "/images/premium-card-category.jpg",
+    images: [
+      "/images/premium-card-category.jpg",
+      "/images/products/velvet-foil-card.jpg",
+      "/images/products/thermal-fb-uv.jpg",
+      "/images/products/spot-uv-closeup.jpg",
+    ],
     alt: "Thick 400 GSM velvet card with gold foil and corner cut",
     badge: "500 Starting Qty",
     turnaround: "7–10 working days",
@@ -39,6 +54,12 @@ const categoryMeta: Record<
   },
   "art-card": {
     image: "/images/art-card-category.jpg",
+    images: [
+      "/images/art-card-category.jpg",
+      "/images/products/art-card.jpg",
+      "/images/products/tearable-single.jpg",
+      "/images/products/tearable-unlam.jpg",
+    ],
     alt: "250 GSM heavy art card printed sheets",
     badge: "250 GSM Art Card",
     turnaround: "3–4 working days",
@@ -46,6 +67,10 @@ const categoryMeta: Record<
   },
   "letterhead-envelope": {
     image: "/images/letterhead-envelope-category.jpg",
+    images: [
+      "/images/letterhead-envelope-category.jpg",
+      "/images/products/alabaster-stationery.jpg",
+    ],
     alt: "Alabaster letterhead and matching custom envelope set",
     badge: "Corporate Stationery",
     turnaround: "4–5 working days",
@@ -53,6 +78,10 @@ const categoryMeta: Record<
   },
   brochure: {
     image: "/images/brochure-category.jpg",
+    images: [
+      "/images/brochure-category.jpg",
+      "/images/products/trifold-brochure.jpg",
+    ],
     alt: "Folded 250 GSM A4 and A8 art card brochures",
     badge: "250 GSM Art Card",
     turnaround: "4–5 working days",
@@ -60,6 +89,10 @@ const categoryMeta: Record<
   },
   "leaflet-cover": {
     image: "/images/leaflet-category.jpg",
+    images: [
+      "/images/leaflet-category.jpg",
+      "/images/products/leaflet.jpg",
+    ],
     alt: "Commercial art paper flyers and leaflets in 130 and 170 GSM",
     badge: "Commercial Print",
     turnaround: "4–5 working days",
@@ -67,12 +100,153 @@ const categoryMeta: Record<
   },
   sticker: {
     image: "/images/sticker-category.jpg",
+    images: [
+      "/images/sticker-category.jpg",
+      "/images/products/diecut-stickers.jpg",
+    ],
     alt: "Custom printed adhesive vinyl stickers and labels",
     badge: "Sq. Inch Sizing",
     turnaround: "3–4 working days",
     specs: "Avery & Standard Adhesive",
   },
 };
+
+function CategoryCardSlideshow({
+  images,
+  alt,
+  badge,
+  indexNumber,
+  staggerIndex,
+}: {
+  images: string[];
+  alt: string;
+  badge: string;
+  indexNumber: number;
+  staggerIndex: number;
+}) {
+  const uniqueImages = Array.from(new Set(images.filter(Boolean)));
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+  const validImages = uniqueImages.filter((src) => !failedImages[src]);
+  const activeImages = validImages.length > 0 ? validImages : [uniqueImages[0] || "/images/home-hero-printing.jpg"];
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    if (activeImages.length <= 1 || isHovered) return;
+
+    // Stagger initial transition so cards don't flip simultaneously
+    const initialDelay = ((staggerIndex % 3) + 1) * 1200 + 2000;
+    let timer: NodeJS.Timeout;
+
+    const startCycling = () => {
+      timer = setInterval(() => {
+        setCurrentIndex((prev) => (prev + 1) % activeImages.length);
+      }, 4000);
+    };
+
+    const initialTimer = setTimeout(() => {
+      setCurrentIndex((prev) => (prev + 1) % activeImages.length);
+      startCycling();
+    }, initialDelay);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(timer);
+    };
+  }, [activeImages.length, isHovered, staggerIndex]);
+
+  const handlePrev = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentIndex((prev) => (prev - 1 + activeImages.length) % activeImages.length);
+  };
+
+  const handleNext = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentIndex((prev) => (prev + 1) % activeImages.length);
+  };
+
+  const handleDotClick = (e: React.MouseEvent, idx: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentIndex(idx);
+  };
+
+  return (
+    <div
+      className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-slate-100 group/slide"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {activeImages.map((src, i) => (
+        <Image
+          key={src}
+          src={src}
+          alt={`${alt} - Slide ${i + 1}`}
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+          className={`object-cover transition-all duration-700 ease-in-out ${
+            i === currentIndex ? "opacity-100 scale-100" : "opacity-0 pointer-events-none scale-105"
+          }`}
+          priority={staggerIndex < 4 && i === 0}
+          onError={() => setFailedImages((prev) => ({ ...prev, [src]: true }))}
+        />
+      ))}
+
+      {/* Subtle hover gradient */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none" />
+
+      {/* Category Number & Badge */}
+      <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-900 shadow-xs backdrop-blur-xs pointer-events-none">
+        <span className="font-extrabold text-[#1e3a5f]">#{String(indexNumber).padStart(2, "0")}</span>
+        <span className="text-slate-400">·</span>
+        <span>{badge}</span>
+      </div>
+
+      {/* Multiple unique images navigation */}
+      {activeImages.length > 1 && (
+        <>
+          {/* Previous Slide Button */}
+          <button
+            type="button"
+            onClick={handlePrev}
+            aria-label="Previous slide"
+            className="absolute left-2 top-1/2 -translate-y-1/2 z-20 flex size-7 items-center justify-center rounded-full bg-black/50 text-white opacity-0 backdrop-blur-xs transition hover:bg-black/80 hover:scale-110 group-hover:opacity-100"
+          >
+            <ChevronLeft size={16} />
+          </button>
+
+          {/* Next Slide Button */}
+          <button
+            type="button"
+            onClick={handleNext}
+            aria-label="Next slide"
+            className="absolute right-2 top-1/2 -translate-y-1/2 z-20 flex size-7 items-center justify-center rounded-full bg-black/50 text-white opacity-0 backdrop-blur-xs transition hover:bg-black/80 hover:scale-110 group-hover:opacity-100"
+          >
+            <ChevronRight size={16} />
+          </button>
+
+          {/* Pagination Indicators */}
+          <div className="absolute bottom-2.5 right-3 z-20 flex items-center gap-1.5 rounded-full bg-black/45 px-2 py-1 backdrop-blur-xs">
+            {activeImages.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={(e) => handleDotClick(e, i)}
+                aria-label={`Go to slide ${i + 1}`}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  i === currentIndex ? "w-3.5 bg-white shadow-xs" : "w-1.5 bg-white/50 hover:bg-white/80"
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export function HomeCatalogSections({ initialCategories }: { initialCategories: Category[] }) {
   const [categories, setCategories] = useState(initialCategories);
@@ -162,11 +336,14 @@ export function HomeCatalogSections({ initialCategories }: { initialCategories: 
           {categories.map((category, index) => {
             const meta = categoryMeta[category.slug] || {
               image: category.imageUrl || "/images/home-hero-printing.jpg",
+              images: [category.imageUrl || "/images/home-hero-printing.jpg"],
               alt: category.name,
               badge: "Offset Print",
               turnaround: "2–4 working days",
               specs: "Standard Commercial",
             };
+
+            const cardImages = meta.images && meta.images.length > 0 ? meta.images : [meta.image];
 
             return (
               <Link
@@ -175,21 +352,13 @@ export function HomeCatalogSections({ initialCategories }: { initialCategories: 
                 className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-[#1e3a5f]/40 hover:shadow-md"
               >
                 <div>
-                  <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-slate-100">
-                    <Image
-                      src={meta.image}
-                      alt={meta.alt}
-                      fill
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                    <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-900 shadow-xs backdrop-blur-xs">
-                      <span className="font-extrabold text-[#1e3a5f]">#{String(index + 1).padStart(2, "0")}</span>
-                      <span className="text-slate-400">·</span>
-                      <span>{meta.badge}</span>
-                    </div>
-                  </div>
+                  <CategoryCardSlideshow
+                    images={cardImages}
+                    alt={meta.alt}
+                    badge={meta.badge}
+                    indexNumber={index + 1}
+                    staggerIndex={index}
+                  />
 
                   <div className="mt-4 px-1">
                     <h3 className="text-lg font-bold tracking-tight text-slate-900 transition-colors group-hover:text-[#1e3a5f]">
