@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { CheckoutFlow } from "@/components/checkout-flow";
 import { CustomerNotices } from "@/components/customer-notices";
 import { StorefrontFooter } from "@/components/storefront-footer";
@@ -5,6 +6,11 @@ import { StorefrontHeader } from "@/components/storefront-header";
 import { auth } from "@/lib/auth/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+
+export const metadata: Metadata = {
+  title: "Secure Checkout",
+  robots: { index: false, follow: false },
+};
 
 export default async function CheckoutPage() {
   if (!await auth.api.getSession({ headers: await headers() })) redirect("/login");

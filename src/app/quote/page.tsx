@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CustomerNotices } from "@/components/customer-notices";
@@ -8,6 +9,11 @@ import { StorefrontHeader } from "@/components/storefront-header";
 import { auth } from "@/lib/auth/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+
+export const metadata: Metadata = {
+  title: "Custom Print Quote Request",
+  robots: { index: false, follow: false },
+};
 
 export default async function QuotePage() {
   if (!await auth.api.getSession({ headers: await headers() })) redirect("/login");

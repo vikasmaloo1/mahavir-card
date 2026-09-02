@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ProductsBrowser } from "@/components/products-browser";
 import { CustomerNotices } from "@/components/customer-notices";
 import { PromotionalBanner } from "@/components/promotional-banner";
@@ -7,7 +8,31 @@ import { Suspense } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/server";
-import { isLegacyCategorySlug, productFiltersToSearchParams, readProductFilters } from "@/lib/catalog-routing";
+import { catalogCategories, isLegacyCategorySlug, productFiltersToSearchParams, readProductFilters } from "@/lib/catalog-routing";
+
+export async function generateMetadata({ searchParams }: PageProps<"/products">): Promise<Metadata> {
+  const rawParams = await searchParams;
+  const categorySlug = typeof rawParams.category === "string" ? rawParams.category : "";
+  const category = catalogCategories.find((c) => c.slug === categorySlug);
+
+  if (category) {
+    return {
+      title: `${category.name} Printing & Rates in Ahmedabad, Gujarat`,
+      description: `Commercial ${category.name.toLowerCase()} printing from Mahavir Card in Ahmedabad, Gujarat. Live pricing, custom specifications, and instant CDR upload.`,
+      alternates: {
+        canonical: `/products?category=${category.slug}`,
+      },
+    };
+  }
+
+  return {
+    title: "Commercial Printing Products & Rates | Mahavir Card Ahmedabad",
+    description: "Browse all commercial offset printing products from Mahavir Card in Ahmedabad, Gujarat. Visiting cards, brochures, stickers, letterheads, and envelopes.",
+    alternates: {
+      canonical: "/products",
+    },
+  };
+}
 
 export default async function ProductsPage({ searchParams }: PageProps<"/products">) {
   if (!await auth.api.getSession({ headers: await headers() })) redirect("/login");

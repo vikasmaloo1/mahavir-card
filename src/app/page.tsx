@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, FileCheck2, FileUp, MapPin, PackageCheck, ReceiptText, ShoppingBag } from "lucide-react";
@@ -8,12 +9,118 @@ import { PromotionalBanner } from "@/components/promotional-banner";
 import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 
+export const metadata: Metadata = {
+  title: "Mahavir Card | Visiting Card & Commercial Offset Printing in Ahmedabad, Gujarat",
+  description: "Ahmedabad's commercial offset printing press. Visiting cards (NT, Tearable, Thermal Matt, Velvet, Foil, Spot UV), brochures, stickers, letterheads, and envelopes with instant pricing and CDR upload.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "Mahavir Card | Visiting Card & Commercial Offset Printing in Ahmedabad, Gujarat",
+    description: "Order visiting cards, brochures, stickers, and business stationery online with live pricing and CDR artwork upload from Ahmedabad's trusted printing press.",
+    url: "https://mahavircard.in",
+    siteName: "Mahavir Card",
+    locale: "en_IN",
+    type: "website",
+    images: [{ url: "/images/mahavir-print-assortment.png", width: 1200, height: 630, alt: "Mahavir Card Ahmedabad Offset Printing Services" }],
+  },
+};
+
+const localBusinessJsonLd = {
+  "@context": "https://schema.org",
+  "@type": ["LocalBusiness", "ProfessionalService"],
+  "@id": "https://mahavircard.in/#business",
+  name: "Mahavir Card",
+  alternateName: "Mahavir Card Offset Printing",
+  image: "https://mahavircard.in/images/mahavir-print-assortment.png",
+  logo: "https://mahavircard.in/api/branding/assets/logo.primary/file",
+  url: "https://mahavircard.in",
+  telephone: "+919426371150",
+  email: "mahavircard2011@gmail.com",
+  priceRange: "₹₹",
+  currenciesAccepted: "INR",
+  paymentAccepted: "Cash, UPI, Credit Card, Debit Card, Net Banking",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "Khadia Golwad, Opp. Jain Digamber Mandir",
+    addressLocality: "Ahmedabad",
+    addressRegion: "Gujarat",
+    postalCode: "380001",
+    addressCountry: "IN",
+  },
+  geo: {
+    "@type": "GeoCoordinates",
+    latitude: 23.0232,
+    longitude: 72.5938,
+  },
+  openingHoursSpecification: [
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      opens: "09:30",
+      closes: "20:30",
+    },
+  ],
+  areaServed: [
+    { "@type": "City", name: "Ahmedabad" },
+    { "@type": "AdministrativeArea", name: "Gujarat" },
+    { "@type": "AdministrativeArea", name: "Rajasthan" },
+    { "@type": "Country", name: "India" },
+  ],
+  hasOfferCatalog: {
+    "@type": "OfferCatalog",
+    name: "Commercial Printing Services",
+    itemListElement: [
+      {
+        "@type": "OfferCatalog",
+        name: "Visiting Cards & Business Cards",
+        itemListElement: [
+          { "@type": "Offer", itemOffered: { "@type": "Service", name: "NT Single Visiting Card Printing" } },
+          { "@type": "Offer", itemOffered: { "@type": "Service", name: "NT Front Back Visiting Card Printing" } },
+          { "@type": "Offer", itemOffered: { "@type": "Service", name: "Tearable Art Card Visiting Cards 250 GSM" } },
+          { "@type": "Offer", itemOffered: { "@type": "Service", name: "400 GSM Thermal Matt Visiting Cards with Spot UV" } },
+          { "@type": "Offer", itemOffered: { "@type": "Service", name: "400 GSM Velvet Business Cards with Foil & Drip-Off" } },
+        ],
+      },
+      {
+        "@type": "OfferCatalog",
+        name: "Brochures, Leaflets & Flyers",
+        itemListElement: [
+          { "@type": "Offer", itemOffered: { "@type": "Service", name: "A4 Art Paper Brochure Printing" } },
+          { "@type": "Offer", itemOffered: { "@type": "Service", name: "A8 250 GSM Tearable Brochure Printing" } },
+          { "@type": "Offer", itemOffered: { "@type": "Service", name: "130 GSM & 170 GSM Leaflet Printing" } },
+        ],
+      },
+      {
+        "@type": "OfferCatalog",
+        name: "Stationery, Letterheads & Envelopes",
+        itemListElement: [
+          { "@type": "Offer", itemOffered: { "@type": "Service", name: "Letterhead Printing (Alabaster & SS Finish)" } },
+          { "@type": "Offer", itemOffered: { "@type": "Service", name: "Custom Envelope & Cover Printing" } },
+        ],
+      },
+      {
+        "@type": "OfferCatalog",
+        name: "Stickers & Product Labels",
+        itemListElement: [
+          { "@type": "Offer", itemOffered: { "@type": "Service", name: "Standard Adhesive Sticker Printing" } },
+          { "@type": "Offer", itemOffered: { "@type": "Service", name: "Avery Sticker Printing (Laminated & Non-Laminated)" } },
+        ],
+      },
+    ],
+  },
+};
+
 const localContext = "Ahmedabad, Gujarat \u00b7 Commercial printing \u00b7 Business and bulk orders";
 const printServices = "Offset printing \u00b7 Business cards \u00b7 Packaging \u00b7 Labels";
 
 export default function Home() {
   return (
     <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
+      />
       <StorefrontHeader />
       <CustomerNotices placement="HOME" />
 

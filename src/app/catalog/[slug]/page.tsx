@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Clock3, FileUp, ShieldCheck } from "lucide-react";
 import { and, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
@@ -21,6 +22,31 @@ export const dynamic = "force-dynamic";
 
 const fallbackFields: ConfigField[] = [{ id: "quantity", label: "Quantity", type: "number", defaultValue: "100" }];
 type PageProduct = CatalogProduct & StartingPrice & { artworkFormatLabel: string };
+
+export async function generateMetadata({ params }: PageProps<"/catalog/[slug]">): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await getDatabaseCatalogProduct(slug, false);
+  if (!product) {
+    return {
+      title: "Product Details | Mahavir Card",
+      robots: { index: false, follow: false },
+    };
+  }
+
+  return {
+    title: `${product.name} — ${product.category} Printing in Ahmedabad`,
+    description: `${product.shortDescription} Available with CDR artwork upload and fast turnaround in Ahmedabad, Gujarat from Mahavir Card.`,
+    robots: { index: false, follow: true },
+    alternates: {
+      canonical: `/catalog/${product.slug}`,
+    },
+    openGraph: {
+      title: `${product.name} | Mahavir Card Ahmedabad`,
+      description: product.shortDescription,
+      images: product.imageUrl ? [{ url: product.imageUrl }] : undefined,
+    },
+  };
+}
 
 async function getDatabaseCatalogProduct(slug: string, authenticated: boolean): Promise<PageProduct | null> {
   const [row] = await db.select({ product: products, category: { name: categories.name, slug: categories.slug } }).from(products).leftJoin(categories, eq(products.categoryId, categories.id)).where(and(eq(products.slug, slug), eq(products.isActive, true), eq(products.status, "ACTIVE"))).limit(1);
