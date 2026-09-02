@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Clock3, FileUp, ShieldCheck } from "lucide-react";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
@@ -8,12 +8,13 @@ import Link from "next/link";
 import { BackButton } from "@/components/back-button";
 import { ProductConfigurator } from "@/components/product-configurator";
 import { ProductImage } from "@/components/product-image";
+import { ProductImageSlideshow } from "@/components/product-image-slideshow";
 import { CustomerNotices } from "@/components/customer-notices";
 import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { type CatalogProduct, type ConfigField } from "@/lib/catalog";
 import { db } from "@/lib/db/server";
-import { artworkRequirements, categories, pricingRules, products, productVariants } from "@/lib/db/schema";
+import { artworkRequirements, categories, pricingRules, productImages, products, productVariants } from "@/lib/db/schema";
 import { conciseProductSpecification, deriveStartingPrice, type StartingPrice } from "@/lib/product-listing-pricing";
 import { auth } from "@/lib/auth/server";
 import { safeProductReturnPath } from "@/lib/catalog-routing";
@@ -21,7 +22,11 @@ import { safeProductReturnPath } from "@/lib/catalog-routing";
 export const dynamic = "force-dynamic";
 
 const fallbackFields: ConfigField[] = [{ id: "quantity", label: "Quantity", type: "number", defaultValue: "100" }];
-type PageProduct = CatalogProduct & StartingPrice & { artworkFormatLabel: string };
+type PageProduct = CatalogProduct &
+  StartingPrice & {
+    artworkFormatLabel: string;
+    images: Array<{ id: string; imageUrl: string; altText: string | null; label?: string }>;
+  };
 
 export async function generateMetadata({ params }: PageProps<"/catalog/[slug]">): Promise<Metadata> {
   const { slug } = await params;
@@ -52,12 +57,34 @@ async function getDatabaseCatalogProduct(slug: string, authenticated: boolean): 
   const [row] = await db.select({ product: products, category: { name: categories.name, slug: categories.slug } }).from(products).leftJoin(categories, eq(products.categoryId, categories.id)).where(and(eq(products.slug, slug), eq(products.isActive, true), eq(products.status, "ACTIVE"))).limit(1);
   if (!row) return null;
 
-  const [rules, requirements] = await Promise.all([
-    authenticated ? db.select({ productId: pricingRules.productId, variantId: pricingRules.variantId, variantActive: productVariants.isActive, conditions: pricingRules.conditions, priceFormula: pricingRules.priceFormula, taxInclusive: pricingRules.taxInclusive, isActive: pricingRules.isActive }).from(pricingRules).leftJoin(productVariants, eq(pricingRules.variantId, productVariants.id)).where(and(eq(pricingRules.productId, row.product.id), eq(pricingRules.isActive, true))) : Promise.resolve([]),
-    db.select({ acceptedFormats: artworkRequirements.acceptedFormats }).from(artworkRequirements).where(and(eq(artworkRequirements.productId, row.product.id), eq(artworkRequirements.isActive, true))),
+  const [rules, requirements, galleryImages] = await Promise.all([
+    authenticated
+      ? db
+          .select({
+            productId: pricingRules.productId,
+            variantId: pricingRules.variantId,
+            variantActive: productVariants.isActive,
+            conditions: pricingRules.conditions,
+            priceFormula: pricingRules.priceFormula,
+            taxInclusive: pricingRules.taxInclusive,
+            isActive: pricingRules.isActive,
+          })
+          .from(pricingRules)
+          .leftJoin(productVariants, eq(pricingRules.variantId, productVariants.id))
+          .where(and(eq(pricingRules.productId, row.product.id), eq(pricingRules.isActive, true)))
+      : Promise.resolve([]),
+    db
+      .select({ acceptedFormats: artworkRequirements.acceptedFormats })
+      .from(artworkRequirements)
+      .where(and(eq(artworkRequirements.productId, row.product.id), eq(artworkRequirements.isActive, true))),
+    db
+      .select({ id: productImages.id, imageUrl: productImages.imageUrl, altText: productImages.altText })
+      .from(productImages)
+      .where(eq(productImages.productId, row.product.id))
+      .orderBy(asc(productImages.sortOrder)),
   ]);
   const configuration = row.product.configuration as { fields?: unknown };
-  const fields = Array.isArray(configuration.fields) ? configuration.fields as ConfigField[] : fallbackFields;
+  const fields = Array.isArray(configuration.fields) ? (configuration.fields as ConfigField[]) : fallbackFields;
 
   return {
     id: row.product.id,
@@ -68,14 +95,50 @@ async function getDatabaseCatalogProduct(slug: string, authenticated: boolean): 
     shortDescription: row.product.shortDescription ?? "Configure the details for your print job.",
     description: conciseProductSpecification(row.product.name, row.product.description, row.category?.name ?? null),
     unit: row.product.referenceQuantity ? `${row.product.referenceQuantity.toLocaleString("en-IN")} units` : "Configured quantity",
-    turnaround: row.product.productionTime?.replace(/\bworking\s*days?\s+working\s*days?\b/gi, "working days").trim() ?? "Confirmed after review",
+    turnaround:
+      row.product.productionTime?.replace(/\bworking\s*days?\s+working\s*days?\b/gi, "working days").trim() ??
+      "Confirmed after review",
     color: "blue",
     tags: [],
     configuration: fields.length ? fields : fallbackFields,
-    imageUrl: row.product.imageUrl ?? "/images/mahavir-print-assortment.png",
+    imageUrl: row.product.imageUrl ?? "/images/visiting-card-category.jpg",
     orderable: row.product.orderable,
     quoteable: row.product.quoteable,
-    ...(authenticated ? deriveStartingPrice(row.product, rules) : { startingPrice: null, startingQuantity: null, currency: "INR" as const, priceLabel: "Login to view price", priceState: "CONTACT" as const, taxInclusive: null }),
+    images: galleryImages.length
+      ? galleryImages.map((img, idx) => ({
+          ...img,
+          label: idx === 0 ? "Full Sample" : idx === 1 ? "Finish Close-up" : "Studio View",
+        }))
+      : [
+          {
+            id: "1",
+            imageUrl: row.product.imageUrl ?? "/images/visiting-card-category.jpg",
+            altText: `${row.product.name} sample`,
+            label: "Full Sample",
+          },
+          {
+            id: "2",
+            imageUrl: "/images/spot-uv-closeup.jpg",
+            altText: `${row.product.name} finish`,
+            label: "Finish Close-up",
+          },
+          {
+            id: "3",
+            imageUrl: "/images/home-hero-printing.jpg",
+            altText: `${row.product.name} studio`,
+            label: "Studio View",
+          },
+        ],
+    ...(authenticated
+      ? deriveStartingPrice(row.product, rules)
+      : {
+          startingPrice: null,
+          startingQuantity: null,
+          currency: "INR" as const,
+          priceLabel: "Login to view price",
+          priceState: "CONTACT" as const,
+          taxInclusive: null,
+        }),
     artworkFormatLabel: row.product.artworkRequired || requirements.length ? "CDR only" : "Optional",
   };
 }
@@ -88,7 +151,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   if (!session) redirect("/login");
   const product = await getDatabaseCatalogProduct(slug, true);
   if (!product) notFound();
-  const descriptor = `${product.category} \u00b7 Commercial printing`;
+  const descriptor = `${product.category} · Commercial printing`;
   const returnPath = safeProductReturnPath(query.returnTo);
   const categoryHref = `/products?category=${product.categorySlug}`;
 
@@ -138,15 +201,13 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
         </div>
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,0.38fr)_minmax(0,0.62fr)] lg:items-start">
-          {/* LEFT: Product Presentation & Gallery (~38%) */}
+          {/* LEFT: Product Presentation & Gallery (~38%) with Slideshow */}
           <section className="space-y-6">
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <ProductImage src={product.imageUrl} alt={`${product.name} printed sample`} slug={product.slug} priority />
-              <div className="absolute left-3.5 top-3.5 flex items-center gap-2 rounded-full bg-white/95 px-3 py-1 text-xs font-bold uppercase tracking-wider text-slate-900 shadow-xs backdrop-blur-xs">
-                <span className="size-1.5 rounded-full bg-[#1e3a5f]" />
-                {product.category}
-              </div>
-            </div>
+            <ProductImageSlideshow
+              images={product.images}
+              productName={product.name}
+              categoryName={product.category}
+            />
 
             {/* Visual Finish Badges */}
             {finishes.length > 0 && (

@@ -17,8 +17,9 @@ async function main() {
   const { db, pool } = await import("../src/lib/db");
   const { eq } = await import("drizzle-orm");
   const {
-    addons, artworkRequirements, artworkSlots, banners, businessSettings, categories, locationSurcharges,
-    notices, pricingRules, productAddons, productContentItems, productContentSections, productDeliveryRules, products,
+    addons, artworkRequirements, artworkSlots, banners, businessSettings, categories, categoryImages,
+    locationSurcharges, notices, pricingRules, productAddons, productContentItems,
+    productContentSections, productDeliveryRules, productImages, products,
   } = await import("../src/lib/db/schema");
   const { rateCatalog } = await import("../src/lib/rate-catalog");
 
@@ -32,9 +33,20 @@ async function main() {
   await db.update(categories).set({ isActive: false, updatedAt: new Date() });
   await db.update(products).set({ isActive: false, status: "ARCHIVED", archivedAt: new Date(), updatedAt: new Date() });
 
+  const categoryImageMap: Record<string, string> = {
+    "visiting-card": "/images/visiting-card-category.jpg",
+    "premium-card": "/images/premium-card-category.jpg",
+    "art-card": "/images/art-card-category.jpg",
+    "letterhead-envelope": "/images/letterhead-envelope-category.jpg",
+    brochure: "/images/brochure-category.jpg",
+    "leaflet-cover": "/images/leaflet-category.jpg",
+    sticker: "/images/sticker-category.jpg",
+  };
+
   for (const [categoryIndex, category] of rateCatalog.entries()) {
     console.log(`[${categoryIndex + 1}/${rateCatalog.length}] Seeding category: ${category.name}`);
     const categoryId = uuidFor(`rate-category:${category.slug}`);
+    const categoryImageUrl = categoryImageMap[category.slug] || "/images/home-hero-printing.jpg";
     await db.insert(categories).values({
       id: categoryId, name: category.name, slug: category.slug, description: category.description,
       sortOrder: categoryIndex, isActive: true,
@@ -42,6 +54,23 @@ async function main() {
       name: category.name, description: category.description, sortOrder: categoryIndex,
       isActive: true, updatedAt: new Date(),
     } });
+
+    // Seed primary category image
+    await db.insert(categoryImages).values({
+      id: uuidFor(`category-image:${category.slug}`),
+      categoryId,
+      imageUrl: categoryImageUrl,
+      storageKey: `categories/${categoryId}/images/${category.slug}.jpg`,
+      originalFilename: `${category.slug}.jpg`,
+      contentType: "image/jpeg",
+      fileSize: 500000,
+      altText: `${category.name} printing sample`,
+      isPrimary: true,
+      sortOrder: 0,
+    }).onConflictDoUpdate({
+      target: categoryImages.id,
+      set: { imageUrl: categoryImageUrl, updatedAt: new Date() },
+    });
 
     for (const [itemIndex, item] of category.items.entries()) {
       console.log(`   → Product ${itemIndex + 1}/${category.items.length}: ${item.name} (${item.slug})`);
@@ -71,15 +100,6 @@ async function main() {
             ...(item.size && (category.slug === "leaflet-cover" || category.slug === "brochure") ? [{ id: "size", label: "Size", type: "select" as const, options: [item.size], defaultValue: item.size }] : []),
           ];
 
-      const categoryImageMap: Record<string, string> = {
-        "visiting-card": "/images/visiting-card-category.jpg",
-        "premium-card": "/images/premium-card-category.jpg",
-        "art-card": "/images/art-card-category.jpg",
-        "letterhead-envelope": "/images/letterhead-envelope-category.jpg",
-        brochure: "/images/brochure-category.jpg",
-        "leaflet-cover": "/images/leaflet-category.jpg",
-        sticker: "/images/sticker-category.jpg",
-      };
       const productImageUrl = categoryImageMap[category.slug] ?? "/images/home-hero-printing.jpg";
 
       await db.insert(products).values({

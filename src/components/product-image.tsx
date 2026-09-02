@@ -1,7 +1,7 @@
 import Image from "next/image";
 
 function resolveImageForSlug(slug: string, src?: string | null): string {
-  if (src && src !== "/images/mahavir-print-assortment.png") {
+  if (src && src.startsWith("/images/") && src !== "/images/mahavir-print-assortment.png") {
     return src;
   }
   if (slug.startsWith("premium-")) return "/images/premium-card-category.jpg";
@@ -21,7 +21,7 @@ function resolveImageForSlug(slug: string, src?: string | null): string {
   ) {
     return "/images/visiting-card-category.jpg";
   }
-  return src || "/images/home-hero-printing.jpg";
+  return "/images/home-hero-printing.jpg";
 }
 
 export function ProductImage({
