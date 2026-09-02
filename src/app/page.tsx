@@ -8,7 +8,7 @@ import { PromotionalBanner } from "@/components/promotional-banner";
 import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 
-const localContext = "Ahmedabad \u00b7 Commercial printing \u00b7 Business and bulk orders";
+const localContext = "Ahmedabad, Gujarat \u00b7 Commercial printing \u00b7 Business and bulk orders";
 const printServices = "Offset printing \u00b7 Business cards \u00b7 Packaging \u00b7 Labels";
 
 export default function Home() {
@@ -20,7 +20,7 @@ export default function Home() {
       <section className="border-b border-[var(--mc-line)] bg-white">
         <div className="mx-auto grid max-w-[1440px] gap-7 px-4 py-8 lg:grid-cols-[.86fr_1.14fr] lg:items-center lg:px-8 lg:py-11">
           <div className="py-2 lg:pr-6">
-            <p className="text-xs font-bold uppercase text-[var(--mc-accent)]">Commercial printing {"\u00b7"} Ahmedabad</p>
+            <p className="text-xs font-bold uppercase text-[var(--mc-accent)]">Commercial printing {"\u00b7"} Ahmedabad, Gujarat</p>
             <h1 className="mt-4 max-w-xl text-4xl font-bold leading-[1.1] sm:text-5xl">Printing that works for your business.</h1>
             <p className="mt-5 max-w-xl text-base leading-7 text-[var(--mc-muted)]">Business cards, packaging, labels and stationery, with online ordering for approved jobs and quotations for custom work.</p>
             <div className="mt-6 flex flex-wrap gap-3">
@@ -60,7 +60,7 @@ export default function Home() {
         <div className="grid gap-8 lg:grid-cols-[.78fr_1.22fr] lg:items-start">
           <div>
             <p className="text-xs font-bold uppercase text-[var(--mc-accent)]">A practical print partner</p>
-            <h2 className="mt-2 max-w-md text-2xl font-bold sm:text-3xl">Made for businesses in Ahmedabad.</h2>
+            <h2 className="mt-2 max-w-md text-2xl font-bold sm:text-3xl">Made for businesses in Ahmedabad, Gujarat.</h2>
             <p className="mt-4 max-w-lg text-base leading-7 text-[var(--mc-muted)]">From everyday visiting cards to bulk packaging and labels, Mahavir Card handles the print work your business depends on.</p>
             <Link href="/products" className="mt-5 inline-flex items-center gap-2 text-[15px] font-bold text-[var(--mc-accent)]">Explore the catalogue <ArrowRight size={17} /></Link>
           </div>

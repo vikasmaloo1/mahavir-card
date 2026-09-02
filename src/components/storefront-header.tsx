@@ -21,7 +21,7 @@ export async function StorefrontHeader() {
           <Image src="/api/branding/assets/logo.primary/file" alt="Mahavir Card mark" width={44} height={44} priority unoptimized className="size-10 sm:size-11 rounded-full object-cover" />
           <span>
             <strong className="block text-base sm:text-[17px] text-[var(--mc-ink)] leading-tight">Mahavir Card</strong>
-            <span className="hidden text-xs font-medium text-[var(--mc-muted)] sm:block">Offset printing {"\u00b7"} Business cards {"\u00b7"} Ahmedabad</span>
+            <span className="hidden text-xs font-medium text-[var(--mc-muted)] sm:block">Offset printing {"\u00b7"} Business cards {"\u00b7"} Ahmedabad, Gujarat</span>
           </span>
         </Link>
 
