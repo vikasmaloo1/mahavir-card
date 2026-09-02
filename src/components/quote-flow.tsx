@@ -288,6 +288,26 @@ export function QuoteFlow() {
         ) : null}
       </div>
 
+      {/* Escape hatches — visible up front, before the customer even opens the basket or product list */}
+      <div className="mb-6 grid gap-3 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => openRequirementModal({ mode: "SEARCH_FALLBACK", searchQuery })}
+          className="inline-flex items-center gap-3 rounded-xl border border-dashed border-[#b8cae6] bg-[#fbfcfe] px-5 py-4 text-left font-semibold text-[#2457b8] hover:border-[#2457b8] hover:bg-[#f4f8ff] transition-colors"
+        >
+          <Sparkles size={22} className="shrink-0" />
+          <span className="text-[15px] leading-snug">Can&apos;t find what you&apos;re looking for? <span className="block font-bold">Share your requirement</span></span>
+        </button>
+        <button
+          type="button"
+          onClick={() => openRequirementModal({ mode: "STATE_UNAVAILABLE" })}
+          className="inline-flex items-center gap-3 rounded-xl border border-dashed border-[#b8cae6] bg-[#fbfcfe] px-5 py-4 text-left font-semibold text-[#2457b8] hover:border-[#2457b8] hover:bg-[#f4f8ff] transition-colors"
+        >
+          <MapPinOff size={22} className="shrink-0" />
+          <span className="text-[15px] leading-snug">Not available in your state? <span className="block font-bold">Request delivery quote</span></span>
+        </button>
+      </div>
+
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_390px]">
         {/* Main Section */}
         <section className="space-y-8">
@@ -393,26 +413,6 @@ export function QuoteFlow() {
                   className="w-full rounded-lg border border-[#c9d2df] bg-[#f8fafc] py-2 pl-9 pr-3 text-sm outline-none focus:border-[#2457b8] focus:bg-white"
                 />
               </div>
-            </div>
-
-            {/* Escape hatches for anyone who doesn't see what they need in the list below */}
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-              <button
-                type="button"
-                onClick={() => openRequirementModal({ mode: "SEARCH_FALLBACK", searchQuery })}
-                className="inline-flex flex-1 items-center gap-2 rounded-lg border border-dashed border-[#c9d2df] bg-[#fbfcfe] px-3.5 py-2.5 text-left text-xs font-semibold text-[#2457b8] hover:border-[#2457b8] hover:bg-[#f4f8ff] transition-colors"
-              >
-                <Sparkles size={15} className="shrink-0" />
-                Can&apos;t find what you&apos;re looking for? Share your requirement
-              </button>
-              <button
-                type="button"
-                onClick={() => openRequirementModal({ mode: "STATE_UNAVAILABLE" })}
-                className="inline-flex flex-1 items-center gap-2 rounded-lg border border-dashed border-[#c9d2df] bg-[#fbfcfe] px-3.5 py-2.5 text-left text-xs font-semibold text-[#2457b8] hover:border-[#2457b8] hover:bg-[#f4f8ff] transition-colors"
-              >
-                <MapPinOff size={15} className="shrink-0" />
-                Not available in your state? Request delivery quote
-              </button>
             </div>
 
             <div className="mt-4 divide-y divide-[#edf1f7]">
