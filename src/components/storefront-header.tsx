@@ -4,6 +4,7 @@ import { FileText, Search, ShoppingBag, UserRound } from "lucide-react";
 import { headers } from "next/headers";
 
 import { CustomerAccountMenu } from "@/components/customer-account-menu";
+import { HeaderSearchBar } from "@/components/header-search-bar";
 import { auth } from "@/lib/auth/server";
 
 export async function StorefrontHeader() {
@@ -25,11 +26,7 @@ export async function StorefrontHeader() {
           </span>
         </Link>
 
-        <form action="/products" className="hidden min-w-0 max-w-xl flex-1 items-center rounded-lg border border-[var(--mc-line)] bg-white px-3 md:flex">
-          <Search size={17} className="text-[var(--mc-muted)] shrink-0" />
-          <input name="search" placeholder="Search visiting cards, brochures, stickers..." className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-[#8b9bb5]" />
-          <button type="submit" className="border-l border-[var(--mc-line)] pl-3 text-xs font-bold uppercase tracking-[0.12em] text-[var(--mc-muted)] hover:text-[var(--mc-accent)]">Find</button>
-        </form>
+        <HeaderSearchBar className="hidden min-w-0 max-w-xl flex-1 md:block" />
 
         <div className="flex items-center gap-1.5 text-sm sm:gap-2">
           {session ? <CustomerAccountMenu /> : <Link href="/login" className="flex items-center gap-1.5 px-2.5 py-2 min-h-[40px] rounded-full text-[var(--mc-muted)] hover:text-[var(--mc-ink)] hover:bg-[var(--mc-surface)]"><UserRound size={17} /> <span className="hidden sm:inline font-semibold">Login</span></Link>}
@@ -38,11 +35,7 @@ export async function StorefrontHeader() {
         </div>
       </div>
 
-      <form action="/products" className="mx-4 mb-3 flex items-center rounded-lg border border-[var(--mc-line)] bg-white px-3 md:hidden">
-        <Search size={16} className="text-[var(--mc-muted)] shrink-0" />
-        <input name="search" placeholder="Search products..." className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-[#8b9bb5]" />
-        <button type="submit" className="border-l border-[var(--mc-line)] pl-2.5 text-xs font-bold uppercase tracking-wider text-[var(--mc-muted)] hover:text-[var(--mc-accent)]">Go</button>
-      </form>
+      <HeaderSearchBar compact placeholder="Search products..." className="mx-4 mb-3 md:hidden" />
 
       <nav className="mx-auto hidden max-w-[1440px] gap-x-6 gap-y-2 overflow-x-auto px-4 pb-3 text-sm font-semibold text-[var(--mc-muted)] md:flex lg:px-8" aria-label={session ? "Customer navigation" : "Product categories"}>{navigation.map(([label, href]) => <Link key={href} href={href} className="whitespace-nowrap hover:text-[var(--mc-ink)] transition-colors">{label}</Link>)}</nav>
 

@@ -14,8 +14,30 @@ export async function POST(request: Request) {
   try {
     const input = await readBody(request, inquirySchema);
     const session = await getSession(request);
-    const [customer] = session ? await db.select({ id: customers.id, email: customers.email, contactName: customers.contactName, phone: customers.phone, companyName: customers.companyName }).from(customers).where(eq(customers.userId, session.user.id)).limit(1) : [];
-    const [inquiry] = await db.insert(inquiries).values({ ...input, customerId: customer?.id ?? null, email: session?.user.email ?? input.email, contactName: customer?.contactName ?? input.contactName, phone: customer?.phone ?? input.phone, companyName: customer?.companyName ?? input.companyName }).returning();
+    const [customer] = session
+      ? await db
+          .select({
+            id: customers.id,
+            email: customers.email,
+            contactName: customers.contactName,
+            phone: customers.phone,
+            companyName: customers.companyName,
+          })
+          .from(customers)
+          .where(eq(customers.userId, session.user.id))
+          .limit(1)
+      : [];
+    const [inquiry] = await db
+      .insert(inquiries)
+      .values({
+        ...input,
+        customerId: customer?.id ?? null,
+        contactName: input.contactName || customer?.contactName || session?.user?.name || "Valued Customer",
+        email: input.email || customer?.email || session?.user?.email || "",
+        phone: input.phone || customer?.phone || undefined,
+        companyName: input.companyName || customer?.companyName || undefined,
+      })
+      .returning();
     return inquiry ? jsonOk(inquiry, 201) : jsonError("Inquiry was not created", 500);
   } catch (error) { return error instanceof Response ? error : handleApiError(error); }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Check, Minus, Plus, ShoppingBag } from "lucide-react";
+import { ArrowRight, Check, Minus, Plus, ShoppingBag, AlertCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -9,6 +9,7 @@ import type { CatalogProduct } from "@/lib/catalog";
 import { formatInr } from "@/lib/formatting";
 import { commerceStates } from "@/lib/india-states";
 import { isSpecialQuantityProduct, normalizeProductQuantity, stepProductQuantity } from "@/lib/quantity-helper";
+import { RequirementQuoteModal, type RequirementContext } from "@/components/requirement-quote-modal";
 
 type PricingRule = { id: string; name: string; conditions: Record<string, unknown>; priceFormula: Record<string, unknown> };
 type Addon = { addonId: string; pricingRuleId: string | null; name: string; description: string | null; price: string; isDefault: boolean };
@@ -54,6 +55,8 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
   const [status, setStatus] = useState<"idle" | "quote" | "cart">("idle");
   const [basketError, setBasketError] = useState("");
   const [jobName, setJobName] = useState("");
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+  const [quoteContext, setQuoteContext] = useState<RequirementContext>({});
   const defaultQty = useMemo(() => isSpecialQuantityProduct(product.categorySlug, product.slug) ? 500 : 1000, [product.categorySlug, product.slug]);
   const quantity = useMemo(() => normalizeProductQuantity(values.quantity || defaultQty, product.categorySlug, product.slug).normalizedQuantity, [defaultQty, product.categorySlug, product.slug, values.quantity]);
   const requirement = requirementFor(details, selectedRuleId);
@@ -330,7 +333,39 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
             {estimate.warnings[0] ? <p className="mt-3 border-l-2 border-[#c78b30] pl-3 text-[13px] leading-5 text-[#805910]">{estimate.warnings[0]}</p> : null}
           </div>
           {basketError ? <p className="text-[15px] font-semibold text-[#a53025]">{basketError}</p> : null}
-          {!directReady && blockingReasons.length > 0 ? (
+          {estimate.warnings.some((w) => w.toLowerCase().includes("not available for the selected state") || w.toLowerCase().includes("delivery option is not available")) ? (
+            <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50/80 p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="size-5 shrink-0 text-amber-600 mt-0.5" />
+                <div className="flex-1 text-sm">
+                  <strong className="block font-bold text-slate-900">Not available in your state?</strong>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                    Standard automated courier is currently not configured for {delivery?.stateCode || "this state"}. We may still be able to arrange special courier dispatch. Send us your requirement and our production desk will check.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuoteContext({
+                        mode: "STATE_UNAVAILABLE",
+                        title: "Not available in your state?",
+                        subtitle: `We will check special courier dispatch to ${delivery?.stateCode} for ${product.name}.`,
+                        productName: product.name,
+                        quantity,
+                        customerState: delivery?.stateCode,
+                        additionalNotes: `Special dispatch check requested for state ${delivery?.stateCode} with quantity ${quantity}.`,
+                      });
+                      setIsQuoteModalOpen(true);
+                    }}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#1e3a5f] px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#152a45] transition-colors"
+                  >
+                    <span>Request a Quote</span>
+                    <ArrowRight size={13} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          {!directReady && blockingReasons.length > 0 && !estimate.warnings.some((w) => w.toLowerCase().includes("not available for the selected state") || w.toLowerCase().includes("delivery option is not available")) ? (
             <div role="alert" className="rounded-lg border border-[#f0c060] bg-[#fffbea] px-4 py-3 text-[13px] font-medium text-[#7c5c00]">
               {blockingReasons.map((reason, index) => (
                 <p key={index} className={index > 0 ? "mt-1" : ""}>{reason}</p>
@@ -382,6 +417,12 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
           </div>
         </div>
       </div>
+
+      <RequirementQuoteModal
+        isOpen={isQuoteModalOpen}
+        onClose={() => setIsQuoteModalOpen(false)}
+        context={quoteContext}
+      />
     </>
   );
 }

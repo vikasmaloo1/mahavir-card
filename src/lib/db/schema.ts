@@ -738,3 +738,21 @@ export const walletTransactions = pgTable(
   },
   (table) => [index("wallet_transactions_customer_idx").on(table.customerId)],
 );
+
+export const searchLogs = pgTable(
+  "search_logs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    query: text("query").notNull(),
+    normalizedQuery: text("normalizedQuery"),
+    customerState: text("customerState"),
+    customerType: text("customerType"),
+    resultCount: integer("resultCount").notNull().default(0),
+    confidence: text("confidence").notNull().default("NONE"),
+    matchedProductId: uuid("matchedProductId").references(() => products.id, { onDelete: "set null" }),
+    quoteFallbackInitiated: boolean("quoteFallbackInitiated").notNull().default(false),
+    userId: uuid("userId").references(() => user.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (table) => [index("search_logs_query_idx").on(table.query), index("search_logs_created_idx").on(table.createdAt)],
+);
