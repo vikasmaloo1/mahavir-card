@@ -66,12 +66,12 @@ async function verifyTerms() {
   assert.ok(importantTerm, "Important term with isImportant: true must exist");
   assert.equal(importantTerm.isImportant, true, "Important term must have isImportant = true");
   assert.ok(
-    importantTerm.content.includes("I accept the Printers Club of India Limited's responsibility ceases the moment the goods leave company's godown"),
-    "Goods responsibility clause must match exact text",
+    importantTerm.content.includes("I accept Mahavir Card's responsibility ceases the moment the goods leave company's godown"),
+    "Goods responsibility clause must match exact text with Mahavir Card",
   );
-  assert.ok(importantTerm.contentGu?.includes("પ્રિન્ટર્સ ક્લબ"), "Gujarati translation of godown responsibility present");
-  assert.ok(importantTerm.contentHi?.includes("प्रिंटर्स क्लब"), "Hindi translation of godown responsibility present");
-  console.log("✓ User Term 2: Godown dispatch responsibility (RED / isImportant) verified");
+  assert.ok(importantTerm.contentGu?.includes("મહાવીર કાર્ડ"), "Gujarati translation of godown responsibility present");
+  assert.ok(importantTerm.contentHi?.includes("महावीर कार्ड"), "Hindi translation of godown responsibility present");
+  console.log("✓ User Term 2: Godown dispatch responsibility (Mahavir Card / isImportant) verified");
 
   // 5. User Required Term 3: Legal Jurisdiction
   const jurisdictionTerm = allTerms.find((t) => t.content.toLowerCase().includes("ahmedabad jurisdiction only"));

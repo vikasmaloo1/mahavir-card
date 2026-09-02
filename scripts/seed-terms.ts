@@ -33,12 +33,12 @@ const defaultTerms = [
     isActive: true,
   },
   {
-    title: "IMPORTANT NOTICE — Goods Responsibility & Godown Dispatch",
-    titleGu: "મહત્વપૂર્ણ સૂચના — માલની જવાબદારી અને ગોડાઉન ડિસ્પેચ",
-    titleHi: "महत्वपूर्ण सूचना — माल की ज़िम्मेदारी और गोदाम से डिस्पैच",
-    content: "IMPORTANT : - I accept the Printers Club of India Limited's responsibility ceases the moment the goods leave company's godown.",
-    contentGu: "મહત્વપૂર્ણ : - હું સ્વીકારું છું કે પ્રિન્ટર્સ ક્લબ ઓફ ઈન્ડિયા લિમિટેડની જવાબદારી માલ કંપનીના ગોડાઉનમાંથી બહાર નીકળતાની સાથે જ સમાપ્ત થઈ જાય છે.",
-    contentHi: "महत्वपूर्ण : - मैं स्वीकार करता/करती हूँ कि प्रिंटर्स क्लब ऑफ इंडिया लिमिटेड की ज़िम्मेदारी माल कंपनी के गोदाम से बाहर निकलते ही समाप्त हो जाती है।",
+    title: "Goods Responsibility & Godown Dispatch",
+    titleGu: "માલની જવાબદારી અને ગોડાઉન ડિસ્પેચ",
+    titleHi: "माल की ज़िम्मेदारी और गोदाम से डिस्पैच",
+    content: "IMPORTANT : - I accept Mahavir Card's responsibility ceases the moment the goods leave company's godown.",
+    contentGu: "મહત્વપૂર્ણ : - હું સ્વીકારું છું કે મહાવીર કાર્ડની જવાબદારી માલ કંપનીના ગોડાઉનમાંથી બહાર નીકળતાની સાથે જ સમાપ્ત થઈ જાય છે.",
+    contentHi: "महत्वपूर्ण : - मैं स्वीकार करता/करती हूँ कि महावीर कार्ड की ज़िम्मेदारी माल कंपनी के गोदाम से बाहर निकलते ही समाप्त हो जाती है।",
     category: "DISPATCH_TRANSIT",
     isImportant: true,
     sortOrder: 2,
@@ -60,9 +60,9 @@ const defaultTerms = [
     title: "B2B Trade Policy & Prohibited Content",
     titleGu: "B2B ટ્રેડ પોલિસી અને પ્રતિબંધિત સામગ્રી નિયમો",
     titleHi: "B2B ट्रेड पॉलिसी और प्रतिबंधित सामग्री नियम",
-    content: "Printers Club of India Limited / Mahavir Card is a dedicated B2B trade printing platform that prints orders strictly for verified printing presses, graphic designers, advertising agencies, and channel partners only. We do not accept fake certificates, government identity documents, illegal currency copies, defamatory material, or copyrighted logos without verified written authorization. The customer/partner bears sole and complete legal liability for all submitted designs.",
-    contentGu: "પ્રિન્ટર્સ ક્લબ ઓફ ઈન્ડિયા લિમિટેડ / મહાવીર કાર્ડ એ માત્ર પ્રિન્ટીંગ પ્રેસ, ગ્રાફિક ડિઝાઇનર્સ, જાહેરાત એજન્સીઓ અને ચેનલ પાર્ટનર્સ માટેનું B2B ટ્રેડ પ્લેટફોર્મ છે. કાનૂની પરવાનગી વગર નકલી ઓળખપત્રો, સરકારી દસ્તાવેજો, ચલણી નોટો કે કૉપિરાઇટ કરેલા લોગો છાપવાની સખત મનાઈ છે. સબમિટ કરેલી આર્ટવર્ક માટે ગ્રાહક પોતે ૧૦૦% કાનૂની રીતે જવાબદાર રહેશે.",
-    contentHi: "प्रिंटर्स क्लब ऑफ इंडिया लिमिटेड / महावीर कार्ड केवल प्रिंटिंग प्रेस, ग्राफिक डिजाइनरों, विज्ञापन एजेंसियों और चैनल भागीदारों के लिए एक B2B ट्रेड प्रिंटिंग प्लेटफॉर्म है। कानूनी अनुमति के बिना नकली पहचान पत्र, सरकारी दस्तावेज, मुद्रा या कॉपीराइट सामग्री छापना सख्त वर्जित है। सबमिट की गई आर्टवर्क के लिए ग्राहक पूरी तरह कानूनी रूप से जिम्मेदार रहेगा।",
+    content: "Mahavir Card is a dedicated B2B trade printing platform that prints orders strictly for verified printing presses, graphic designers, advertising agencies, and channel partners only. We do not accept fake certificates, government identity documents, illegal currency copies, defamatory material, or copyrighted logos without verified written authorization. The customer/partner bears sole and complete legal liability for all submitted designs.",
+    contentGu: "મહાવીર કાર્ડ એ માત્ર પ્રિન્ટીંગ પ્રેસ, ગ્રાફિક ડિઝાઇનર્સ, જાહેરાત એજન્સીઓ અને ચેનલ પાર્ટનર્સ માટેનું B2B ટ્રેડ પ્લેટફોર્મ છે. કાનૂની પરવાનગી વગર નકલી ઓળખપત્રો, સરકારી દસ્તાવેજો, ચલણી નોટો કે કૉપિરાઇટ કરેલા લોગો છાપવાની સખત મનાઈ છે. સબમિટ કરેલી આર્ટવર્ક માટે ગ્રાહક પોતે ૧૦૦% કાનૂની રીતે જવાબદાર રહેશે.",
+    contentHi: "महावीर कार्ड केवल प्रिंटिंग प्रेस, ग्राफिक डिजाइनरों, विज्ञापन एजेंसियों और चैनल भागीदारों के लिए एक B2B ट्रेड प्रिंटिंग प्लेटफॉर्म है। कानूनी अनुमति के बिना नकली पहचान पत्र, सरकारी दस्तावेज, मुद्रा या कॉपीराइट सामग्री छापना सख्त वर्जित है। सबमिट की गई आर्टवर्क के लिए ग्राहक पूरी तरह कानूनी रूप से जिम्मेदार रहेगा।",
     category: "LEGAL",
     isImportant: false,
     sortOrder: 4,
@@ -137,13 +137,14 @@ async function seed() {
     const [existing] = await db
       .select()
       .from(terms)
-      .where(eq(terms.title, item.title))
+      .where(eq(terms.sortOrder, item.sortOrder))
       .limit(1);
 
     if (existing) {
       await db
         .update(terms)
         .set({
+          title: item.title,
           titleGu: item.titleGu,
           titleHi: item.titleHi,
           content: item.content,
