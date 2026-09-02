@@ -1,13 +1,12 @@
-import { headers } from "next/headers";
+import { getCachedSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 
 import { CustomerProfileForm } from "@/components/customer-profile-form";
 import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
-import { auth } from "@/lib/auth/server";
 
 export default async function CustomerProfilePage() {
-  if (!await auth.api.getSession({ headers: await headers() })) redirect("/login?next=%2Faccount%2Fprofile");
+  if (!await getCachedSession()) redirect("/login?next=%2Faccount%2Fprofile");
   return (
     <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
       <StorefrontHeader />

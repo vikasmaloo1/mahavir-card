@@ -6,10 +6,12 @@ import { useEffect, useState } from "react";
 
 import { formatInr } from "@/lib/formatting";
 import { commerceStates, indiaStateName } from "@/lib/india-states";
+import { cachedFetchJson } from "@/lib/client-fetch-cache";
 
 type Item = { id: string; quantity: number; calculatedAmount: string | null; available: boolean; product: { name: string }; pricingSnapshot: { applicableRule?: string | null; addons?: Array<{ name: string; price: string }>; delivery?: { method?: string | null; price?: string } } };
 type CartData = { items: Item[]; summary: { productSubtotal: string; addonSubtotal: string; deliverySubtotal: string; surchargeSubtotal: string; priceBeforeTax: string; tax: string; cgst: string; sgst: string; igst: string; total: string; taxInclusive: boolean; hasTaxBreakdown: boolean; hasUnavailableItems: boolean } };
 type AccountCustomer = { customerType: string; creditEnabled: boolean; availableCredit: string; paymentTermsDays: number; status: string };
+type AccountSummary = { user: { name: string; email: string; phoneNumber?: string | null }; customer: (AccountCustomer & { contactName?: string; companyName?: string; phone?: string }) | null; addresses?: Array<{ line1?: string; line2?: string; city?: string; state?: string; stateCode?: string; postalCode?: string; country?: string }> };
 type Result = { order: { id: string; orderNumber: string }; payment: { method: string; status: string }; availableCredit: string | null; razorpay: { orderId: string; keyId: string; amount: number; currency: string } | null };
 type RazorpayResponse = { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string };
 
@@ -33,21 +35,20 @@ export function CheckoutFlow() {
   useEffect(() => {
     let active = true;
     Promise.all([
-      fetch("/api/cart?kind=PURCHASE", { cache: "no-store" }),
-      fetch("/api/account/summary", { cache: "no-store" }),
-      fetch("/api/payments/config", { cache: "no-store" }),
-    ]).then(async ([cartResponse, accountResponse, paymentConfigResponse]) => {
-      const cartPayload = await cartResponse.json();
-      if (cartResponse.status === 401) { setAuthRequired(true); throw new Error("Your session has expired. Sign in to continue checkout."); }
-      if (!cartResponse.ok || !cartPayload.success) throw new Error(cartPayload.error?.message ?? "Could not load your basket");
+      fetch("/api/cart?kind=PURCHASE", { cache: "no-store" }).then(async (response) => ({ status: response.status, ok: response.ok, payload: await response.json().catch(() => null) })),
+      cachedFetchJson<{ success: boolean; data: AccountSummary }>("/api/account/summary"),
+      cachedFetchJson<{ success: boolean; data: { razorpayEnabled?: boolean } }>("/api/payments/config"),
+    ]).then(async ([cartResult, accountResult, paymentConfigResult]) => {
+      const cartPayload = cartResult.payload;
+      if (cartResult.status === 401) { setAuthRequired(true); throw new Error("Your session has expired. Sign in to continue checkout."); }
+      if (!cartResult.ok || !cartPayload?.success) throw new Error(cartPayload?.error?.message ?? "Could not load your basket");
       if (!active) return;
       setCart(cartPayload.data);
-      if (paymentConfigResponse.ok) {
-        const paymentConfigPayload = await paymentConfigResponse.json();
-        setRazorpayEnabled(Boolean(paymentConfigPayload.success && paymentConfigPayload.data.razorpayEnabled));
+      if (paymentConfigResult.ok && paymentConfigResult.payload) {
+        setRazorpayEnabled(Boolean(paymentConfigResult.payload.success && paymentConfigResult.payload.data.razorpayEnabled));
       }
-      if (accountResponse.ok) {
-        const accountPayload = await accountResponse.json();
+      if (accountResult.ok && accountResult.payload) {
+        const accountPayload = accountResult.payload;
         if (accountPayload.success) {
           const profile = accountPayload.data;
           setCustomer({ contactName: profile.customer?.contactName ?? profile.user.name ?? "", companyName: profile.customer?.companyName ?? "", phone: profile.customer?.phone ?? profile.user.phoneNumber ?? "" });

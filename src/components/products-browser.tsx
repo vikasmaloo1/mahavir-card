@@ -65,12 +65,24 @@ type SearchMeta = {
   extractedRequirement?: Record<string, unknown>;
 };
 
+type RecentProduct = {
+  orderId: string;
+  productId: string;
+  name: string;
+  slug: string;
+  imageUrl: string | null;
+  quantity: number;
+  configuration: Record<string, unknown>;
+  lastOrderedAt: string;
+};
+
 export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFilters }) {
   const router = useRouter();
   const [items, setItems] = useState<Product[]>([]);
   const [quickActionId, setQuickActionId] = useState<string | null>(null);
   const [quickAddedId, setQuickAddedId] = useState<string | null>(null);
   const [quickError, setQuickError] = useState<Record<string, string>>({});
+  const [recentProducts, setRecentProducts] = useState<RecentProduct[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [query, setQuery] = useState(initialFilters.search);
   const [category, setCategory] = useState(initialFilters.category);
@@ -194,6 +206,20 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
   }, [category, debouncedQuery, orderable, page]);
 
   useEffect(() => {
+    if (category || debouncedQuery) return; // Recently ordered is a landing-view shortcut, not relevant mid-search/filter.
+    let active = true;
+    fetch("/api/account/recent-products", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (active && payload.success) setRecentProducts(payload.data.items);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [category, debouncedQuery]);
+
+  useEffect(() => {
     let active = true;
     fetch("/api/categories")
       .then((response) => response.json())
@@ -313,6 +339,29 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
     }
   }
 
+  /** Re-adds a previously ordered product using the exact configuration it was ordered with last time. */
+  async function quickReorder(item: RecentProduct, checkout: boolean) {
+    const actionKey = `${item.productId}:${checkout ? "buy" : "cart"}`;
+    setQuickActionId(actionKey);
+    setQuickError((current) => ({ ...current, [item.productId]: "" }));
+    try {
+      const response = await fetch("/api/cart/items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: item.productId, quantity: item.quantity, configuration: item.configuration, kind: "PURCHASE" }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "Could not add this product to your basket");
+      if (checkout) { router.push("/checkout"); return; }
+      setQuickAddedId(item.productId);
+      window.setTimeout(() => setQuickAddedId((current) => (current === item.productId ? null : current)), 2500);
+    } catch (caught) {
+      setQuickError((current) => ({ ...current, [item.productId]: caught instanceof Error ? caught.message : "Could not add this product to your basket" }));
+    } finally {
+      setQuickActionId(null);
+    }
+  }
+
   return (
     <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
       <div className="mx-auto max-w-[1440px] px-4 py-7 lg:px-8 lg:py-10">
@@ -367,6 +416,63 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
             </button>
           ) : null}
         </div>
+
+        {/* Recently ordered — landing-view shortcut back into repeat products */}
+        {recentProducts.length ? (
+          <section className="mt-6">
+            <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[var(--mc-muted)]">
+              <Clock3 size={15} />
+              Recently ordered
+            </h2>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {recentProducts.map((item) => {
+                const isAdding = quickActionId === `${item.productId}:cart`;
+                const isBuying = quickActionId === `${item.productId}:buy`;
+                const rowError = quickError[item.productId];
+                return (
+                  <div key={item.productId} className="rounded-xl border border-[var(--mc-line)] bg-[var(--mc-paper)] p-3.5 shadow-[0_5px_16px_rgba(16,33,63,0.035)]">
+                    <div className="flex gap-3">
+                      <Link href={`/catalog/${item.slug}`} className="relative h-14 w-16 shrink-0 overflow-hidden rounded-lg bg-[var(--mc-accent-soft)]">
+                        <ProductImage src={item.imageUrl || "/images/mahavir-print-assortment.png"} alt={`${item.name} print sample`} slug={item.slug} />
+                      </Link>
+                      <div className="min-w-0">
+                        <Link href={`/catalog/${item.slug}`} className="block truncate text-sm font-bold text-[var(--mc-ink)] hover:text-[var(--mc-accent)] transition-colors">{item.name}</Link>
+                        <p className="mt-0.5 text-xs text-[var(--mc-muted)]">Qty {item.quantity.toLocaleString("en-IN")}</p>
+                      </div>
+                    </div>
+                    {quickAddedId === item.productId ? (
+                      <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 border border-emerald-200">
+                        <Check size={13} /> Added to basket
+                      </p>
+                    ) : (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          disabled={Boolean(quickActionId)}
+                          onClick={() => void quickReorder(item, true)}
+                          className="inline-flex items-center gap-1 rounded-full bg-[var(--mc-accent)] px-3 py-1.5 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <Zap size={12} />
+                          {isBuying ? "Starting..." : "Buy now"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={Boolean(quickActionId)}
+                          onClick={() => void quickReorder(item, false)}
+                          className="inline-flex items-center gap-1 rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <ShoppingBag size={12} />
+                          {isAdding ? "Adding..." : "Reorder"}
+                        </button>
+                      </div>
+                    )}
+                    {rowError ? <p className="mt-2 text-[11px] font-semibold text-[#a53025]">{rowError} <Link href={`/catalog/${item.slug}`} className="underline">Configure</Link></p> : null}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
 
         {/* Category Pills */}
         <div

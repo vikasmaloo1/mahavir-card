@@ -1,14 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { FileText, Search, ShoppingBag, UserRound } from "lucide-react";
-import { headers } from "next/headers";
 
 import { CustomerAccountMenu } from "@/components/customer-account-menu";
 import { HeaderSearchBar } from "@/components/header-search-bar";
-import { auth } from "@/lib/auth/server";
+import { getCachedSession } from "@/lib/auth/session";
 
 export async function StorefrontHeader() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getCachedSession();
   const navigation = session ? [
     ["Home", "/"], ["Order now", "/products"], ["Order status", "/account#orders"],
     ["Wallet / balance", "/account/wallet"], ["Account", "/account"],

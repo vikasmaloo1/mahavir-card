@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const [customer] = await db.select().from(customers).where(eq(customers.userId, session.user.id)).limit(1);
     if (!customer) return jsonOk({ customer: null, profileComplete: false, transactions: [] });
     const transactions = await db.select().from(walletTransactions).where(eq(walletTransactions.customerId, customer.id)).orderBy(desc(walletTransactions.createdAt)).limit(50);
-    return jsonOk({ customer: { creditEnabled: customer.creditEnabled, creditLimit: customer.creditLimit, availableBalance: customer.availableCredit, paymentTermsDays: customer.paymentTermsDays }, profileComplete: isCustomerProfileComplete(customer), transactions });
+    return jsonOk({ customer: { customerType: customer.customerType, creditEnabled: customer.creditEnabled, creditLimit: customer.creditLimit, availableBalance: customer.availableCredit, paymentTermsDays: customer.paymentTermsDays }, profileComplete: isCustomerProfileComplete(customer), transactions });
   } catch (error) {
     return error instanceof Response ? error : handleApiError(error);
   }

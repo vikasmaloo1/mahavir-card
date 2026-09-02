@@ -11,6 +11,7 @@ import { formatInr } from "@/lib/formatting";
 import { commerceStates } from "@/lib/india-states";
 import { isSpecialQuantityProduct, normalizeProductQuantity, stepProductQuantity } from "@/lib/quantity-helper";
 import { RequirementQuoteModal, type RequirementContext } from "@/components/requirement-quote-modal";
+import { cachedFetchJson } from "@/lib/client-fetch-cache";
 
 type PricingRule = { id: string; name: string; conditions: Record<string, unknown>; priceFormula: Record<string, unknown> };
 type Addon = { addonId: string; pricingRuleId: string | null; name: string; description: string | null; price: string; isDefault: boolean };
@@ -56,6 +57,7 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
   const [status, setStatus] = useState<"idle" | "quote" | "cart">("idle");
   const [basketError, setBasketError] = useState("");
   const [basketSignInRequired, setBasketSignInRequired] = useState(false);
+  const [profileStateCode, setProfileStateCode] = useState<string | null>(null);
   const [jobName, setJobName] = useState("");
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [quoteContext, setQuoteContext] = useState<RequirementContext>({});
@@ -110,10 +112,22 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
         setAddonIds((scopedAddons.length ? scopedAddons : next.addons.filter((addon) => addon.pricingRuleId === null)).filter((addon) => addon.isDefault).map((addon) => addon.addonId));
       }
       const pickup = next.deliveryRules.find((rule) => rule.deliveryMethod === "PICKUP");
+      const nonPickupMethods = [...new Set(next.deliveryRules.map((rule) => rule.deliveryMethod).filter((method) => method !== "PICKUP"))];
       if (pickup) setDelivery({ method: "PICKUP", stateCode: "*" });
+      // Only one non-pickup delivery method: auto-select it instead of making the customer
+      // choose from a single-option dropdown, defaulting the state to their saved profile state.
+      else if (nonPickupMethods.length === 1) setDelivery({ method: nonPickupMethods[0], stateCode: profileStateCode ?? "GJ" });
     }).catch((caught) => { if (active) setDetailsError(caught instanceof Error ? caught.message : "Product options could not be loaded"); });
     return () => { active = false; };
-  }, [defaults, detailsVersion, product.id]);
+  }, [defaults, detailsVersion, product.id, profileStateCode]);
+
+  useEffect(() => {
+    let active = true;
+    cachedFetchJson<{ success: boolean; data: { customer?: { stateCode?: string | null } } }>("/api/account/profile").then(({ payload }) => {
+      if (active && payload?.success) setProfileStateCode(payload.data.customer?.stateCode ?? null);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (!editItemId || !details) return;
@@ -268,24 +282,31 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
               </div>
             </div>
           ) : null}
-          {deliveryMethods.length ? (
+          {deliveryMethods.length > 1 ? (
             <div className="grid gap-3 sm:grid-cols-2">
               <label>
                 <span className="mb-2 block text-[13px] font-bold text-[#263753]">Delivery</span>
-                <select value={delivery?.method ?? ""} onChange={(event) => setDelivery({ method: event.target.value as Delivery["method"], stateCode: event.target.value === "PICKUP" ? "*" : delivery?.stateCode === "*" ? "GJ" : delivery?.stateCode || "GJ" })} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-3 text-[15px] outline-none">
+                <select value={delivery?.method ?? ""} onChange={(event) => setDelivery({ method: event.target.value as Delivery["method"], stateCode: event.target.value === "PICKUP" ? "*" : delivery?.stateCode === "*" ? (profileStateCode ?? "GJ") : delivery?.stateCode || (profileStateCode ?? "GJ") })} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-3 text-[15px] outline-none">
                   <option value="">Choose delivery</option>
                   {deliveryMethods.map((method) => <option key={method} value={method}>{method.replaceAll("_", " ")}</option>)}
                 </select>
               </label>
               {delivery?.method && delivery.method !== "PICKUP" ? (
                 <label>
-                  <span className="mb-2 block text-[13px] font-bold text-[#263753]">Delivery state</span>
+                  <span className="mb-2 block text-[13px] font-bold text-[#263753]">Delivery state {profileStateCode && delivery.stateCode === profileStateCode ? <span className="font-normal text-[#8b9bb5]">(from your profile)</span> : null}</span>
                   <select value={delivery.stateCode} onChange={(event) => setDelivery({ ...delivery, stateCode: event.target.value })} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-3 text-[15px] outline-none">
                     {commerceStates.map(([code, state]) => <option key={code} value={code}>{state}</option>)}
                   </select>
                 </label>
               ) : null}
             </div>
+          ) : delivery?.method && delivery.method !== "PICKUP" ? (
+            <label className="block max-w-xs">
+              <span className="mb-2 block text-[13px] font-bold text-[#263753]">Delivery state {profileStateCode && delivery.stateCode === profileStateCode ? <span className="font-normal text-[#8b9bb5]">(from your profile)</span> : null}</span>
+              <select value={delivery.stateCode} onChange={(event) => setDelivery({ ...delivery, stateCode: event.target.value })} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-3 text-[15px] outline-none">
+                {commerceStates.map(([code, state]) => <option key={code} value={code}>{state}</option>)}
+              </select>
+            </label>
           ) : null}
           {requirement ? (
             <div className="space-y-3">

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Clock3, FileUp, ShieldCheck } from "lucide-react";
 import { and, asc, eq } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
-import { headers } from "next/headers";
+import { getCachedSession } from "@/lib/auth/session";
 import Link from "next/link";
 
 import { BackButton } from "@/components/back-button";
@@ -16,7 +16,6 @@ import { type CatalogProduct, type ConfigField } from "@/lib/catalog";
 import { db } from "@/lib/db/server";
 import { artworkRequirements, categories, pricingRules, productImages, products, productVariants } from "@/lib/db/schema";
 import { conciseProductSpecification, deriveStartingPrice, type StartingPrice } from "@/lib/product-listing-pricing";
-import { auth } from "@/lib/auth/server";
 import { safeProductReturnPath } from "@/lib/catalog-routing";
 
 export const dynamic = "force-dynamic";
@@ -147,7 +146,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   const { slug } = await params;
   const query = await searchParams;
   if (slug === "business-cards") redirect("/products?category=visiting-card");
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getCachedSession();
   if (!session) {
     const search = new URLSearchParams();
     for (const [key, value] of Object.entries(query)) {

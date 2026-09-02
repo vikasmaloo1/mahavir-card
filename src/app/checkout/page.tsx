@@ -3,8 +3,7 @@ import { CheckoutFlow } from "@/components/checkout-flow";
 import { CustomerNotices } from "@/components/customer-notices";
 import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
-import { auth } from "@/lib/auth/server";
-import { headers } from "next/headers";
+import { getCachedSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
@@ -13,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CheckoutPage() {
-  if (!await auth.api.getSession({ headers: await headers() })) redirect("/login?next=%2Fcheckout");
+  if (!await getCachedSession()) redirect("/login?next=%2Fcheckout");
   return (
     <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
       <StorefrontHeader />

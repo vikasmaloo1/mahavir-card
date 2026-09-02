@@ -5,9 +5,8 @@ import { PromotionalBanner } from "@/components/promotional-banner";
 import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { Suspense } from "react";
-import { headers } from "next/headers";
+import { getCachedSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth/server";
 import { catalogCategories, isLegacyCategorySlug, productFiltersToSearchParams, readProductFilters } from "@/lib/catalog-routing";
 
 export async function generateMetadata({ searchParams }: PageProps<"/products">): Promise<Metadata> {
@@ -41,7 +40,7 @@ export default async function ProductsPage({ searchParams }: PageProps<"/product
     if (typeof value === "string") params.set(key, value);
     else if (Array.isArray(value)) value.forEach((entry) => params.append(key, entry));
   }
-  if (!await auth.api.getSession({ headers: await headers() })) {
+  if (!await getCachedSession()) {
     const query = params.toString();
     redirect(`/login?next=${encodeURIComponent(query ? `/products?${query}` : "/products")}`);
   }

@@ -6,8 +6,7 @@ import { PromotionalBanner } from "@/components/promotional-banner";
 import { PurchaseCart } from "@/components/purchase-cart";
 import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
-import { auth } from "@/lib/auth/server";
-import { headers } from "next/headers";
+import { getCachedSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
@@ -16,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CartPage() {
-  if (!await auth.api.getSession({ headers: await headers() })) redirect("/login?next=%2Fcart");
+  if (!await getCachedSession()) redirect("/login?next=%2Fcart");
   return (
     <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
       <StorefrontHeader />

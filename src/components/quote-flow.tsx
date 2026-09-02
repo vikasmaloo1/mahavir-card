@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Check, FileText, Loader2, Minus, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowRight, Check, FileText, Loader2, MapPinOff, Minus, Plus, Search, Sparkles, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { formatInr } from "@/lib/formatting";
 import { normalizeProductQuantity, stepProductQuantity } from "@/lib/quantity-helper";
 import { BackButton } from "@/components/back-button";
+import { cachedFetchJson } from "@/lib/client-fetch-cache";
+import { RequirementQuoteModal, type RequirementContext } from "@/components/requirement-quote-modal";
 
 type QuoteBasketItem = {
   id: string;
@@ -53,11 +55,17 @@ export function QuoteFlow() {
   const [busyId, setBusyId] = useState("");
   const [quoteNumber, setQuoteNumber] = useState("");
   const [addedAnimationId, setAddedAnimationId] = useState<string | null>(null);
+  const [isRequirementModalOpen, setIsRequirementModalOpen] = useState(false);
+  const [requirementContext, setRequirementContext] = useState<RequirementContext>({});
+
+  function openRequirementModal(context: RequirementContext) {
+    setRequirementContext(context);
+    setIsRequirementModalOpen(true);
+  }
 
   const loadAccount = useCallback(async () => {
     try {
-      const response = await fetch("/api/account/summary", { cache: "no-store" });
-      const account = await response.json().catch(() => null);
+      const { payload: account } = await cachedFetchJson<{ success: boolean; data: { customer?: { contactName?: string; phone?: string; companyName?: string }; user: { name: string; email: string; phoneNumber?: string | null } } }>("/api/account/summary");
       if (account?.success) {
         setForm((current) => ({
           ...current,
@@ -387,6 +395,26 @@ export function QuoteFlow() {
               </div>
             </div>
 
+            {/* Escape hatches for anyone who doesn't see what they need in the list below */}
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => openRequirementModal({ mode: "SEARCH_FALLBACK", searchQuery })}
+                className="inline-flex flex-1 items-center gap-2 rounded-lg border border-dashed border-[#c9d2df] bg-[#fbfcfe] px-3.5 py-2.5 text-left text-xs font-semibold text-[#2457b8] hover:border-[#2457b8] hover:bg-[#f4f8ff] transition-colors"
+              >
+                <Sparkles size={15} className="shrink-0" />
+                Can&apos;t find what you&apos;re looking for? Share your requirement
+              </button>
+              <button
+                type="button"
+                onClick={() => openRequirementModal({ mode: "STATE_UNAVAILABLE" })}
+                className="inline-flex flex-1 items-center gap-2 rounded-lg border border-dashed border-[#c9d2df] bg-[#fbfcfe] px-3.5 py-2.5 text-left text-xs font-semibold text-[#2457b8] hover:border-[#2457b8] hover:bg-[#f4f8ff] transition-colors"
+              >
+                <MapPinOff size={15} className="shrink-0" />
+                Not available in your state? Request delivery quote
+              </button>
+            </div>
+
             <div className="mt-4 divide-y divide-[#edf1f7]">
               {loadingProducts ? (
                 <div className="py-8 text-center text-sm text-[#607089]">Loading catalog products...</div>
@@ -470,7 +498,14 @@ export function QuoteFlow() {
                 })
               ) : (
                 <div className="py-8 text-center text-sm text-[#607089]">
-                  No quoteable products found matching &ldquo;{searchQuery}&rdquo;.
+                  <p>No quoteable products found matching &ldquo;{searchQuery}&rdquo;.</p>
+                  <button
+                    type="button"
+                    onClick={() => openRequirementModal({ mode: "SEARCH_FALLBACK", searchQuery })}
+                    className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#2457b8] px-4 py-2 text-xs font-bold text-white hover:bg-[#1a4494] transition-colors"
+                  >
+                    <Sparkles size={14} /> Share your requirement instead
+                  </button>
                 </div>
               )}
             </div>
@@ -569,6 +604,12 @@ export function QuoteFlow() {
           </form>
         </aside>
       </div>
+
+      <RequirementQuoteModal
+        isOpen={isRequirementModalOpen}
+        onClose={() => setIsRequirementModalOpen(false)}
+        context={requirementContext}
+      />
     </div>
   );
 }

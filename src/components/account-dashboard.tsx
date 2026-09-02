@@ -6,6 +6,7 @@ import { ArrowRight, FileQuestion, FileText, MapPin, Package, Palette, RefreshCw
 import { useCallback, useEffect, useState } from "react";
 
 import { formatInr } from "@/lib/formatting";
+import { cachedFetchJson } from "@/lib/client-fetch-cache";
 
 type AccountData = {
   user: { name: string; email: string; phoneNumber?: string | null };
@@ -18,6 +19,15 @@ type AccountData = {
   addresses: { id: string; label: string; line1: string; line2: string | null; city: string; state: string; postalCode: string; country: string }[];
 };
 
+type OrderBucket = "ALL" | "AWAITING_ARTWORK" | "IN_PRODUCTION" | "READY" | "DELIVERED";
+const ORDER_BUCKETS: Array<{ id: OrderBucket; label: string; statuses: string[] | null }> = [
+  { id: "ALL", label: "All", statuses: null },
+  { id: "AWAITING_ARTWORK", label: "Awaiting artwork", statuses: ["PENDING", "CONFIRMED", "ARTWORK_REVIEW"] },
+  { id: "IN_PRODUCTION", label: "In production", statuses: ["ARTWORK_APPROVED", "IN_PRODUCTION", "QC"] },
+  { id: "READY", label: "Ready", statuses: ["READY", "DISPATCHED"] },
+  { id: "DELIVERED", label: "Delivered", statuses: ["DELIVERED"] },
+];
+
 export function AccountDashboard() {
   const router = useRouter();
   const [data, setData] = useState<AccountData | null>(null);
@@ -26,6 +36,7 @@ export function AccountDashboard() {
   const [signedOut, setSignedOut] = useState(false);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
   const [reorderError, setReorderError] = useState("");
+  const [orderFilter, setOrderFilter] = useState<OrderBucket>("ALL");
 
   async function reorder(orderId: string) {
     setReorderingId(orderId);
@@ -46,10 +57,9 @@ export function AccountDashboard() {
     setError("");
     setSignedOut(false);
     try {
-      const response = await fetch("/api/account/summary", { cache: "no-store" });
-      const payload = await response.json().catch(() => null);
-      if (response.status === 401) { setSignedOut(true); throw new Error("Sign in to view your account."); }
-      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "We couldn't load your account. Please retry.");
+      const { status, ok, payload } = await cachedFetchJson<{ success: boolean; data: AccountData; error?: { message?: string } }>("/api/account/summary");
+      if (status === 401) { setSignedOut(true); throw new Error("Sign in to view your account."); }
+      if (!ok || !payload?.success) throw new Error(payload?.error?.message ?? "We couldn't load your account. Please retry.");
       setData(payload.data);
     } catch (caught) {
       setError(caught instanceof TypeError ? "Connection interrupted. Check your connection and retry." : caught instanceof Error ? caught.message : "We couldn't load your account. Please retry.");
@@ -90,15 +100,40 @@ export function AccountDashboard() {
       <div className="mt-7 grid gap-5 xl:grid-cols-2">
         <section id="orders" className="scroll-mt-36 rounded-xl border border-[var(--mc-line)] bg-white p-5 sm:p-6 shadow-sm">
           <h2 className="font-bold text-[var(--mc-ink)]">Orders</h2>
+          {data.orders.length ? (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {ORDER_BUCKETS.map((bucket) => {
+                const count = bucket.statuses ? data.orders.filter((order) => bucket.statuses!.includes(order.status)).length : data.orders.length;
+                if (bucket.id !== "ALL" && !count) return null;
+                return (
+                  <button
+                    key={bucket.id}
+                    type="button"
+                    onClick={() => setOrderFilter(bucket.id)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${orderFilter === bucket.id ? "bg-[var(--mc-ink)] text-white" : "border border-[var(--mc-line)] bg-white text-[var(--mc-muted)] hover:text-[var(--mc-ink)]"}`}
+                  >
+                    {bucket.label} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
           {reorderError ? <p className="mt-3 rounded-lg border border-[#efb7b7] bg-[#fff4f4] p-3 text-xs font-semibold text-[#9b2525]">{reorderError}</p> : null}
           <div className="mt-4 space-y-3">
-            {data.orders.length ? data.orders.map((item) => (
+            {(() => {
+              const activeBucket = ORDER_BUCKETS.find((bucket) => bucket.id === orderFilter);
+              const filteredOrders = activeBucket?.statuses ? data.orders.filter((order) => activeBucket.statuses!.includes(order.status)) : data.orders;
+              return filteredOrders.length ? filteredOrders.map((item) => (
               <div key={item.id} className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] pt-3 text-sm">
                 <Link href={`/account/orders/${item.id}`} className="min-w-0 flex-1 hover:text-[var(--mc-accent)] transition-colors">
                   <strong>{item.orderNumber}</strong>
                   <small className="mt-1 block text-[var(--mc-muted)]">{labelStatus(item.status)} / {date(item.createdAt)}</small>
                 </Link>
                 <strong className="shrink-0">{formatInr(item.total)}</strong>
+                <Link href={`/account/orders/${item.id}#documents`} className="hidden shrink-0 items-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors sm:inline-flex">
+                  <FileText size={13} />
+                  Invoice
+                </Link>
                 <button
                   type="button"
                   disabled={reorderingId === item.id}
@@ -109,12 +144,15 @@ export function AccountDashboard() {
                   {reorderingId === item.id ? "Adding..." : "Reorder"}
                 </button>
               </div>
-            )) : (
-              <div className="border-t border-dashed border-[var(--mc-line)] pt-5 text-sm text-[var(--mc-muted)]">
-                <p>No orders yet.</p>
-                <Link href="/products" className="mt-3 inline-flex items-center gap-2 font-bold text-[var(--mc-accent)]">Browse products <ArrowRight size={15} /></Link>
-              </div>
-            )}
+            )) : data.orders.length ? (
+                <p className="border-t border-dashed border-[var(--mc-line)] pt-5 text-sm text-[var(--mc-muted)]">No orders match this filter.</p>
+              ) : (
+                <div className="border-t border-dashed border-[var(--mc-line)] pt-5 text-sm text-[var(--mc-muted)]">
+                  <p>No orders yet.</p>
+                  <Link href="/products" className="mt-3 inline-flex items-center gap-2 font-bold text-[var(--mc-accent)]">Browse products <ArrowRight size={15} /></Link>
+                </div>
+              );
+            })()}
           </div>
         </section>
         <Records id="quotes" title="Quotes" items={data.quotes} empty="No quote requests yet." action="Open quote basket" href="/quote" itemHref={(item) => `/account/quotes/${item.id}`} render={(item) => <><span><strong>{item.quoteNumber}</strong><small className="mt-1 block text-[var(--mc-muted)]">{labelStatus(item.status)} / {date(item.createdAt)}</small></span><strong>{formatInr(item.total)}</strong></>} />

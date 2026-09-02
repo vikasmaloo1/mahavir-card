@@ -64,22 +64,17 @@ export function LoginForm() {
         const result = await signup.json().catch(() => null);
         if (!signup.ok) throw new Error(messageFrom(result, "Could not create the account"));
 
-        const phoneResponse = await fetch("/api/account/phone", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phoneNumber: normalizedPhone }),
-        });
-        const phoneResult = await phoneResponse.json().catch(() => null);
-        if (!phoneResponse.ok) throw new Error(messageFrom(phoneResult, "Account created, but the mobile number could not be saved"));
-
+        // Mobile number and customer profile are saved together in one transactional
+        // call (see api/account/profile POST) so a failure here can't leave the account
+        // half-set-up the way two separate requests could.
         const selectedState = commerceStates.find(([code]) => code === stateCode);
         const profileResponse = await fetch("/api/account/profile", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ customerType, contactName: name.trim(), companyName: companyName.trim() || null, phone: normalizePhoneNumber(phoneNumber), city: city.trim(), stateCode, state: selectedState?.[1] ?? "" }),
+          body: JSON.stringify({ customerType, contactName: name.trim(), companyName: companyName.trim() || null, phone: normalizedPhone, city: city.trim(), stateCode, state: selectedState?.[1] ?? "" }),
         });
         const profileResult = await profileResponse.json().catch(() => null);
-        if (!profileResponse.ok) throw new Error(messageFrom(profileResult, "Account created, but the customer profile could not be saved"));
+        if (!profileResponse.ok) throw new Error(messageFrom(profileResult, "Your account was created, but the profile could not be saved. Please try signing in and completing your profile."));
 
         router.replace(isSafeNextPath(nextParam) ? nextParam : destinationForCustomerType(customerType));
         router.refresh();
