@@ -13,7 +13,24 @@ import { normalizeProductQuantity, stepProductQuantity } from "@/lib/quantity-he
 type PricingRule = { id: string; name: string; conditions: Record<string, unknown>; priceFormula: Record<string, unknown> };
 type Addon = { addonId: string; pricingRuleId: string | null; name: string; description: string | null; price: string; isDefault: boolean };
 type Delivery = { method: "PICKUP" | "LOCAL_DELIVERY" | "COURIER"; stateCode: string };
-type Estimate = { calculatedAmount: string | null; productPrice?: string | null; addonTotal?: string; delivery?: { method: string | null; price: string }; locationSurcharge?: { amount: string; label: string | null }; taxAmount?: string; cgstAmount?: string; sgstAmount?: string; igstAmount?: string; taxJurisdictionState?: string | null; priceBeforeTax?: string | null; taxRate?: string | null; warnings: string[]; applicableRule?: string | null };
+type Estimate = {
+  calculatedAmount: string | null;
+  productPrice?: string | null;
+  blade?: { count: number; rate: string; amount: string } | null;
+  addonTotal?: string;
+  addons?: Array<{ addonId: string; name: string; price: string; pricingType: string }>;
+  delivery?: { method: string | null; price: string };
+  locationSurcharge?: { amount: string; label: string | null };
+  taxAmount?: string;
+  cgstAmount?: string;
+  sgstAmount?: string;
+  igstAmount?: string;
+  taxJurisdictionState?: string | null;
+  priceBeforeTax?: string | null;
+  taxRate?: string | null;
+  warnings: string[];
+  applicableRule?: string | null;
+};
 type ProductDetails = { addons: Addon[]; pricingRules: PricingRule[]; deliveryRules: Array<{ deliveryMethod: Delivery["method"]; stateCode: string; price: string }>; artworkRequirements: Array<ArtworkRequirement & { pricingRuleId: string | null }>; };
 type CartKind = "PURCHASE" | "QUOTE";
 type EditableCartItem = { id: string; quantity: number; jobName: string | null; configuration: Record<string, unknown> };
@@ -37,7 +54,7 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
   const [status, setStatus] = useState<"idle" | "quote" | "cart">("idle");
   const [basketError, setBasketError] = useState("");
   const [jobName, setJobName] = useState("");
-  const quantity = useMemo(() => normalizeProductQuantity(values.quantity || 1000, product.categorySlug, product.slug).normalizedQuantity, [product.categorySlug, product.slug, values.quantity]);
+  const quantity = useMemo(() => normalizeProductQuantity(values.quantity || (product.categorySlug === "art-card" && product.slug !== "art-card-both-side-lamination" ? 500 : 1000), product.categorySlug, product.slug).normalizedQuantity, [product.categorySlug, product.slug, values.quantity]);
   const requirement = requirementFor(details, selectedRuleId);
   const artworkSlots = requirement?.slots?.length ? requirement.slots : [];
   const requiredArtworkKeys = artworkSlots.length ? artworkSlots.filter((slot) => slot.required).map((slot) => slot.slotKey) : ["MAIN"];
@@ -173,6 +190,12 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
           <p className="text-[13px] font-bold uppercase tracking-[0.13em] text-[#2457b8]">Configure your order</p>
         </div>
         <div className="space-y-5 p-5">
+          {product.categorySlug === "premium-card" || product.slug.startsWith("premium-") ? (
+            <div className="flex items-center gap-2 rounded-lg border border-[#c7d7f3] bg-[#eef4ff] px-3.5 py-2.5 text-[13px] font-semibold text-[#1e4da1]">
+              <span className="grid size-5 place-items-center rounded-full bg-[#2457b8] text-white text-[11px] font-bold">✓</span>
+              <span>Corner cut included by default</span>
+            </div>
+          ) : null}
           <label className="block">
             <span className="mb-2 block text-[13px] font-bold text-[#263753]">Job name <span className="font-normal text-[#607089]">(optional)</span></span>
             <input value={jobName} onChange={(event) => setJobName(event.target.value)} maxLength={160} placeholder="e.g. Restaurant visiting cards" className="w-full rounded-lg border border-[#c9d2df] px-3 py-3 text-[15px] outline-none focus:border-[#2457b8]" />
@@ -181,7 +204,7 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
           <label className="block">
             <span className="mb-2 block text-[13px] font-bold text-[#263753]">Quantity</span>
             <div className="flex items-center rounded-lg border border-[#c9d2df]">
-              <input inputMode="numeric" value={values.quantity || "1000"} onChange={(event) => update("quantity", event.target.value)} onBlur={() => update("quantity", String(quantity))} className="min-w-0 flex-1 px-3 py-3 text-[15px] outline-none" />
+              <input inputMode="numeric" value={values.quantity || (product.categorySlug === "art-card" && product.slug !== "art-card-both-side-lamination" ? "500" : "1000")} onChange={(event) => update("quantity", event.target.value)} onBlur={() => update("quantity", String(quantity))} className="min-w-0 flex-1 px-3 py-3 text-[15px] outline-none" />
               <div className="flex gap-1 pr-2">
                 <button type="button" onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "DOWN", product.categorySlug, product.slug)))} className="grid size-9 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors" aria-label="Decrease quantity"><Minus size={14} /></button>
                 <button type="button" onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "UP", product.categorySlug, product.slug)))} className="grid size-9 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors" aria-label="Increase quantity"><Plus size={14} /></button>
@@ -198,9 +221,12 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
                       {field.options?.map((option) => <option key={option}>{option}</option>)}
                     </select>
                   ) : (
-                    <div className="flex rounded-lg border border-[#c9d2df]">
-                      <input inputMode={field.type === "number" ? "decimal" : undefined} value={values[field.id] ?? field.defaultValue} onChange={(event) => update(field.id, event.target.value)} className="min-w-0 flex-1 px-3 py-3 text-[15px] outline-none" />
-                      {field.suffix ? <span className="border-l border-[#c9d2df] px-3 py-3 text-sm text-[#607089]">{field.suffix}</span> : null}
+                    <div>
+                      <div className="flex rounded-lg border border-[#c9d2df]">
+                        <input inputMode={field.type === "number" ? "decimal" : undefined} value={values[field.id] ?? field.defaultValue} onChange={(event) => update(field.id, event.target.value)} className="min-w-0 flex-1 px-3 py-3 text-[15px] outline-none" />
+                        {field.suffix ? <span className="border-l border-[#c9d2df] px-3 py-3 text-sm text-[#607089]">{field.suffix}</span> : null}
+                      </div>
+                      {field.id === "bladeCount" ? <span className="mt-1 block text-xs font-semibold text-[#2457b8]">Blade: ₹50 / blade</span> : null}
                     </div>
                   )}
                 </label>
@@ -268,8 +294,21 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
             </div>
             {estimate.productPrice ? (
               <div className="mt-3 space-y-1.5 text-[13px] text-[#607089]">
-                <p className="flex justify-between"><span>Base product</span><strong>{money(estimate.productPrice)}</strong></p>
-                {Number(estimate.addonTotal || 0) > 0 ? <p className="flex justify-between"><span>Add-ons</span><strong>{money(estimate.addonTotal)}</strong></p> : null}
+                <p className="flex justify-between"><span>Base price</span><strong>{money(estimate.productPrice)}</strong></p>
+                {estimate.blade ? (
+                  <p className="flex justify-between text-[#162237]">
+                    <span>Blade ({estimate.blade.count} &times; {money(estimate.blade.rate)})</span>
+                    <strong className="text-[#2457b8]">{money(estimate.blade.amount)}</strong>
+                  </p>
+                ) : null}
+                {estimate.addons && estimate.addons.length > 0 ? (
+                  estimate.addons.filter((addon) => addon.addonId !== "blade").map((addon) => (
+                    <p key={addon.addonId} className="flex justify-between text-[#162237]">
+                      <span>{addon.name}</span>
+                      <strong>{money(addon.price)}</strong>
+                    </p>
+                  ))
+                ) : null}
                 {Number(estimate.locationSurcharge?.amount || 0) > 0 ? <p className="flex justify-between"><span>{estimate.locationSurcharge?.label ?? "Location charge"}</span><strong>{money(estimate.locationSurcharge?.amount)}</strong></p> : null}
                 {Number(estimate.delivery?.price || 0) > 0 ? <p className="flex justify-between"><span>Courier</span><strong>{money(estimate.delivery?.price)}</strong></p> : null}
                 {estimate.taxRate && estimate.priceBeforeTax ? (

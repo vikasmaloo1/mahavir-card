@@ -11,6 +11,9 @@ export function isSpecialQuantityProduct(categorySlug?: string | null, productSl
   const cat = (categorySlug || "").toLowerCase().trim();
   const prod = (productSlug || "").toLowerCase().trim();
 
+  // The LAST Art Card configuration (both-side lamination) is 1000 quantity
+  if (prod === "art-card-both-side-lamination") return false;
+
   return (
     cat === "premium-card" ||
     cat === "art-card" ||

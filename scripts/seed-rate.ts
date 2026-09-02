@@ -61,9 +61,9 @@ async function main() {
       const configurationFields: Array<{ id: string; label: string; type: "select" | "number" | "text"; options?: string[]; defaultValue: string; suffix?: string }> = item.ruleType === "PER_SQ_INCH"
         ? [
             baseQuantityField,
-            { id: "width", label: "Width", type: "number", defaultValue: "1", suffix: "in" },
-            { id: "height", label: "Height", type: "number", defaultValue: "1", suffix: "in" },
-            ...(item.bladeCharge ? [{ id: "bladeCount", label: "Half blades", type: "number" as const, defaultValue: "0" }] : []),
+            { id: "width", label: "Width", type: "number", defaultValue: item.minimumArea ? "10" : "1", suffix: "in" },
+            { id: "height", label: "Height", type: "number", defaultValue: item.minimumArea ? "5" : "1", suffix: "in" },
+            ...(item.bladeCharge ? [{ id: "bladeCount", label: `Half blades (₹${item.bladeCharge} / blade)`, type: "number" as const, defaultValue: "0" }] : []),
           ]
         : [
             baseQuantityField,
@@ -132,8 +132,14 @@ async function main() {
         finalHeight: item.artwork.final?.[1]?.toString() ?? null, orientation: "ANY",
         pageInstructions: pageSlots.map((entry, index) => ({ pageNumber: index + 1, label: entry.name, notes: entry.instructions ?? null, required: true })),
         multiplePageInstructions: pageSlots.length > 1 ? "Upload one CDR file containing these pages in the listed order." : null,
-        additionalInstructions: [item.artwork.black ? `Recommended rich black: ${item.artwork.black}.` : null, "Use high-resolution imagery and convert fonts to curves."].filter(Boolean).join(" "),
-        notes: `Imported from RATE.xlsx Sheet ${categoryIndex + 1}.`, isActive: true,
+        additionalInstructions: [
+          item.minimumArea ? `THIS JOB BIG SIZE ONLY (MINIMUM SQ. INCH ${item.minimumArea}).` : null,
+          category.slug === "art-card"
+            ? "Recommended Black Color Ratio: C-50, M-20, Y-20, K-100 for achieving a rich, premium black in print."
+            : item.artwork.black ? `Recommended rich black: ${item.artwork.black}.` : null,
+          "Use high-resolution imagery and convert fonts to curves."
+        ].filter(Boolean).join(" "),
+        notes: item.minimumArea ? `THIS JOB BIG SIZE ONLY (MINIMUM SQ. INCH ${item.minimumArea}).` : `Imported from RATE.xlsx Sheet ${categoryIndex + 1}.`, isActive: true,
       }).onConflictDoUpdate({ target: artworkRequirements.id, set: {
         productId, pricingRuleId: ruleId, scopeKey: `PRICING_RULE:${ruleId}`, artworkRequired: true, acceptedFormats: ["CDR"], maxFileSize: 100,
         maxFiles: uploadSlots.length, designWidth: item.artwork.design?.[0]?.toString() ?? null,
@@ -142,7 +148,13 @@ async function main() {
         finalHeight: item.artwork.final?.[1]?.toString() ?? null, orientation: "ANY",
         pageInstructions: pageSlots.map((entry, index) => ({ pageNumber: index + 1, label: entry.name, notes: entry.instructions ?? null, required: true })),
         multiplePageInstructions: pageSlots.length > 1 ? "Upload one CDR file containing these pages in the listed order." : null,
-        additionalInstructions: [item.artwork.black ? `Recommended rich black: ${item.artwork.black}.` : null, "Use high-resolution imagery and convert fonts to curves."].filter(Boolean).join(" "),
+        additionalInstructions: [
+          item.minimumArea ? `THIS JOB BIG SIZE ONLY (MINIMUM SQ. INCH ${item.minimumArea}).` : null,
+          category.slug === "art-card"
+            ? "Recommended Black Color Ratio: C-50, M-20, Y-20, K-100 for achieving a rich, premium black in print."
+            : item.artwork.black ? `Recommended rich black: ${item.artwork.black}.` : null,
+          "Use high-resolution imagery and convert fonts to curves."
+        ].filter(Boolean).join(" "),
         notes: `Imported from RATE.xlsx Sheet ${categoryIndex + 1}.`, isActive: true, updatedAt: new Date(),
       } });
       await db.update(artworkSlots).set({ isActive: false, updatedAt: new Date() }).where(eq(artworkSlots.artworkRequirementId, requirementId));

@@ -151,6 +151,7 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
 
 function ProductSpecification({ item }: { item: Product }) {
   const artwork = item.artworkSummary;
+  const isPremium = item.category?.slug === "premium-card" || item.slug.startsWith("premium-");
   const specText = item.listingSpecification && item.listingSpecification.toLowerCase() !== item.name.toLowerCase()
     ? item.listingSpecification
     : null;
@@ -158,6 +159,7 @@ function ProductSpecification({ item }: { item: Product }) {
 
   return <div className="min-w-0 space-y-1 text-[13px] leading-5 text-[var(--mc-muted)]">
     <p className="text-xs font-bold uppercase text-[var(--mc-muted)] xl:hidden">Specification</p>
+    {isPremium ? <p className="font-semibold text-[#1e4da1]">Corner cut included by default.</p> : null}
     {specText ? <p className="line-clamp-2 text-sm font-medium text-[var(--mc-ink)]">{specText}</p> : null}
     {item.productSize ? <p><strong className="font-semibold text-[var(--mc-ink)]">Size:</strong> {item.productSize}</p> : null}
     {artwork ? <>

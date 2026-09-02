@@ -16,6 +16,7 @@ export type CalculatedPrice = {
   calculatedAmount: string | null;
   grandTotal?: string | null;
   productPrice: string | null;
+  blade?: { count: number; rate: string; amount: string } | null;
   addonTotal: string;
   addons: Array<{ addonId: string; name: string; price: string; pricingType: string }>;
   delivery: { method: string | null; stateCode: string | null; price: string };
@@ -37,6 +38,23 @@ export type CalculatedPrice = {
   taxRate: string | null;
   currency: "INR";
   pricingDetails: Record<string, unknown>;
+  breakdown?: {
+    basePrice: string;
+    blade: { count: number; rate: string; amount: string } | null;
+    addons: Array<{ name: string; amount: string }>;
+    delivery: { method: string | null; stateCode: string | null; amount: string } | null;
+    locationSurcharge: { label: string | null; amount: string } | null;
+    taxableSubtotal: string;
+    gst: {
+      taxType: TaxJurisdiction;
+      rate: string;
+      cgst: string;
+      sgst: string;
+      igst: string;
+      total: string;
+    };
+    grandTotal: string;
+  };
   applicableRule: string | null;
   applicableRuleId: string | null;
   warnings: string[];
@@ -93,8 +111,9 @@ async function calculateBasePrice(productId: string, quantity: number, options: 
     const extraCharge = bladeCount * bladeCharge * batchMultiplier;
     const expectedQuantity = selected.conditions.quantity;
     return {
-      amount: areaPrice + extraCharge, rule: selected.rule.name, ruleId: selected.rule.id,
+      amount: areaPrice, rule: selected.rule.name, ruleId: selected.rule.id,
       taxInclusive: selected.rule.taxInclusive, taxRate: selected.rule.taxRate ? Number(selected.rule.taxRate) : null,
+      blade: bladeCount > 0 && bladeCharge > 0 ? { count: bladeCount, chargePerBlade: bladeCharge, total: extraCharge } : null,
       details: { quantity, width, height, area, ratePerSqInch: rate, baseAreaPrice: rawAreaPrice, minimumArea: minimumArea || null, minimumCharge: minimumCharge || null, bladeCount, bladeCharge: bladeCharge || null, extraCharge, source: "RATE.xlsx", unit: "reference_batch_area" },
       warnings: expectedQuantity && expectedQuantity !== quantity ? [`This rate is configured for ${expectedQuantity.toLocaleString("en-IN")} quantity.`] : [],
     };
@@ -232,8 +251,10 @@ export async function calculateProductPrice(productId: string, rawQuantity: numb
   }
 
   const rate = taxRate ?? 18;
+  const bladeExtra = (base as { blade?: { count: number; chargePerBlade: number; total: number } | null }).blade?.total ?? 0;
   const components = [
     taxableComponent(base.amount, base.taxInclusive, rate),
+    ...(bladeExtra > 0 ? [taxableComponent(bladeExtra, base.taxInclusive, rate)] : []),
     ...selectedAddons.map((addon) => taxableComponent(Number(addon.price), addon.taxInclusive, rate)),
     taxableComponent(Number(delivery.price), delivery.taxInclusive, rate),
     taxableComponent(surcharge.amount, surcharge.taxInclusive, rate),
@@ -257,12 +278,27 @@ export async function calculateProductPrice(productId: string, rawQuantity: numb
     taxInclusive: false,
   });
 
+  const baseBlade = (base as { blade?: { count: number; chargePerBlade: number; total: number } | null }).blade;
+  const bladeLineItem = baseBlade && baseBlade.total > 0 ? {
+    count: baseBlade.count,
+    rate: money(baseBlade.chargePerBlade),
+    amount: money(taxableComponent(baseBlade.total, base.taxInclusive, rate).net),
+  } : null;
+
+  const totalAddonAmount = selectedAddons.reduce((sum, addon) => sum + taxableComponent(Number(addon.price), addon.taxInclusive, rate).net, 0) + (bladeLineItem ? Number(bladeLineItem.amount) : 0);
+
+  const allAddons = [
+    ...selectedAddons.map((addon) => ({ addonId: addon.addonId, name: addon.name, price: money(taxableComponent(Number(addon.price), addon.taxInclusive, rate).net), pricingType: addon.pricingType })),
+    ...(bladeLineItem ? [{ addonId: "blade", name: `Blade (${baseBlade!.count} \u00d7 \u20b9${baseBlade!.chargePerBlade})`, price: bladeLineItem.amount, pricingType: "BLADE" }] : [])
+  ];
+
   return {
     calculatedAmount: taxResult.grandTotal,
     grandTotal: taxResult.grandTotal,
     productPrice: money(taxableComponent(base.amount, base.taxInclusive, rate).net),
-    addonTotal: money(selectedAddons.reduce((sum, addon) => sum + taxableComponent(Number(addon.price), addon.taxInclusive, rate).net, 0)),
-    addons: selectedAddons.map((addon) => ({ addonId: addon.addonId, name: addon.name, price: money(taxableComponent(Number(addon.price), addon.taxInclusive, rate).net), pricingType: addon.pricingType })),
+    blade: bladeLineItem,
+    addonTotal: money(totalAddonAmount),
+    addons: allAddons,
     delivery: { method: delivery.method, stateCode: delivery.stateCode, price: money(taxableComponent(Number(delivery.price), delivery.taxInclusive, rate).net) },
     locationSurcharge: { amount: money(taxableComponent(surcharge.amount, surcharge.taxInclusive, rate).net), label: surcharge.label },
     taxInclusive: allTaxInclusive,
@@ -281,7 +317,40 @@ export async function calculateProductPrice(productId: string, rawQuantity: numb
     priceBeforeTax: taxResult.taxableSubtotal,
     taxRate: taxResult.taxRate,
     currency: "INR",
-    pricingDetails: { ...base.details, referenceQuantity: product.referenceQuantity, referenceWeight: product.referenceWeight, referenceWeightUnit: product.referenceWeightUnit },
+    pricingDetails: {
+      ...base.details,
+      selectedOption: base.rule,
+      referenceQuantity: product.referenceQuantity,
+      referenceWeight: product.referenceWeight,
+      referenceWeightUnit: product.referenceWeightUnit,
+    },
+    breakdown: {
+      basePrice: money(taxableComponent(base.amount, base.taxInclusive, rate).net),
+      blade: bladeLineItem,
+      addons: selectedAddons.map((addon) => ({
+        name: addon.name,
+        amount: money(taxableComponent(Number(addon.price), addon.taxInclusive, rate).net),
+      })),
+      delivery: Number(delivery.price) > 0 ? {
+        method: delivery.method,
+        stateCode: delivery.stateCode,
+        amount: money(taxableComponent(Number(delivery.price), delivery.taxInclusive, rate).net),
+      } : null,
+      locationSurcharge: surcharge.amount > 0 ? {
+        label: surcharge.label,
+        amount: money(taxableComponent(surcharge.amount, surcharge.taxInclusive, rate).net),
+      } : null,
+      taxableSubtotal: taxResult.taxableSubtotal,
+      gst: {
+        taxType: taxResult.taxType,
+        rate: taxResult.taxRate,
+        cgst: taxResult.cgstAmount,
+        sgst: taxResult.sgstAmount,
+        igst: taxResult.igstAmount,
+        total: taxResult.taxAmount,
+      },
+      grandTotal: taxResult.grandTotal,
+    },
     applicableRule: base.rule,
     applicableRuleId: base.ruleId,
     warnings: base.warnings,

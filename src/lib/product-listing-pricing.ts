@@ -103,6 +103,8 @@ export function conciseProductSpecification(name: string, description: string | 
     .replace(new RegExp(`^${escapedCategory ? `${escapedCategory}\\s*(?:[-:|\u00b7]\\s*)?` : "(?!)"}`, "i"), "")
     .replace(/\s*for (?:a )?reference batch of [\d,]+(?:\s+(?:cards|pieces|pcs|units))?\.?/gi, "")
     .replace(/\s*reference quantity:\s*[\d,]+\.?/gi, "")
+    .replace(/\b250\s*gsm\s*(?:[\u00b7\-|]\s*)?/gi, "")
+    .replace(/\btearable\s*(?:[\u00b7\-|]\s*)?/gi, "")
     .trim()
     .replace(/^[,.;:\-\u00b7\s]+|[,;:\-\u00b7\s]+$/g, "");
 

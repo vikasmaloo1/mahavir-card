@@ -348,6 +348,99 @@ async function runSuite() {
   }
   console.log(`✓ All ${brochures.length} Brochure products verified with quoteable: false & 4-5 working days`);
 
+  // -------------------------------------------------------------
+  // PART 10: ART CARD, BLADE PRICING, & PREMIUM CARD CHECKS
+  // -------------------------------------------------------------
+  console.log("\n--- Part 10: Art Card, Blade Pricing & Premium Card Checks ---");
+
+  // 1. Art Card Single Side checks
+  const [artSingle] = await db.select().from(products).where(eq(products.slug, "art-card-single-side")).limit(1);
+  assert.ok(artSingle, "Art Card Single Side product must exist");
+  assert.equal(artSingle.name, "Art Card", "Art Card customer-facing name must be 'Art Card'");
+  assert.equal(artSingle.productionTime, "3-4 working days", "Art Card production time must be '3-4 working days'");
+  assert.equal(artSingle.referenceQuantity, 500, "Art Card Single Side reference quantity must be 500");
+
+  const calcArtSingle = await calculateProductPrice(artSingle.id, 500, { width: "2", height: "5" }, { stateCode: "GJ" });
+  assert.ok(calcArtSingle, "Art Card Single Side price calculation failed");
+  // 10 sq. in * 28 = 280
+  assert.equal(calcArtSingle.productPrice, "280.00", "Art Card Single Side 10 sq.in at ₹28 must be ₹280.00");
+  assert.equal(calcArtSingle.breakdown?.basePrice, "280.00");
+  console.log("✓ Art Card Single Side: name='Art Card', 3-4 working days, 500 qty, ₹28/sq.in verified");
+
+  // 2. Art Card Both Side checks
+  const [artBoth] = await db.select().from(products).where(eq(products.slug, "art-card-both-side")).limit(1);
+  assert.ok(artBoth, "Art Card Both Side product must exist");
+  assert.equal(artBoth.productionTime, "3-4 working days", "Art Card Both Side production time must be '3-4 working days'");
+  assert.equal(artBoth.referenceQuantity, 500, "Art Card Both Side reference quantity must be 500");
+
+  // Test minimum 50 sq. in. rejection
+  let minAreaFailed = false;
+  try {
+    await calculateProductPrice(artBoth.id, 500, { width: "5", height: "5" }, { stateCode: "GJ" });
+  } catch (err: any) {
+    minAreaFailed = true;
+    assert.ok(err.message.includes("50 square inches"), "Should reject < 50 sq inches");
+  }
+  assert.ok(minAreaFailed, "Art Card Both Side must reject < 50 sq. in.");
+
+  // Test 50 sq. in. price: 50 * 33 = 1650
+  const calcArtBoth = await calculateProductPrice(artBoth.id, 500, { width: "10", height: "5" }, { stateCode: "GJ" });
+  assert.ok(calcArtBoth, "Art Card Both Side 50 sq.in calculation failed");
+  assert.equal(calcArtBoth.productPrice, "1650.00", "Art Card Both Side 50 sq.in at ₹33 must be ₹1650.00");
+  console.log("✓ Art Card Both Side: 50 sq.in minimum enforced, ₹33/sq.in rate verified");
+
+  // 3. Art Card Both Side Lamination checks
+  const [artLam] = await db.select().from(products).where(eq(products.slug, "art-card-both-side-lamination")).limit(1);
+  assert.ok(artLam, "Art Card Both Side Lamination product must exist");
+  assert.equal(artLam.productionTime, "3-4 working days", "Art Card Both Side Lamination production time must be '3-4 working days'");
+  assert.equal(artLam.referenceQuantity, 1000, "Art Card Both Side Lamination reference quantity must be 1000");
+
+  const calcArtLam = await calculateProductPrice(artLam.id, 1000, { width: "2", height: "5" }, { stateCode: "GJ" });
+  assert.ok(calcArtLam, "Art Card Both Side Lamination calculation failed");
+  // 10 sq. in * 37 = 370
+  assert.equal(calcArtLam.productPrice, "370.00", "Art Card Both Side Lamination 10 sq.in at ₹37 must be ₹370.00");
+  console.log("✓ Art Card Both Side Lamination: 1000 reference quantity, ₹37/sq.in rate verified");
+
+  // 4. Quantity helper rules for Art Card
+  assert.equal(normalizeProductQuantity(null, "art-card", "art-card-single-side").normalizedQuantity, 500);
+  assert.equal(normalizeProductQuantity(null, "art-card", "art-card-both-side").normalizedQuantity, 500);
+  assert.equal(normalizeProductQuantity(null, "art-card", "art-card-both-side-lamination").normalizedQuantity, 1000);
+  assert.equal(stepProductQuantity(500, "UP", "art-card", "art-card-single-side"), 1000);
+  assert.equal(stepProductQuantity(1000, "DOWN", "art-card", "art-card-single-side"), 500);
+  assert.equal(stepProductQuantity(1000, "DOWN", "art-card", "art-card-both-side-lamination"), 1000);
+  console.log("✓ Quantity rules: first two Art Cards = 500, last Art Card = 1000 verified");
+
+  // 5. Blade charges verification (₹50 / blade)
+  const [stickerProd] = await db.select().from(products).where(eq(products.slug, "sticker-without-lamination")).limit(1);
+  assert.ok(stickerProd, "Sticker product must exist");
+
+  const blade0 = await calculateProductPrice(stickerProd.id, 1000, { width: "2", height: "2", bladeCount: "0" }, { stateCode: "GJ" });
+  assert.equal(blade0?.blade, null, "0 blades should have null blade line item");
+
+  const blade1 = await calculateProductPrice(stickerProd.id, 1000, { width: "2", height: "2", bladeCount: "1" }, { stateCode: "GJ" });
+  assert.ok(blade1?.blade, "1 blade line item must exist");
+  assert.equal(blade1.blade.count, 1);
+  assert.equal(blade1.blade.rate, "50.00");
+  assert.equal(blade1.blade.amount, "50.00");
+  assert.equal(blade1.productPrice, "250.00"); // Base price is minimum charge ₹250, strictly separated from blade
+  assert.equal(blade1.taxableSubtotal, "300.00"); // 250 + 50 = 300
+
+  const blade2 = await calculateProductPrice(stickerProd.id, 1000, { width: "2", height: "2", bladeCount: "2" }, { stateCode: "GJ" });
+  assert.equal(blade2?.blade?.amount, "100.00", "2 blades must be ₹100.00");
+  assert.equal(blade2.taxableSubtotal, "350.00"); // 250 + 100 = 350
+
+  const blade3 = await calculateProductPrice(stickerProd.id, 1000, { width: "2", height: "2", bladeCount: "3" }, { stateCode: "GJ" });
+  assert.equal(blade3?.blade?.amount, "150.00", "3 blades must be ₹150.00");
+  assert.equal(blade3.taxableSubtotal, "400.00"); // 250 + 150 = 400
+  console.log("✓ Blade pricing verified: ₹50 / blade (1 -> ₹50, 2 -> ₹100, 3 -> ₹150) separated from base price");
+
+  // 6. Premium Card Corner Cut included by default
+  const [premCard] = await db.select().from(products).where(eq(products.slug, "premium-400-gsm-velvet")).limit(1);
+  assert.ok(premCard, "Premium Card Velvet product must exist");
+  const premAddons = await db.select().from(productAddons).where(and(eq(productAddons.productId, premCard.id), eq(productAddons.isActive, true)));
+  assert.equal(premAddons.length, 0, "Premium Card should have no separate add-on charge for Corner Cut");
+  console.log("✓ Premium Card verified: Corner cut included by default without double charge");
+
   console.log("\n=== ALL VERIFICATION TEST SUITES PASSED PERFECTLY ===");
 }
 
