@@ -19,18 +19,6 @@ export type CinematicSlide = {
 
 const defaultSlides: CinematicSlide[] = [
   {
-    id: "1",
-    badge: "Commercial Plant Capacity",
-    title: "High-Volume Commercial Printing",
-    subtitle:
-      "Need 10,000+ brochures, custom stickers, or bespoke stationery? Our multi-unit offset presses deliver rich ink density, tight registration, and competitive bulk rates for agencies and trade printers.",
-    primaryCtaLabel: "Request Bulk Quotation",
-    primaryCtaUrl: "/quote",
-    secondaryCtaLabel: "View 250 GSM Brochures",
-    secondaryCtaUrl: "/products?category=brochure",
-    imageUrl: "/images/commercial-offset-banner.jpg",
-  },
-  {
     id: "2",
     badge: "Tactile Luxury Finishes",
     title: "400 GSM Velvet, Raised UV & Gold Foil",
@@ -108,7 +96,7 @@ export function CinematicBannerSlideshow({
             primaryCtaUrl: b.ctaUrl || "/products",
             secondaryCtaLabel: "View Catalog",
             secondaryCtaUrl: "/products",
-            imageUrl: b.imageUrl || "/images/commercial-offset-banner.jpg",
+            imageUrl: b.imageUrl || "/images/home-hero-printing.jpg",
           }));
           setSlides(apiSlides);
         }

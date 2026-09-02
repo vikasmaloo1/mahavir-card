@@ -83,13 +83,13 @@ async function main() {
     },
     brochure: {
       primary: "/images/brochure-category.jpg",
-      secondary: "/images/commercial-offset-banner.jpg",
-      third: "/images/home-hero-printing.jpg",
+      secondary: "/images/home-hero-printing.jpg",
+      third: "/images/auth-studio-banner.jpg",
     },
     "leaflet-cover": {
       primary: "/images/leaflet-category.jpg",
-      secondary: "/images/commercial-offset-banner.jpg",
-      third: "/images/home-hero-printing.jpg",
+      secondary: "/images/home-hero-printing.jpg",
+      third: "/images/visiting-card-promo.jpg",
     },
     sticker: {
       primary: "/images/sticker-category.jpg",
@@ -105,7 +105,7 @@ async function main() {
     const meta = categoryImageMap[cat.slug] || {
       primary: "/images/home-hero-printing.jpg",
       secondary: "/images/spot-uv-closeup.jpg",
-      third: "/images/commercial-offset-banner.jpg",
+      third: "/images/visiting-card-promo.jpg",
     };
 
     // Touch category updatedAt
@@ -228,19 +228,6 @@ async function main() {
       placement: "HOME_HERO_BOTTOM",
       animationType: "IMAGE_ZOOM",
       sortOrder: 0,
-      isActive: true,
-    },
-    {
-      title: "High-Volume Commercial Offset Printing",
-      subtitle: "Multi-unit Heidelberg & Roland commercial presses in Khadia Golwad, Ahmedabad for high-speed runs from 500 to 50,000+.",
-      badge: "Commercial Offset",
-      ctaLabel: "Request Bulk Quote",
-      ctaUrl: "/quote",
-      imageUrl: "/images/commercial-offset-banner.jpg",
-      storageKey: "banners/images/commercial-offset-banner.jpg",
-      placement: "HOME_HERO_BOTTOM",
-      animationType: "SLIDE_UP",
-      sortOrder: 1,
       isActive: true,
     },
     {

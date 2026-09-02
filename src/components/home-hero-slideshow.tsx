@@ -58,23 +58,6 @@ const defaultHeroSlides: HeroSlide[] = [
     tag: "1,000 / 500 Qty",
   },
   {
-    id: "hero-3",
-    badge: "Commercial Plant Capacity · Khadia Golwad",
-    titlePrefix: "Professional Printing at ",
-    titleHighlight: "Commercial Scale.",
-    subtitle:
-      "Direct multi-unit Roland & Heidelberg offset presses delivering crisp color density, tight registration, and competitive wholesale rates for agencies and trade printers.",
-    primaryCtaLabel: "Request Bulk Quote",
-    primaryCtaUrl: "/quote",
-    secondaryCtaLabel: "Our Print Specs",
-    secondaryCtaUrl: "/products",
-    imageUrl: "/images/commercial-offset-banner.jpg",
-    imageAlt: "Roland 700 4-color commercial offset press plant at Mahavir Card",
-    floatingBadgeTitle: "High-Volume Runs",
-    floatingBadgeSubtitle: "500 to 50,000+ Units · Strict QA",
-    tag: "Commercial Press",
-  },
-  {
     id: "hero-4",
     badge: "250 GSM Heavy Art Card",
     titlePrefix: "Print That Represents ",
