@@ -4,6 +4,7 @@ import { CustomerNotices } from "@/components/customer-notices";
 import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { getCachedSession } from "@/lib/auth/session";
+import { UPI_VPA } from "@/lib/upi";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
@@ -23,7 +24,7 @@ export default async function CheckoutPage() {
           <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Delivery and payment</h1>
           <p className="mt-2 text-[15px] text-[var(--mc-muted)]">Your total is recalculated securely from the current product rules.</p>
         </header>
-        <CheckoutFlow />
+        <CheckoutFlow upiVpa={UPI_VPA} />
       </div>
       <StorefrontFooter />
     </main>

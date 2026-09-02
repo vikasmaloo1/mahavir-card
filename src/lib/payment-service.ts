@@ -2,8 +2,8 @@ import "server-only";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-export type PaymentMethod = "RAZORPAY" | "COD" | "CREDIT";
-export type PaymentIntent = { method: PaymentMethod; amount: string; status: "PENDING" | "COD_PENDING" | "CREDIT_APPROVED"; provider: "RAZORPAY" | "COD" | "CUSTOMER_CREDIT" };
+export type PaymentMethod = "RAZORPAY" | "COD" | "CREDIT" | "UPI_QR";
+export type PaymentIntent = { method: PaymentMethod; amount: string; status: "PENDING" | "COD_PENDING" | "CREDIT_APPROVED"; provider: "RAZORPAY" | "COD" | "CUSTOMER_CREDIT" | "UPI_QR" };
 export type RazorpayOrder = { id: string; amount: number; currency: string; receipt: string; status: string };
 
 export class PaymentConfigurationError extends Error {}
@@ -12,6 +12,10 @@ export class PaymentProviderError extends Error {}
 export function createPaymentIntent(method: PaymentMethod, amount: string): PaymentIntent {
   if (method === "RAZORPAY") return { method, amount, status: "PENDING", provider: "RAZORPAY" };
   if (method === "COD") return { method, amount, status: "COD_PENDING", provider: "COD" };
+  // UPI_QR has no gateway/webhook: order is created PENDING, the customer scans a QR
+  // paying the business's own UPI ID directly, then submits their UTR reference for
+  // an admin to manually match against the bank statement and mark the payment PAID.
+  if (method === "UPI_QR") return { method, amount, status: "PENDING", provider: "UPI_QR" };
   return { method, amount, status: "CREDIT_APPROVED", provider: "CUSTOMER_CREDIT" };
 }
 

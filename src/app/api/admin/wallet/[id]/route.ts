@@ -14,7 +14,11 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/wall
     const { id } = await ctx.params;
     const input = await readBody(request, decisionSchema);
     const result = await db.transaction(async (tx) => {
-      const [transaction] = await tx.update(walletTransactions).set({ status: input.decision, notes: input.notes ?? null, updatedAt: new Date() }).where(and(eq(walletTransactions.id, id), eq(walletTransactions.transactionType, "TOP_UP"), eq(walletTransactions.status, "PENDING"))).returning();
+      const [existing] = await tx.select({ notes: walletTransactions.notes }).from(walletTransactions).where(and(eq(walletTransactions.id, id), eq(walletTransactions.transactionType, "TOP_UP"), eq(walletTransactions.status, "PENDING"))).limit(1);
+      // Append the admin's decision note rather than overwrite: the customer's submitted
+      // UPI reference (if any) lives in this same field and must not be discarded here.
+      const combinedNotes = [existing?.notes, input.notes].filter(Boolean).join(" | ") || null;
+      const [transaction] = await tx.update(walletTransactions).set({ status: input.decision, notes: combinedNotes, updatedAt: new Date() }).where(and(eq(walletTransactions.id, id), eq(walletTransactions.transactionType, "TOP_UP"), eq(walletTransactions.status, "PENDING"))).returning();
       if (!transaction) return null;
       if (input.decision === "REJECTED") return transaction;
       const [customer] = await tx.update(customers).set({
