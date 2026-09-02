@@ -71,7 +71,7 @@ export function safeProductReturnPath(value: unknown) {
   if (typeof value !== "string" || !value.startsWith("/products") || value.startsWith("//")) return "/products";
   try {
     const url = new URL(value, "https://mahavircard.local");
-    return url.origin === "https://mahavircard.local" && url.pathname === "/products" ? `${url.pathname}${url.search}` : "/products";
+    return url.origin === "https://mahavircard.local" && url.pathname === "/products" ? `${url.pathname}${url.search}${url.hash}` : "/products";
   } catch {
     return "/products";
   }

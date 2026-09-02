@@ -52,9 +52,11 @@ export default async function ProductsPage({ searchParams }: PageProps<"/product
     <div className="mc-storefront bg-[var(--mc-surface)]">
       <StorefrontHeader />
       <CustomerNotices placement="ORDERING" />
-      <div className="mx-auto max-w-[1440px] px-4 pt-6 lg:px-8">
-        <PromotionalBanner placement="CATALOG_TOP" />
-      </div>
+      {!initialFilters.category && !initialFilters.search ? (
+        <div className="mx-auto max-w-[1440px] px-4 pt-6 lg:px-8">
+          <PromotionalBanner placement="CATALOG_TOP" />
+        </div>
+      ) : null}
       <Suspense fallback={<main className="min-h-screen p-8 text-sm text-[var(--mc-muted)]">Loading products...</main>}>
         <ProductsBrowser key={canonicalParams.toString()} initialFilters={initialFilters} />
       </Suspense>

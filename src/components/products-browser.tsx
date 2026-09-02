@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, Clock3, FileUp, RefreshCw, Search, SlidersHorizontal, Sparkles, X, MapPin, AlertCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ProductImage } from "@/components/product-image";
 import { productFiltersToSearchParams, productListingHref, readProductFilters, type ProductFilters } from "@/lib/catalog-routing";
@@ -76,6 +76,79 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [quoteContext, setQuoteContext] = useState<RequirementContext>({});
 
+  const categoriesRef = useRef<HTMLDivElement>(null);
+  const activePillRef = useRef<HTMLButtonElement>(null);
+  const isInitialScrollDone = useRef(false);
+
+  const getStickyHeaderHeight = useCallback(() => {
+    if (typeof window === "undefined") return 95;
+    const headerEl = document.querySelector("header.sticky");
+    if (headerEl) {
+      return headerEl.getBoundingClientRect().height;
+    }
+    return window.innerWidth < 768 ? 135 : 95;
+  }, []);
+
+  const scrollToCategories = useCallback(
+    (behavior: ScrollBehavior = "smooth") => {
+      if (!categoriesRef.current) return;
+      const headerHeight = getStickyHeaderHeight();
+      const elementTop = categoriesRef.current.getBoundingClientRect().top + window.scrollY;
+      const targetY = Math.max(0, elementTop - headerHeight - 12);
+
+      window.scrollTo({
+        top: targetY,
+        behavior,
+      });
+    },
+    [getStickyHeaderHeight]
+  );
+
+  // Direct auto-scroll when landing on /products?category=... or with search query
+  useEffect(() => {
+    if ((initialFilters.category || initialFilters.search) && !isInitialScrollDone.current) {
+      isInitialScrollDone.current = true;
+
+      const performInstantScroll = () => {
+        if (!categoriesRef.current) return;
+        const headerHeight = getStickyHeaderHeight();
+        const elementTop = categoriesRef.current.getBoundingClientRect().top + window.scrollY;
+        const targetY = Math.max(0, elementTop - headerHeight - 12);
+        window.scrollTo({ top: targetY, behavior: "auto" });
+      };
+
+      performInstantScroll();
+      const frameId = requestAnimationFrame(performInstantScroll);
+      const timer1 = setTimeout(performInstantScroll, 40);
+      const timer2 = setTimeout(performInstantScroll, 180);
+
+      return () => {
+        cancelAnimationFrame(frameId);
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+      };
+    }
+  }, [initialFilters.category, initialFilters.search, getStickyHeaderHeight]);
+
+  // Keep active category pill visible horizontally
+  useEffect(() => {
+    if (activePillRef.current) {
+      activePillRef.current.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
+    }
+  }, [category]);
+
+  const selectCategory = (catSlug: string) => {
+    setCategory(catSlug);
+    setPage(1);
+    setTimeout(() => {
+      scrollToCategories("smooth");
+    }, 20);
+  };
+
   useEffect(() => {
     const syncFromHistory = () => {
       const next = readProductFilters(new URLSearchParams(window.location.search));
@@ -84,10 +157,13 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
       setCategory(next.category);
       setOrderable(next.orderable);
       setPage(next.page);
+      if (next.category || next.search) {
+        setTimeout(() => scrollToCategories("smooth"), 30);
+      }
     };
     window.addEventListener("popstate", syncFromHistory);
     return () => window.removeEventListener("popstate", syncFromHistory);
-  }, []);
+  }, [scrollToCategories]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -233,7 +309,11 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
         </div>
 
         {/* Category Pills */}
-        <div className="mt-4 border-y border-[var(--mc-line)] py-3">
+        <div
+          ref={categoriesRef}
+          id="categories"
+          className="mt-4 border-y border-[var(--mc-line)] py-3 scroll-mt-28 sm:scroll-mt-24"
+        >
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1">
             <span className="mr-2 inline-flex shrink-0 items-center gap-2 text-xs font-bold uppercase text-[var(--mc-muted)]">
               <SlidersHorizontal size={15} />
@@ -241,10 +321,8 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
             </span>
             <button
               type="button"
-              onClick={() => {
-                setCategory("");
-                setPage(1);
-              }}
+              ref={!category ? activePillRef : null}
+              onClick={() => selectCategory("")}
               className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
                 !category
                   ? "bg-[var(--mc-accent)] text-white"
@@ -257,10 +335,8 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
               <button
                 type="button"
                 key={item.id}
-                onClick={() => {
-                  setCategory(item.slug);
-                  setPage(1);
-                }}
+                ref={category === item.slug ? activePillRef : null}
+                onClick={() => selectCategory(item.slug)}
                 className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
                   category === item.slug
                     ? "bg-[var(--mc-accent)] text-white"
