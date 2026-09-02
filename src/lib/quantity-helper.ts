@@ -11,18 +11,14 @@ export function isSpecialQuantityProduct(categorySlug?: string | null, productSl
   const cat = (categorySlug || "").toLowerCase().trim();
   const prod = (productSlug || "").toLowerCase().trim();
 
-  // The LAST Art Card configuration (both-side lamination) is 1000 quantity
-  if (prod === "art-card-both-side-lamination") return false;
-
   // The Drip-Off Premium Card is 1000 quantity
   if (prod === "premium-400-gsm-dripoff-front-back" || prod.includes("drip-off") || prod.includes("dripoff")) return false;
 
+  // Premium Cards (except drip-off) are 500 quantity with 500 increment
   return (
     cat === "premium-card" ||
-    cat === "art-card" ||
     cat === "premium-visiting-card" ||
     prod.startsWith("premium-") ||
-    prod.startsWith("art-") ||
     prod.includes("velvet") ||
     prod.includes("spot-uv")
   );
@@ -30,12 +26,12 @@ export function isSpecialQuantityProduct(categorySlug?: string | null, productSl
 
 /**
  * Shared source of truth for quantity validation and normalization.
- * Standard products:
+ * Standard products (including Art Card, Visiting Card, etc.):
  *   - Min: 1000
  *   - Step: 1000
  *   - 1001 -> 2000, 1020 -> 2000, 1500 -> 2000, 1999 -> 2000
  *
- * Premium Card & Art Card special rule (except 1000-quantity configs):
+ * Premium Card special rule (except 400 GSM Drip-Off):
  *   - Min: 500
  *   - Step: 500
  *   - Allowed: 500, 1000, 1500, 2000, 2500...

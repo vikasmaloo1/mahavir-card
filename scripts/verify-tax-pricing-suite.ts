@@ -367,27 +367,28 @@ async function runSuite() {
   // 1. Art Card Single Side checks
   const [artSingle] = await db.select().from(products).where(eq(products.slug, "art-card-single-side")).limit(1);
   assert.ok(artSingle, "Art Card Single Side product must exist");
-  assert.equal(artSingle.name, "Art Card", "Art Card customer-facing name must be 'Art Card'");
+  assert.equal(artSingle.name, "250 GSM Art Card Single Side", "Art Card customer-facing name must include 250 GSM");
   assert.equal(artSingle.productionTime, "3-4 working days", "Art Card production time must be '3-4 working days'");
-  assert.equal(artSingle.referenceQuantity, 500, "Art Card Single Side reference quantity must be 500");
+  assert.equal(artSingle.referenceQuantity, 1000, "Art Card Single Side reference quantity must be 1000");
 
-  const calcArtSingle = await calculateProductPrice(artSingle.id, 500, { width: "2", height: "5" }, { stateCode: "GJ" });
+  const calcArtSingle = await calculateProductPrice(artSingle.id, 1000, { width: "2", height: "5" }, { stateCode: "GJ" });
   assert.ok(calcArtSingle, "Art Card Single Side price calculation failed");
   // 10 sq. in * 28 = 280
   assert.equal(calcArtSingle.productPrice, "280.00", "Art Card Single Side 10 sq.in at ₹28 must be ₹280.00");
   assert.equal(calcArtSingle.breakdown?.basePrice, "280.00");
-  console.log("✓ Art Card Single Side: name='Art Card', 3-4 working days, 500 qty, ₹28/sq.in verified");
+  console.log("✓ Art Card Single Side: name='250 GSM Art Card Single Side', 3-4 working days, 1000 qty, ₹28/sq.in verified");
 
   // 2. Art Card Both Side checks
   const [artBoth] = await db.select().from(products).where(eq(products.slug, "art-card-both-side")).limit(1);
   assert.ok(artBoth, "Art Card Both Side product must exist");
+  assert.equal(artBoth.name, "250 GSM Art Card Both Side", "Art Card Both Side name must include 250 GSM");
   assert.equal(artBoth.productionTime, "3-4 working days", "Art Card Both Side production time must be '3-4 working days'");
-  assert.equal(artBoth.referenceQuantity, 500, "Art Card Both Side reference quantity must be 500");
+  assert.equal(artBoth.referenceQuantity, 1000, "Art Card Both Side reference quantity must be 1000");
 
   // Test minimum 50 sq. in. rejection
   let minAreaFailed = false;
   try {
-    await calculateProductPrice(artBoth.id, 500, { width: "5", height: "5" }, { stateCode: "GJ" });
+    await calculateProductPrice(artBoth.id, 1000, { width: "5", height: "5" }, { stateCode: "GJ" });
   } catch (err: any) {
     minAreaFailed = true;
     assert.ok(err.message.includes("50 square inches"), "Should reject < 50 sq inches");
@@ -395,14 +396,15 @@ async function runSuite() {
   assert.ok(minAreaFailed, "Art Card Both Side must reject < 50 sq. in.");
 
   // Test 50 sq. in. price: 50 * 33 = 1650
-  const calcArtBoth = await calculateProductPrice(artBoth.id, 500, { width: "10", height: "5" }, { stateCode: "GJ" });
+  const calcArtBoth = await calculateProductPrice(artBoth.id, 1000, { width: "10", height: "5" }, { stateCode: "GJ" });
   assert.ok(calcArtBoth, "Art Card Both Side 50 sq.in calculation failed");
   assert.equal(calcArtBoth.productPrice, "1650.00", "Art Card Both Side 50 sq.in at ₹33 must be ₹1650.00");
-  console.log("✓ Art Card Both Side: 50 sq.in minimum enforced, ₹33/sq.in rate verified");
+  console.log("✓ Art Card Both Side: name='250 GSM Art Card Both Side', 50 sq.in minimum enforced, 1000 qty, ₹33/sq.in rate verified");
 
   // 3. Art Card Both Side Lamination checks
   const [artLam] = await db.select().from(products).where(eq(products.slug, "art-card-both-side-lamination")).limit(1);
   assert.ok(artLam, "Art Card Both Side Lamination product must exist");
+  assert.equal(artLam.name, "250 GSM Art Card Both Side Lamination", "Art Card Both Side Lamination name must include 250 GSM");
   assert.equal(artLam.productionTime, "3-4 working days", "Art Card Both Side Lamination production time must be '3-4 working days'");
   assert.equal(artLam.referenceQuantity, 1000, "Art Card Both Side Lamination reference quantity must be 1000");
 
@@ -410,16 +412,16 @@ async function runSuite() {
   assert.ok(calcArtLam, "Art Card Both Side Lamination calculation failed");
   // 10 sq. in * 37 = 370
   assert.equal(calcArtLam.productPrice, "370.00", "Art Card Both Side Lamination 10 sq.in at ₹37 must be ₹370.00");
-  console.log("✓ Art Card Both Side Lamination: 1000 reference quantity, ₹37/sq.in rate verified");
+  console.log("✓ Art Card Both Side Lamination: name='250 GSM Art Card Both Side Lamination', 1000 reference quantity, ₹37/sq.in rate verified");
 
-  // 4. Quantity helper rules for Art Card
-  assert.equal(normalizeProductQuantity(null, "art-card", "art-card-single-side").normalizedQuantity, 500);
-  assert.equal(normalizeProductQuantity(null, "art-card", "art-card-both-side").normalizedQuantity, 500);
+  // 4. Quantity helper rules for Art Card (all 1000 quantity)
+  assert.equal(normalizeProductQuantity(null, "art-card", "art-card-single-side").normalizedQuantity, 1000);
+  assert.equal(normalizeProductQuantity(null, "art-card", "art-card-both-side").normalizedQuantity, 1000);
   assert.equal(normalizeProductQuantity(null, "art-card", "art-card-both-side-lamination").normalizedQuantity, 1000);
-  assert.equal(stepProductQuantity(500, "UP", "art-card", "art-card-single-side"), 1000);
-  assert.equal(stepProductQuantity(1000, "DOWN", "art-card", "art-card-single-side"), 500);
+  assert.equal(stepProductQuantity(1000, "UP", "art-card", "art-card-single-side"), 2000);
+  assert.equal(stepProductQuantity(2000, "DOWN", "art-card", "art-card-single-side"), 1000);
   assert.equal(stepProductQuantity(1000, "DOWN", "art-card", "art-card-both-side-lamination"), 1000);
-  console.log("✓ Quantity rules: first two Art Cards = 500, last Art Card = 1000 verified");
+  console.log("✓ Quantity rules: ALL Art Cards = 1000 quantity with 1000 increments verified");
 
   // 5. Blade charges verification (₹50 / blade)
   const [stickerProd] = await db.select().from(products).where(eq(products.slug, "sticker-without-lamination")).limit(1);
