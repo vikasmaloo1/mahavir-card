@@ -44,6 +44,7 @@ const categoryMeta: Record<
     images: [
       "/images/premium-card-category.jpg",
       "/images/products/velvet-foil-card.jpg",
+      "/images/products/round-corner-card.jpg",
       "/images/products/thermal-fb-uv.jpg",
       "/images/products/spot-uv-closeup.jpg",
     ],
@@ -69,6 +70,8 @@ const categoryMeta: Record<
     image: "/images/letterhead-envelope-category.jpg",
     images: [
       "/images/letterhead-envelope-category.jpg",
+      "/images/products/letterhead-ss-finish.jpg",
+      "/images/products/corporate-envelopes-set.jpg",
       "/images/products/alabaster-stationery.jpg",
     ],
     alt: "Alabaster letterhead and matching custom envelope set",
@@ -81,6 +84,7 @@ const categoryMeta: Record<
     images: [
       "/images/brochure-category.jpg",
       "/images/products/trifold-brochure.jpg",
+      "/images/products/brochure-a8-pocket.jpg",
     ],
     alt: "Folded 250 GSM A4 and A8 art card brochures",
     badge: "250 GSM Art Card",
