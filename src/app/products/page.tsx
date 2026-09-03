@@ -8,6 +8,9 @@ import { Suspense } from "react";
 import { getCachedSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import { catalogCategories, isLegacyCategorySlug, productFiltersToSearchParams, readProductFilters } from "@/lib/catalog-routing";
+import { db } from "@/lib/db";
+import { customers } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 export async function generateMetadata({ searchParams }: PageProps<"/products">): Promise<Metadata> {
   const rawParams = await searchParams;
@@ -40,10 +43,13 @@ export default async function ProductsPage({ searchParams }: PageProps<"/product
     if (typeof value === "string") params.set(key, value);
     else if (Array.isArray(value)) value.forEach((entry) => params.append(key, entry));
   }
-  if (!await getCachedSession()) {
+  const session = await getCachedSession();
+  if (!session) {
     const query = params.toString();
     redirect(`/login?next=${encodeURIComponent(query ? `/products?${query}` : "/products")}`);
   }
+  const [customer] = await db.select({ customerType: customers.customerType }).from(customers).where(eq(customers.userId, session.user.id)).limit(1);
+  const isB2B = customer?.customerType === "B2B";
   const initialFilters = readProductFilters(params);
   const canonicalParams = productFiltersToSearchParams(initialFilters);
   if (isLegacyCategorySlug(params.get("category")) || (params.has("q") && !params.has("search"))) {
@@ -60,7 +66,7 @@ export default async function ProductsPage({ searchParams }: PageProps<"/product
         </div>
       ) : null}
       <Suspense fallback={<main className="min-h-screen p-8 text-sm text-[var(--mc-muted)]">Loading products...</main>}>
-        <ProductsBrowser key={canonicalParams.toString()} initialFilters={initialFilters} />
+        <ProductsBrowser key={canonicalParams.toString()} initialFilters={initialFilters} isB2B={isB2B} />
       </Suspense>
       <StorefrontFooter />
     </div>

@@ -78,7 +78,7 @@ type RecentProduct = {
   lastOrderedAt: string;
 };
 
-export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFilters }) {
+export function ProductsBrowser({ initialFilters, isB2B }: { initialFilters: ProductFilters; isB2B: boolean }) {
   const router = useRouter();
   const [items, setItems] = useState<Product[]>([]);
   const [quickActionId, setQuickActionId] = useState<string | null>(null);
@@ -585,8 +585,8 @@ export function ProductsBrowser({ initialFilters }: { initialFilters: ProductFil
 
             {items.map((item) => {
               const isUnavailableInState = item.stateAvailability?.status === "UNAVAILABLE_IN_STATE";
-              const quickOrderEligible = item.orderable && !item.hasArtworkRequirement && !isUnavailableInState;
-              const expandableEligible = item.orderable && item.hasArtworkRequirement && !isUnavailableInState;
+              const quickOrderEligible = isB2B && item.orderable && !item.hasArtworkRequirement && !isUnavailableInState;
+              const expandableEligible = isB2B && item.orderable && item.hasArtworkRequirement && !isUnavailableInState;
               const isAddingToCart = quickActionId === `${item.id}:cart`;
               const isBuyingNow = quickActionId === `${item.id}:buy`;
               const rowError = quickError[item.id];
