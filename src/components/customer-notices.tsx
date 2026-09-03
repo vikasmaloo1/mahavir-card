@@ -70,7 +70,13 @@ export function CustomerNotices({ placement = "GLOBAL" }: { placement?: "GLOBAL"
     return () => observer.disconnect();
   }, [marqueeItems.length]);
 
-  if (!loaded || !displayItems.length) return null;
+  if (!loaded) {
+    // Reserves the strip's height while the notices fetch is in flight so the
+    // ticker popping in doesn't shift everything below it (a real CLS hit
+    // since this renders on nearly every page).
+    return <aside className="customer-notice-strip w-full border-b border-slate-200/80 bg-white" aria-hidden="true" />;
+  }
+  if (!displayItems.length) return null;
 
   return (
     <aside className="customer-notice-strip relative z-20 w-full overflow-hidden border-b border-slate-200/80 bg-white py-2 text-slate-800 shadow-xs" aria-label="Customer announcements">

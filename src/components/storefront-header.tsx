@@ -28,9 +28,9 @@ export async function StorefrontHeader() {
         <HeaderSearchBar className="hidden min-w-0 max-w-xl flex-1 md:block" />
 
         <div className="flex items-center gap-1.5 text-sm sm:gap-2">
-          {session ? <CustomerAccountMenu /> : <Link href="/login" className="flex items-center gap-1.5 px-2.5 py-2 min-h-[40px] rounded-full text-[var(--mc-muted)] hover:text-[var(--mc-ink)] hover:bg-[var(--mc-surface)]"><UserRound size={17} /> <span className="hidden sm:inline font-semibold">Login</span></Link>}
+          {session ? <CustomerAccountMenu /> : <Link href="/login" aria-label="Login" className="flex items-center gap-1.5 px-2.5 py-2 min-h-[40px] rounded-full text-[var(--mc-muted)] hover:text-[var(--mc-ink)] hover:bg-[var(--mc-surface)]"><UserRound size={17} /> <span className="hidden sm:inline font-semibold">Login</span></Link>}
           <Link href="/cart" className="grid size-10 place-items-center rounded-full border border-[var(--mc-line)] bg-white text-[var(--mc-ink)] hover:border-[var(--mc-accent)] hover:text-[var(--mc-accent)] transition-colors" aria-label="Purchase basket"><ShoppingBag size={17} /></Link>
-          <Link href="/quote" className="flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-3.5 py-2 min-h-[40px] font-semibold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm"><FileText size={16} /> <span className="hidden sm:inline">Quote basket</span></Link>
+          <Link href="/quote" aria-label="Quote basket" className="flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-3.5 py-2 min-h-[40px] font-semibold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm"><FileText size={16} /> <span className="hidden sm:inline">Quote basket</span></Link>
         </div>
       </div>
 

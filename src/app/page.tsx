@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { asc, eq } from "drizzle-orm";
 import { ArrowRight, Clock3, FileCheck2, FileUp, MapPin, PackageCheck, Printer, ReceiptText, ShoppingBag } from "lucide-react";
 
 import { HomeCatalogSections } from "@/components/home-catalog-sections";
@@ -10,6 +11,8 @@ import { CinematicBannerSlideshow } from "@/components/cinematic-banner-slidesho
 import { HomeHeroSlideshow } from "@/components/home-hero-slideshow";
 import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
+import { db } from "@/lib/db/server";
+import { categories, categoryImages } from "@/lib/db/schema";
 
 export const metadata: Metadata = {
   title: "Mahavir Card | Visiting Card & Commercial Offset Printing in Ahmedabad, Gujarat",
@@ -113,7 +116,14 @@ const localBusinessJsonLd = {
   },
 };
 
-export default function Home() {
+export default async function Home() {
+  const [categoryRows, images] = await Promise.all([
+    db.select().from(categories).where(eq(categories.isActive, true)).orderBy(asc(categories.sortOrder)),
+    db.select({ categoryId: categoryImages.categoryId, imageUrl: categoryImages.imageUrl }).from(categoryImages).where(eq(categoryImages.isPrimary, true)),
+  ]);
+  const primaryImages = new Map(images.map((image) => [image.categoryId, image.imageUrl]));
+  const initialCategories = categoryRows.map((category) => ({ ...category, imageUrl: primaryImages.get(category.id) ?? null }));
+
   return (
     <main className="mc-storefront min-h-screen bg-[#fcfbf9] text-slate-900">
       <script
@@ -172,7 +182,7 @@ export default function Home() {
       </section>
 
       {/* 3. PRIMARY CATEGORIES WITH DEDICATED PHOTOGRAPHY */}
-      <HomeCatalogSections initialCategories={[]} />
+      <HomeCatalogSections initialCategories={initialCategories} />
 
       {/* 4. MID-PAGE PROMOTIONAL BANNER (Dynamic CMS Placed) */}
       <div className="mx-auto max-w-[1440px] px-4 py-6 lg:px-8">

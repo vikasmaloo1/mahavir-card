@@ -194,7 +194,7 @@ function CategoryCardSlideshow({
           className={`object-cover transition-all duration-700 ease-in-out ${
             i === currentIndex ? "opacity-100 scale-100" : "opacity-0 pointer-events-none scale-105"
           }`}
-          priority={staggerIndex < 4 && i === 0}
+          loading={i === 0 ? "eager" : "lazy"}
           onError={() => setFailedImages((prev) => ({ ...prev, [src]: true }))}
         />
       ))}
