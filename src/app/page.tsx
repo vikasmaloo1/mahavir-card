@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, gt, isNull, lt, or } from "drizzle-orm";
 import { ArrowRight, Clock3, FileCheck2, FileUp, MapPin, PackageCheck, Printer, ReceiptText, ShoppingBag } from "lucide-react";
 
 import { HomeCatalogSections } from "@/components/home-catalog-sections";
 import { CustomerNotices } from "@/components/customer-notices";
-import { PromotionalBanner } from "@/components/promotional-banner";
+import { PromotionalBanner, type BannerItem } from "@/components/promotional-banner";
 import { CinematicBannerSlideshow } from "@/components/cinematic-banner-slideshow";
 import { HomeHeroSlideshow } from "@/components/home-hero-slideshow";
 import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { db } from "@/lib/db/server";
-import { categories, categoryImages } from "@/lib/db/schema";
+import { banners, categories, categoryImages } from "@/lib/db/schema";
 
 export const metadata: Metadata = {
   title: "Mahavir Card | Visiting Card & Commercial Offset Printing in Ahmedabad, Gujarat",
@@ -117,10 +117,40 @@ const localBusinessJsonLd = {
 };
 
 export default async function Home() {
-  const [categoryRows, images] = await Promise.all([
+  const now = new Date();
+  const [categoryRows, images, heroBottomBanners] = await Promise.all([
     db.select().from(categories).where(eq(categories.isActive, true)).orderBy(asc(categories.sortOrder)),
     db.select({ categoryId: categoryImages.categoryId, imageUrl: categoryImages.imageUrl }).from(categoryImages).where(eq(categoryImages.isPrimary, true)),
+    db
+      .select({
+        id: banners.id,
+        title: banners.title,
+        subtitle: banners.subtitle,
+        badge: banners.badge,
+        ctaLabel: banners.ctaLabel,
+        ctaUrl: banners.ctaUrl,
+        imageUrl: banners.imageUrl,
+        storageKey: banners.storageKey,
+        placement: banners.placement,
+        animationType: banners.animationType,
+        sortOrder: banners.sortOrder,
+      })
+      .from(banners)
+      .where(
+        and(
+          eq(banners.isActive, true),
+          or(eq(banners.placement, "GLOBAL"), eq(banners.placement, "HOME_HERO_BOTTOM")),
+          or(isNull(banners.startsAt), lt(banners.startsAt, now)),
+          or(isNull(banners.endsAt), gt(banners.endsAt, now)),
+        ),
+      )
+      .orderBy(asc(banners.sortOrder), asc(banners.createdAt)),
   ]);
+  const initialHeroBottomBanners: BannerItem[] = heroBottomBanners.map((banner) => ({
+    ...banner,
+    placement: banner.placement as BannerItem["placement"],
+    animationType: banner.animationType as BannerItem["animationType"],
+  }));
   const primaryImages = new Map(images.map((image) => [image.categoryId, image.imageUrl]));
   const initialCategories = categoryRows.map((category) => ({ ...category, imageUrl: primaryImages.get(category.id) ?? null }));
 
@@ -186,7 +216,7 @@ export default async function Home() {
 
       {/* 4. MID-PAGE PROMOTIONAL BANNER (Dynamic CMS Placed) */}
       <div className="mx-auto max-w-[1440px] px-4 py-6 lg:px-8">
-        <PromotionalBanner placement="HOME_HERO_BOTTOM" />
+        <PromotionalBanner placement="HOME_HERO_BOTTOM" initialBanners={initialHeroBottomBanners} />
       </div>
 
       {/* 5. COMMERCIAL PRINTING PROCESS (5 STEPS) */}

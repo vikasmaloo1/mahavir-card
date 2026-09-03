@@ -205,7 +205,7 @@ function CategoryCardSlideshow({
       {/* Category Number & Badge */}
       <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-900 shadow-xs backdrop-blur-xs pointer-events-none">
         <span className="font-extrabold text-[#1e3a5f]">#{String(indexNumber).padStart(2, "0")}</span>
-        <span className="text-slate-400">·</span>
+        <span className="text-slate-500">·</span>
         <span>{badge}</span>
       </div>
 
@@ -240,10 +240,14 @@ function CategoryCardSlideshow({
                 type="button"
                 onClick={(e) => handleDotClick(e, i)}
                 aria-label={`Go to slide ${i + 1}`}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  i === currentIndex ? "w-3.5 bg-white shadow-xs" : "w-1.5 bg-white/50 hover:bg-white/80"
-                }`}
-              />
+                className="group flex items-center justify-center p-1.5 -m-1.5"
+              >
+                <span
+                  className={`block h-1.5 rounded-full transition-all duration-300 ${
+                    i === currentIndex ? "w-3.5 bg-white shadow-xs" : "w-1.5 bg-white/50 group-hover:bg-white/80"
+                  }`}
+                />
+              </button>
             ))}
           </div>
         </>

@@ -22,13 +22,15 @@ export type BannerItem = {
 export function PromotionalBanner({
   placement,
   className = "",
+  initialBanners,
 }: {
   placement: "HOME_HERO_BOTTOM" | "HOME_MID" | "CATALOG_TOP" | "CART_CHECKOUT" | "GLOBAL";
   className?: string;
+  initialBanners?: BannerItem[];
 }) {
-  const [banners, setBanners] = useState<BannerItem[]>([]);
+  const [banners, setBanners] = useState<BannerItem[]>(initialBanners ?? []);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [loaded, setLoaded] = useState(false);
+  const [loaded, setLoaded] = useState(Boolean(initialBanners));
   const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
@@ -113,7 +115,7 @@ export function PromotionalBanner({
                 </span>
               ) : null}
               {banners.length > 1 && (
-                <span className="text-[11px] font-bold text-slate-400">
+                <span className="text-[11px] font-bold text-slate-500">
                   {currentIndex + 1} of {banners.length}
                 </span>
               )}
@@ -165,13 +167,15 @@ export function PromotionalBanner({
                   key={idx}
                   type="button"
                   onClick={() => setCurrentIndex(idx)}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    idx === currentIndex
-                      ? "w-6 bg-[#1e3a5f]"
-                      : "w-2 bg-slate-200 hover:bg-slate-300"
-                  }`}
                   aria-label={`Go to slide ${idx + 1}`}
-                />
+                  className="group flex items-center justify-center p-2.5 -m-2.5"
+                >
+                  <span
+                    className={`block h-1.5 rounded-full transition-all duration-300 ${
+                      idx === currentIndex ? "w-6 bg-[#1e3a5f]" : "w-2 bg-slate-200 group-hover:bg-slate-300"
+                    }`}
+                  />
+                </button>
               ))}
             </div>
 

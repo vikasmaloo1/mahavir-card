@@ -187,7 +187,7 @@ export function HomeHeroSlideshow({ className = "" }: { className?: string }) {
                 {current.badge}
               </div>
               {slides.length > 1 && (
-                <span className="text-xs font-bold text-slate-400">
+                <span className="text-xs font-bold text-slate-500">
                   {currentIndex + 1} / {slides.length}
                 </span>
               )}
@@ -283,13 +283,15 @@ export function HomeHeroSlideshow({ className = "" }: { className?: string }) {
                     key={idx}
                     type="button"
                     onClick={() => setCurrentIndex(idx)}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                      idx === currentIndex
-                        ? "w-6 bg-[#1e3a5f]"
-                        : "w-2 bg-slate-300 hover:bg-slate-400"
-                    }`}
                     aria-label={`Go to hero slide ${idx + 1}`}
-                  />
+                    className="group flex items-center justify-center p-2.5 -m-2.5"
+                  >
+                    <span
+                      className={`block h-1.5 rounded-full transition-all duration-300 ${
+                        idx === currentIndex ? "w-6 bg-[#1e3a5f]" : "w-2 bg-slate-300 group-hover:bg-slate-400"
+                      }`}
+                    />
+                  </button>
                 ))}
               </div>
             )}

@@ -216,13 +216,15 @@ export function CinematicBannerSlideshow({
                   key={idx}
                   type="button"
                   onClick={() => setCurrentIndex(idx)}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    idx === currentIndex
-                      ? "w-8 bg-white"
-                      : "w-2 bg-white/30 hover:bg-white/60"
-                  }`}
                   aria-label={`Go to slide ${idx + 1}`}
-                />
+                  className="group flex items-center justify-center p-2.5 -m-2.5"
+                >
+                  <span
+                    className={`block h-1.5 rounded-full transition-all duration-300 ${
+                      idx === currentIndex ? "w-8 bg-white" : "w-2 bg-white/30 group-hover:bg-white/60"
+                    }`}
+                  />
+                </button>
               ))}
             </div>
 
