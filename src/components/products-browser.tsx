@@ -576,9 +576,10 @@ export function ProductsBrowser({ initialFilters, isB2B }: { initialFilters: Pro
               loading ? "opacity-60" : "opacity-100"
             }`}
           >
-            <div className="hidden grid-cols-[minmax(15rem,.9fr)_minmax(20rem,1.2fr)_10rem_minmax(20rem,1fr)] gap-5 px-4 py-2 text-xs font-bold uppercase text-[var(--mc-muted)] xl:grid">
+            <div className="hidden grid-cols-[minmax(14rem,.85fr)_minmax(16rem,1fr)_8rem_9rem_minmax(12rem,.75fr)] gap-5 px-4 py-2 text-xs font-bold uppercase text-[var(--mc-muted)] xl:grid">
               <span>Product</span>
               <span>Specification</span>
+              <span>Production</span>
               <span>Price</span>
               <span>Actions</span>
             </div>
@@ -600,7 +601,7 @@ export function ProductsBrowser({ initialFilters, isB2B }: { initialFilters: Pro
                   }`}
                 >
                 <article
-                  className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-[minmax(15rem,.9fr)_minmax(20rem,1.2fr)_10rem_minmax(20rem,1fr)] xl:items-center"
+                  className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-[minmax(14rem,.85fr)_minmax(16rem,1fr)_8rem_9rem_minmax(12rem,.75fr)] xl:items-center"
                 >
                   {/* Product Visual + Title */}
                   <div className="flex min-w-0 gap-3.5">
@@ -635,6 +636,19 @@ export function ProductsBrowser({ initialFilters, isB2B }: { initialFilters: Pro
 
                   {/* Product Specification */}
                   <ProductSpecification item={item} />
+
+                  {/* Production Time */}
+                  {item.productionTime ? (
+                    <div>
+                      <p className="text-xs font-bold uppercase text-[var(--mc-muted)] xl:hidden">Production</p>
+                      <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-[var(--mc-ink)] xl:mt-0">
+                        <Clock3 size={14} className="shrink-0 text-[var(--mc-muted)]" />
+                        {item.productionTime}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="hidden xl:block" />
+                  )}
 
                   {/* Price */}
                   <div>
