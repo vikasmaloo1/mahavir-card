@@ -68,7 +68,9 @@ export async function initiateArtworkUpload(userId: string, input: InitiateArtwo
   let replacement: typeof artworks.$inferSelect | null = null;
   if (input.replaceArtworkId) {
     const [existing] = await db.select().from(artworks).where(and(eq(artworks.id, input.replaceArtworkId), eq(artworks.uploadedBy, userId), isNull(artworks.replacedAt))).limit(1);
-    if (existing) {
+    // Never delete or mark-replaced an artwork that's already attached to a placed order — the
+    // production team still needs that exact file. Only un-ordered uploads get superseded here.
+    if (existing && !existing.orderId) {
       replacement = existing;
       if (existing.storageKey) {
         await storage.deleteObject(existing.storageKey).catch(() => undefined);
@@ -77,7 +79,7 @@ export async function initiateArtworkUpload(userId: string, input: InitiateArtwo
     }
   } else {
     // If customer refreshed the page or selected a new file, automatically replace existing un-ordered file for this slot
-    const existing = await db.select().from(artworks).where(and(eq(artworks.uploadedBy, userId), eq(artworks.productId, input.productId), input.pricingRuleId ? eq(artworks.pricingRuleId, input.pricingRuleId) : isNull(artworks.pricingRuleId), isNull(artworks.replacedAt)));
+    const existing = await db.select().from(artworks).where(and(eq(artworks.uploadedBy, userId), eq(artworks.productId, input.productId), input.pricingRuleId ? eq(artworks.pricingRuleId, input.pricingRuleId) : isNull(artworks.pricingRuleId), isNull(artworks.replacedAt), isNull(artworks.orderId)));
     const active = existing.filter((item) => item.artworkSlotKey === slotKey && item.status !== "UPLOAD_FAILED" && (item.status !== "UPLOADING" || !item.uploadExpiresAt || item.uploadExpiresAt > new Date()));
     if (active.length > 0) {
       for (const item of active) {

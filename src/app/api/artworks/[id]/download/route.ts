@@ -15,6 +15,8 @@ export async function GET(request: Request, ctx: RouteContext<"/api/artworks/[id
       ? await db.select().from(artworks).where(eq(artworks.id, id)).limit(1)
       : await db.select().from(artworks).where(and(eq(artworks.id, id), eq(artworks.uploadedBy, session.user.id))).limit(1);
     if (!artwork?.storageKey || artwork.status === "UPLOADING") return jsonError("Artwork not found", 404);
+    const head = await storage.headObject(artwork.storageKey);
+    if (!head) return jsonError("This file is no longer available in storage and needs to be re-uploaded.", 410);
     const url = await storage.getSignedDownloadUrl({ key: artwork.storageKey, filename: artwork.fileName, contentType: artwork.mimeType, disposition: "attachment", expiresIn: 600 });
     return Response.redirect(url, 302);
   } catch (error) {
