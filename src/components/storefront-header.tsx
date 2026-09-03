@@ -1,13 +1,33 @@
 import Image from "next/image";
 import Link from "next/link";
 import { FileText, Search, ShoppingBag, UserRound } from "lucide-react";
+import { eq } from "drizzle-orm";
 
 import { CustomerAccountMenu } from "@/components/customer-account-menu";
 import { HeaderSearchBar } from "@/components/header-search-bar";
+import { HeaderWalletButton } from "@/components/header-wallet-button";
+import { db } from "@/lib/db/server";
+import { customers } from "@/lib/db/schema";
+import { UPI_VPA } from "@/lib/upi";
 import { getCachedSession } from "@/lib/auth/session";
 
 export async function StorefrontHeader() {
   const session = await getCachedSession();
+  let availableBalance: string | null = null;
+
+  if (session?.user?.id) {
+    try {
+      const [customer] = await db
+        .select({ availableCredit: customers.availableCredit })
+        .from(customers)
+        .where(eq(customers.userId, session.user.id))
+        .limit(1);
+      availableBalance = customer?.availableCredit ?? "0.00";
+    } catch {
+      availableBalance = "0.00";
+    }
+  }
+
   const navigation = session ? [
     ["Home", "/"], ["Order now", "/products"], ["Order status", "/account#orders"],
     ["Wallet / balance", "/account/wallet"], ["Account", "/account"],
@@ -28,6 +48,11 @@ export async function StorefrontHeader() {
         <HeaderSearchBar className="hidden min-w-0 max-w-xl flex-1 md:block" />
 
         <div className="flex items-center gap-1.5 text-sm sm:gap-2">
+          <HeaderWalletButton
+            initialBalance={availableBalance}
+            isLoggedIn={Boolean(session)}
+            upiVpa={UPI_VPA}
+          />
           {session ? <CustomerAccountMenu /> : <Link href="/login" aria-label="Login" className="flex items-center gap-1.5 px-2.5 py-2 min-h-[40px] rounded-full text-[var(--mc-muted)] hover:text-[var(--mc-ink)] hover:bg-[var(--mc-surface)]"><UserRound size={17} /> <span className="hidden sm:inline font-semibold">Login</span></Link>}
           <Link href="/cart" className="grid size-10 place-items-center rounded-full border border-[var(--mc-line)] bg-white text-[var(--mc-ink)] hover:border-[var(--mc-accent)] hover:text-[var(--mc-accent)] transition-colors" aria-label="Purchase basket"><ShoppingBag size={17} /></Link>
           <Link href="/quote" aria-label="Quote basket" className="flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-3.5 py-2 min-h-[40px] font-semibold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm"><FileText size={16} /> <span className="hidden sm:inline">Quote basket</span></Link>
