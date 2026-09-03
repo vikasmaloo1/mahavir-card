@@ -44,11 +44,9 @@ export default async function ProductsPage({ searchParams }: PageProps<"/product
     else if (Array.isArray(value)) value.forEach((entry) => params.append(key, entry));
   }
   const session = await getCachedSession();
-  if (!session) {
-    const query = params.toString();
-    redirect(`/login?next=${encodeURIComponent(query ? `/products?${query}` : "/products")}`);
-  }
-  const [customer] = await db.select({ customerType: customers.customerType }).from(customers).where(eq(customers.userId, session.user.id)).limit(1);
+  const customer = session
+    ? (await db.select({ customerType: customers.customerType }).from(customers).where(eq(customers.userId, session.user.id)).limit(1))[0]
+    : undefined;
   const isB2B = customer?.customerType === "B2B";
   const initialFilters = readProductFilters(params);
   const canonicalParams = productFiltersToSearchParams(initialFilters);

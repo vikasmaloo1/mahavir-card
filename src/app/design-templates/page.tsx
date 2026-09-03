@@ -7,6 +7,7 @@ import { StorefrontHeader } from "@/components/storefront-header";
 export const metadata: Metadata = {
   title: "Free Design Templates",
   description: "Browse free, licensed design templates for visiting cards, brochures, stickers and more — use one as a starting point for your print order.",
+  robots: { index: false, follow: false },
 };
 
 export default function DesignTemplatesPage() {

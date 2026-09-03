@@ -40,7 +40,6 @@ export async function generateMetadata({ params }: PageProps<"/catalog/[slug]">)
   return {
     title: `${product.name} — ${product.category} Printing in Ahmedabad`,
     description: `${product.shortDescription} Available with CDR artwork upload and fast turnaround in Ahmedabad, Gujarat from Mahavir Card.`,
-    robots: { index: false, follow: true },
     alternates: {
       canonical: `/catalog/${product.slug}`,
     },
@@ -147,16 +146,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   const query = await searchParams;
   if (slug === "business-cards") redirect("/products?category=visiting-card");
   const session = await getCachedSession();
-  if (!session) {
-    const search = new URLSearchParams();
-    for (const [key, value] of Object.entries(query)) {
-      if (typeof value === "string") search.set(key, value);
-      else if (Array.isArray(value)) value.forEach((entry) => search.append(key, entry));
-    }
-    const queryString = search.toString();
-    redirect(`/login?next=${encodeURIComponent(`/catalog/${slug}${queryString ? `?${queryString}` : ""}`)}`);
-  }
-  const product = await getDatabaseCatalogProduct(slug, true);
+  const product = await getDatabaseCatalogProduct(slug, Boolean(session));
   if (!product) notFound();
   const descriptor = `${product.category} · Commercial printing`;
   const returnPath = safeProductReturnPath(query.returnTo);
