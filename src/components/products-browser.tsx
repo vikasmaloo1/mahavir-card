@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, Clock3, FileUp, RefreshCw, Search, ShoppingBag, SlidersHorizontal, Sparkles, X, MapPin, AlertCircle, Zap } from "lucide-react";
+import { ArrowRight, Check, Clock3, FileUp, RefreshCw, Search, ShoppingBag, SlidersHorizontal, Sparkles, X, MapPin, AlertCircle, WalletCards, Zap } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ProductImage } from "@/components/product-image";
+import { formatInr } from "@/lib/formatting";
 import { productFiltersToSearchParams, productListingHref, readProductFilters, type ProductFilters } from "@/lib/catalog-routing";
 import { RequirementQuoteModal, type RequirementContext } from "@/components/requirement-quote-modal";
 import { normalizeProductQuantity, stepProductQuantity } from "@/lib/quantity-helper";
@@ -78,7 +79,7 @@ type RecentProduct = {
   lastOrderedAt: string;
 };
 
-export function ProductsBrowser({ initialFilters, isB2B }: { initialFilters: ProductFilters; isB2B: boolean }) {
+export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { initialFilters: ProductFilters; isB2B: boolean; walletBalance: string | null }) {
   const router = useRouter();
   const [items, setItems] = useState<Product[]>([]);
   const [quickActionId, setQuickActionId] = useState<string | null>(null);
@@ -384,6 +385,25 @@ export function ProductsBrowser({ initialFilters, isB2B }: { initialFilters: Pro
   return (
     <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
       <div className="mx-auto max-w-[1440px] px-4 py-7 lg:px-8 lg:py-10">
+        {isB2B && walletBalance !== null ? (
+          <Link
+            href="/account/wallet"
+            className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--mc-line)] bg-[var(--mc-paper)] px-4 py-3 shadow-sm transition-colors hover:border-[var(--mc-accent)]"
+          >
+            <span className="flex items-center gap-2.5">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--mc-accent-soft)] text-[var(--mc-accent)]">
+                <WalletCards size={18} />
+              </span>
+              <span>
+                <span className="block text-xs font-bold uppercase text-[var(--mc-muted)]">Wallet balance</span>
+                <span className="block text-lg font-bold text-[var(--mc-ink)]">{formatInr(walletBalance)}</span>
+              </span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2 text-xs font-bold text-white">
+              Top up <ArrowRight size={14} />
+            </span>
+          </Link>
+        ) : null}
         <header className="border-b border-[var(--mc-line)] pb-6">
           <p className="text-xs font-bold uppercase text-[var(--mc-accent)]">Product catalogue</p>
           <div className="mt-2 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">

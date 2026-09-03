@@ -30,6 +30,7 @@ export async function DELETE(request: Request, ctx: RouteContext<"/api/artworks/
       ? await db.select().from(artworks).where(eq(artworks.id, id)).limit(1)
       : await db.select().from(artworks).where(and(eq(artworks.id, id), eq(artworks.uploadedBy, session.user.id))).limit(1);
     if (!artwork) return jsonError("Artwork not found", 404);
+    if (artwork.orderId) return jsonError("This artwork is attached to a placed order and can no longer be deleted", 409);
     if (artwork.storageKey) await storage.deleteObject(artwork.storageKey);
     await db.delete(artworks).where(eq(artworks.id, id));
     return jsonOk({ deleted: true, id });

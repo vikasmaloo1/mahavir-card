@@ -45,7 +45,7 @@ export default async function ProductsPage({ searchParams }: PageProps<"/product
   }
   const session = await getCachedSession();
   const customer = session
-    ? (await db.select({ customerType: customers.customerType }).from(customers).where(eq(customers.userId, session.user.id)).limit(1))[0]
+    ? (await db.select({ customerType: customers.customerType, availableCredit: customers.availableCredit }).from(customers).where(eq(customers.userId, session.user.id)).limit(1))[0]
     : undefined;
   const isB2B = customer?.customerType === "B2B";
   const initialFilters = readProductFilters(params);
@@ -64,7 +64,7 @@ export default async function ProductsPage({ searchParams }: PageProps<"/product
         </div>
       ) : null}
       <Suspense fallback={<main className="min-h-screen p-8 text-sm text-[var(--mc-muted)]">Loading products...</main>}>
-        <ProductsBrowser key={canonicalParams.toString()} initialFilters={initialFilters} isB2B={isB2B} />
+        <ProductsBrowser key={canonicalParams.toString()} initialFilters={initialFilters} isB2B={isB2B} walletBalance={isB2B ? customer?.availableCredit ?? null : null} />
       </Suspense>
       <StorefrontFooter />
     </div>
