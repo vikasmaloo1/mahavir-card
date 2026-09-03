@@ -92,7 +92,7 @@ export async function GET(request: Request) {
     }
 
     const usesPagination = params.has("page") || params.has("limit");
-    const limit = Math.min(Math.max(Number(params.get("limit")) || 12, 1), 50);
+    const limit = Math.min(Math.max(Number(params.get("limit")) || 12, 1), 300);
     const totalPages = Math.max(1, Math.ceil(data.length / limit));
     const page = Math.min(Math.max(Number(params.get("page")) || 1, 1), totalPages);
     const pageData = usesPagination ? data.slice((page - 1) * limit, page * limit) : data;

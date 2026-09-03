@@ -32,7 +32,7 @@ export type UploadedArtwork = { id: string; originalFileName: string; fileSize: 
 function bytes(value: number) { return `${(value / 1024 / 1024).toFixed(value < 1024 * 1024 ? 1 : 0)} MB`; }
 function formatLabel() { return "CDR"; }
 
-export function ArtworkUploader({ productId, pricingRuleId, requirement, slot, showRequirements = true, configuration, artwork, onUploaded, onRemoved }: { productId: string; pricingRuleId: string | null; requirement: ArtworkRequirement; slot?: ArtworkSlot; showRequirements?: boolean; configuration: Record<string, string>; artwork: UploadedArtwork | null; onUploaded: (artwork: UploadedArtwork) => void; onRemoved: () => void }) {
+export function ArtworkUploader({ productId, pricingRuleId, requirement, slot, showRequirements = true, compact = false, configuration, artwork, onUploaded, onRemoved }: { productId: string; pricingRuleId: string | null; requirement: ArtworkRequirement; slot?: ArtworkSlot; showRequirements?: boolean; compact?: boolean; configuration: Record<string, string>; artwork: UploadedArtwork | null; onUploaded: (artwork: UploadedArtwork) => void; onRemoved: () => void }) {
   const input = useRef<HTMLInputElement>(null);
   const [phase, setPhase] = useState<"idle" | "uploading" | "processing" | "failed">("idle");
   const [progress, setProgress] = useState<number | null>(null);
@@ -185,6 +185,56 @@ export function ArtworkUploader({ productId, pricingRuleId, requirement, slot, s
   const final = formatDimensions(requirement.finalWidth, requirement.finalHeight, requirement.designUnit || "mm");
   const pages = requirement.pageInstructions ?? [];
   const maximumMb = slot?.maxFileSize ?? requirement.maxFileSize;
+  const busy = phase === "uploading" || phase === "processing";
+
+  if (compact) {
+    return (
+      <div className="flex flex-col gap-1">
+        <input
+          ref={input}
+          type="file"
+          accept=".cdr"
+          className="sr-only"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.currentTarget.value = "";
+            if (file) upload(file);
+          }}
+        />
+        {!artwork ? (
+          <button
+            type="button"
+            onClick={choose}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={drop}
+            disabled={busy}
+            className="flex w-full items-center justify-center gap-2 rounded-full border border-dashed border-[#9caed0] bg-white px-4 py-2 text-sm font-bold text-[#2457b8] hover:border-[#2457b8] transition disabled:opacity-60"
+          >
+            <UploadCloud size={16} />
+            {busy ? (phase === "processing" ? "Processing..." : progress === null ? "Uploading..." : `Uploading ${progress}%`) : `Upload ${slot?.name ?? "CDR artwork"}`}
+          </button>
+        ) : (
+          <div className="flex w-full items-center justify-between gap-2 rounded-full border border-[#c8d7f1] bg-[#f5f8ff] px-4 py-2 text-sm">
+            <span className="flex min-w-0 items-center gap-1.5 truncate font-semibold text-[#162237]">
+              <CheckCircle2 size={15} className="shrink-0 text-[#1f633d]" />
+              <span className="truncate">{artwork.originalFileName}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => void remove()}
+              disabled={busy}
+              title="Remove and upload another"
+              aria-label="Remove artwork"
+              className="grid size-6 shrink-0 place-items-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 transition disabled:opacity-60"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        )}
+        {error ? <p className="text-xs font-semibold text-[#a53025]">{error}</p> : null}
+      </div>
+    );
+  }
 
   return (
     <section className="border border-[#d4dbe7] bg-[#fbfcff] p-4 sm:p-5">

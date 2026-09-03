@@ -81,7 +81,13 @@ export function PurchaseCart() {
   return <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_350px]">
     <section className="space-y-4">
       {data.items.length ? (
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between">
+          <Link
+            href="/products"
+            className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#1e3a5f] hover:underline"
+          >
+            <Plus size={14} /> Add more products
+          </Link>
           <button
             type="button"
             onClick={() => void clear()}

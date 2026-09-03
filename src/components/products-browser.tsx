@@ -257,8 +257,8 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
     if (debouncedQuery.trim()) params.set("search", debouncedQuery.trim());
     if (category) params.set("category", category);
     if (orderable) params.set("orderable", "true");
-    params.set("page", String(page));
-    params.set("limit", "12");
+    params.set("page", isB2B ? "1" : String(page));
+    params.set("limit", isB2B ? "300" : "12");
 
     const timer = window.setTimeout(() => {
       setLoading(true);
@@ -287,7 +287,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [category, debouncedQuery, orderable, page, requestVersion]);
+  }, [category, debouncedQuery, orderable, page, requestVersion, isB2B]);
 
   const hasFilters = Boolean(query || category || orderable);
   const clear = () => {
@@ -682,8 +682,15 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
                           </div>
                         ) : null}
                       </div>
-                      <div className="hidden truncate text-xs text-[var(--mc-muted)] sm:block">
-                        {item.listingSpecification || item.productSize || "-"}
+                      <div className="hidden text-xs text-[var(--mc-muted)] sm:block">
+                        <p className="truncate">{item.listingSpecification || item.productSize || "-"}</p>
+                        {item.artworkSummary?.fullDesign || item.artworkSummary?.safeArea ? (
+                          <p className="mt-0.5 truncate text-[11px]">
+                            {item.artworkSummary?.fullDesign ? <>Full: {item.artworkSummary.fullDesign}</> : null}
+                            {item.artworkSummary?.fullDesign && item.artworkSummary?.safeArea ? " · " : null}
+                            {item.artworkSummary?.safeArea ? <>Safe: {item.artworkSummary.safeArea}</> : null}
+                          </p>
+                        ) : null}
                       </div>
                       <div className="text-sm font-bold text-[var(--mc-ink)]">{item.priceLabel}</div>
                       <div className="flex flex-col items-start gap-1">
@@ -774,7 +781,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
               );
             })}
 
-            {pagination.totalPages > 1 ? (
+            {!isB2B && pagination.totalPages > 1 ? (
               <nav
                 aria-label="Product pages"
                 className="flex items-center justify-between border-t border-[var(--mc-line)] pt-5"
@@ -1126,15 +1133,15 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
       </div>
 
       {requirement?.artworkRequired ? (
-        <div className="space-y-3">
-          {slots.length ? slots.map((slot, index) => (
+        <div className="space-y-2">
+          {slots.length ? slots.map((slot) => (
             <ArtworkUploader
               key={slot.id}
               productId={item.id}
               pricingRuleId={ruleId}
               requirement={requirement}
               slot={slot}
-              showRequirements={index === 0}
+              compact
               configuration={{ quantity: String(quantity) }}
               artwork={artworks[slot.slotKey] ?? null}
               onUploaded={(uploaded) => setArtworks((current) => ({ ...current, [slot.slotKey]: uploaded }))}
@@ -1145,6 +1152,7 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
               productId={item.id}
               pricingRuleId={ruleId}
               requirement={requirement}
+              compact
               configuration={{ quantity: String(quantity) }}
               artwork={artworks.MAIN ?? null}
               onUploaded={(uploaded) => setArtworks((current) => ({ ...current, MAIN: uploaded }))}
