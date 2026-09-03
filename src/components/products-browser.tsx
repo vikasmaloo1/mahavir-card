@@ -79,7 +79,8 @@ type RecentProduct = {
   lastOrderedAt: string;
 };
 
-type MiniCartItem = { id: string; productId: string; quantity: number; calculatedAmount: string | null; name: string };
+type MiniCartArtworkFile = { slotKey: string; id: string; fileName: string | null; artworkSlotId: string | null };
+type MiniCartItem = { id: string; productId: string; quantity: number; calculatedAmount: string | null; name: string; slug: string; pricingRuleId: string | null; artworkFiles: MiniCartArtworkFile[] };
 
 export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { initialFilters: ProductFilters; isB2B: boolean; walletBalance: string | null }) {
   const router = useRouter();
@@ -233,9 +234,26 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
       .then((response) => response.json())
       .then((payload) => {
         if (!payload?.success) return;
-        const cartApiItems = payload.data.items as Array<{ id: string; productId: string; quantity: number; calculatedAmount: string | null; product: { name: string } }>;
+        const cartApiItems = payload.data.items as Array<{
+          id: string;
+          productId: string;
+          quantity: number;
+          calculatedAmount: string | null;
+          configuration: Record<string, unknown>;
+          artworkFiles: MiniCartArtworkFile[];
+          product: { name: string; slug: string };
+        }>;
         setCartProductIds(new Set(cartApiItems.map((item) => item.productId)));
-        setMiniCartItems(cartApiItems.map((item) => ({ id: item.id, productId: item.productId, quantity: item.quantity, calculatedAmount: item.calculatedAmount, name: item.product.name })));
+        setMiniCartItems(cartApiItems.map((item) => ({
+          id: item.id,
+          productId: item.productId,
+          quantity: item.quantity,
+          calculatedAmount: item.calculatedAmount,
+          name: item.product.name,
+          slug: item.product.slug,
+          pricingRuleId: typeof item.configuration.pricingRuleId === "string" ? item.configuration.pricingRuleId : null,
+          artworkFiles: item.artworkFiles,
+        })));
       })
       .catch(() => undefined);
   }, []);
@@ -244,6 +262,50 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
     setMiniCartBusyId(itemId);
     try {
       await fetch(`/api/cart/items/${itemId}`, { method: "DELETE" });
+    } finally {
+      setMiniCartBusyId(null);
+      refreshCartProductIds();
+    }
+  }
+
+  async function updateMiniCartQuantity(item: MiniCartItem, direction: "UP" | "DOWN") {
+    const nextQuantity = stepProductQuantity(item.quantity, direction, null, item.slug);
+    if (nextQuantity === item.quantity) return;
+    setMiniCartBusyId(item.id);
+    try {
+      await fetch(`/api/cart/items/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quantity: nextQuantity }) });
+    } finally {
+      setMiniCartBusyId(null);
+      refreshCartProductIds();
+    }
+  }
+
+  async function replaceMiniCartArtwork(item: MiniCartItem, artworkFile: MiniCartArtworkFile, file: File) {
+    setMiniCartBusyId(item.id);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("productId", item.productId);
+      if (item.pricingRuleId) formData.append("pricingRuleId", item.pricingRuleId);
+      formData.append("artworkSlotKey", artworkFile.slotKey);
+      if (artworkFile.artworkSlotId) formData.append("artworkSlotId", artworkFile.artworkSlotId);
+      formData.append("replaceArtworkId", artworkFile.id);
+      const response = await fetch("/api/artworks/upload", { method: "POST", body: formData });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "Could not upload the replacement file");
+      const cartResponse = await fetch("/api/cart", { cache: "no-store" });
+      const cartPayload = await cartResponse.json().catch(() => null);
+      const freshItem = cartPayload?.data?.items?.find((row: { id: string }) => row.id === item.id);
+      if (freshItem) {
+        const nextConfiguration = { ...freshItem.configuration } as Record<string, unknown>;
+        const slotMap = nextConfiguration.artworkIds && typeof nextConfiguration.artworkIds === "object" ? { ...(nextConfiguration.artworkIds as Record<string, unknown>) } : {};
+        slotMap[artworkFile.slotKey] = payload.data.id;
+        nextConfiguration.artworkIds = slotMap;
+        if (artworkFile.slotKey === "MAIN") nextConfiguration.artworkId = payload.data.id;
+        await fetch(`/api/cart/items/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quantity: freshItem.quantity, configuration: nextConfiguration }) });
+      }
+    } catch (caught) {
+      setQuickError((current) => ({ ...current, [item.productId]: caught instanceof Error ? caught.message : "Could not upload the replacement file" }));
     } finally {
       setMiniCartBusyId(null);
       refreshCartProductIds();
@@ -623,7 +685,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
         {loading && !items.length ? <ProductRowsSkeleton /> : null}
 
         {/* Product Listing Table */}
-        <div className={isB2B && items.length ? "grid gap-4 xl:grid-cols-[minmax(0,1fr)_19rem] xl:items-start" : ""}>
+        <div className={isB2B && items.length ? "grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start" : ""}>
         {items.length ? (
           <section
             className={`mt-5 transition-opacity duration-200 ${isB2B ? "overflow-hidden rounded-lg border border-[var(--mc-line)]" : "space-y-3"} ${
@@ -830,7 +892,15 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
             </p>
           </section>
         ) : null}
-        {isB2B && items.length ? <MiniCart items={miniCartItems} busyId={miniCartBusyId} onRemove={(id) => void removeMiniCartItem(id)} /> : null}
+        {isB2B && items.length ? (
+          <MiniCart
+            items={miniCartItems}
+            busyId={miniCartBusyId}
+            onRemove={(id) => void removeMiniCartItem(id)}
+            onQuantityChange={(item, direction) => void updateMiniCartQuantity(item, direction)}
+            onReplaceArtwork={(item, artworkFile, file) => void replaceMiniCartArtwork(item, artworkFile, file)}
+          />
+        ) : null}
         </div>
 
         {/* NO MATCH / LOW CONFIDENCE FALLBACK CARD */}
@@ -1003,44 +1073,87 @@ function RowActions({
   );
 }
 
-function MiniCart({ items, busyId, onRemove }: { items: MiniCartItem[]; busyId: string | null; onRemove: (id: string) => void }) {
+function MiniCart({
+  items,
+  busyId,
+  onRemove,
+  onQuantityChange,
+  onReplaceArtwork,
+}: {
+  items: MiniCartItem[];
+  busyId: string | null;
+  onRemove: (id: string) => void;
+  onQuantityChange: (item: MiniCartItem, direction: "UP" | "DOWN") => void;
+  onReplaceArtwork: (item: MiniCartItem, artworkFile: MiniCartArtworkFile, file: File) => void;
+}) {
   const total = items.reduce((sum, item) => sum + Number(item.calculatedAmount ?? 0), 0);
   return (
     <aside className="mt-5 h-fit overflow-hidden rounded-lg border border-[var(--mc-line)] bg-white xl:sticky xl:top-24">
-      <div className="flex items-center gap-2 bg-[#1e2430] px-3 py-2.5 text-sm font-bold text-white">
-        <ShoppingBag size={16} />
+      <div className="flex items-center gap-2 bg-[#1e2430] px-4 py-3 text-base font-bold text-white">
+        <ShoppingBag size={18} />
         Basket {items.length ? `(${items.length})` : ""}
       </div>
       {items.length ? (
         <>
-          <div className="max-h-[26rem] divide-y divide-[var(--mc-line)] overflow-y-auto">
+          <div className="max-h-[34rem] divide-y divide-[var(--mc-line)] overflow-y-auto">
             {items.map((item) => (
-              <div key={item.id} className="flex items-start justify-between gap-2 px-3 py-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-[var(--mc-ink)]">{item.name}</p>
-                  <p className="mt-0.5 text-xs text-[var(--mc-muted)]">Qty {item.quantity.toLocaleString("en-IN")}</p>
-                  <p className="mt-0.5 text-sm font-bold text-[var(--mc-accent-dark)]">{item.calculatedAmount ? formatInr(item.calculatedAmount) : "-"}</p>
+              <div key={item.id} className="px-4 py-3.5">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="min-w-0 truncate text-[15px] font-bold text-[var(--mc-ink)]">{item.name}</p>
+                  <button
+                    type="button"
+                    disabled={busyId === item.id}
+                    onClick={() => onRemove(item.id)}
+                    aria-label={`Remove ${item.name}`}
+                    className="grid size-7 shrink-0 place-items-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 transition disabled:opacity-50"
+                  >
+                    <X size={15} />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  disabled={busyId === item.id}
-                  onClick={() => onRemove(item.id)}
-                  aria-label={`Remove ${item.name}`}
-                  className="grid size-7 shrink-0 place-items-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 transition disabled:opacity-50"
-                >
-                  <X size={15} />
-                </button>
+
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <div className="flex items-center rounded-full border border-[var(--mc-line)] bg-white">
+                    <button
+                      type="button"
+                      disabled={busyId === item.id}
+                      onClick={() => onQuantityChange(item, "DOWN")}
+                      className="grid size-7 place-items-center text-sm hover:bg-[var(--mc-surface)] disabled:opacity-50"
+                      aria-label="Decrease quantity"
+                    >
+                      −
+                    </button>
+                    <span className="min-w-14 text-center text-sm font-bold text-[var(--mc-ink)]">{item.quantity.toLocaleString("en-IN")}</span>
+                    <button
+                      type="button"
+                      disabled={busyId === item.id}
+                      onClick={() => onQuantityChange(item, "UP")}
+                      className="grid size-7 place-items-center text-sm hover:bg-[var(--mc-surface)] disabled:opacity-50"
+                      aria-label="Increase quantity"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <p className="text-[15px] font-bold text-[var(--mc-accent-dark)]">{item.calculatedAmount ? formatInr(item.calculatedAmount) : "-"}</p>
+                </div>
+
+                {item.artworkFiles.length ? (
+                  <div className="mt-2.5 space-y-1.5">
+                    {item.artworkFiles.map((artworkFile) => (
+                      <ArtworkReplaceRow key={artworkFile.id} item={item} artworkFile={artworkFile} busy={busyId === item.id} onReplace={onReplaceArtwork} />
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>
-          <div className="border-t border-[var(--mc-line)] p-3">
-            <p className="flex items-center justify-between text-sm font-bold text-[var(--mc-ink)]">
+          <div className="border-t border-[var(--mc-line)] p-4">
+            <p className="flex items-center justify-between text-base font-bold text-[var(--mc-ink)]">
               <span>Total</span>
               <span>{formatInr(total.toFixed(2))}</span>
             </p>
             <Link
               href="/checkout"
-              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors"
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-3 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors"
             >
               Checkout <ArrowRight size={15} />
             </Link>
@@ -1056,6 +1169,47 @@ function MiniCart({ items, busyId, onRemove }: { items: MiniCartItem[]; busyId: 
         <p className="p-4 text-sm text-[var(--mc-muted)]">Nothing added yet. Use &ldquo;Order now&rdquo; on any product to add it here.</p>
       )}
     </aside>
+  );
+}
+
+function ArtworkReplaceRow({
+  item,
+  artworkFile,
+  busy,
+  onReplace,
+}: {
+  item: MiniCartItem;
+  artworkFile: MiniCartArtworkFile;
+  busy: boolean;
+  onReplace: (item: MiniCartItem, artworkFile: MiniCartArtworkFile, file: File) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-full border border-[var(--mc-line)] bg-[var(--mc-surface)] px-3 py-1.5">
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".cdr"
+        className="sr-only"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.currentTarget.value = "";
+          if (file) onReplace(item, artworkFile, file);
+        }}
+      />
+      <span className="flex min-w-0 items-center gap-1.5 truncate text-xs font-semibold text-[var(--mc-ink)]">
+        <FileUp size={12} className="shrink-0 text-[var(--mc-muted)]" />
+        <span className="truncate">{artworkFile.fileName}</span>
+      </span>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => inputRef.current?.click()}
+        className="shrink-0 text-xs font-bold text-[var(--mc-accent)] hover:underline disabled:opacity-50"
+      >
+        Re-upload
+      </button>
+    </div>
   );
 }
 

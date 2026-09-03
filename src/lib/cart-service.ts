@@ -1,8 +1,9 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/lib/db/server";
-import { cartItems, carts, products } from "@/lib/db/schema";
+import { artworks, cartItems, carts, products } from "@/lib/db/schema";
 import { calculateProductPrice, type CalculatedPrice, type DeliverySelection, PricingValidationError } from "@/lib/pricing-service";
+import { extractArtworkIds } from "@/lib/artwork-validation";
 
 export type CartKind = "PURCHASE" | "QUOTE";
 
@@ -69,9 +70,28 @@ export async function getOwnedCart(userId: string, kind: CartKind, stateCodeOver
     }
   }));
 
-  const availableAmounts = items.filter((item) => item.available && item.calculatedAmount).map((item) => Number(item.calculatedAmount));
+  const allArtworkIds = [...new Set(items.flatMap((item) => extractArtworkIds(item.configuration as Record<string, unknown>)))];
+  const artworkRows = allArtworkIds.length
+    ? await db.select({ id: artworks.id, fileName: artworks.fileName, artworkSlotId: artworks.artworkSlotId }).from(artworks).where(inArray(artworks.id, allArtworkIds))
+    : [];
+  const artworkById = new Map(artworkRows.map((row) => [row.id, row]));
+  const itemsWithArtwork = items.map((item) => {
+    const configuration = item.configuration as Record<string, unknown>;
+    const slotMap = configuration.artworkIds && typeof configuration.artworkIds === "object" && !Array.isArray(configuration.artworkIds)
+      ? configuration.artworkIds as Record<string, unknown>
+      : {};
+    const legacyId = typeof configuration.artworkId === "string" ? configuration.artworkId : null;
+    const entries = Object.entries(slotMap).filter(([, value]) => typeof value === "string") as Array<[string, string]>;
+    if (!entries.length && legacyId) entries.push(["MAIN", legacyId]);
+    const artworkFiles = entries
+      .map(([slotKey, id]) => ({ slotKey, id, fileName: artworkById.get(id)?.fileName ?? null, artworkSlotId: artworkById.get(id)?.artworkSlotId ?? null }))
+      .filter((entry) => entry.fileName);
+    return { ...item, artworkFiles };
+  });
+
+  const availableAmounts = itemsWithArtwork.filter((item) => item.available && item.calculatedAmount).map((item) => Number(item.calculatedAmount));
   const total = availableAmounts.reduce((sum, amount) => sum + amount, 0).toFixed(2);
-  const availablePrices = items.filter((item) => item.available).map((item) => item.pricingSnapshot as Partial<CalculatedPrice>);
+  const availablePrices = itemsWithArtwork.filter((item) => item.available).map((item) => item.pricingSnapshot as Partial<CalculatedPrice>);
   const sum = (read: (price: Partial<CalculatedPrice>) => number) => availablePrices.reduce((total, price) => total + read(price), 0);
   const productSubtotal = sum((price) => Number(price.productPrice ?? 0));
   const addonSubtotal = sum((price) => Number(price.addonTotal ?? 0));
@@ -85,9 +105,9 @@ export async function getOwnedCart(userId: string, kind: CartKind, stateCodeOver
   return {
     id: cart.id,
     kind,
-    items,
+    items: itemsWithArtwork,
     summary: {
-      itemCount: items.length,
+      itemCount: itemsWithArtwork.length,
       productSubtotal: productSubtotal.toFixed(2),
       addonSubtotal: addonSubtotal.toFixed(2),
       deliverySubtotal: deliverySubtotal.toFixed(2),
@@ -99,7 +119,7 @@ export async function getOwnedCart(userId: string, kind: CartKind, stateCodeOver
       igst: igst.toFixed(2),
       total,
       currency: "INR" as const,
-      taxInclusive: items.every((item) => !item.available || (item.pricingSnapshot as Partial<CalculatedPrice>).taxInclusive !== false),
+      taxInclusive: itemsWithArtwork.every((item) => !item.available || (item.pricingSnapshot as Partial<CalculatedPrice>).taxInclusive !== false),
       hasTaxBreakdown,
       hasUnavailableItems: items.some((item) => !item.available),
     },
