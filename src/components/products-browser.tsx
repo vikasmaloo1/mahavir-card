@@ -588,18 +588,27 @@ export function ProductsBrowser({ initialFilters, isB2B }: { initialFilters: Pro
         {/* Product Listing Table */}
         {items.length ? (
           <section
-            className={`mt-5 space-y-3 transition-opacity duration-200 ${
+            className={`mt-5 transition-opacity duration-200 ${isB2B ? "overflow-hidden rounded-lg border border-[var(--mc-line)]" : "space-y-3"} ${
               loading ? "opacity-60" : "opacity-100"
             }`}
           >
-            <div className="hidden grid-cols-[minmax(15rem,.9fr)_minmax(20rem,1.2fr)_10rem_minmax(20rem,1fr)] gap-5 px-4 py-2 text-xs font-bold uppercase text-[var(--mc-muted)] xl:grid">
-              <span>Product</span>
-              <span>Specification</span>
-              <span>Price</span>
-              <span>Actions</span>
-            </div>
+            {isB2B ? (
+              <div className="grid grid-cols-[minmax(9rem,2fr)_5rem_7rem] items-center gap-3 bg-[var(--mc-accent)] px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-white sm:grid-cols-[minmax(10rem,2fr)_minmax(8rem,1.4fr)_6rem_9rem]">
+                <span>Product</span>
+                <span className="hidden sm:block">Print copy</span>
+                <span>Amount</span>
+                <span>Action</span>
+              </div>
+            ) : (
+              <div className="hidden grid-cols-[minmax(15rem,.9fr)_minmax(20rem,1.2fr)_10rem_minmax(20rem,1fr)] gap-5 px-4 py-2 text-xs font-bold uppercase text-[var(--mc-muted)] xl:grid">
+                <span>Product</span>
+                <span>Specification</span>
+                <span>Price</span>
+                <span>Actions</span>
+              </div>
+            )}
 
-            {items.map((item) => {
+            {items.map((item, index) => {
               const isUnavailableInState = item.stateAvailability?.status === "UNAVAILABLE_IN_STATE";
               const quickOrderEligible = isB2B && item.orderable && !item.hasArtworkRequirement && !isUnavailableInState;
               const expandableEligible = isB2B && item.orderable && item.hasArtworkRequirement && !isUnavailableInState;
@@ -607,6 +616,69 @@ export function ProductsBrowser({ initialFilters, isB2B }: { initialFilters: Pro
               const isBuyingNow = quickActionId === `${item.id}:buy`;
               const rowError = quickError[item.id];
               const isExpanded = expandedId === item.id;
+              const rowActions = (
+                <RowActions
+                  item={item}
+                  isUnavailableInState={isUnavailableInState}
+                  quickOrderEligible={quickOrderEligible}
+                  expandableEligible={expandableEligible}
+                  isExpanded={isExpanded}
+                  quickAddedId={quickAddedId}
+                  quickActionId={quickActionId}
+                  isBuyingNow={isBuyingNow}
+                  isAddingToCart={isAddingToCart}
+                  openQuoteFallback={openQuoteFallback}
+                  quickOrder={quickOrder}
+                  setExpandedId={setExpandedId}
+                  productHref={productHref}
+                />
+              );
+
+              if (isB2B) {
+                return (
+                  <div key={item.id} className={index !== 0 ? "border-t border-[var(--mc-line)]" : ""}>
+                    <div
+                      className={`grid grid-cols-[minmax(9rem,2fr)_5rem_7rem] items-center gap-3 px-3 py-2.5 text-sm sm:grid-cols-[minmax(10rem,2fr)_minmax(8rem,1.4fr)_6rem_9rem] ${
+                        index % 2 === 1 ? "bg-[var(--mc-surface)]" : "bg-white"
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <Link href={productHref(item)} className="font-bold text-[var(--mc-ink)] hover:text-[var(--mc-accent)] transition-colors">
+                          {item.name}
+                        </Link>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 sm:hidden">
+                          {item.productSize ? <span className="text-xs text-[var(--mc-muted)]">{item.productSize}</span> : null}
+                        </div>
+                        {cartProductIds.has(item.id) || isUnavailableInState ? (
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            {isUnavailableInState ? (
+                              <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200">{item.stateAvailability?.badgeText}</span>
+                            ) : null}
+                            {cartProductIds.has(item.id) ? (
+                              <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                                <Check size={10} /> In basket
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="hidden truncate text-xs text-[var(--mc-muted)] sm:block">
+                        {item.listingSpecification || item.productSize || "-"}
+                      </div>
+                      <div className="text-sm font-bold text-[var(--mc-ink)]">{item.priceLabel}</div>
+                      <div className="flex flex-col items-start gap-1">
+                        {rowActions}
+                        {rowError ? <p className="text-[11px] font-semibold text-[#a53025]">{rowError}</p> : null}
+                      </div>
+                    </div>
+                    {isExpanded ? (
+                      <div className="border-t border-[var(--mc-line)] bg-[var(--mc-surface)] p-4">
+                        <InlineOrderPanel item={item} onAdded={() => { setExpandedId(null); refreshCartProductIds(); }} />
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              }
 
               return (
                 <div
@@ -640,11 +712,6 @@ export function ProductsBrowser({ initialFilters, isB2B }: { initialFilters: Pro
                             {item.stateAvailability?.badgeText}
                           </span>
                         )}
-                        {cartProductIds.has(item.id) && (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-200">
-                            <Check size={11} /> In basket
-                          </span>
-                        )}
                       </div>
                       <h2 className="mt-1 text-[17px] font-bold leading-snug text-[var(--mc-ink)]">
                         <Link href={productHref(item)} className="hover:text-[var(--mc-accent)] transition-colors">
@@ -674,77 +741,7 @@ export function ProductsBrowser({ initialFilters, isB2B }: { initialFilters: Pro
 
                   {/* Actions & State Fallback */}
                   <div className="flex flex-col items-start gap-2 pt-2 sm:pt-0 sm:col-span-2 xl:col-span-1">
-                    {isUnavailableInState ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          openQuoteFallback({
-                            mode: "STATE_UNAVAILABLE",
-                            productName: item.name,
-                            category: item.category?.name,
-                            customerState: item.stateAvailability?.customerState || undefined,
-                            additionalNotes: item.stateAvailability?.message || undefined,
-                          })
-                        }
-                        className="inline-flex items-center justify-center gap-1.5 rounded-full bg-amber-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-700 transition-colors shadow-sm"
-                      >
-                        <span>Request Quote</span>
-                        <ArrowRight size={16} />
-                      </button>
-                    ) : quickOrderEligible ? (
-                      quickAddedId === item.id ? (
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 border border-emerald-200">
-                            <Check size={15} /> Added to basket
-                          </span>
-                          <Link href="/cart" className="text-xs font-bold text-[var(--mc-accent)] underline">View basket</Link>
-                        </div>
-                      ) : (
-                        <div className="flex flex-wrap items-center gap-2">
-                          <button
-                            type="button"
-                            disabled={Boolean(quickActionId)}
-                            onClick={() => void quickOrder(item, true)}
-                            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            <Zap size={15} />
-                            {isBuyingNow ? "Starting..." : "Buy now"}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={Boolean(quickActionId)}
-                            onClick={() => void quickOrder(item, false)}
-                            className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-4 py-2.5 text-sm font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            <ShoppingBag size={15} />
-                            {isAddingToCart ? "Adding..." : "Add to basket"}
-                          </button>
-                          <Link href={productHref(item)} className="text-xs font-bold text-[var(--mc-muted)] underline hover:text-[var(--mc-accent)]">
-                            Details
-                          </Link>
-                        </div>
-                      )
-                    ) : expandableEligible ? (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setExpandedId(isExpanded ? null : item.id)}
-                          className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm"
-                        >
-                          {isExpanded ? "Close" : "Order now"} <ArrowRight size={16} className={isExpanded ? "rotate-90 transition-transform" : "transition-transform"} />
-                        </button>
-                        <Link href={productHref(item)} className="text-xs font-bold text-[var(--mc-muted)] underline hover:text-[var(--mc-accent)]">
-                          Details
-                        </Link>
-                      </div>
-                    ) : (
-                      <Link
-                        href={productHref(item)}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm"
-                      >
-                        Configure <ArrowRight size={16} />
-                      </Link>
-                    )}
+                    {rowActions}
                     {rowError ? <p className="text-xs font-semibold text-[#a53025]">{rowError} <Link href={productHref(item)} className="underline">Configure on the product page</Link></p> : null}
                   </div>
                 </article>
@@ -844,6 +841,118 @@ export function ProductsBrowser({ initialFilters, isB2B }: { initialFilters: Pro
         context={quoteContext}
       />
     </main>
+  );
+}
+
+function RowActions({
+  item,
+  isUnavailableInState,
+  quickOrderEligible,
+  expandableEligible,
+  isExpanded,
+  quickAddedId,
+  quickActionId,
+  isBuyingNow,
+  isAddingToCart,
+  openQuoteFallback,
+  quickOrder,
+  setExpandedId,
+  productHref,
+}: {
+  item: Product;
+  isUnavailableInState: boolean;
+  quickOrderEligible: boolean;
+  expandableEligible: boolean;
+  isExpanded: boolean;
+  quickAddedId: string | null;
+  quickActionId: string | null;
+  isBuyingNow: boolean;
+  isAddingToCart: boolean;
+  openQuoteFallback: (context: RequirementContext) => void;
+  quickOrder: (item: Product, checkout: boolean) => Promise<void>;
+  setExpandedId: (id: string | null) => void;
+  productHref: (item: Product) => string;
+}) {
+  if (isUnavailableInState) {
+    return (
+      <button
+        type="button"
+        onClick={() =>
+          openQuoteFallback({
+            mode: "STATE_UNAVAILABLE",
+            productName: item.name,
+            category: item.category?.name,
+            customerState: item.stateAvailability?.customerState || undefined,
+            additionalNotes: item.stateAvailability?.message || undefined,
+          })
+        }
+        className="inline-flex items-center justify-center gap-1.5 rounded-full bg-amber-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-700 transition-colors shadow-sm"
+      >
+        <span>Request Quote</span>
+        <ArrowRight size={16} />
+      </button>
+    );
+  }
+  if (quickOrderEligible) {
+    if (quickAddedId === item.id) {
+      return (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 border border-emerald-200">
+            <Check size={15} /> Added to basket
+          </span>
+          <Link href="/cart" className="text-xs font-bold text-[var(--mc-accent)] underline">View basket</Link>
+        </div>
+      );
+    }
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={Boolean(quickActionId)}
+          onClick={() => void quickOrder(item, true)}
+          className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Zap size={15} />
+          {isBuyingNow ? "Starting..." : "Buy now"}
+        </button>
+        <button
+          type="button"
+          disabled={Boolean(quickActionId)}
+          onClick={() => void quickOrder(item, false)}
+          className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-4 py-2.5 text-sm font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <ShoppingBag size={15} />
+          {isAddingToCart ? "Adding..." : "Add to basket"}
+        </button>
+        <Link href={productHref(item)} className="text-xs font-bold text-[var(--mc-muted)] underline hover:text-[var(--mc-accent)]">
+          Details
+        </Link>
+      </div>
+    );
+  }
+  if (expandableEligible) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setExpandedId(isExpanded ? null : item.id)}
+          className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm"
+        >
+          {isExpanded ? "Close" : "Order now"} <ArrowRight size={16} className={isExpanded ? "rotate-90 transition-transform" : "transition-transform"} />
+        </button>
+        <Link href={productHref(item)} className="text-xs font-bold text-[var(--mc-muted)] underline hover:text-[var(--mc-accent)]">
+          Details
+        </Link>
+      </div>
+    );
+  }
+  return (
+    <Link
+      href={productHref(item)}
+      className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm"
+    >
+      Configure <ArrowRight size={16} />
+    </Link>
   );
 }
 
