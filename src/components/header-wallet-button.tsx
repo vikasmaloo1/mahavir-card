@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   Clock,
   Copy,
-  CreditCard,
   ExternalLink,
   Plus,
   WalletCards,
@@ -44,9 +43,9 @@ export function HeaderWalletButton({
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (initialBalance !== null) {
-      setBalance(initialBalance);
-    }
+    if (initialBalance === null) return;
+    const timer = window.setTimeout(() => setBalance(initialBalance), 0);
+    return () => window.clearTimeout(timer);
   }, [initialBalance]);
 
   async function refreshBalance() {
@@ -68,7 +67,7 @@ export function HeaderWalletButton({
     }
     window.addEventListener("wallet-updated", onWalletUpdate);
     return () => window.removeEventListener("wallet-updated", onWalletUpdate);
-  }, [isLoggedIn]);
+  }, [isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -98,8 +97,8 @@ export function HeaderWalletButton({
     e.preventDefault();
     setError("");
     const parsedAmount = Number(amount);
-    if (!parsedAmount || parsedAmount <= 0) {
-      setError("Please enter an amount greater than ₹0.");
+    if (!parsedAmount || parsedAmount < 500) {
+      setError("Minimum top-up amount is ₹500.");
       return;
     }
 
@@ -132,9 +131,9 @@ export function HeaderWalletButton({
 
       window.dispatchEvent(new CustomEvent("wallet-updated"));
       await refreshBalance();
-    } catch (err: any) {
+    } catch (err) {
       setSubmitting(false);
-      setError(err?.message || "Network error. Please check connection.");
+      setError(err instanceof Error ? err.message : "Network error. Please check connection.");
     }
   }
 
@@ -180,17 +179,21 @@ export function HeaderWalletButton({
         >
           <div
             ref={modalRef}
-            className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl border border-[var(--mc-line)] bg-white p-5 sm:p-6 shadow-2xl animate-in zoom-in-95 duration-200"
+            className="relative w-full max-w-lg max-h-[92vh] overflow-hidden rounded-2xl border border-[var(--mc-line)] bg-white shadow-2xl animate-in zoom-in-95 duration-200"
           >
-            {/* CLOSE BUTTON */}
+            {/* CLOSE BUTTON — pinned to the outer (non-scrolling) container so it never scrolls out of reach */}
             <button
               type="button"
               onClick={() => setIsOpen(false)}
               aria-label="Close modal"
-              className="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+              className="absolute right-4 top-4 z-10 rounded-full bg-white/80 p-1.5 text-slate-400 backdrop-blur-xs hover:bg-slate-100 hover:text-slate-700 transition-colors"
             >
               <X size={18} />
             </button>
+
+            {/* SCROLLABLE CONTENT — kept separate from the rounded outer border so the scrollbar
+                doesn't overlap/clip the rounded corners */}
+            <div className="max-h-[92vh] overflow-y-auto p-5 pr-4 sm:p-6 sm:pr-5">
 
             {/* MODAL HEADER */}
             <div className="flex items-center gap-2.5">
@@ -303,7 +306,7 @@ export function HeaderWalletButton({
                       <input
                         required
                         type="number"
-                        min="1"
+                        min="500"
                         step="1"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
@@ -311,6 +314,7 @@ export function HeaderWalletButton({
                         className="w-full rounded-xl border border-[var(--mc-line)] bg-white pl-8 pr-3.5 py-2.5 text-sm font-bold text-slate-900 outline-none focus:border-[var(--mc-accent)] transition-colors"
                       />
                     </div>
+                    <p className="mt-1 text-[11px] text-[var(--mc-muted)]">Minimum top-up amount is ₹500.</p>
 
                     {/* QUICK AMOUNT CHIPS */}
                     <div className="mt-2 flex flex-wrap gap-1.5">
@@ -416,6 +420,7 @@ export function HeaderWalletButton({
                 </form>
               </>
             )}
+            </div>
           </div>
         </div>
       ) : null}

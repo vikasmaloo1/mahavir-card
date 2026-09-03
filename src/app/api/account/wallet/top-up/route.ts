@@ -7,7 +7,7 @@ import { customers, walletTransactions } from "@/lib/db/schema";
 import { isCustomerProfileComplete } from "@/lib/customer-profile";
 import { requireUser } from "@/lib/permissions";
 
-const topUpSchema = z.object({ amount: z.number().positive().max(1_000_000), utr: z.string().trim().min(4).max(64).nullable().optional() });
+const topUpSchema = z.object({ amount: z.number().min(500, "Minimum top-up amount is ₹500").max(1_000_000), utr: z.string().trim().min(4).max(64).nullable().optional() });
 
 export async function GET(request: Request) {
   try {

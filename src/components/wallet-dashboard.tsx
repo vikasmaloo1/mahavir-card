@@ -57,8 +57,8 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
     event.preventDefault();
     setErrorMessage("");
     const parsedAmount = Number(amount);
-    if (!parsedAmount || parsedAmount <= 0) {
-      const err = "Please enter a valid amount greater than ₹0.";
+    if (!parsedAmount || parsedAmount < 500) {
+      const err = "Minimum top-up amount is ₹500.";
       setErrorMessage(err);
       triggerToast({ type: "error", title: "Invalid Amount", message: err });
       return;
@@ -101,9 +101,9 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
       });
 
       await load();
-    } catch (err: any) {
+    } catch (err) {
       setSaving(false);
-      const errText = err?.message || "Network error occurred. Please try again.";
+      const errText = err instanceof Error ? err.message : "Network error occurred. Please try again.";
       setErrorMessage(errText);
       triggerToast({ type: "error", title: "Network Error", message: errText });
     }
@@ -214,10 +214,10 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
               </p>
 
               <label className="mt-5 block">
-                <span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">Amount (₹)</span>
+                <span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">Amount (₹) <span className="font-normal text-[var(--mc-muted)]">— minimum ₹500</span></span>
                 <input
                   required
-                  min="1"
+                  min="500"
                   step="0.01"
                   type="number"
                   value={amount}
