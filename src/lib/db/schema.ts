@@ -200,6 +200,26 @@ export const categoryImages = pgTable(
   (table) => [index("category_images_category_idx").on(table.categoryId)],
 );
 
+export const designTemplates = pgTable(
+  "design_templates",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    productId: uuid("productId").references(() => products.id, { onDelete: "set null" }),
+    categoryId: uuid("categoryId").references(() => categories.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    imageUrl: text("imageUrl"),
+    storageKey: text("storageKey").unique(),
+    sourceFileUrl: text("sourceFileUrl"),
+    sourceFileStorageKey: text("sourceFileStorageKey").unique(),
+    licenseSource: text("licenseSource").notNull(),
+    sortOrder: integer("sortOrder").notNull().default(0),
+    isActive: boolean("isActive").notNull().default(true),
+    ...timestamps,
+  },
+  (table) => [index("design_templates_category_idx").on(table.categoryId), index("design_templates_product_idx").on(table.productId)],
+);
+
 export const brandingAssets = pgTable(
   "branding_assets",
   {

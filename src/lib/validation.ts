@@ -10,6 +10,18 @@ export const categorySchema = z.object({
   isActive: z.boolean().default(true),
 });
 
+export const designTemplateSchema = z.object({
+  title: z.string().trim().min(2).max(160),
+  description: z.string().trim().max(1000).nullable().optional(),
+  productId: z.string().uuid().nullable().optional(),
+  categoryId: z.string().uuid().nullable().optional(),
+  licenseSource: z.string().trim().min(3).max(300),
+  sortOrder: z.number().int().min(0).default(0),
+  isActive: z.boolean().default(true),
+});
+
+export const designTemplateUpdateSchema = designTemplateSchema.partial();
+
 export const productSchema = z.object({
   categoryId: z.string().uuid().nullable().optional(),
   name: z.string().trim().min(2).max(160),

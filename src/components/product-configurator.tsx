@@ -41,7 +41,7 @@ type EditableCartItem = { id: string; quantity: number; jobName: string | null; 
 const money = formatInr;
 function requirementFor(details: ProductDetails | null, ruleId: string | null) { return details?.artworkRequirements.find((rule) => rule.pricingRuleId === ruleId) ?? details?.artworkRequirements.find((rule) => !rule.pricingRuleId) ?? null; }
 
-export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE" }: { product: CatalogProduct; editItemId?: string; editKind?: CartKind }) {
+export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE", templateName }: { product: CatalogProduct; editItemId?: string; editKind?: CartKind; templateName?: string }) {
   const router = useRouter();
   const defaults = useMemo(() => Object.fromEntries(product.configuration.map((field) => [field.id, field.defaultValue])), [product.configuration]);
   const [values, setValues] = useState<Record<string, string>>(defaults);
@@ -58,7 +58,9 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
   const [basketError, setBasketError] = useState("");
   const [basketSignInRequired, setBasketSignInRequired] = useState(false);
   const [profileStateCode, setProfileStateCode] = useState<string | null>(null);
-  const [jobName, setJobName] = useState("");
+  // Prefilled from a "Use this template" link (see design-templates-gallery.tsx) — a
+  // starting-point reference only; the customer still uploads their own CDR artwork.
+  const [jobName, setJobName] = useState(templateName ? `Based on template: ${templateName}` : "");
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [quoteContext, setQuoteContext] = useState<RequirementContext>({});
   const defaultQty = useMemo(() => isSpecialQuantityProduct(product.categorySlug, product.slug) ? 500 : 1000, [product.categorySlug, product.slug]);

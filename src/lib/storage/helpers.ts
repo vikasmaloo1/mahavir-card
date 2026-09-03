@@ -36,6 +36,8 @@ export const storageKeys = {
   brandingLogo(filename: string) { return objectKey(["branding", "logo"], filename); },
   brandingAsset(filename: string) { return objectKey(["branding", "assets"], filename); },
   bannerImage(filename: string) { return objectKey(["banners", "images"], filename); },
+  templateImage(templateId: string, filename: string) { return objectKey(["design-templates", templateId, "images"], filename); },
+  templateSourceFile(templateId: string, filename: string) { return objectKey(["design-templates", templateId, "source"], filename); },
   artwork(ownerId: string, associationId: string, filename: string) { return objectKey(["artwork", ownerId, associationId], filename); },
   quote(quoteId: string, filename: string) { return objectKey(["quotes", quoteId], filename); },
   invoice(customerId: string, invoiceId: string, filename: string) { return objectKey(["invoices", customerId, invoiceId], filename); },

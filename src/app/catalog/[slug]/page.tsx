@@ -286,6 +286,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
               product={product}
               editItemId={typeof query.editItem === "string" ? query.editItem : undefined}
               editKind={query.kind === "QUOTE" ? "QUOTE" : "PURCHASE"}
+              templateName={typeof query.templateName === "string" ? query.templateName : undefined}
             />
           </aside>
         </div>

@@ -169,6 +169,13 @@
       "when": 1788347300995,
       "tag": "0023_mute_tombstone",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1788379368087,
+      "tag": "0024_aberrant_moonstone",
+      "breakpoints": true
     }
   ]
 }
