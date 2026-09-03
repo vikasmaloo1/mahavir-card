@@ -85,6 +85,7 @@ export function ProductsBrowser({ initialFilters, isB2B }: { initialFilters: Pro
   const [quickAddedId, setQuickAddedId] = useState<string | null>(null);
   const [quickError, setQuickError] = useState<Record<string, string>>({});
   const [recentProducts, setRecentProducts] = useState<RecentProduct[]>([]);
+  const [cartProductIds, setCartProductIds] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [query, setQuery] = useState(initialFilters.search);
@@ -222,6 +223,20 @@ export function ProductsBrowser({ initialFilters, isB2B }: { initialFilters: Pro
     };
   }, [category, debouncedQuery]);
 
+  const refreshCartProductIds = useCallback(() => {
+    fetch("/api/cart?kind=PURCHASE", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (payload?.success) setCartProductIds(new Set((payload.data.items as Array<{ productId: string }>).map((item) => item.productId)));
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (!isB2B) return;
+    refreshCartProductIds();
+  }, [isB2B, refreshCartProductIds]);
+
   useEffect(() => {
     let active = true;
     fetch("/api/categories")
@@ -334,6 +349,7 @@ export function ProductsBrowser({ initialFilters, isB2B }: { initialFilters: Pro
 
       if (checkout) { router.push("/checkout"); return; }
       setQuickAddedId(item.id);
+      refreshCartProductIds();
       window.setTimeout(() => setQuickAddedId((current) => (current === item.id ? null : current)), 2500);
     } catch (caught) {
       setQuickError((current) => ({ ...current, [item.id]: caught instanceof Error ? caught.message : "Could not add this product to your basket" }));
@@ -624,6 +640,11 @@ export function ProductsBrowser({ initialFilters, isB2B }: { initialFilters: Pro
                             {item.stateAvailability?.badgeText}
                           </span>
                         )}
+                        {cartProductIds.has(item.id) && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-200">
+                            <Check size={11} /> In basket
+                          </span>
+                        )}
                       </div>
                       <h2 className="mt-1 text-[17px] font-bold leading-snug text-[var(--mc-ink)]">
                         <Link href={productHref(item)} className="hover:text-[var(--mc-accent)] transition-colors">
@@ -729,7 +750,7 @@ export function ProductsBrowser({ initialFilters, isB2B }: { initialFilters: Pro
                 </article>
                 {isExpanded ? (
                   <div className="border-t border-[var(--mc-line)] p-4">
-                    <InlineOrderPanel item={item} onAdded={() => setExpandedId(null)} />
+                    <InlineOrderPanel item={item} onAdded={() => { setExpandedId(null); refreshCartProductIds(); }} />
                   </div>
                 ) : null}
                 </div>
@@ -941,7 +962,6 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
       if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "Could not add this product to your basket");
       if (checkout) { router.push("/checkout"); return; }
       onAdded();
-      router.push("/cart");
     } catch (caught) {
       setSubmitError(caught instanceof Error ? caught.message : "Could not add this product to your basket");
     } finally {

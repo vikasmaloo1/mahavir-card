@@ -6,6 +6,16 @@ import { resolveArtworkRequirementWithSlots } from "@/lib/artwork-requirements";
 import { db } from "@/lib/db/server";
 import { artworks } from "@/lib/db/schema";
 
+export function extractArtworkIds(configuration: Record<string, unknown>): string[] {
+  const submitted = configuration.artworkIds && typeof configuration.artworkIds === "object" && !Array.isArray(configuration.artworkIds)
+    ? configuration.artworkIds as Record<string, unknown>
+    : {};
+  const legacyId = typeof configuration.artworkId === "string" ? configuration.artworkId : null;
+  const ids = Object.values(submitted).filter((value): value is string => typeof value === "string");
+  if (legacyId) ids.push(legacyId);
+  return [...new Set(ids)];
+}
+
 export async function validateRequiredArtwork(userId: string, productId: string, configuration: Record<string, unknown>) {
   const pricingRuleId = typeof configuration.pricingRuleId === "string" ? configuration.pricingRuleId : null;
   const requirement = await resolveArtworkRequirementWithSlots(productId, pricingRuleId);

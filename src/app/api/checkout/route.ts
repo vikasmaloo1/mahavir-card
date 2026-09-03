@@ -1,11 +1,11 @@
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
 
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
-import { validateRequiredArtwork } from "@/lib/artwork-validation";
+import { extractArtworkIds, validateRequiredArtwork } from "@/lib/artwork-validation";
 import { getOwnedCart, selectionsFromConfiguration } from "@/lib/cart-service";
 import { evaluateCreditEligibility } from "@/lib/customer-credit";
 import { db } from "@/lib/db/server";
-import { addresses, cartItems, customers, orderItems, orders, orderStatusEvents, payments, walletTransactions } from "@/lib/db/schema";
+import { addresses, artworks, cartItems, customers, orderItems, orders, orderStatusEvents, payments, walletTransactions } from "@/lib/db/schema";
 import { indiaStateName, isCommerceStateCode } from "@/lib/india-states";
 import { createPaymentIntent, createRazorpayOrder, PaymentConfigurationError, PaymentProviderError, razorpayPublicKey } from "@/lib/payment-service";
 import { requireUser } from "@/lib/permissions";
@@ -136,6 +136,11 @@ export async function POST(request: Request) {
           pricingSnapshot: { ...snapshot, product: { id: item.productId, name: item.product.name, slug: item.product.slug }, quantity: item.quantity, capturedAt: new Date().toISOString() },
         };
       }));
+
+      const orderArtworkIds = [...new Set(basket.items.flatMap((item) => extractArtworkIds(item.configuration as Record<string, unknown>)))];
+      if (orderArtworkIds.length) {
+        await tx.update(artworks).set({ orderId: order.id }).where(and(inArray(artworks.id, orderArtworkIds), eq(artworks.uploadedBy, session.user.id)));
+      }
 
       const intent = createPaymentIntent(input.paymentMethod, total);
       const [payment] = await tx.insert(payments).values({ orderId: order.id, customerId: customer.id, method: input.paymentMethod, amount: total, status: intent.status, provider: intent.provider, providerOrderId: razorpayOrder?.id ?? null }).returning();

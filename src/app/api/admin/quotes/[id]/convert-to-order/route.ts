@@ -1,8 +1,9 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 import { handleApiError, jsonError, jsonOk } from "@/lib/api";
+import { extractArtworkIds } from "@/lib/artwork-validation";
 import { db } from "@/lib/db/server";
-import { orderItems, orders, orderStatusEvents, quoteItems, quotes } from "@/lib/db/schema";
+import { artworks, orderItems, orders, orderStatusEvents, quoteItems, quotes } from "@/lib/db/schema";
 import { requireRole } from "@/lib/permissions";
 
 export async function POST(request: Request, ctx: RouteContext<"/api/admin/quotes/[id]/convert-to-order">) {
@@ -56,6 +57,10 @@ export async function POST(request: Request, ctx: RouteContext<"/api/admin/quote
         pricingSnapshot: { ...item.pricingSnapshot, quoteId: quote.id, quoteItemId: item.id, discountAmount: quote.discountAmount },
       })));
       await tx.update(quotes).set({ status: "CONVERTED_TO_ORDER", updatedAt: new Date() }).where(eq(quotes.id, id));
+      const quoteArtworkIds = [...new Set(items.flatMap((item) => extractArtworkIds((item.configuration ?? {}) as Record<string, unknown>)))];
+      if (quoteArtworkIds.length) {
+        await tx.update(artworks).set({ orderId: created.id }).where(inArray(artworks.id, quoteArtworkIds));
+      }
       return created;
     });
     return order ? jsonOk(order, 201) : jsonError("Order was not created", 500);
