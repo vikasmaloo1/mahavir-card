@@ -4,10 +4,8 @@ import Link from "next/link";
 import {
   AlertCircle,
   ArrowRight,
-  Check,
   CheckCircle2,
   Clock,
-  Copy,
   ExternalLink,
   Plus,
   WalletCards,
@@ -33,7 +31,6 @@ export function HeaderWalletButton({
   const [isOpen, setIsOpen] = useState(false);
   const [amount, setAmount] = useState("1000");
   const [utr, setUtr] = useState("");
-  const [copiedVpa, setCopiedVpa] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submittedData, setSubmittedData] = useState<{
     amount: string;
@@ -84,13 +81,6 @@ export function HeaderWalletButton({
     setSubmittedData(null);
     setIsOpen(true);
     void refreshBalance();
-  }
-
-  function copyVpaToClipboard() {
-    if (!upiVpa) return;
-    navigator.clipboard.writeText(upiVpa);
-    setCopiedVpa(true);
-    setTimeout(() => setCopiedVpa(false), 2000);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -193,7 +183,7 @@ export function HeaderWalletButton({
 
             {/* SCROLLABLE CONTENT — kept separate from the rounded outer border so the scrollbar
                 doesn't overlap/clip the rounded corners */}
-            <div className="max-h-[92vh] overflow-y-auto p-5 pr-4 sm:p-6 sm:pr-5">
+            <div className="max-h-[92vh] overflow-y-auto p-4 pr-3.5 sm:p-5 sm:pr-4">
 
             {/* MODAL HEADER */}
             <div className="flex items-center gap-2.5">
@@ -239,7 +229,7 @@ export function HeaderWalletButton({
             ) : (
               <>
                 {/* CURRENT BALANCE BANNER */}
-                <div className="mt-4 flex items-center justify-between rounded-xl border border-[var(--mc-line)] bg-[var(--mc-surface)] px-4 py-3">
+                <div className="mt-3 flex items-center justify-between rounded-xl border border-[var(--mc-line)] bg-[var(--mc-surface)] px-4 py-2.5">
                   <div>
                     <span className="text-[11px] uppercase tracking-wider font-bold text-[var(--mc-muted)]">
                       Current Balance
@@ -294,7 +284,7 @@ export function HeaderWalletButton({
                 ) : null}
 
                 {/* FORM */}
-                <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+                <form onSubmit={handleSubmit} className="mt-3 space-y-3">
                   <div>
                     <label className="block text-xs font-bold text-[var(--mc-ink)] mb-1.5">
                       Top-up Amount (₹)
@@ -337,45 +327,13 @@ export function HeaderWalletButton({
 
                   {/* DYNAMIC QR CODE & UPI VPA */}
                   {Number(amount) > 0 ? (
-                    <div className="rounded-xl border border-[var(--mc-line)] bg-slate-50/70 p-3.5">
-                      <div className="text-center">
-                        <p className="text-[11px] font-semibold text-[var(--mc-muted)]">
-                          Scan to pay via any UPI app (GPay / PhonePe / Paytm / BHIM)
-                        </p>
-                        <div className="mt-2.5 flex justify-center">
-                          <UpiQrCode
-                            amount={Number(amount).toFixed(2)}
-                            note="Wallet top-up"
-                            upiId={upiVpa}
-                          />
-                        </div>
-                      </div>
-
-                      {/* COPY UPI ID */}
-                      <div className="mt-3 flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">
-                        <div className="min-w-0 flex-1">
-                          <span className="block text-[10px] uppercase font-bold text-slate-400">
-                            UPI ID (VPA)
-                          </span>
-                          <span className="block truncate font-mono font-bold text-slate-800">
-                            {upiVpa}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={copyVpaToClipboard}
-                          className="ml-2 flex items-center gap-1 rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-200 transition-colors"
-                        >
-                          {copiedVpa ? (
-                            <>
-                              <Check size={12} className="text-emerald-600" /> Copied!
-                            </>
-                          ) : (
-                            <>
-                              <Copy size={12} /> Copy
-                            </>
-                          )}
-                        </button>
+                    <div className="rounded-xl border border-[var(--mc-line)] bg-slate-50/70 p-3">
+                      <div className="flex justify-center">
+                        <UpiQrCode
+                          amount={Number(amount).toFixed(2)}
+                          note="Wallet top-up"
+                          upiId={upiVpa}
+                        />
                       </div>
                     </div>
                   ) : null}
