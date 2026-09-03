@@ -79,6 +79,8 @@ type RecentProduct = {
   lastOrderedAt: string;
 };
 
+type MiniCartItem = { id: string; productId: string; quantity: number; calculatedAmount: string | null; name: string };
+
 export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { initialFilters: ProductFilters; isB2B: boolean; walletBalance: string | null }) {
   const router = useRouter();
   const [items, setItems] = useState<Product[]>([]);
@@ -87,6 +89,8 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
   const [quickError, setQuickError] = useState<Record<string, string>>({});
   const [recentProducts, setRecentProducts] = useState<RecentProduct[]>([]);
   const [cartProductIds, setCartProductIds] = useState<Set<string>>(new Set());
+  const [miniCartItems, setMiniCartItems] = useState<MiniCartItem[]>([]);
+  const [miniCartBusyId, setMiniCartBusyId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [query, setQuery] = useState(initialFilters.search);
@@ -228,10 +232,23 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
     fetch("/api/cart?kind=PURCHASE", { cache: "no-store" })
       .then((response) => response.json())
       .then((payload) => {
-        if (payload?.success) setCartProductIds(new Set((payload.data.items as Array<{ productId: string }>).map((item) => item.productId)));
+        if (!payload?.success) return;
+        const cartApiItems = payload.data.items as Array<{ id: string; productId: string; quantity: number; calculatedAmount: string | null; product: { name: string } }>;
+        setCartProductIds(new Set(cartApiItems.map((item) => item.productId)));
+        setMiniCartItems(cartApiItems.map((item) => ({ id: item.id, productId: item.productId, quantity: item.quantity, calculatedAmount: item.calculatedAmount, name: item.product.name })));
       })
       .catch(() => undefined);
   }, []);
+
+  async function removeMiniCartItem(itemId: string) {
+    setMiniCartBusyId(itemId);
+    try {
+      await fetch(`/api/cart/items/${itemId}`, { method: "DELETE" });
+    } finally {
+      setMiniCartBusyId(null);
+      refreshCartProductIds();
+    }
+  }
 
   useEffect(() => {
     if (!isB2B) return;
@@ -606,6 +623,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
         {loading && !items.length ? <ProductRowsSkeleton /> : null}
 
         {/* Product Listing Table */}
+        <div className={isB2B && items.length ? "grid gap-4 xl:grid-cols-[minmax(0,1fr)_19rem] xl:items-start" : ""}>
         {items.length ? (
           <section
             className={`mt-5 transition-opacity duration-200 ${isB2B ? "overflow-hidden rounded-lg border border-[var(--mc-line)]" : "space-y-3"} ${
@@ -613,7 +631,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
             }`}
           >
             {isB2B ? (
-              <div className="grid grid-cols-[minmax(9rem,2fr)_5rem_7rem] items-center gap-3 bg-[var(--mc-accent)] px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-white sm:grid-cols-[minmax(10rem,2fr)_minmax(8rem,1.4fr)_6rem_9rem]">
+              <div className="grid grid-cols-[minmax(9rem,2fr)_5rem_7rem] items-center gap-3 bg-[var(--mc-accent)] px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-white sm:grid-cols-[minmax(10rem,2fr)_minmax(8rem,1.4fr)_6rem_9rem]">
                 <span>Product</span>
                 <span className="hidden sm:block">Print copy</span>
                 <span>Amount</span>
@@ -658,7 +676,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
                 return (
                   <div key={item.id} className={index !== 0 ? "border-t border-[var(--mc-line)]" : ""}>
                     <div
-                      className={`grid grid-cols-[minmax(9rem,2fr)_5rem_7rem] items-center gap-3 px-3 py-2.5 text-sm sm:grid-cols-[minmax(10rem,2fr)_minmax(8rem,1.4fr)_6rem_9rem] ${
+                      className={`grid grid-cols-[minmax(9rem,2fr)_5rem_7rem] items-center gap-3 px-3 py-3 text-[15px] sm:grid-cols-[minmax(10rem,2fr)_minmax(8rem,1.4fr)_6rem_9rem] ${
                         index % 2 === 1 ? "bg-[var(--mc-surface)]" : "bg-white"
                       }`}
                     >
@@ -682,24 +700,24 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
                           </div>
                         ) : null}
                       </div>
-                      <div className="hidden text-xs text-[var(--mc-muted)] sm:block">
+                      <div className="hidden text-sm text-[var(--mc-muted)] sm:block">
                         <p className="truncate">{item.listingSpecification || item.productSize || "-"}</p>
                         {item.artworkSummary?.fullDesign || item.artworkSummary?.safeArea ? (
-                          <p className="mt-0.5 truncate text-[11px]">
+                          <p className="mt-0.5 truncate text-xs">
                             {item.artworkSummary?.fullDesign ? <>Full: {item.artworkSummary.fullDesign}</> : null}
                             {item.artworkSummary?.fullDesign && item.artworkSummary?.safeArea ? " · " : null}
                             {item.artworkSummary?.safeArea ? <>Safe: {item.artworkSummary.safeArea}</> : null}
                           </p>
                         ) : null}
                       </div>
-                      <div className="text-sm font-bold text-[var(--mc-ink)]">{item.priceLabel}</div>
+                      <div className="text-[15px] font-bold leading-snug text-[var(--mc-ink)]">{item.priceLabel}</div>
                       <div className="flex flex-col items-start gap-1">
                         {rowActions}
                         {rowError ? <p className="text-[11px] font-semibold text-[#a53025]">{rowError}</p> : null}
                       </div>
                     </div>
                     {isExpanded ? (
-                      <div className="border-t border-[var(--mc-line)] bg-[var(--mc-surface)] p-4">
+                      <div className="border-t border-[var(--mc-line)] bg-[var(--mc-surface)] px-3 py-3">
                         <InlineOrderPanel item={item} onAdded={() => { setExpandedId(null); refreshCartProductIds(); }} />
                       </div>
                     ) : null}
@@ -812,6 +830,8 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
             </p>
           </section>
         ) : null}
+        {isB2B && items.length ? <MiniCart items={miniCartItems} busyId={miniCartBusyId} onRemove={(id) => void removeMiniCartItem(id)} /> : null}
+        </div>
 
         {/* NO MATCH / LOW CONFIDENCE FALLBACK CARD */}
         {!loading && !items.length && !error ? (
@@ -983,6 +1003,62 @@ function RowActions({
   );
 }
 
+function MiniCart({ items, busyId, onRemove }: { items: MiniCartItem[]; busyId: string | null; onRemove: (id: string) => void }) {
+  const total = items.reduce((sum, item) => sum + Number(item.calculatedAmount ?? 0), 0);
+  return (
+    <aside className="mt-5 h-fit overflow-hidden rounded-lg border border-[var(--mc-line)] bg-white xl:sticky xl:top-24">
+      <div className="flex items-center gap-2 bg-[#1e2430] px-3 py-2.5 text-sm font-bold text-white">
+        <ShoppingBag size={16} />
+        Basket {items.length ? `(${items.length})` : ""}
+      </div>
+      {items.length ? (
+        <>
+          <div className="max-h-[26rem] divide-y divide-[var(--mc-line)] overflow-y-auto">
+            {items.map((item) => (
+              <div key={item.id} className="flex items-start justify-between gap-2 px-3 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-[var(--mc-ink)]">{item.name}</p>
+                  <p className="mt-0.5 text-xs text-[var(--mc-muted)]">Qty {item.quantity.toLocaleString("en-IN")}</p>
+                  <p className="mt-0.5 text-sm font-bold text-[var(--mc-accent-dark)]">{item.calculatedAmount ? formatInr(item.calculatedAmount) : "-"}</p>
+                </div>
+                <button
+                  type="button"
+                  disabled={busyId === item.id}
+                  onClick={() => onRemove(item.id)}
+                  aria-label={`Remove ${item.name}`}
+                  className="grid size-7 shrink-0 place-items-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 transition disabled:opacity-50"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="border-t border-[var(--mc-line)] p-3">
+            <p className="flex items-center justify-between text-sm font-bold text-[var(--mc-ink)]">
+              <span>Total</span>
+              <span>{formatInr(total.toFixed(2))}</span>
+            </p>
+            <Link
+              href="/checkout"
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors"
+            >
+              Checkout <ArrowRight size={15} />
+            </Link>
+            <Link
+              href="/cart"
+              className="mt-2 flex w-full items-center justify-center text-xs font-bold text-[var(--mc-muted)] underline hover:text-[var(--mc-accent)]"
+            >
+              View full basket
+            </Link>
+          </div>
+        </>
+      ) : (
+        <p className="p-4 text-sm text-[var(--mc-muted)]">Nothing added yet. Use &ldquo;Order now&rdquo; on any product to add it here.</p>
+      )}
+    </aside>
+  );
+}
+
 function ProductSpecification({ item }: { item: Product }) {
   const artwork = item.artworkSummary;
   const isPremium = item.category?.slug === "premium-card" || item.slug.startsWith("premium-");
@@ -1109,13 +1185,13 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
   if (!details || loadError) return <p className="text-sm font-semibold text-[#a53025]">{loadError || "Could not load this product's options."}</p>;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2.5">
       {details.pricingRules.length > 1 ? (
         <div>
-          <p className="mb-2 text-xs font-bold uppercase text-[var(--mc-muted)]">Card stock and print</p>
-          <div className="flex flex-wrap gap-2">
+          <p className="mb-1.5 text-xs font-bold uppercase text-[var(--mc-muted)]">Card stock and print</p>
+          <div className="flex flex-wrap gap-1.5">
             {details.pricingRules.map((rule) => (
-              <button key={rule.id} type="button" onClick={() => setRuleId(rule.id)} className={`rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors ${ruleId === rule.id ? "border-[var(--mc-accent)] bg-[var(--mc-accent)] text-white" : "border-[var(--mc-line)] bg-white text-[var(--mc-ink)] hover:bg-[var(--mc-surface)]"}`}>
+              <button key={rule.id} type="button" onClick={() => setRuleId(rule.id)} className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${ruleId === rule.id ? "border-[var(--mc-accent)] bg-[var(--mc-accent)] text-white" : "border-[var(--mc-line)] bg-white text-[var(--mc-ink)] hover:bg-[var(--mc-surface)]"}`}>
                 {rule.name}
               </button>
             ))}
@@ -1123,12 +1199,12 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
         </div>
       ) : null}
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5">
         <span className="text-xs font-bold uppercase text-[var(--mc-muted)]">Quantity</span>
         <div className="flex items-center rounded-full border border-[var(--mc-line)] bg-white">
-          <button type="button" onClick={() => setQuantity((current) => stepProductQuantity(current, "DOWN", null, item.slug))} className="grid size-9 place-items-center hover:bg-[var(--mc-surface)]" aria-label="Decrease quantity">−</button>
-          <span className="min-w-16 text-center text-sm font-bold text-[var(--mc-ink)]">{quantity.toLocaleString("en-IN")}</span>
-          <button type="button" onClick={() => setQuantity((current) => stepProductQuantity(current, "UP", null, item.slug))} className="grid size-9 place-items-center hover:bg-[var(--mc-surface)]" aria-label="Increase quantity">+</button>
+          <button type="button" onClick={() => setQuantity((current) => stepProductQuantity(current, "DOWN", null, item.slug))} className="grid size-7 place-items-center hover:bg-[var(--mc-surface)]" aria-label="Decrease quantity">−</button>
+          <span className="min-w-14 text-center text-sm font-bold text-[var(--mc-ink)]">{quantity.toLocaleString("en-IN")}</span>
+          <button type="button" onClick={() => setQuantity((current) => stepProductQuantity(current, "UP", null, item.slug))} className="grid size-7 place-items-center hover:bg-[var(--mc-surface)]" aria-label="Increase quantity">+</button>
         </div>
       </div>
 
