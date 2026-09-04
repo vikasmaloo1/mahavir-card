@@ -66,7 +66,7 @@ export default function ContactPage() {
             </a>
 
             <a
-              href="https://wa.me/919925232932"
+              href={`https://wa.me/919426371150?text=${encodeURIComponent("Hi Mahavir Card, I'm looking for a product or printing work.")}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-start gap-4 rounded-xl border border-[var(--mc-line)] bg-white p-5 shadow-xs transition hover:border-[var(--mc-accent)] hover:shadow-sm"
@@ -74,7 +74,7 @@ export default function ContactPage() {
               <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--mc-accent-soft)] text-[var(--mc-accent)]"><MessageCircle size={19} /></span>
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-[var(--mc-muted)]">WhatsApp</p>
-                <p className="mt-0.5 text-lg font-bold text-[var(--mc-ink)]">+91 99252 32932</p>
+                <p className="mt-0.5 text-lg font-bold text-[var(--mc-ink)]">+91 94263 71150</p>
               </div>
             </a>
 

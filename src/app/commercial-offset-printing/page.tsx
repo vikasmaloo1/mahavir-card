@@ -67,6 +67,10 @@ export default function CommercialOffsetPrintingPage() {
         <section className="mt-10">
           <SectionEyebrow label="Catalog" />
           <h2 className="mt-3 text-2xl font-bold text-[var(--mc-ink)] sm:text-3xl">Products printed on this press</h2>
+          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-[var(--mc-muted)]">
+            The categories below are live on the online catalog with instant pricing, and more are being added over time. Bill books, packing slips, and coaching-institute
+            study material — work done for institutes such as Allen and Bothra Classes — are handled directly by quotation rather than the online catalog.
+          </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {catalogCategories.map((category) => (
               <Link

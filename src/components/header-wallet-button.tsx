@@ -348,12 +348,12 @@ export function HeaderWalletButton({
                 <p className="text-center text-[10px] text-[var(--mc-muted)]">
                   Need help? WhatsApp{" "}
                   <a
-                    href="https://wa.me/919925232932"
+                    href={`https://wa.me/919426371150?text=${encodeURIComponent("Hi Mahavir Card, I'm looking for a product or printing work.")}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-bold text-[var(--mc-accent)] hover:underline"
                   >
-                    +91 99252 32932
+                    +91 94263 71150
                   </a>
                 </p>
               </form>
