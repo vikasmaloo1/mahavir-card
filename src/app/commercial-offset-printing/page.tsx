@@ -43,6 +43,10 @@ export default function CommercialOffsetPrintingPage() {
           eyebrow="Commercial & Trade Printing"
           title="Commercial Offset Printing in Ahmedabad, Gujarat"
           description="Mahavir Card runs commercial offset print jobs out of its Khadia Golwad facility in Ahmedabad — visiting cards, brochures, letterheads, stickers and bulk stationery, ordered online or quoted directly for custom and volume work."
+          actions={[
+            { label: "Request a Quote", href: "/quote" },
+            { label: "View Products", href: "/products", variant: "secondary" },
+          ]}
         />
 
         <section className="mt-10">
@@ -66,10 +70,13 @@ export default function CommercialOffsetPrintingPage() {
 
         <section className="mt-10">
           <SectionEyebrow label="Catalog" />
-          <h2 className="mt-3 text-2xl font-bold text-[var(--mc-ink)] sm:text-3xl">Products printed on this press</h2>
+          <h2 className="mt-3 text-2xl font-bold text-[var(--mc-ink)] sm:text-3xl">On our online catalog</h2>
           <p className="mt-3 max-w-3xl text-[15px] leading-7 text-[var(--mc-muted)]">
-            The categories below are live on the online catalog with instant pricing, and more are being added over time. Bill books, packing slips, and coaching-institute
-            study material — work done for institutes such as Allen and Bothra Classes — are handled directly by quotation rather than the online catalog.
+            The categories below are live on the online catalog with instant pricing, and more are being added over time — this is not the full range of what the press
+            takes on. Bill books, packing slips, keychains, pens, general stationery, and coaching-institute study material (including work done for institutes such as
+            Allen and Bothra Classes) have all been printed directly by quotation. Have a specific requirement that isn&apos;t listed?{" "}
+            <Link href="/quote" className="font-bold text-[var(--mc-accent)] hover:underline">Request a quote</Link> or{" "}
+            <Link href="/contact" className="font-bold text-[var(--mc-accent)] hover:underline">send an inquiry</Link> and it&apos;ll be reviewed directly.
           </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {catalogCategories.map((category) => (

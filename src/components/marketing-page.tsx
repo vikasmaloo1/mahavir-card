@@ -11,12 +11,39 @@ export function MarketingBreadcrumb({ label }: { label: string }) {
   );
 }
 
-export function MarketingHero({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
+export function MarketingHero({
+  eyebrow,
+  title,
+  description,
+  actions,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  actions?: { label: string; href: string; variant?: "primary" | "secondary" }[];
+}) {
   return (
     <header className="mt-5 border-b border-[var(--mc-line)] pb-8">
       <p className="text-xs font-bold uppercase tracking-wider text-[var(--mc-accent)]">{eyebrow}</p>
       <h1 className="mt-2 max-w-3xl text-3xl font-bold leading-tight text-[var(--mc-ink)] sm:text-[2.35rem]">{title}</h1>
       <p className="mt-3 max-w-2xl text-[15px] leading-6 text-[var(--mc-muted)]">{description}</p>
+      {actions && actions.length > 0 ? (
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          {actions.map((action) => (
+            <Link
+              key={action.href}
+              href={action.href}
+              className={
+                action.variant === "secondary"
+                  ? "inline-flex items-center gap-2 rounded-full border border-[var(--mc-line)] px-5 py-2.5 text-sm font-bold text-[var(--mc-ink)] transition hover:border-[var(--mc-accent)] hover:text-[var(--mc-accent)]"
+                  : "inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[var(--mc-accent-dark)]"
+              }
+            >
+              {action.label} <ArrowRight size={15} />
+            </Link>
+          ))}
+        </div>
+      ) : null}
     </header>
   );
 }

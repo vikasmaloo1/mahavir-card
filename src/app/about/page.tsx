@@ -34,6 +34,10 @@ export default function AboutPage() {
           eyebrow="About Mahavir Card"
           title="A commercial printing press in Ahmedabad, Gujarat"
           description="Mahavir Card operates a commercial offset printing press from Khadia Golwad, Ahmedabad, taking orders online for both individual customers and businesses across Gujarat and Rajasthan."
+          actions={[
+            { label: "Browse Products", href: "/products" },
+            { label: "Request a Quote", href: "/quote", variant: "secondary" },
+          ]}
         />
 
         <section className="mt-10">
@@ -53,10 +57,11 @@ export default function AboutPage() {
           <SectionEyebrow label="What we print" />
           <h2 className="mt-3 text-2xl font-bold sm:text-3xl">What we print</h2>
           <p className="mt-3 max-w-3xl text-[15px] leading-7 text-[var(--mc-muted)]">
-            The categories below are what&apos;s currently live on the online catalog with instant pricing — more products are being added over time. Mahavir Card also
-            prints a range of work outside the catalog on direct request, including bill books, packing slips, and study material/modules for coaching institutes —
-            including work done for institutes such as Allen and Bothra Classes.{" "}
-            <Link href="/quote" className="font-bold text-[var(--mc-accent)] hover:underline">Share a requirement for a custom quote</Link>.
+            The categories below are what&apos;s currently live on the online catalog with instant pricing, and more are being added over time. This isn&apos;t the full list
+            of what Mahavir Card can print — bill books, packing slips, keychains, pens, general stationery, and study material/modules for coaching institutes (including
+            work done for institutes such as Allen and Bothra Classes) have all been handled directly. For anything not listed here,{" "}
+            <Link href="/quote" className="font-bold text-[var(--mc-accent)] hover:underline">share the requirement for a quote</Link> or{" "}
+            <Link href="/contact" className="font-bold text-[var(--mc-accent)] hover:underline">send an inquiry</Link>.
           </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {catalogCategories.map((category) => (

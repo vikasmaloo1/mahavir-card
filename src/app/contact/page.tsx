@@ -39,6 +39,7 @@ export default function ContactPage() {
           eyebrow="Contact Mahavir Card"
           title="Get in touch"
           description="For order support, artwork questions, or a bulk/commercial quotation, reach the Ahmedabad facility directly."
+          actions={[{ label: "Request a Quote", href: "/quote" }]}
         />
 
         <div className="mt-10 grid gap-8 lg:grid-cols-[1fr_1.1fr]">

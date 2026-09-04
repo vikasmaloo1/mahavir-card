@@ -66,6 +66,10 @@ export default function HowItWorksPage() {
           eyebrow="Streamlined Workflow"
           title="How ordering works"
           description="From choosing a product to dispatch — this is the same five-step process used across every order on Mahavir Card, whether it's a single visiting card run or a bulk commercial job."
+          actions={[
+            { label: "Start Your Order", href: "/products" },
+            { label: "Request a Quote", href: "/quote", variant: "secondary" },
+          ]}
         />
 
         <div className="mt-10 space-y-4">
