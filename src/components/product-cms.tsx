@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, ChevronLeft, CircleAlert, ExternalLink, ImagePlus, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { Check, ChevronLeft, CircleAlert, Download, ExternalLink, ImagePlus, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { adminRequest, asItems, formattedAmount } from "@/lib/admin-client";
@@ -326,6 +326,15 @@ function ImagesPanel({ productId, rows, onChanged }: { productId: string; rows: 
                   }}
                 />
               </label>
+
+              <a
+                href={text(row.imageUrl).startsWith("/api/") ? `${text(row.imageUrl)}?download=1` : text(row.imageUrl)}
+                download={text(row.originalFilename) || undefined}
+                className="inline-flex items-center gap-1 rounded border border-[#c9d2df] px-2.5 py-1 text-xs font-bold text-[#52647e] hover:bg-slate-50"
+              >
+                <Download size={12} />
+                Download
+              </a>
 
               <div className="ml-auto">
                 <DeleteButton onClick={() => remove(row)} />
