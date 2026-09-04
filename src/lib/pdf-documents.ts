@@ -129,6 +129,15 @@ export async function generateInvoiceDocument(orderId: string, createdBy?: strin
           { text: `SGST (${Number(order.sgstRate || 9)}%): ${amount(order.sgstAmount)}` },
         ]),
     { text: `Total GST: ${amount(order.tax)}` },
+    ...(() => {
+      const rawCalculated = Number(order.taxableSubtotal || order.subtotal) + Number(order.deliveryPrice || 0) + Number(order.tax || 0);
+      const diff = Math.round((Number(order.total) - rawCalculated + Number.EPSILON) * 100) / 100;
+      if (Math.abs(diff) >= 0.01) {
+        const sign = diff > 0 ? "+" : "-";
+        return [{ text: `Round off: ${sign}₹${Math.abs(diff).toFixed(2)}` }];
+      }
+      return [];
+    })(),
     { text: `Invoice total: ${amount(order.total)}`, bold: true, size: 13 },
     { text: "This invoice is generated from the recorded order and payment details." },
   ];

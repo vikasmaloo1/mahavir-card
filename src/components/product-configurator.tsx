@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 
 import { ArtworkUploader, type ArtworkRequirement, type UploadedArtwork } from "@/components/artwork-uploader";
 import type { CatalogProduct } from "@/lib/catalog";
-import { formatInr } from "@/lib/formatting";
+import { formatInr, formatRoundOff } from "@/lib/formatting";
 import { commerceStates } from "@/lib/india-states";
 import { isSpecialQuantityProduct, normalizeProductQuantity, stepProductQuantity } from "@/lib/quantity-helper";
 import { RequirementQuoteModal, type RequirementContext } from "@/components/requirement-quote-modal";
@@ -31,6 +31,8 @@ type Estimate = {
   taxJurisdictionState?: string | null;
   priceBeforeTax?: string | null;
   taxRate?: string | null;
+  unroundedTotal?: string | null;
+  roundOff?: string | null;
   warnings: string[];
   applicableRule?: string | null;
 };
@@ -355,6 +357,14 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
                     ) : (
                       <p className="flex justify-between"><span>IGST {Number(estimate.taxRate)}%</span><strong>{money(estimate.igstAmount || estimate.taxAmount)}</strong></p>
                     )}
+                    {estimate.roundOff && Math.abs(Number(estimate.roundOff)) > 0.001 ? (
+                      <p className="flex justify-between text-xs text-slate-500">
+                        <span>Paisa adjustment (Round off)</span>
+                        <strong className={Number(estimate.roundOff) < 0 ? "text-emerald-700" : "text-slate-700"}>
+                          {formatRoundOff(estimate.roundOff)}
+                        </strong>
+                      </p>
+                    ) : null}
                   </>
                 ) : null}
               </div>

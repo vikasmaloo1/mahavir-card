@@ -6,7 +6,7 @@ import { ArrowRight, Minus, Pencil, Plus, ShoppingBag, Trash2 } from "lucide-rea
 import { useCallback, useEffect, useState } from "react";
 
 import { ProductImage } from "@/components/product-image";
-import { formatInr } from "@/lib/formatting";
+import { formatInr, formatRoundOff } from "@/lib/formatting";
 import { stepProductQuantity } from "@/lib/quantity-helper";
 
 type Item = {
@@ -20,7 +20,7 @@ type Item = {
   pricingSnapshot: { applicableRule?: string | null; addons?: Array<{ name: string; price?: string }>; delivery?: { method?: string | null } };
   product: { name: string; slug: string; categorySlug?: string };
 };
-type CartData = { items: Item[]; summary: { productSubtotal?: string; addonSubtotal?: string; deliverySubtotal?: string; surchargeSubtotal?: string; priceBeforeTax: string; tax: string; total: string; taxInclusive: boolean; hasTaxBreakdown: boolean; hasUnavailableItems: boolean } };
+type CartData = { items: Item[]; summary: { productSubtotal?: string; addonSubtotal?: string; deliverySubtotal?: string; surchargeSubtotal?: string; priceBeforeTax: string; tax: string; roundOff?: string; total: string; taxInclusive: boolean; hasTaxBreakdown: boolean; hasUnavailableItems: boolean } };
 
 const money = formatInr;
 
@@ -241,6 +241,14 @@ export function PurchaseCart() {
               <span>GST (18%):</span>
               <strong className="text-slate-900">{money(data.summary.tax)}</strong>
             </p>
+            {data.summary.roundOff && Math.abs(Number(data.summary.roundOff)) > 0.001 ? (
+              <p className="flex justify-between text-xs text-slate-500">
+                <span>Paisa adjustment (Round off):</span>
+                <strong className={Number(data.summary.roundOff) < 0 ? "text-emerald-700" : "text-slate-700"}>
+                  {formatRoundOff(data.summary.roundOff)}
+                </strong>
+              </p>
+            ) : null}
           </div>
         ) : null}
       </div>

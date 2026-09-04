@@ -89,8 +89,6 @@ export async function getOwnedCart(userId: string, kind: CartKind, stateCodeOver
     return { ...item, artworkFiles };
   });
 
-  const availableAmounts = itemsWithArtwork.filter((item) => item.available && item.calculatedAmount).map((item) => Number(item.calculatedAmount));
-  const total = availableAmounts.reduce((sum, amount) => sum + amount, 0).toFixed(2);
   const availablePrices = itemsWithArtwork.filter((item) => item.available).map((item) => item.pricingSnapshot as Partial<CalculatedPrice>);
   const sum = (read: (price: Partial<CalculatedPrice>) => number) => availablePrices.reduce((total, price) => total + read(price), 0);
   const productSubtotal = sum((price) => Number(price.productPrice ?? 0));
@@ -102,6 +100,14 @@ export async function getOwnedCart(userId: string, kind: CartKind, stateCodeOver
   const sgst = sum((price) => Number(price.sgstAmount ?? 0));
   const igst = sum((price) => Number(price.igstAmount ?? 0));
   const hasTaxBreakdown = availablePrices.some((price) => price.taxRate !== null && price.taxRate !== undefined);
+
+  const rawSubtotal = productSubtotal + addonSubtotal + deliverySubtotal + surchargeSubtotal;
+  const rawTotal = rawSubtotal + tax;
+  const roundedTotal = Math.round(rawTotal);
+  const roundOffAmount = Math.round((roundedTotal - rawTotal + Number.EPSILON) * 100) / 100;
+  const roundOff = roundOffAmount >= 0 ? `+${roundOffAmount.toFixed(2)}` : roundOffAmount.toFixed(2);
+  const total = roundedTotal.toFixed(2);
+
   return {
     id: cart.id,
     kind,
@@ -112,11 +118,13 @@ export async function getOwnedCart(userId: string, kind: CartKind, stateCodeOver
       addonSubtotal: addonSubtotal.toFixed(2),
       deliverySubtotal: deliverySubtotal.toFixed(2),
       surchargeSubtotal: surchargeSubtotal.toFixed(2),
-      priceBeforeTax: (productSubtotal + addonSubtotal + deliverySubtotal + surchargeSubtotal).toFixed(2),
+      priceBeforeTax: rawSubtotal.toFixed(2),
       tax: tax.toFixed(2),
       cgst: cgst.toFixed(2),
       sgst: sgst.toFixed(2),
       igst: igst.toFixed(2),
+      unroundedTotal: rawTotal.toFixed(2),
+      roundOff,
       total,
       currency: "INR" as const,
       taxInclusive: itemsWithArtwork.every((item) => !item.available || (item.pricingSnapshot as Partial<CalculatedPrice>).taxInclusive !== false),

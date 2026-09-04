@@ -22,6 +22,8 @@ export type TaxCalculationResult = {
   taxRate: string;
   customerState: "GJ" | "RJ";
   stateName: string;
+  unroundedTotal: string;
+  roundOff: string;
   grandTotal: string;
 };
 
@@ -34,6 +36,30 @@ export function roundMoney(amount: number): number {
 
 export function formatMoneyString(amount: number): string {
   return roundMoney(amount).toFixed(2);
+}
+
+/**
+ * Commercial Paisa Adjustment / Round-Off:
+ * - If under 50 paisa (< 0.50): round down to lower whole number (floor)
+ * - If 50 paisa or above (>= 0.50): round up to next whole number (ceil)
+ * E.g.
+ *   124.38 -> 124.00 (round-off: -0.38)
+ *   124.50 -> 125.00 (round-off: +0.50)
+ *   124.65 -> 125.00 (round-off: +0.35)
+ *   124.00 -> 124.00 (round-off: 0.00)
+ */
+export function roundPaisaAdjustment(amount: number): {
+  roundedAmount: number;
+  roundOff: number;
+  roundOffString: string;
+  grandTotalString: string;
+} {
+  const safe = Number.isFinite(amount) ? amount : 0;
+  const roundedAmount = Math.round(safe);
+  const roundOff = roundMoney(roundedAmount - safe);
+  const roundOffString = roundOff >= 0 ? `+${roundOff.toFixed(2)}` : roundOff.toFixed(2);
+  const grandTotalString = roundedAmount.toFixed(2);
+  return { roundedAmount, roundOff, roundOffString, grandTotalString };
 }
 
 /**
@@ -52,6 +78,9 @@ export function resolveCommerceState(stateCode?: string | null): "GJ" | "RJ" {
  * - Gujarat (GJ) -> Intra-state: CGST (taxRate/2)% + SGST (taxRate/2)%, IGST = 0
  * - Rajasthan (RJ) -> Inter-state: IGST (taxRate)%, CGST = 0, SGST = 0
  * - If taxableSubtotal <= 0 -> all tax components = 0.00
+ * - Grand total applies commercial round-off:
+ *   fractional paisa < 0.50 rounds down to lower whole rupee;
+ *   fractional paisa >= 0.50 rounds up to next whole rupee.
  */
 export function calculateTax({
   taxableSubtotal,
@@ -78,6 +107,8 @@ export function calculateTax({
       taxRate: safeRate.toFixed(3),
       customerState,
       stateName,
+      unroundedTotal: "0.00",
+      roundOff: "0.00",
       grandTotal: "0.00",
     };
   }
@@ -115,7 +146,8 @@ export function calculateTax({
     igstAmount = taxTotal;
   }
 
-  const grandTotal = roundMoney(netAmount + taxTotal);
+  const rawTotal = roundMoney(netAmount + taxTotal);
+  const { roundOffString, grandTotalString } = roundPaisaAdjustment(rawTotal);
 
   return {
     taxableSubtotal: formatMoneyString(netAmount),
@@ -130,6 +162,8 @@ export function calculateTax({
     taxRate: safeRate.toFixed(3),
     customerState,
     stateName,
-    grandTotal: formatMoneyString(grandTotal),
+    unroundedTotal: formatMoneyString(rawTotal),
+    roundOff: roundOffString,
+    grandTotal: grandTotalString,
   };
 }

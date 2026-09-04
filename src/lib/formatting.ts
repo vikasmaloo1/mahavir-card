@@ -18,3 +18,10 @@ export function formatDimensions(width: NumericValue, height: NumericValue, unit
   const formattedHeight = formatDimension(height);
   return formattedWidth && formattedHeight ? `${formattedWidth} \u00d7 ${formattedHeight} ${unit}` : null;
 }
+
+export function formatRoundOff(value: NumericValue) {
+  const num = Number(value ?? 0);
+  if (!Number.isFinite(num) || Math.abs(num) < 0.001) return "₹0.00";
+  const sign = num > 0 ? "+" : "-";
+  return `${sign}₹${Math.abs(num).toFixed(2)}`;
+}

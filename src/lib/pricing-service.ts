@@ -15,6 +15,8 @@ export type PriceCalculationInput = { addonIds?: string[]; delivery?: DeliverySe
 export type CalculatedPrice = {
   calculatedAmount: string | null;
   grandTotal?: string | null;
+  unroundedTotal?: string | null;
+  roundOff?: string | null;
   productPrice: string | null;
   blade?: { count: number; rate: string; amount: string } | null;
   addonTotal: string;
@@ -53,6 +55,8 @@ export type CalculatedPrice = {
       igst: string;
       total: string;
     };
+    unroundedTotal: string;
+    roundOff: string;
     grandTotal: string;
   };
   applicableRule: string | null;
@@ -295,6 +299,8 @@ export async function calculateProductPrice(productId: string, rawQuantity: numb
   return {
     calculatedAmount: taxResult.grandTotal,
     grandTotal: taxResult.grandTotal,
+    unroundedTotal: taxResult.unroundedTotal,
+    roundOff: taxResult.roundOff,
     productPrice: money(taxableComponent(base.amount, base.taxInclusive, rate).net),
     blade: bladeLineItem,
     addonTotal: money(totalAddonAmount),
@@ -349,6 +355,8 @@ export async function calculateProductPrice(productId: string, rawQuantity: numb
         igst: taxResult.igstAmount,
         total: taxResult.taxAmount,
       },
+      unroundedTotal: taxResult.unroundedTotal,
+      roundOff: taxResult.roundOff,
       grandTotal: taxResult.grandTotal,
     },
     applicableRule: base.rule,

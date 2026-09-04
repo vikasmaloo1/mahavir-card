@@ -18,7 +18,7 @@ async function runSuite() {
   // -------------------------------------------------------------
   console.log("\n--- Part 1: Automated GST Test Cases ---");
 
-  // Test 1: Gujarat customer, Base ₹240 -> CGST 21.60, SGST 21.60, IGST 0, Total 283.20
+  // Test 1: Gujarat customer, Base ₹240 -> CGST 21.60, SGST 21.60, IGST 0, Unrounded 283.20, Paisa Round-off -0.20, Grand Total 283.00
   const t1 = calculateTax({ taxableSubtotal: 240, stateCode: "GJ", taxRate: 18 });
   console.log("Test 1 (GJ ₹240):", t1);
   assert.equal(t1.taxableSubtotal, "240.00");
@@ -26,12 +26,14 @@ async function runSuite() {
   assert.equal(t1.sgstAmount, "21.60");
   assert.equal(t1.igstAmount, "0.00");
   assert.equal(t1.taxAmount, "43.20");
-  assert.equal(t1.grandTotal, "283.20");
+  assert.equal(t1.unroundedTotal, "283.20");
+  assert.equal(t1.roundOff, "-0.20");
+  assert.equal(t1.grandTotal, "283.00");
   assert.equal(t1.taxType, "INTRA_STATE");
   assert.equal(t1.customerState, "GJ");
-  console.log("✓ Test 1 PASSED: Gujarat ₹240 -> CGST ₹21.60 + SGST ₹21.60 = ₹283.20");
+  console.log("✓ Test 1 PASSED: Gujarat ₹240 -> CGST ₹21.60 + SGST ₹21.60 = ₹283.20 -> Paisa adjustment: -₹0.20 -> Grand Total: ₹283.00");
 
-  // Test 2: Rajasthan customer, Base ₹240 -> CGST 0, SGST 0, IGST 43.20, Total 283.20
+  // Test 2: Rajasthan customer, Base ₹240 -> CGST 0, SGST 0, IGST 43.20, Unrounded 283.20, Paisa Round-off -0.20, Grand Total 283.00
   const t2 = calculateTax({ taxableSubtotal: 240, stateCode: "RJ", taxRate: 18 });
   console.log("Test 2 (RJ ₹240):", t2);
   assert.equal(t2.taxableSubtotal, "240.00");
@@ -39,10 +41,19 @@ async function runSuite() {
   assert.equal(t2.sgstAmount, "0.00");
   assert.equal(t2.igstAmount, "43.20");
   assert.equal(t2.taxAmount, "43.20");
-  assert.equal(t2.grandTotal, "283.20");
+  assert.equal(t2.unroundedTotal, "283.20");
+  assert.equal(t2.roundOff, "-0.20");
+  assert.equal(t2.grandTotal, "283.00");
   assert.equal(t2.taxType, "INTER_STATE");
   assert.equal(t2.customerState, "RJ");
-  console.log("✓ Test 2 PASSED: Rajasthan ₹240 -> IGST ₹43.20 (CGST/SGST ₹0) = ₹283.20");
+  console.log("✓ Test 2 PASSED: Rajasthan ₹240 -> IGST ₹43.20 -> Paisa adjustment: -₹0.20 -> Grand Total: ₹283.00");
+
+  // Test 2b: Rounding up when paisa >= 0.50 (e.g. Subtotal ₹105.40 + 18% GST ₹18.98 = ₹124.38 -> under 50p rounds down to ₹124.00)
+  // Subtotal ₹105.70 + 18% GST (9% CGST 9.51 + 9% SGST 9.51 = ₹19.02) = ₹124.72 -> above 50p rounds up to ₹125.00 (+0.28)
+  const t2b = calculateTax({ taxableSubtotal: 105.70, stateCode: "GJ", taxRate: 18 });
+  assert.equal(t2b.grandTotal, "125.00");
+  assert.equal(t2b.roundOff, "+0.28");
+  console.log("✓ Test 2b PASSED: Above 50 paisa rounds up to next whole number (₹124.72 -> ₹125.00, +₹0.28)");
 
   // Test 3: Base ₹0 -> all tax = 0
   const t3 = calculateTax({ taxableSubtotal: 0, stateCode: "GJ", taxRate: 18 });
@@ -143,8 +154,10 @@ async function runSuite() {
   assert.equal(scenA.cgstAmount, "25.20");
   assert.equal(scenA.sgstAmount, "25.20");
   assert.equal(scenA.igstAmount, "0.00");
-  assert.equal(scenA.grandTotal, "330.40");
-  console.log("✓ Scenario A PASSED: NT Single + GJ Courier -> Base ₹240 + Courier ₹40 + CGST ₹25.20 + SGST ₹25.20 = ₹330.40");
+  assert.equal(scenA.unroundedTotal, "330.40");
+  assert.equal(scenA.roundOff, "-0.40");
+  assert.equal(scenA.grandTotal, "330.00");
+  console.log("✓ Scenario A PASSED: NT Single + GJ Courier -> Base ₹240 + Courier ₹40 + CGST ₹25.20 + SGST ₹25.20 = ₹330.40 -> Paisa adjustment -₹0.40 = ₹330.00");
 
   // Scenario B: Customer Rajasthan, Business Card NT Single 1000, Courier (₹60)
   // Base ₹240 + Courier ₹60 = ₹300 taxable -> IGST 18% (₹54.00) -> Total ₹354.00
@@ -173,8 +186,10 @@ async function runSuite() {
   assert.equal(scenC.productPrice, "297.00");
   assert.equal(scenC.cgstAmount, "26.73");
   assert.equal(scenC.sgstAmount, "26.73");
-  assert.equal(scenC.grandTotal, "350.46");
-  console.log("✓ Scenario C PASSED: Sticker square-inch 3x3 @ ₹33 = ₹297 + GST = ₹350.46");
+  assert.equal(scenC.unroundedTotal, "350.46");
+  assert.equal(scenC.roundOff, "-0.46");
+  assert.equal(scenC.grandTotal, "350.00");
+  console.log("✓ Scenario C PASSED: Sticker square-inch 3x3 @ ₹33 = ₹297 + GST = ₹350.46 -> Paisa adjustment -₹0.46 = ₹350.00");
 
   // Scenario C2: Sticker square-inch min-charge calculation (2x3 = 6 sq.in * 33 = 198 < 250)
   const scenC2 = await calculateProductPrice(stickerProduct.id, 1000, { width: 2, height: 3, bladeCount: 0 }, {
