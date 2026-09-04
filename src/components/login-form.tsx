@@ -306,6 +306,8 @@ export function LoginForm() {
                       <UserRound size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input
                         required
+                        id="signup-name"
+                        name="name"
                         autoComplete="name"
                         minLength={2}
                         value={name}
@@ -319,6 +321,9 @@ export function LoginForm() {
                       <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-600">Company Name</span>
                       <input
                         required
+                        id="signup-company"
+                        name="organization"
+                        autoComplete="organization"
                         value={companyName}
                         onChange={(event) => setCompanyName(event.target.value)}
                         className={fieldClass}
@@ -330,6 +335,8 @@ export function LoginForm() {
                       <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-600">City</span>
                       <input
                         required
+                        id="signup-city"
+                        name="address-level2"
                         autoComplete="address-level2"
                         value={city}
                         onChange={(event) => setCity(event.target.value)}
@@ -340,6 +347,8 @@ export function LoginForm() {
                       <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-600">State</span>
                       <select
                         required
+                        id="signup-state"
+                        name="address-level1"
                         autoComplete="address-level1"
                         value={stateCode}
                         onChange={(event) => setStateCode(event.target.value)}
@@ -366,7 +375,9 @@ export function LoginForm() {
                     <input
                       required={!isSignup}
                       type="email"
-                      autoComplete="email"
+                      id={isSignup ? "signup-email" : "signin-email"}
+                      name="email"
+                      autoComplete={isSignup ? "email" : "username email"}
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
                       className={`${fieldClass} pl-10`}
@@ -383,8 +394,9 @@ export function LoginForm() {
                     <input
                       required
                       inputMode="tel"
-                      autoComplete="tel"
-                      placeholder="98765 43210"
+                      id={isSignup ? "signup-phone" : "signin-phone"}
+                      name={isSignup ? "tel" : method === "phone" ? "username tel" : "tel"}
+                      autoComplete={isSignup ? "tel" : "username tel"}
                       value={phoneNumber}
                       onChange={(event) => setPhoneNumber(event.target.value)}
                       className={`${fieldClass} pl-10`}
@@ -401,6 +413,8 @@ export function LoginForm() {
                     required
                     type="password"
                     minLength={8}
+                    id={isSignup ? "signup-password" : "signin-password"}
+                    name="password"
                     autoComplete={isSignup ? "new-password" : "current-password"}
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}

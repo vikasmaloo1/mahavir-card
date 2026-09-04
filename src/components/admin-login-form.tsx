@@ -101,7 +101,7 @@ export function AdminLoginForm() {
                 <span className="mb-2 block text-sm font-semibold">Admin email</span>
                 <div className="relative">
                   <Mail size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#72829a]" />
-                  <input required type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} className={`${fieldClass} pl-11`} />
+                  <input required type="email" id="admin-email" name="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} className={`${fieldClass} pl-11`} />
                 </div>
               </label>
             ) : (
@@ -109,7 +109,7 @@ export function AdminLoginForm() {
                 <span className="mb-2 block text-sm font-semibold">Admin mobile number</span>
                 <div className="relative">
                   <Smartphone size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#72829a]" />
-                  <input required inputMode="tel" autoComplete="username" placeholder="98765 43210" value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} className={`${fieldClass} pl-11`} />
+                  <input required inputMode="tel" id="admin-tel" name="tel" autoComplete="username tel" value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} className={`${fieldClass} pl-11`} />
                 </div>
               </label>
             )}
@@ -118,7 +118,7 @@ export function AdminLoginForm() {
               <span className="mb-2 block text-sm font-semibold">Password</span>
               <div className="relative">
                 <LockKeyhole size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#72829a]" />
-                <input required type="password" minLength={8} autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} className={`${fieldClass} pl-11`} />
+                <input required type="password" id="admin-password" name="password" minLength={8} autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} className={`${fieldClass} pl-11`} />
               </div>
             </label>
 

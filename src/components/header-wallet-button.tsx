@@ -284,7 +284,7 @@ export function HeaderWalletButton({
                       step="1"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      placeholder="1000"
+                      placeholder="Enter amount (₹)"
                       className="w-full rounded-xl border border-[var(--mc-line)] bg-white pl-7 pr-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-[var(--mc-accent)] transition-colors"
                     />
                   </div>
@@ -331,7 +331,7 @@ export function HeaderWalletButton({
                     type="text"
                     value={utr}
                     onChange={(e) => setUtr(e.target.value)}
-                    placeholder="e.g. 402812345678"
+                    placeholder="Enter 12-digit UPI reference (UTR)"
                     className="w-full rounded-xl border border-[var(--mc-line)] bg-white px-3 py-2 text-xs font-mono text-slate-900 outline-none focus:border-[var(--mc-accent)] transition-colors"
                   />
                 </div>

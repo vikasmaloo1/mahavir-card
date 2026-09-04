@@ -529,6 +529,8 @@ export function QuoteFlow() {
                 <input
                   required
                   type="text"
+                  name="name"
+                  autoComplete="name"
                   value={form.contactName}
                   onChange={(e) => setForm({ ...form, contactName: e.target.value })}
                   placeholder="Your full name"
@@ -541,6 +543,8 @@ export function QuoteFlow() {
                 <input
                   required
                   type="email"
+                  name="email"
+                  autoComplete="email"
                   value={form.email}
                   readOnly
                   className="w-full rounded-lg border border-[#c9d2df] bg-[#f4f7fb] px-3 py-2.5 text-sm text-[#52647e] outline-none"
@@ -552,9 +556,10 @@ export function QuoteFlow() {
                 <input
                   required
                   type="tel"
+                  name="tel"
+                  autoComplete="tel"
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="e.g. 9876543210"
                   className="w-full rounded-lg border border-[#c9d2df] px-3 py-2.5 text-sm outline-none focus:border-[#2457b8]"
                 />
               </label>
@@ -563,6 +568,8 @@ export function QuoteFlow() {
                 <span className="mb-1 block text-xs font-bold text-[#263753]">Company Name (Optional)</span>
                 <input
                   type="text"
+                  name="organization"
+                  autoComplete="organization"
                   value={form.companyName}
                   onChange={(e) => setForm({ ...form, companyName: e.target.value })}
                   placeholder="Business / Shop name"

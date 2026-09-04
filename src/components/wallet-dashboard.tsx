@@ -222,7 +222,7 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
                   type="number"
                   value={amount}
                   onChange={(event) => setAmount(event.target.value)}
-                  placeholder="e.g. 5000"
+                  placeholder="Enter amount (₹)"
                   className="w-full rounded-lg border border-[var(--mc-line)] px-3.5 py-3 outline-none focus:border-[var(--mc-accent)] transition-colors"
                 />
               </label>
@@ -241,7 +241,7 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
                 <input
                   value={utr}
                   onChange={(event) => setUtr(event.target.value)}
-                  placeholder="e.g. 402812345678"
+                  placeholder="Enter 12-digit UPI reference (UTR)"
                   className="w-full rounded-lg border border-[var(--mc-line)] px-3.5 py-3 outline-none focus:border-[var(--mc-accent)] transition-colors"
                 />
               </label>
