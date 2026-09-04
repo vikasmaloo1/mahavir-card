@@ -99,6 +99,17 @@ function OverviewForm({ product, categories, onSave }: { product: Row | null; ca
   return <form onSubmit={submit}><PanelTitle title="Product details" description="This controls the main catalogue card and whether customers can buy or request a quote." /><div className="mt-6 grid gap-4 sm:grid-cols-2">{input("Product name", "name", form, update, true)}{input("Slug", "slug", form, update, true, "text", "business-cards")}<label className="block text-sm font-semibold text-[#263753]"><span>Category</span><select value={form.categoryId} onChange={update("categoryId")} className="mt-1.5 w-full border border-[#c9d2df] px-3 py-2.5 text-sm font-normal"><option value="">Uncategorised</option>{categories.map((item) => <option key={text(item.id)} value={text(item.id)}>{text(item.name)}</option>)}</select></label><label className="block text-sm font-semibold text-[#263753]"><span>Status</span><select value={form.status} onChange={update("status")} className="mt-1.5 w-full border border-[#c9d2df] px-3 py-2.5 text-sm font-normal">{["DRAFT", "ACTIVE", "DISABLED", "ARCHIVED"].map((value) => <option key={value}>{value}</option>)}</select></label>{input("Product code", "productCode", form, update)}{input("Reference", "productReference", form, update)}{input("Product class", "productClass", form, update)}{input("Production time", "productionTime", form, update, false, "text", "3-5 working days")}<div className="sm:col-span-2">{textarea("Short description", "shortDescription", form, update, 3)}</div><div className="sm:col-span-2">{textarea("Full description", "description", form, update, 5)}</div>{input("Display order", "sortOrder", form, update, true, "number")}{input("Reference quantity", "referenceQuantity", form, update, false, "number")}{input("Reference weight", "referenceWeight", form, update, false, "text", "0.250")} {input("Weight unit", "referenceWeightUnit", form, update, false, "text", "kg")}<div className="sm:col-span-2">{textarea("Product configuration (JSON)", "configuration", form, update, 4)}</div></div><div className="mt-5 flex flex-wrap gap-x-6 gap-y-3 border-t border-[#e4e8ef] pt-5">{checkbox("isActive", "Visible to staff", form, toggle)}{checkbox("orderable", "Allow direct payment", form, toggle)}{checkbox("quoteable", "Allow quote request", form, () => toggleQuoteable)}{/* toggleQuoteable ignores the key arg and confirms before enabling */}{checkbox("pricesTaxInclusive", "Prices include tax", form, toggle)}{checkbox("artworkRequired", "Artwork required", form, toggle)}</div>{form.artworkRequired ? <div className="mt-4">{textarea("Artwork instructions", "artworkInstructions", form, update, 4)}</div> : null}<SaveButton saving={saving} />{error ? <p className="mt-3 text-sm font-semibold text-[#b13a2f]">{error}</p> : null}</form>;
 }
 
+function getImageFilename(row: Row) {
+  const original = text(row.originalFilename);
+  if (original && original !== "-") return original;
+  const url = text(row.imageUrl);
+  const fromUrl = url.split("/").pop()?.split("?")[0];
+  if (fromUrl && fromUrl !== "-") return fromUrl;
+  const alt = text(row.altText);
+  if (alt && alt !== "-") return `${alt.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.jpg`;
+  return "product-image.jpg";
+}
+
 function ImagesPanel({ productId, rows, onChanged }: { productId: string; rows: Row[]; onChanged: () => Promise<void> }) {
   const [files, setFiles] = useState<File[]>([]);
   const [altText, setAltText] = useState("");
@@ -106,6 +117,37 @@ function ImagesPanel({ productId, rows, onChanged }: { productId: string; rows: 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [uploadProgress, setUploadProgress] = useState("");
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  async function downloadImage(row: Row) {
+    const rawUrl = text(row.imageUrl);
+    if (!rawUrl || rawUrl === "-") return;
+    const filename = getImageFilename(row);
+    setDownloadingId(text(row.id));
+    try {
+      const response = await fetch(rawUrl);
+      if (!response.ok) throw new Error("Fetch failed");
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+    } catch {
+      const downloadEndpoint = `/api/admin/download-file?url=${encodeURIComponent(rawUrl)}&filename=${encodeURIComponent(filename)}`;
+      const link = document.createElement("a");
+      link.href = downloadEndpoint;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   async function request(url: string, options: RequestInit) {
     const response = await fetch(url, options);
@@ -327,14 +369,30 @@ function ImagesPanel({ productId, rows, onChanged }: { productId: string; rows: 
                 />
               </label>
 
-              <a
-                href={text(row.imageUrl).startsWith("/api/") ? `${text(row.imageUrl)}?download=1` : text(row.imageUrl)}
-                download={text(row.originalFilename) || undefined}
-                className="inline-flex items-center gap-1 rounded border border-[#c9d2df] px-2.5 py-1 text-xs font-bold text-[#52647e] hover:bg-slate-50"
-              >
-                <Download size={12} />
-                Download
-              </a>
+              {(() => {
+                const imgUrl = text(row.imageUrl);
+                const filename = getImageFilename(row);
+                const downloadEndpoint = `/api/admin/download-file?url=${encodeURIComponent(imgUrl)}&filename=${encodeURIComponent(filename)}`;
+                return (
+                  <a
+                    href={downloadEndpoint}
+                    download={filename}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      void downloadImage(row);
+                    }}
+                    className="inline-flex items-center gap-1 rounded border border-[#c9d2df] px-2.5 py-1 text-xs font-bold text-[#52647e] hover:bg-slate-50 disabled:opacity-50"
+                    title={`Download ${filename}`}
+                  >
+                    {downloadingId === text(row.id) ? (
+                      <RefreshCw size={12} className="animate-spin text-[#2457b8]" />
+                    ) : (
+                      <Download size={12} />
+                    )}
+                    <span>{downloadingId === text(row.id) ? "Downloading..." : "Download"}</span>
+                  </a>
+                );
+              })()}
 
               <div className="ml-auto">
                 <DeleteButton onClick={() => remove(row)} />
