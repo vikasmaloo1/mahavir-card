@@ -22,7 +22,10 @@ export const metadata: Metadata = {
 };
 
 const ADDRESS = "Khadia Golwad, Opp. Jain Digamber Mandir, Ahmedabad - 380001";
-const MAP_EMBED_SRC = `https://www.google.com/maps?q=${encodeURIComponent(ADDRESS + ", Gujarat, India")}&output=embed`;
+const LATITUDE = 23.0232;
+const LONGITUDE = 72.5925;
+const MAP_EMBED_SRC = `https://www.google.com/maps?q=${LATITUDE},${LONGITUDE}&output=embed`;
+const MAPS_DIRECTIONS_URL = `https://www.google.com/maps/search/?api=1&query=${LATITUDE},${LONGITUDE}`;
 
 export default function ContactPage() {
   return (
@@ -75,13 +78,19 @@ export default function ContactPage() {
               </div>
             </a>
 
-            <div className="flex items-start gap-4 rounded-xl border border-[var(--mc-line)] bg-white p-5 shadow-xs">
+            <a
+              href={MAPS_DIRECTIONS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-start gap-4 rounded-xl border border-[var(--mc-line)] bg-white p-5 shadow-xs transition hover:border-[var(--mc-accent)] hover:shadow-sm"
+            >
               <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--mc-accent-soft)] text-[var(--mc-accent)]"><MapPin size={19} /></span>
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-[var(--mc-muted)]">Press facility &amp; pickup counter</p>
                 <p className="mt-0.5 text-[15px] font-semibold leading-6 text-[var(--mc-ink)]">{ADDRESS}</p>
+                <p className="mt-1 text-xs font-bold text-[var(--mc-accent)]">Open in Google Maps</p>
               </div>
-            </div>
+            </a>
 
             <div className="flex items-start gap-4 rounded-xl border border-dashed border-[var(--mc-line)] bg-white p-5">
               <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--mc-accent-soft)] text-[var(--mc-accent)]"><Clock size={19} /></span>
