@@ -8,6 +8,7 @@ import { formatInr } from "@/lib/formatting";
 import { normalizeProductQuantity, stepProductQuantity } from "@/lib/quantity-helper";
 import { BackButton } from "@/components/back-button";
 import { cachedFetchJson } from "@/lib/client-fetch-cache";
+import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import { RequirementQuoteModal, type RequirementContext } from "@/components/requirement-quote-modal";
 
 type QuoteBasketItem = {
@@ -125,6 +126,8 @@ export function QuoteFlow() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [loadAccount, loadBasket, loadCatalog]);
+
+  useAutoRefresh(loadBasket);
 
   const filteredProducts = useMemo(() => {
     if (!searchQuery.trim()) return catalogProducts;

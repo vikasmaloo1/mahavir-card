@@ -30,3 +30,25 @@ export function isCommerceStateCode(code: string): code is CommerceStateCode {
 export function normalizedCity(value: string) {
   return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("en-IN");
 }
+
+// Major cities / district headquarters — used as autocomplete suggestions on address
+// forms, not an enforced enum. Customers in smaller towns can still type freely.
+export const citiesByState: Record<CommerceStateCode, string[]> = {
+  GJ: [
+    "Ahmedabad", "Amreli", "Anand", "Bharuch", "Bhavnagar", "Bhuj", "Botad", "Dahod",
+    "Deesa", "Gandhidham", "Gandhinagar", "Godhra", "Himatnagar", "Jamnagar", "Junagadh",
+    "Kheda", "Mahesana", "Morbi", "Nadiad", "Navsari", "Palanpur", "Patan", "Porbandar",
+    "Rajkot", "Surat", "Surendranagar", "Vadodara", "Valsad", "Vapi", "Veraval",
+  ],
+  RJ: [
+    "Ajmer", "Alwar", "Banswara", "Baran", "Barmer", "Bharatpur", "Bhilwara", "Bikaner",
+    "Bundi", "Chittorgarh", "Churu", "Dausa", "Dholpur", "Dungarpur", "Hanumangarh",
+    "Jaipur", "Jaisalmer", "Jalore", "Jhalawar", "Jhunjhunu", "Jodhpur", "Karauli", "Kota",
+    "Nagaur", "Pali", "Pratapgarh", "Rajsamand", "Sawai Madhopur", "Sikar", "Sirohi",
+    "Sri Ganganagar", "Tonk", "Udaipur",
+  ],
+};
+
+export function citiesForState(stateCode: string): string[] {
+  return citiesByState[stateCode.toUpperCase() as CommerceStateCode] ?? [];
+}

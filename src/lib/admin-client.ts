@@ -20,7 +20,11 @@ export async function adminRequest<T>(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers);
   if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
 
-  const response = await fetch(path, { ...init, headers, cache: "no-store" });
+  const isGet = !init.method || init.method.toUpperCase() === "GET";
+  const separator = path.includes("?") ? "&" : "?";
+  const finalPath = isGet ? `${path}${separator}_t=${Date.now()}` : path;
+
+  const response = await fetch(finalPath, { ...init, headers, cache: "no-store" });
   const payload = await response.json().catch(() => null) as ApiPayload<T> | null;
 
   if (!response.ok || !payload?.success || payload.data === undefined) {

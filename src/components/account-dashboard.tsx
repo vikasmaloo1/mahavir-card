@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { formatInr } from "@/lib/formatting";
 import { cachedFetchJson } from "@/lib/client-fetch-cache";
+import { useAutoRefresh } from "@/lib/use-auto-refresh";
 
 type AccountData = {
   user: { name: string; email: string; phoneNumber?: string | null };
@@ -22,8 +23,8 @@ type AccountData = {
 type OrderBucket = "ALL" | "AWAITING_ARTWORK" | "IN_PRODUCTION" | "READY" | "DELIVERED";
 const ORDER_BUCKETS: Array<{ id: OrderBucket; label: string; statuses: string[] | null }> = [
   { id: "ALL", label: "All", statuses: null },
-  { id: "AWAITING_ARTWORK", label: "Awaiting artwork", statuses: ["PENDING", "CONFIRMED", "ARTWORK_REVIEW"] },
-  { id: "IN_PRODUCTION", label: "In production", statuses: ["ARTWORK_APPROVED", "IN_PRODUCTION", "QC"] },
+  { id: "AWAITING_ARTWORK", label: "Awaiting artwork", statuses: ["PENDING", "CONFIRMED"] },
+  { id: "IN_PRODUCTION", label: "In production", statuses: ["ARTWORK_APPROVED", "IN_PRODUCTION"] },
   { id: "READY", label: "Ready", statuses: ["READY", "DISPATCHED"] },
   { id: "DELIVERED", label: "Delivered", statuses: ["DELIVERED"] },
 ];
@@ -57,7 +58,7 @@ export function AccountDashboard() {
     setError("");
     setSignedOut(false);
     try {
-      const { status, ok, payload } = await cachedFetchJson<{ success: boolean; data: AccountData; error?: { message?: string } }>("/api/account/summary");
+      const { status, ok, payload } = await cachedFetchJson<{ success: boolean; data: AccountData; error?: { message?: string } }>("/api/account/summary", 15_000, { forceFresh: true });
       if (status === 401) { setSignedOut(true); throw new Error("Sign in to view your account."); }
       if (!ok || !payload?.success) throw new Error(payload?.error?.message ?? "We couldn't load your account. Please retry.");
       setData(payload.data);
@@ -72,6 +73,8 @@ export function AccountDashboard() {
     const timer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+
+  useAutoRefresh(load);
 
   if (loading) return <AccountSkeleton />;
   if (error) return <div role="alert" className="mt-6 rounded-lg border border-[#c7d6f0] bg-white p-5"><p className="font-bold text-[var(--mc-ink)]">{error}</p>{signedOut ? <Link href="/login" className="mt-3 inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white">Customer sign in <ArrowRight size={15} /></Link> : <button type="button" onClick={() => void load()} className="mt-3 inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white"><RefreshCw size={15} />Retry</button>}</div>;

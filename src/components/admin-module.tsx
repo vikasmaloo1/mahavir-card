@@ -5,6 +5,7 @@ import { Check, ChevronLeft, ChevronRight, CircleAlert, Download, Pencil, Plus, 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { adminRequest, asItems, formattedAmount, formattedDate } from "@/lib/admin-client";
+import { useAutoRefresh } from "@/lib/use-auto-refresh";
 
 type Row = Record<string, unknown>;
 type ModuleKey = "categories" | "addons" | "pricing" | "delivery" | "orders" | "quotes" | "customers" | "inquiries" | "payments" | "artworks" | "notices" | "admins" | "banners" | "terms";
@@ -26,12 +27,45 @@ const moduleCopy: Record<ModuleKey, { title: string; description: string; endpoi
   terms: { title: "Terms & Conditions", description: "Manage commercial printing policies, color disclaimers, dispatch responsibility, and legal terms in English, Gujarati, and Hindi.", endpoint: "/api/admin/terms", createLabel: "New condition" },
 };
 
-const columns: Record<ModuleKey, { label: string; value: (row: Row) => string }[]> = {
+const columns: Record<ModuleKey, { label: string; value: (row: Row) => string; render?: (row: Row) => React.ReactNode }[]> = {
   categories: [{ label: "Category", value: (r) => text(r.name) }, { label: "Slug", value: (r) => text(r.slug) }, { label: "Order", value: (r) => text(r.sortOrder) }, { label: "Status", value: (r) => enabled(r.isActive) }],
   addons: [{ label: "Add-on", value: (r) => text(r.name) }, { label: "Code", value: (r) => text(r.code) }, { label: "Pricing", value: (r) => text(r.pricingType) }, { label: "Status", value: (r) => enabled(r.isActive) }],
   pricing: [{ label: "Rule", value: (r) => text(r.name) }, { label: "Type", value: (r) => text(r.ruleType) }, { label: "Price / rate", value: (r) => pricingValue(r) }, { label: "Tax", value: (r) => boolLabel(r.taxInclusive, "Inclusive", "Exclusive") }, { label: "Status", value: (r) => enabled(r.isActive) }],
   delivery: [{ label: "Product", value: (r) => text(r.productName) }, { label: "Method", value: (r) => text(r.deliveryMethod) }, { label: "State", value: (r) => text(r.stateName) }, { label: "Code", value: (r) => text(r.stateCode) }, { label: "Charge", value: (r) => formattedAmount(r.price) }, { label: "Status", value: (r) => enabled(r.isActive) }],
-  orders: [{ label: "Order", value: (r) => text(r.orderNumber) }, { label: "Customer", value: (r) => text(r.customerName) }, { label: "Type", value: (r) => text(r.customerType) }, { label: "Job", value: (r) => text(r.jobName) }, { label: "Artwork", value: (r) => (Number(r.artworkCount) > 0 ? `${r.artworkCount} file${Number(r.artworkCount) === 1 ? "" : "s"}` : "None") }, { label: "Status", value: (r) => text(r.status) }, { label: "Total", value: (r) => formattedAmount(r.total) }, { label: "Created", value: (r) => formattedDate(r.createdAt) }],
+  orders: [
+    { label: "Order", value: (r) => text(r.orderNumber) },
+    { label: "Customer", value: (r) => text(r.customerName) },
+    { label: "Type", value: (r) => text(r.customerType) },
+    { label: "Job", value: (r) => text(r.jobName) },
+    {
+      label: "Artwork",
+      value: (r) => (Number(r.artworkCount) > 0 ? `${r.artworkCount} file${Number(r.artworkCount) === 1 ? "" : "s"}` : "None"),
+      render: (r) => {
+        const artworks = (r.artworks as Array<{ id: string; fileName: string }>) || [];
+        if (!artworks.length) return <span className="text-[#8896ab]">None</span>;
+        return (
+          <div className="flex flex-col gap-1">
+            {artworks.map((art) => (
+              <a
+                key={art.id}
+                href={`/api/artworks/${art.id}/download`}
+                download
+                title={`Download ${art.fileName}`}
+                className="inline-flex items-center gap-1 text-xs font-bold text-[#2457b8] hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Download size={13} className="shrink-0 text-[#2457b8]" />
+                <span className="max-w-[130px] truncate">{art.fileName || "Download CDR"}</span>
+              </a>
+            ))}
+          </div>
+        );
+      },
+    },
+    { label: "Status", value: (r) => text(r.status) },
+    { label: "Total", value: (r) => formattedAmount(r.total) },
+    { label: "Created", value: (r) => formattedDate(r.createdAt) },
+  ],
   quotes: [{ label: "Quote", value: (r) => text(r.quoteNumber) }, { label: "Customer", value: (r) => text(r.contactName) }, { label: "Status", value: (r) => text(r.status) }, { label: "Total", value: (r) => formattedAmount(r.total) }],
   customers: [{ label: "Customer", value: (r) => text(r.contactName) }, { label: "Company", value: (r) => text(r.companyName) }, { label: "Email", value: (r) => text(r.email) }, { label: "Status", value: (r) => text(r.status) }],
   inquiries: [{ label: "Contact", value: (r) => text(r.contactName) }, { label: "Subject", value: (r) => text(r.subject) }, { label: "Email", value: (r) => text(r.email) }, { label: "Status", value: (r) => text(r.status) }, { label: "Received", value: (r) => formattedDate(r.createdAt) }],
@@ -101,6 +135,10 @@ export function AdminModule({ section }: { section: ModuleKey }) {
     const timer = window.setTimeout(() => { void load(1); }, 0);
     return () => window.clearTimeout(timer);
   }, [section]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useAutoRefresh(() => {
+    void load(page);
+  });
 
   const visible = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -179,14 +217,35 @@ export function AdminModule({ section }: { section: ModuleKey }) {
 
 function ResourceTable({ section, items, saving, onEdit, onDelete, onConvert }: { section: ModuleKey; items: Row[]; saving: boolean; onEdit: (item: Row) => void; onDelete: (item: Row) => void; onConvert: (item: Row) => void }) {
   const actionLabel = section === "categories" || section === "delivery" ? "Remove" : section === "customers" || section === "orders" || section === "quotes" || section === "inquiries" || section === "artworks" || section === "payments" ? "Update" : "Deactivate";
-  return <><div className="mt-6 space-y-3 md:hidden">{items.map((item) => <article key={rowId(section, item)} className="border border-[#d7dce5] bg-white p-4"><div className="space-y-2">{columns[section].map((column) => <div key={column.label} className="flex justify-between gap-5"><span className="text-xs font-bold uppercase tracking-[0.08em] text-[#607089]">{column.label}</span><span className="text-right text-sm font-medium text-[#162237]">{column.value(item)}</span></div>)}</div><Actions section={section} item={item} saving={saving} actionLabel={actionLabel} onEdit={onEdit} onDelete={onDelete} onConvert={onConvert} /></article>)}</div><div className="mt-6 hidden overflow-x-auto border border-[#d7dce5] bg-white md:block"><table className="min-w-full text-left text-sm"><thead className="border-b border-[#d7dce5] bg-[#f7f9fc]"><tr>{columns[section].map((column) => <th key={column.label} className="whitespace-nowrap px-4 py-3 text-xs font-bold uppercase tracking-[0.1em] text-[#52647e]">{column.label}</th>)}<th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.1em] text-[#52647e]">Actions</th></tr></thead><tbody>{items.map((item) => <tr key={rowId(section, item)} className="border-b border-[#e8ecf2] last:border-0">{columns[section].map((column) => <td key={column.label} className="max-w-60 px-4 py-3 align-top text-[#263753]">{column.value(item)}</td>)}<td className="px-4 py-3"><Actions section={section} item={item} saving={saving} actionLabel={actionLabel} onEdit={onEdit} onDelete={onDelete} onConvert={onConvert} /></td></tr>)}</tbody></table></div></>;
+  return <><div className="mt-6 space-y-3 md:hidden">{items.map((item) => <article key={rowId(section, item)} className="border border-[#d7dce5] bg-white p-4"><div className="space-y-2">{columns[section].map((column) => <div key={column.label} className="flex justify-between gap-5"><span className="text-xs font-bold uppercase tracking-[0.08em] text-[#607089]">{column.label}</span><span className="text-right text-sm font-medium text-[#162237]">{column.render ? column.render(item) : column.value(item)}</span></div>)}</div><Actions section={section} item={item} saving={saving} actionLabel={actionLabel} onEdit={onEdit} onDelete={onDelete} onConvert={onConvert} /></article>)}</div><div className="mt-6 hidden overflow-x-auto border border-[#d7dce5] bg-white md:block"><table className="min-w-full text-left text-sm"><thead className="border-b border-[#d7dce5] bg-[#f7f9fc]"><tr>{columns[section].map((column) => <th key={column.label} className="whitespace-nowrap px-4 py-3 text-xs font-bold uppercase tracking-[0.1em] text-[#52647e]">{column.label}</th>)}<th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.1em] text-[#52647e]">Actions</th></tr></thead><tbody>{items.map((item) => <tr key={rowId(section, item)} className="border-b border-[#e8ecf2] last:border-0">{columns[section].map((column) => <td key={column.label} className="max-w-60 px-4 py-3 align-top text-[#263753]">{column.render ? column.render(item) : column.value(item)}</td>)}<td className="px-4 py-3"><Actions section={section} item={item} saving={saving} actionLabel={actionLabel} onEdit={onEdit} onDelete={onDelete} onConvert={onConvert} /></td></tr>)}</tbody></table></div></>;
 }
 
 function Actions({ section, item, saving, actionLabel, onEdit, onDelete, onConvert }: { section: ModuleKey; item: Row; saving: boolean; actionLabel: string; onEdit: (item: Row) => void; onDelete: (item: Row) => void; onConvert: (item: Row) => void }) {
   if (section === "pricing") return <div className="mt-4 flex flex-wrap justify-end gap-2"><Link href={`/admin/products/${text(item.productId)}?tab=pricing`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold text-[#2457b8]">Open product</Link><button type="button" onClick={() => onEdit(item)} className="border border-[#c9d2df] p-1.5 text-[#24324a]" aria-label="Edit"><Pencil size={15} /></button><button type="button" onClick={() => onDelete(item)} disabled={saving} className="border border-[#efc4be] p-1.5 text-[#b13a2f]" aria-label="Deactivate"><Trash2 size={15} /></button></div>;
   if (section === "inquiries") return <div className="mt-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={() => onConvert(item)} disabled={saving || item.status === "CONVERTED"} className="border border-[#b8ccf5] px-2.5 py-1.5 text-xs font-bold text-[#2457b8] disabled:opacity-40">Create quote</button><Link href={`/admin/inquiries/${rowId(section, item)}`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold">View details</Link></div>;
   if (section === "artworks") return <div className="mt-4 flex flex-wrap justify-end gap-2"><a href={`/api/artworks/${text(item.id)}/download`} className="inline-flex items-center gap-1.5 border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold text-[#2457b8]"><Download size={14} />Download CDR</a><Link href={`/admin/artworks/${rowId(section, item)}`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold">Review</Link></div>;
-  if (["orders", "quotes", "customers", "payments"].includes(section)) return <div className="mt-4 flex justify-end"><Link href={`/admin/${section}/${rowId(section, item)}`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold text-[#2457b8]">View details</Link></div>;
+  if (section === "orders") {
+    const artworks = (item.artworks as Array<{ id: string; fileName: string }>) || [];
+    const firstArt = artworks[0];
+    return (
+      <div className="mt-4 flex flex-wrap justify-end gap-2">
+        {firstArt ? (
+          <a
+            href={`/api/artworks/${firstArt.id}/download`}
+            download
+            className="inline-flex items-center gap-1.5 border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold text-[#2457b8] hover:bg-[#f0f4ff]"
+            title={`Download ${firstArt.fileName || "CDR"}`}
+          >
+            <Download size={14} />Download CDR
+          </a>
+        ) : null}
+        <Link href={`/admin/orders/${rowId(section, item)}`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold text-[#2457b8]">
+          View details
+        </Link>
+      </div>
+    );
+  }
+  if (["quotes", "customers", "payments"].includes(section)) return <div className="mt-4 flex justify-end"><Link href={`/admin/${section}/${rowId(section, item)}`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold text-[#2457b8]">View details</Link></div>;
   return <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => onEdit(item)} className="border border-[#c9d2df] p-1.5 text-[#24324a]" aria-label="Edit"><Pencil size={15} /></button><button type="button" onClick={() => onDelete(item)} disabled={saving} className="border border-[#efc4be] p-1.5 text-[#b13a2f]" aria-label={actionLabel}><Trash2 size={15} /></button></div>;
 }
 
@@ -284,7 +343,7 @@ function ModuleFields({ section, form, toggles, products, update, setForm, setTo
   if (section === "pricing") return <div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-semibold text-[#263753]"><span>Product</span><select required value={form.productId} onChange={update("productId")} className="mt-1.5 w-full border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-normal"><option value="">Select product</option>{products.map((product) => <option key={text(product.id)} value={text(product.id)}>{text(product.name)}</option>)}</select></label>{field("Rule name", "name", { required: true })}{select("Rule type", "ruleType", ["FIXED_PER_REFERENCE_QUANTITY", "FIXED", "PER_SQ_INCH"])}{field("Reference quantity", "referenceQuantity", { type: "number", required: true })}{form.ruleType === "PER_SQ_INCH" ? <>{select("Rate unit", "rateUnit", ["PAISE", "RUPEES"])}{field(form.rateUnit === "PAISE" ? "Rate (paise / sq.in)" : "Rate (₹ / sq.in)", "rateValue", { type: "number", required: true })}{field("Minimum area (sq.in)", "minimumArea", { type: "number" })}{field("Minimum charge (₹)", "minimumCharge", { type: "number" })}{field("Half-blade charge (₹)", "bladeCharge", { type: "number" })}</> : field("Base amount (₹, GST extra)", "baseAmount", { type: "number", required: true })}{field("GST rate (%)", "taxRate", { type: "number", required: true })}{field("Production time", "productionTime")}{field("Display order", "sortOrder", { type: "number", required: true })}<div className="flex items-end gap-5 pb-2">{toggle("taxInclusive", "Amount already includes GST")}{toggle("isActive", "Active")}</div></div>;
   if (section === "delivery") return <div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-semibold text-[#263753]"><span>Product</span><select required value={form.productId} onChange={update("productId")} className="mt-1.5 w-full border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-normal"><option value="">Select product</option>{products.map((product) => <option key={text(product.id)} value={text(product.id)}>{text(product.name)}</option>)}</select></label>{select("Method", "deliveryMethod", ["PICKUP", "COURIER"])}<label className="block text-sm font-semibold text-[#263753]"><span>State</span><select required value={form.stateCode} onChange={update("stateCode")} className="mt-1.5 w-full border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-normal"><option value="*">All / Pickup (*)</option><option value="GJ">Gujarat (GJ)</option><option value="RJ">Rajasthan (RJ)</option></select></label>{field("Charge (₹, GST extra)", "price", { required: true, placeholder: "0.00" })}<div className="flex items-end gap-5 pb-2">{toggle("taxInclusive", "Charge already includes GST")}{toggle("isActive", "Active")}</div></div>;
   if (section === "quotes") return <div className="grid gap-4 sm:grid-cols-2">{field("Contact name", "contactName", { required: true })}{field("Email", "email", { type: "email", required: true })}{field("Phone", "phone")}{field("Company", "companyName")}{field("Item description", "itemDescription", { required: !editing })}{field("Quantity", "quantity", { type: "number", required: !editing })}{field("Unit price", "unitPrice", { required: !editing })}{select("Status", "status", ["NEW", "REVIEWING", "QUOTE_CREATED", "SENT_TO_CUSTOMER", "CUSTOMER_APPROVED", "CUSTOMER_REJECTED", "EXPIRED", "CONVERTED_TO_ORDER", "CANCELLED"])}<div className="sm:col-span-2">{area("Notes", "notes")}</div></div>;
-  if (section === "orders") return <div className="grid gap-4 sm:grid-cols-2">{select("Status", "status", ["PENDING", "CONFIRMED", "ARTWORK_REVIEW", "ARTWORK_APPROVED", "IN_PRODUCTION", "QC", "READY", "DISPATCHED", "DELIVERED", "CANCELLED"])}<div className="sm:col-span-2">{area("Internal notes", "notes")}</div></div>;
+  if (section === "orders") return <div className="grid gap-4 sm:grid-cols-2">{select("Status", "status", ["PENDING", "CONFIRMED", "ARTWORK_APPROVED", "IN_PRODUCTION", "READY", "DISPATCHED", "DELIVERED", "CANCELLED"])}<div className="sm:col-span-2">{area("Internal notes", "notes")}</div></div>;
   if (section === "customers") return <div className="grid gap-4 sm:grid-cols-2">{field("Contact name", "contactName", { required: true })}{field("Company", "companyName", { required: true })}{field("Phone", "phone")}{field("GST number", "gstNumber")}{select("Customer type", "customerType", ["B2B", "B2C"])}{field("City", "city")}<label className="block text-sm font-semibold text-[#263753]"><span>State</span><select value={form.stateCode || "GJ"} onChange={(event) => { update("stateCode")(event); }} className="mt-1.5 w-full border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-normal"><option value="GJ">Gujarat (GJ)</option><option value="RJ">Rajasthan (RJ)</option></select></label>{field("Credit limit", "creditLimit")}{field("Available balance", "availableCredit")}{field("Payment terms (days)", "paymentTermsDays", { type: "number" })}{select("Credit enabled", "creditEnabled", ["false", "true"])}{select("Status", "status", ["ACTIVE", "INACTIVE"])}<p className="self-end text-xs leading-5 text-[#607089]">Email and customer type are controlled account details. Available balance is the single balance used by checkout and top-ups.</p></div>;
   if (section === "inquiries") return <div className="grid gap-4">{select("Status", "status", ["NEW", "CONTACTED", "QUALIFIED", "QUOTATION_REQUESTED", "CONVERTED", "CLOSED", "LOST"])}{area("Inquiry message", "message", true)}{area("Internal notes", "internalNotes")}</div>;
   if (section === "payments") return <div className="grid gap-4 sm:grid-cols-2">{!editing ? <>{field("Order ID", "orderId", { required: true })}{field("Amount", "amount", { required: true, placeholder: "0.00" })}{select("Method", "method", ["MANUAL", "RAZORPAY", "COD", "CREDIT", "UPI_QR"])}{select("Status", "status", ["PAID", "PENDING", "FAILED", "REFUNDED", "COD_PENDING", "COD_COLLECTED", "CREDIT_APPROVED"])}</> : <>{field("Amount", "amount", { required: true })}{select("Method", "method", ["MANUAL", "RAZORPAY", "COD", "CREDIT", "UPI_QR"])}{select("Status", "status", ["PAID", "PENDING", "FAILED", "REFUNDED", "COD_PENDING", "COD_COLLECTED", "CREDIT_APPROVED"])}{field("Provider", "provider")}</>}{field("Provider order ID", "providerOrderId")}{field("Provider payment ID", "providerPaymentId")}</div>;

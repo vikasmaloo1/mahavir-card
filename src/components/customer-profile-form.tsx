@@ -3,7 +3,7 @@
 import { CheckCircle2, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { commerceStates, indiaStateName } from "@/lib/india-states";
+import { citiesForState, commerceStates, indiaStateName } from "@/lib/india-states";
 
 type ProfilePayload = {
   user: { name: string; email: string; phoneNumber?: string | null };
@@ -97,7 +97,7 @@ export function CustomerProfileForm() {
       <Field label="Company name" value={form.companyName} onChange={update("companyName")} required={data.customer?.customerType === "B2B"} />
       <Field label="Phone" value={form.phone} onChange={update("phone")} required />
       <label className="block text-sm font-semibold text-[var(--mc-ink)]">Email<input value={data.user.email} disabled className={fieldClass + " bg-[var(--mc-surface)] text-[var(--mc-muted)] cursor-not-allowed"} /><span className="mt-1 block text-xs font-normal text-[var(--mc-muted)]">Email is linked to your login.</span></label>
-      <Field label="City" value={form.city} onChange={update("city")} required />
+      <label className="block text-sm font-semibold text-[var(--mc-ink)]">City<input required list="profile-city-options" value={form.city} onChange={update("city")} className={fieldClass} /><datalist id="profile-city-options">{citiesForState(form.stateCode).map((city) => <option key={city} value={city} />)}</datalist></label>
       <label className="block text-sm font-semibold text-[var(--mc-ink)]">State<select value={form.stateCode} onChange={update("stateCode")} className={fieldClass}>{commerceStates.map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select></label>
       <label className="block text-sm font-semibold text-[var(--mc-ink)] sm:col-span-2">GSTIN <span className="font-normal text-[var(--mc-muted)]">(optional)</span><input value={form.gstNumber} onChange={update("gstNumber")} maxLength={15} className={fieldClass} placeholder="15-character GSTIN" /></label>
     </div></section>

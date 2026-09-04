@@ -14,12 +14,21 @@ export type CachedResponse<T> = { status: number; ok: boolean; payload: T | null
 const inFlight = new Map<string, Promise<CachedResponse<unknown>>>();
 const cached = new Map<string, { at: number; value: CachedResponse<unknown> }>();
 
-export async function cachedFetchJson<T>(url: string, ttlMs = 15_000): Promise<CachedResponse<T>> {
-  const hit = cached.get(url);
-  if (hit && Date.now() - hit.at < ttlMs) return hit.value as CachedResponse<T>;
+export async function cachedFetchJson<T>(
+  url: string,
+  ttlMs = 15_000,
+  options?: { forceFresh?: boolean },
+): Promise<CachedResponse<T>> {
+  if (options?.forceFresh) {
+    cached.delete(url);
+    inFlight.delete(url);
+  } else {
+    const hit = cached.get(url);
+    if (hit && Date.now() - hit.at < ttlMs) return hit.value as CachedResponse<T>;
 
-  const pending = inFlight.get(url);
-  if (pending) return pending as Promise<CachedResponse<T>>;
+    const pending = inFlight.get(url);
+    if (pending) return pending as Promise<CachedResponse<T>>;
+  }
 
   const request = fetch(url, { cache: "no-store" })
     .then(async (response) => {
@@ -40,4 +49,19 @@ export async function cachedFetchJson<T>(url: string, ttlMs = 15_000): Promise<C
 export function invalidateCachedFetch(url: string) {
   cached.delete(url);
   inFlight.delete(url);
+}
+
+/** Invalidate all client cached fetches on navigation or back actions. */
+export function invalidateAllCachedFetches() {
+  cached.clear();
+  inFlight.clear();
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("pageshow", () => {
+    invalidateAllCachedFetches();
+  });
+  window.addEventListener("popstate", () => {
+    invalidateAllCachedFetches();
+  });
 }

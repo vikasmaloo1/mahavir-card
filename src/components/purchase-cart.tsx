@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ProductImage } from "@/components/product-image";
 import { formatInr, formatRoundOff } from "@/lib/formatting";
 import { stepProductQuantity } from "@/lib/quantity-helper";
+import { useAutoRefresh } from "@/lib/use-auto-refresh";
 
 type Item = {
   id: string;
@@ -32,7 +33,7 @@ export function PurchaseCart() {
 
   const load = useCallback(async () => {
     try {
-      const response = await fetch("/api/cart?kind=PURCHASE", { cache: "no-store" });
+      const response = await fetch(`/api/cart?kind=PURCHASE&_t=${Date.now()}`, { cache: "no-store" });
       const payload = await response.json();
       if (response.status === 401) throw new Error("Sign in to view your purchase basket.");
       if (!response.ok || !payload.success) throw new Error(payload.error?.message ?? "Could not load your basket");
@@ -49,6 +50,8 @@ export function PurchaseCart() {
     const timer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+
+  useAutoRefresh(load);
 
   async function updateQuantity(item: Item, direction: "UP" | "DOWN") {
     const nextQty = stepProductQuantity(item.quantity, direction, item.product.categorySlug, item.product.slug);

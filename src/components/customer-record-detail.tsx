@@ -6,6 +6,7 @@ import { ArrowLeft, Check, Download, FileText, Package, RefreshCw, ShoppingBag, 
 import { useCallback, useEffect, useState } from "react";
 
 import { formatInr } from "@/lib/formatting";
+import { useAutoRefresh } from "@/lib/use-auto-refresh";
 
 type Item = { id: string; description: string; jobName: string | null; quantity: number; unitPrice: string; totalPrice: string };
 type Document = { id: string; documentType: string; originalFilename: string; status: string };
@@ -35,6 +36,7 @@ export function CustomerRecordDetail({ kind, id }: { kind: "order" | "quote"; id
   }, [id, kind]);
 
   useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer); }, [load]);
+  useAutoRefresh(load);
 
   async function reorder() {
     setReordering(true); setReorderError("");
@@ -78,6 +80,7 @@ export function CustomerRecordDetail({ kind, id }: { kind: "order" | "quote"; id
     {reorderError ? <ErrorMessage text={reorderError} /> : null}
     {quote?.quote.status === "SENT_TO_CUSTOMER" && !isPastValidUntil(quote.quote.validUntil) ? <section className="mt-6 border border-[#b8ccf5] bg-[#f5f8ff] p-5"><h2 className="font-bold">Your quotation is ready</h2><p className="mt-2 text-sm text-[var(--mc-muted)]">Review the line items and total before approving or requesting changes.</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" disabled={saving} onClick={() => void decide("APPROVE")} className="inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"><Check size={16} />Approve quote</button><button type="button" disabled={saving} onClick={() => void decide("REJECT")} className="inline-flex items-center gap-2 rounded-full border border-[#c9d2df] bg-white px-4 py-2.5 text-sm font-bold disabled:opacity-50"><X size={16} />Request changes</button></div></section> : null}
     {quote && (quote.quote.status === "EXPIRED" || quote.quote.status === "CUSTOMER_REJECTED" || (quote.quote.status === "SENT_TO_CUSTOMER" && isPastValidUntil(quote.quote.validUntil))) ? <section className="mt-6 border border-[var(--mc-line)] bg-white p-5"><h2 className="font-bold">{quote.quote.status === "CUSTOMER_REJECTED" ? "Changes were requested on this quote" : "This quotation is no longer active"}</h2><p className="mt-2 text-sm text-[var(--mc-muted)]">{quote.quote.status === "CUSTOMER_REJECTED" ? "Mahavir Card will follow up, or you can start a fresh request below." : "Its validity period has passed. Request a new quote for the same or updated specifications."}</p><Link href="/quote" className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors">Request a new quote</Link></section> : null}
+    {order && order.order.status !== "CANCELLED" ? <OrderProgressTracker status={order.order.status} /> : null}
     <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]"><div className="space-y-6"><Section title="Items" icon={<Package size={18} />}>{data.items.map((item) => <div key={item.id} className="grid gap-2 border-t border-[var(--mc-line)] py-4 text-sm sm:grid-cols-[minmax(0,1fr)_auto]"><div><strong>{item.jobName || item.description}</strong>{item.jobName ? <p className="mt-1 text-[var(--mc-muted)]">{item.description}</p> : null}<p className="mt-1 text-xs text-[var(--mc-muted)]">Quantity {item.quantity.toLocaleString("en-IN")}</p></div><strong>{formatInr(item.totalPrice)}</strong></div>)}</Section><Section title="Artwork" icon={<FileText size={18} />}>{data.artworks.length ? data.artworks.map((artwork) => <div key={artwork.id} className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] py-4 text-sm"><span className="min-w-0"><strong className="block truncate">{artwork.fileName}</strong><small className="text-[var(--mc-muted)]">{fileSize(artwork.fileSize)}{artwork.notes ? ` · ${artwork.notes}` : ""}</small></span><span className="flex shrink-0 items-center gap-2"><Status value={artwork.status} small /><a href={`/api/artworks/${artwork.id}/download`} className="inline-flex items-center gap-1 text-xs font-bold text-[var(--mc-accent)] hover:underline"><Download size={14} />Download</a></span></div>) : <Empty text="No artwork linked yet." />}</Section><Section title="Documents" icon={<Download size={18} />} id="documents">{data.documents.length ? data.documents.map((document) => <a key={document.id} href={document.documentType === "INVOICE" ? `/api/invoices/${document.id}/download` : `/api/quotes/${id}/document/download`} className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] py-4 text-sm font-bold text-[var(--mc-accent)]"><span>{document.originalFilename}</span><Download size={16} /></a>) : <Empty text="No documents available yet." />}</Section></div>
       <aside className="h-fit border border-[var(--mc-line)] bg-white p-5 lg:sticky lg:top-32"><h2 className="font-bold">Summary</h2><Money label="Price before GST" value={primary.subtotal} /><Money label="GST" value={primary.tax} /><Money label="Delivery" value={order?.order.deliveryPrice ?? "0"} /><Money label="Total" value={primary.total} strong />{order?.payment ? <div className="mt-5 border-t border-[var(--mc-line)] pt-4 text-sm"><p className="text-xs font-bold uppercase text-[var(--mc-muted)]">Payment</p><p className="mt-2 font-semibold">{label(order.payment.method)} · {label(order.payment.status)}</p></div> : null}{quote?.order ? <Link href={`/account/orders/${quote.order.id}`} className="mt-5 flex items-center gap-2 border-t border-[var(--mc-line)] pt-4 text-sm font-bold text-[var(--mc-accent)]">Order {quote.order.orderNumber}</Link> : null}</aside>
     </div>
@@ -85,6 +88,43 @@ export function CustomerRecordDetail({ kind, id }: { kind: "order" | "quote"; id
   </main>;
 }
 
+const ORDER_STEPS = [
+  { status: "PENDING", label: "Order Placed" },
+  { status: "CONFIRMED", label: "Confirmed" },
+  { status: "ARTWORK_APPROVED", label: "Artwork Approved" },
+  { status: "IN_PRODUCTION", label: "In Production" },
+  { status: "READY", label: "Ready" },
+  { status: "DISPATCHED", label: "Dispatched" },
+  { status: "DELIVERED", label: "Delivered" },
+];
+function OrderProgressTracker({ status }: { status: string }) {
+  const currentIndex = ORDER_STEPS.findIndex((step) => step.status === status);
+  return (
+    <div className="mt-6 overflow-x-auto border border-[var(--mc-line)] bg-white p-5">
+      <div className="flex min-w-max items-center">
+        {ORDER_STEPS.map((step, index) => {
+          const done = currentIndex >= 0 && index < currentIndex;
+          const active = index === currentIndex;
+          return (
+            <div key={step.status} className="flex items-center">
+              <div className="flex flex-col items-center gap-1.5">
+                <span
+                  className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                    done ? "bg-[var(--mc-accent)] text-white" : active ? "border-2 border-[var(--mc-accent)] text-[var(--mc-accent)]" : "border border-[var(--mc-line)] text-[var(--mc-muted)]"
+                  }`}
+                >
+                  {done ? <Check size={15} /> : index + 1}
+                </span>
+                <span className={`whitespace-nowrap text-[11px] font-bold ${active || done ? "text-[var(--mc-ink)]" : "text-[var(--mc-muted)]"}`}>{step.label}</span>
+              </div>
+              {index < ORDER_STEPS.length - 1 ? <span className={`mx-2 h-0.5 w-10 sm:w-14 ${done ? "bg-[var(--mc-accent)]" : "bg-[var(--mc-line)]"}`} /> : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 function Section({ title, icon, children, className = "", id }: { title: string; icon: React.ReactNode; children: React.ReactNode; className?: string; id?: string }) { return <section id={id} className={`scroll-mt-24 border border-[var(--mc-line)] bg-white p-5 ${className}`}><h2 className="flex items-center gap-2 font-bold">{icon}{title}</h2><div className="mt-3">{children}</div></section>; }
 function Money({ label: text, value, strong = false }: { label: string; value: string; strong?: boolean }) { return <p className={`mt-3 flex justify-between gap-3 border-t border-[var(--mc-line)] pt-3 text-sm ${strong ? "text-base font-bold" : "text-[var(--mc-muted)]"}`}><span>{text}</span><strong className="text-[var(--mc-ink)]">{formatInr(value)}</strong></p>; }
 function Status({ value, small = false }: { value: string; small?: boolean }) { return <span className={`inline-flex h-fit w-fit bg-[var(--mc-accent-soft)] font-bold text-[var(--mc-accent-dark)] ${small ? "px-2 py-1 text-[11px]" : "px-3 py-2 text-xs"}`}>{label(value)}</span>; }

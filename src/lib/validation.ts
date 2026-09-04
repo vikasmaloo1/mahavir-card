@@ -418,7 +418,7 @@ export const businessSettingsSchema = z.object({
 });
 
 export const adminOrderUpdateSchema = z.object({
-  status: z.enum(["PENDING", "CONFIRMED", "ARTWORK_REVIEW", "ARTWORK_APPROVED", "IN_PRODUCTION", "QC", "READY", "DISPATCHED", "DELIVERED", "CANCELLED"]).optional(),
+  status: z.enum(["PENDING", "CONFIRMED", "ARTWORK_APPROVED", "IN_PRODUCTION", "READY", "DISPATCHED", "DELIVERED", "CANCELLED"]).optional(),
   notes: z.string().trim().max(3000).optional(),
 });
 

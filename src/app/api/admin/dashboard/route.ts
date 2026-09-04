@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     today.setHours(0, 0, 0, 0);
     const [ordersToday, pendingOrders, pendingQuotes, newInquiries, pendingPayments, pendingArtwork, pendingWalletRequests, recentOrders, recentQuotes] = await Promise.all([
       db.select({ value: count() }).from(orders).where(gte(orders.createdAt, today)),
-      db.select({ value: count() }).from(orders).where(inArray(orders.status, ["PENDING", "CONFIRMED", "ARTWORK_REVIEW", "ARTWORK_APPROVED", "IN_PRODUCTION", "QC", "READY"])),
+      db.select({ value: count() }).from(orders).where(inArray(orders.status, ["PENDING", "CONFIRMED", "ARTWORK_APPROVED", "IN_PRODUCTION", "READY"])),
       db.select({ value: count() }).from(quotes).where(inArray(quotes.status, ["NEW", "REVIEWING", "QUOTE_CREATED", "SENT_TO_CUSTOMER"])),
       db.select({ value: count() }).from(inquiries).where(inArray(inquiries.status, ["NEW", "CONTACTED", "QUALIFIED", "QUOTATION_REQUESTED"])),
       db.select({ value: count() }).from(payments).where(inArray(payments.status, ["PENDING", "AUTHORIZED", "COD_PENDING"])),

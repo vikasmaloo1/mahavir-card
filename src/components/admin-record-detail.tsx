@@ -5,12 +5,13 @@ import { ArrowLeft, Check, CircleAlert, Download, Plus, RefreshCw, Trash2 } from
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { adminRequest, formattedAmount, formattedDate } from "@/lib/admin-client";
+import { useAutoRefresh } from "@/lib/use-auto-refresh";
 
 type Row = Record<string, unknown>;
 export type DetailSection = "orders" | "quotes" | "customers" | "inquiries" | "payments" | "artworks";
 
 const statusOptions: Partial<Record<DetailSection, string[]>> = {
-  orders: ["PENDING", "CONFIRMED", "ARTWORK_REVIEW", "ARTWORK_APPROVED", "IN_PRODUCTION", "QC", "READY", "DISPATCHED", "DELIVERED", "CANCELLED"],
+  orders: ["PENDING", "CONFIRMED", "ARTWORK_APPROVED", "IN_PRODUCTION", "READY", "DISPATCHED", "DELIVERED", "CANCELLED"],
   quotes: ["NEW", "REVIEWING", "QUOTE_CREATED", "SENT_TO_CUSTOMER", "CUSTOMER_APPROVED", "CUSTOMER_REJECTED", "EXPIRED", "CONVERTED_TO_ORDER", "CANCELLED"],
   inquiries: ["NEW", "CONTACTED", "QUALIFIED", "QUOTATION_REQUESTED", "CONVERTED", "CLOSED", "LOST"],
   payments: ["PENDING", "PAID", "FAILED", "REFUNDED", "COD_PENDING", "COD_COLLECTED", "CREDIT_APPROVED"],
@@ -40,6 +41,7 @@ export function AdminRecordDetail({ section, id }: { section: DetailSection; id:
     finally { setLoading(false); }
   }
   useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer); }, [id, section]); // eslint-disable-line react-hooks/exhaustive-deps
+  useAutoRefresh(() => void load());
 
   async function mutate(path: string, options: RequestInit, message: string) {
     setSaving(true); setError(""); setNotice("");

@@ -6,6 +6,7 @@ import { useEffect, useState, useRef } from "react";
 
 import { formatInr } from "@/lib/formatting";
 import { UpiQrCode } from "@/components/upi-qr-code";
+import { useAutoRefresh } from "@/lib/use-auto-refresh";
 
 type WalletData = {
   customer: { customerType: string; creditEnabled: boolean; creditLimit: string; availableBalance: string; paymentTermsDays: number } | null;
@@ -38,12 +39,13 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   async function load() {
-    const response = await fetch("/api/account/wallet/top-up", { cache: "no-store" });
+    const response = await fetch(`/api/account/wallet/top-up?_t=${Date.now()}`, { cache: "no-store" });
     const payload = await response.json();
     if (payload.success) setData(payload.data);
     else setErrorMessage(payload.error?.message ?? "Could not load balance");
   }
   useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer); }, []);
+  useAutoRefresh(load);
 
   function triggerToast(toastData: ToastState) {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
