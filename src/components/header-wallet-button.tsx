@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
+import { whatsAppUrlFor } from "@/lib/whatsapp";
 
 import { formatInr } from "@/lib/formatting";
 import { UpiQrCode } from "@/components/upi-qr-code";
@@ -348,7 +349,7 @@ export function HeaderWalletButton({
                 <p className="text-center text-[10px] text-[var(--mc-muted)]">
                   Need help? WhatsApp{" "}
                   <a
-                    href={`https://wa.me/919426371150?text=${encodeURIComponent("Hi Mahavir Card, I'm looking for a product or printing work.")}`}
+                    href={whatsAppUrlFor("CONTACT")}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-bold text-[var(--mc-accent)] hover:underline"

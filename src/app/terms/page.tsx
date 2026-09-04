@@ -11,7 +11,7 @@ import { CustomerNotices } from "@/components/customer-notices";
 import { TermsViewer, type TermRecord } from "@/components/terms-viewer";
 
 export const metadata: Metadata = {
-  title: "Terms & Conditions | Commercial Printing Policies | Mahavir Card",
+  title: "Terms & Conditions | Commercial Printing Policies",
   description: "Official terms and conditions, color matching disclaimers, goods responsibility, and legal policies for Mahavir Card in Ahmedabad, Gujarat.",
   alternates: {
     canonical: "/terms",

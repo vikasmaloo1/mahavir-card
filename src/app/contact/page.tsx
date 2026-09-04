@@ -6,6 +6,7 @@ import { StorefrontHeader } from "@/components/storefront-header";
 import { StorefrontFooter } from "@/components/storefront-footer";
 import { CustomerNotices } from "@/components/customer-notices";
 import { MarketingBreadcrumb, MarketingCtaBand, MarketingHero } from "@/components/marketing-page";
+import { whatsAppUrlFor } from "@/lib/whatsapp";
 
 export const metadata: Metadata = {
   title: "Contact Us | Printing Press in Ahmedabad, Gujarat",
@@ -67,7 +68,7 @@ export default function ContactPage() {
             </a>
 
             <a
-              href={`https://wa.me/919426371150?text=${encodeURIComponent("Hi Mahavir Card, I'm looking for a product or printing work.")}`}
+              href={whatsAppUrlFor("CONTACT")}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-start gap-4 rounded-xl border border-[var(--mc-line)] bg-white p-5 shadow-xs transition hover:border-[var(--mc-accent)] hover:shadow-sm"

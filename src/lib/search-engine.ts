@@ -162,7 +162,7 @@ export function normalizeQuery(query: string): {
   gsmValues: string[];
   extractedQuantity?: number;
 } {
-  let cleaned = query
+  const cleaned = query
     .toLowerCase()
     .trim()
     .replace(/[^\w\s\.\*xX\-\/]/g, " ")
