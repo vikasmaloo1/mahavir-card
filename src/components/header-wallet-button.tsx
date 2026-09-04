@@ -364,6 +364,10 @@ export function HeaderWalletButton({
     </div>
   ) : null;
 
+  if (!isLoggedIn) {
+    return null;
+  }
+
   return (
     <>
       {/* HEADER CORNER BUTTON */}

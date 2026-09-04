@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 type Category = {
   id?: string;
@@ -147,6 +147,10 @@ function CategoryCardSlideshow({
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const isDragging = useRef(false);
+  const swiped = useRef(false);
 
   useEffect(() => {
     if (activeImages.length <= 1 || isHovered) return;
@@ -172,15 +176,19 @@ function CategoryCardSlideshow({
     };
   }, [activeImages.length, isHovered, staggerIndex]);
 
-  const handlePrev = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handlePrev = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setCurrentIndex((prev) => (prev - 1 + activeImages.length) % activeImages.length);
   };
 
-  const handleNext = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleNext = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setCurrentIndex((prev) => (prev + 1) % activeImages.length);
   };
 
@@ -190,11 +198,106 @@ function CategoryCardSlideshow({
     setCurrentIndex(idx);
   };
 
+  // Touch Swipe Handlers for Mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (activeImages.length <= 1) return;
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    swiped.current = false;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const diffX = touchStartX.current - e.touches[0].clientX;
+    const diffY = touchStartY.current - e.touches[0].clientY;
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 10) {
+      swiped.current = true;
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    const diffX = touchStartX.current - touchEndX;
+    const diffY = (touchStartY.current ?? 0) - touchEndY;
+
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30) {
+      swiped.current = true;
+      if (diffX > 0) {
+        // Swiped left -> next photo
+        setCurrentIndex((prev) => (prev + 1) % activeImages.length);
+      } else {
+        // Swiped right -> previous photo
+        setCurrentIndex((prev) => (prev - 1 + activeImages.length) % activeImages.length);
+      }
+    }
+
+    touchStartX.current = null;
+    touchStartY.current = null;
+    setTimeout(() => {
+      swiped.current = false;
+    }, 200);
+  };
+
+  // Mouse Drag Handlers for Desktop Testing
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (activeImages.length <= 1) return;
+    touchStartX.current = e.clientX;
+    touchStartY.current = e.clientY;
+    isDragging.current = true;
+    swiped.current = false;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current || touchStartX.current === null) return;
+    const diffX = touchStartX.current - e.clientX;
+    if (Math.abs(diffX) > 10) {
+      swiped.current = true;
+    }
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (!isDragging.current || touchStartX.current === null) return;
+    const diffX = touchStartX.current - e.clientX;
+    if (Math.abs(diffX) > 30) {
+      swiped.current = true;
+      if (diffX > 0) {
+        setCurrentIndex((prev) => (prev + 1) % activeImages.length);
+      } else {
+        setCurrentIndex((prev) => (prev - 1 + activeImages.length) % activeImages.length);
+      }
+    }
+    isDragging.current = false;
+    touchStartX.current = null;
+    setTimeout(() => {
+      swiped.current = false;
+    }, 200);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    isDragging.current = false;
+    touchStartX.current = null;
+  };
+
   return (
     <div
-      className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-slate-100 group/slide"
+      className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-slate-100 group/slide touch-pan-y select-none"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseLeave={handleMouseLeave}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onClickCapture={(e) => {
+        if (swiped.current) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
     >
       {activeImages.map((src, i) => (
         <Image
