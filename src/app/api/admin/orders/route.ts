@@ -1,8 +1,8 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 
 import { handleApiError, jsonOk } from "@/lib/api";
 import { db } from "@/lib/db/server";
-import { customers, orders } from "@/lib/db/schema";
+import { artworks, customers, orderItems, orders } from "@/lib/db/schema";
 import { requireRole } from "@/lib/permissions";
 
 export async function GET(request: Request) {
@@ -21,7 +21,27 @@ export async function GET(request: Request) {
       .orderBy(desc(orders.createdAt))
       .limit(limit)
       .offset((page - 1) * limit);
-    const data = rows.map((row) => ({ ...row.order, customerName: row.customerName, customerType: row.customerType }));
+
+    const orderIds = rows.map((row) => row.order.id);
+    const [artworkCounts, jobNameRows] = orderIds.length
+      ? await Promise.all([
+          db.select({ orderId: artworks.orderId, count: count() }).from(artworks).where(inArray(artworks.orderId, orderIds)).groupBy(artworks.orderId),
+          db.select({ orderId: orderItems.orderId, jobName: orderItems.jobName, description: orderItems.description }).from(orderItems).where(inArray(orderItems.orderId, orderIds)),
+        ])
+      : [[], []];
+    const artworkCountByOrder = new Map(artworkCounts.map((row) => [row.orderId, row.count]));
+    const jobNameByOrder = new Map<string, string>();
+    for (const item of jobNameRows) {
+      if (!jobNameByOrder.has(item.orderId)) jobNameByOrder.set(item.orderId, item.jobName || item.description);
+    }
+
+    const data = rows.map((row) => ({
+      ...row.order,
+      customerName: row.customerName,
+      customerType: row.customerType,
+      artworkCount: artworkCountByOrder.get(row.order.id) ?? 0,
+      jobName: jobNameByOrder.get(row.order.id) ?? null,
+    }));
     return jsonOk({ items: data, page, limit });
   } catch (error) { return error instanceof Response ? error : handleApiError(error); }
 }
