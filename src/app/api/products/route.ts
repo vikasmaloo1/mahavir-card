@@ -27,11 +27,6 @@ export async function GET(request: Request) {
   try {
     const session = await getSession(request);
     const authenticated = Boolean(session);
-    let customerType: "B2C" | "B2B" = "B2C";
-    if (session?.user?.id) {
-      const [customer] = await db.select({ customerType: customers.customerType }).from(customers).where(eq(customers.userId, session.user.id)).limit(1);
-      if (customer?.customerType === "B2B") customerType = "B2B";
-    }
     const params = new URL(request.url).searchParams;
     const search = (params.get("search") ?? params.get("q"))?.trim();
     const requestedCategory = params.get("category")?.trim();
@@ -45,13 +40,20 @@ export async function GET(request: Request) {
     if (orderable === "true") conditions.push(eq(products.orderable, true));
     if (quoteable === "true") conditions.push(eq(products.quoteable, true));
 
-    // 1. Fetch base active products matching category/orderable filters
-    const baseRows = await db
-      .select({ product: products, category: { name: categories.name, slug: categories.slug } })
-      .from(products)
-      .leftJoin(categories, eq(products.categoryId, categories.id))
-      .where(and(...conditions))
-      .orderBy(asc(products.sortOrder), asc(products.name));
+    // 1. Fetch base active products matching category/orderable filters, concurrently with the
+    // customer-type lookup (both are independent reads — no need to serialize them).
+    const [baseRows, customerRows] = await Promise.all([
+      db
+        .select({ product: products, category: { name: categories.name, slug: categories.slug } })
+        .from(products)
+        .leftJoin(categories, eq(products.categoryId, categories.id))
+        .where(and(...conditions))
+        .orderBy(asc(products.sortOrder), asc(products.name)),
+      session?.user?.id
+        ? db.select({ customerType: customers.customerType }).from(customers).where(eq(customers.userId, session.user.id)).limit(1)
+        : Promise.resolve([]),
+    ]);
+    const customerType: "B2C" | "B2B" = customerRows[0]?.customerType === "B2B" ? "B2B" : "B2C";
 
     let data = baseRows;
     let searchMeta: SearchEngineResult<unknown> | null = null;

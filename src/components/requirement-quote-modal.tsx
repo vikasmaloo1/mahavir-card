@@ -63,12 +63,15 @@ export function RequirementQuoteModal({
       .then((res) => res.json())
       .then((payload) => {
         if (payload?.success && payload.data) {
-          const profile = payload.data;
-          if (profile.contactName) setContactName(profile.contactName);
-          if (profile.email) setEmail(profile.email);
-          if (profile.phone) setPhone(profile.phone);
-          if (profile.companyName) setCompanyName(profile.companyName);
-          if (!context.customerState && profile.stateCode) {
+          const profile = payload.data.customer;
+          const user = payload.data.user;
+          if (profile?.contactName) setContactName(profile.contactName);
+          else if (user?.name) setContactName(user.name);
+          if (user?.email) setEmail(user.email);
+          if (profile?.phone) setPhone(profile.phone);
+          else if (user?.phoneNumber) setPhone(user.phoneNumber);
+          if (profile?.companyName) setCompanyName(profile.companyName);
+          if (!context.customerState && profile?.stateCode) {
             setDeliveryState(profile.stateCode);
           }
         }
