@@ -36,16 +36,35 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
   const [lastSubmission, setLastSubmission] = useState<LastSubmission | null>(null);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [signedOut, setSignedOut] = useState(false);
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   async function load() {
     const response = await fetch(`/api/account/wallet/top-up?_t=${Date.now()}`, { cache: "no-store" });
+    if (response.status === 401) { setSignedOut(true); return; }
     const payload = await response.json();
     if (payload.success) setData(payload.data);
     else setErrorMessage(payload.error?.message ?? "Could not load balance");
   }
   useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer); }, []);
   useAutoRefresh(load);
+
+  if (signedOut) {
+    return (
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+        <div role="alert" className="rounded-xl border border-[#c7d6f0] bg-white p-6 text-center">
+          <p className="font-bold text-[var(--mc-ink)]">Your session has expired.</p>
+          <p className="mt-1.5 text-sm text-[var(--mc-muted)]">Sign in again to view your wallet balance.</p>
+          <Link
+            href={`/login?next=${encodeURIComponent("/account/wallet")}`}
+            className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white"
+          >
+            Customer sign in <ArrowRight size={15} />
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   function triggerToast(toastData: ToastState) {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);

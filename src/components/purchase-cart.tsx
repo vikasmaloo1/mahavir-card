@@ -79,7 +79,7 @@ export function PurchaseCart() {
   }
 
   if (loading) return <CartSkeleton />;
-  if (error && !data.items.length) return <div className="mt-6 rounded-xl border border-[#efb7b7] bg-[#fff4f4] p-5 text-sm text-[#9b2525]">{error}<Link href="/login" className="ml-2 font-bold underline">Sign in</Link></div>;
+  if (error && !data.items.length) return <div className="mt-6 rounded-xl border border-[#efb7b7] bg-[#fff4f4] p-5 text-sm text-[#9b2525]">{error}<Link href={`/login?next=${encodeURIComponent("/cart")}`} className="ml-2 font-bold underline">Sign in</Link></div>;
 
   return <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_350px]">
     <section className="space-y-4">

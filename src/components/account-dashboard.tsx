@@ -77,7 +77,7 @@ export function AccountDashboard() {
   useAutoRefresh(load);
 
   if (loading) return <AccountSkeleton />;
-  if (error) return <div role="alert" className="mt-6 rounded-lg border border-[#c7d6f0] bg-white p-5"><p className="font-bold text-[var(--mc-ink)]">{error}</p>{signedOut ? <Link href="/login" className="mt-3 inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white">Customer sign in <ArrowRight size={15} /></Link> : <button type="button" onClick={() => void load()} className="mt-3 inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white"><RefreshCw size={15} />Retry</button>}</div>;
+  if (error) return <div role="alert" className="mt-6 rounded-lg border border-[#c7d6f0] bg-white p-5"><p className="font-bold text-[var(--mc-ink)]">{error}</p>{signedOut ? <Link href={`/login?next=${encodeURIComponent("/account")}`} className="mt-3 inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white">Customer sign in <ArrowRight size={15} /></Link> : <button type="button" onClick={() => void load()} className="mt-3 inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white"><RefreshCw size={15} />Retry</button>}</div>;
   if (!data) return null;
 
   const openQuotes = data.quotes.filter((quote) => !["CUSTOMER_REJECTED", "EXPIRED", "CONVERTED_TO_ORDER", "CANCELLED"].includes(quote.status)).length;

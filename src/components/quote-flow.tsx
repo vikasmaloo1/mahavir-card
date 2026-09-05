@@ -51,6 +51,7 @@ export function QuoteFlow() {
   const [productQuantities, setProductQuantities] = useState<Record<string, number>>({});
   const [form, setForm] = useState({ contactName: "", email: "", phone: "", companyName: "", notes: "" });
   const [error, setError] = useState("");
+  const [signInRequired, setSignInRequired] = useState(false);
   const [loadingBasket, setLoadingBasket] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [busyId, setBusyId] = useState("");
@@ -85,7 +86,7 @@ export function QuoteFlow() {
     try {
       const cartResponse = await fetch("/api/cart?kind=QUOTE", { cache: "no-store" });
       const cartPayload = await cartResponse.json();
-      if (cartResponse.status === 401) throw new Error("Sign in to view your quote basket.");
+      if (cartResponse.status === 401) { setSignInRequired(true); throw new Error("Sign in to view your quote basket."); }
       if (!cartResponse.ok || !cartPayload.success) throw new Error(cartPayload.error?.message ?? "Could not load your quote basket");
       setBasketItems(cartPayload.data.items || []);
       setError("");
@@ -595,6 +596,11 @@ export function QuoteFlow() {
             {error ? (
               <div role="alert" className="mt-4 rounded-lg bg-[#fff4f4] p-3 text-xs font-medium text-[#9b2525]">
                 {error}
+                {signInRequired ? (
+                  <Link href={`/login?next=${encodeURIComponent("/quote")}`} className="ml-2 font-bold underline">
+                    Sign in
+                  </Link>
+                ) : null}
               </div>
             ) : null}
 
