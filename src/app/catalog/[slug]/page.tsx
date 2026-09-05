@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Clock3, FileUp, ShieldCheck } from "lucide-react";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, or } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { getCachedSession } from "@/lib/auth/session";
 import Link from "next/link";
@@ -13,7 +13,7 @@ import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { type CatalogProduct, type ConfigField } from "@/lib/catalog";
 import { db } from "@/lib/db/server";
-import { artworkRequirements, categories, pricingRules, productImages, products, productVariants } from "@/lib/db/schema";
+import { artworkRequirements, categories, customers, pricingRules, productImages, products, productVariants } from "@/lib/db/schema";
 import { conciseProductSpecification, deriveStartingPrice, type StartingPrice } from "@/lib/product-listing-pricing";
 import { safeProductReturnPath } from "@/lib/catalog-routing";
 
@@ -24,11 +24,12 @@ type PageProduct = CatalogProduct &
   StartingPrice & {
     artworkFormatLabel: string;
     images: Array<{ id: string; imageUrl: string; altText: string | null; label?: string }>;
+    customerType: "B2C" | "B2B" | null;
   };
 
 export async function generateMetadata({ params }: PageProps<"/catalog/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const product = await getDatabaseCatalogProduct(slug, false);
+  const product = await getDatabaseCatalogProduct(slug, null);
   if (!product) {
     return {
       title: "Product Details | Mahavir Card",
@@ -50,12 +51,12 @@ export async function generateMetadata({ params }: PageProps<"/catalog/[slug]">)
   };
 }
 
-async function getDatabaseCatalogProduct(slug: string, authenticated: boolean): Promise<PageProduct | null> {
+async function getDatabaseCatalogProduct(slug: string, customerType: "B2C" | "B2B" | null): Promise<PageProduct | null> {
   const [row] = await db.select({ product: products, category: { name: categories.name, slug: categories.slug } }).from(products).leftJoin(categories, eq(products.categoryId, categories.id)).where(and(eq(products.slug, slug), eq(products.isActive, true), eq(products.status, "ACTIVE"))).limit(1);
   if (!row) return null;
 
   const [rules, requirements, galleryImages] = await Promise.all([
-    authenticated
+    customerType
       ? db
           .select({
             productId: pricingRules.productId,
@@ -68,7 +69,7 @@ async function getDatabaseCatalogProduct(slug: string, authenticated: boolean): 
           })
           .from(pricingRules)
           .leftJoin(productVariants, eq(pricingRules.variantId, productVariants.id))
-          .where(and(eq(pricingRules.productId, row.product.id), eq(pricingRules.isActive, true)))
+          .where(and(eq(pricingRules.productId, row.product.id), eq(pricingRules.isActive, true), or(eq(pricingRules.customerType, customerType), eq(pricingRules.customerType, "BOTH"))))
       : Promise.resolve([]),
     db
       .select({ acceptedFormats: artworkRequirements.acceptedFormats })
@@ -126,7 +127,7 @@ async function getDatabaseCatalogProduct(slug: string, authenticated: boolean): 
             label: "Studio View",
           },
         ],
-    ...(authenticated
+    ...(customerType
       ? deriveStartingPrice(row.product, rules)
       : {
           startingPrice: null,
@@ -137,6 +138,7 @@ async function getDatabaseCatalogProduct(slug: string, authenticated: boolean): 
           taxInclusive: null,
         }),
     artworkFormatLabel: row.product.artworkRequired || requirements.length ? "CDR only" : "Optional",
+    customerType,
   };
 }
 
@@ -145,7 +147,12 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   const query = await searchParams;
   if (slug === "business-cards") redirect("/products?category=visiting-card");
   const session = await getCachedSession();
-  const product = await getDatabaseCatalogProduct(slug, Boolean(session));
+  let customerType: "B2C" | "B2B" | null = null;
+  if (session?.user?.id) {
+    const [customer] = await db.select({ customerType: customers.customerType }).from(customers).where(eq(customers.userId, session.user.id)).limit(1);
+    customerType = customer?.customerType === "B2B" ? "B2B" : "B2C";
+  }
+  const product = await getDatabaseCatalogProduct(slug, customerType);
   if (!product) notFound();
   const descriptor = `${product.category} · Commercial printing`;
   const returnPath = safeProductReturnPath(query.returnTo);
@@ -252,7 +259,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
               <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3 text-xs">
                 <span className="font-bold text-slate-500 uppercase tracking-wider">Base Rate:</span>
                 <strong className="text-base text-slate-950">{product.priceLabel}</strong>
-                {product.startingPrice ? (
+                {product.startingPrice && product.customerType !== "B2B" ? (
                   <span className="text-slate-400">
                     {product.taxInclusive ? "(GST included)" : "(GST extra as applicable)"}
                   </span>

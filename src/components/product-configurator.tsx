@@ -346,7 +346,7 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
                 ) : null}
                 {Number(estimate.locationSurcharge?.amount || 0) > 0 ? <p className="flex justify-between"><span>{estimate.locationSurcharge?.label ?? "Location charge"}</span><strong>{money(estimate.locationSurcharge?.amount)}</strong></p> : null}
                 {Number(estimate.delivery?.price || 0) > 0 ? <p className="flex justify-between"><span>Courier</span><strong>{money(estimate.delivery?.price)}</strong></p> : null}
-                {estimate.taxRate && estimate.priceBeforeTax ? (
+                {estimate.taxRate && Number(estimate.taxRate) > 0 && estimate.priceBeforeTax ? (
                   <>
                     <p className="flex justify-between border-t border-[#e2e7ef] pt-2"><span>Taxable subtotal</span><strong>{money(estimate.priceBeforeTax)}</strong></p>
                     {estimate.taxJurisdictionState === "GJ" ? (

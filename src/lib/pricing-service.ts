@@ -83,8 +83,8 @@ function positive(value: unknown, label: string) {
   return result;
 }
 
-async function calculateBasePrice(productId: string, quantity: number, options: Record<string, unknown>) {
-  const rules = await db.select().from(pricingRules).where(and(eq(pricingRules.productId, productId), eq(pricingRules.isActive, true))).orderBy(asc(pricingRules.createdAt));
+async function calculateBasePrice(productId: string, quantity: number, options: Record<string, unknown>, customerType: "B2C" | "B2B") {
+  const rules = await db.select().from(pricingRules).where(and(eq(pricingRules.productId, productId), eq(pricingRules.isActive, true), or(eq(pricingRules.customerType, customerType), eq(pricingRules.customerType, "BOTH")))).orderBy(asc(pricingRules.createdAt));
   const requestedRuleId = typeof options.pricingRuleId === "string" ? options.pricingRuleId : undefined;
   const matching = rules
     .map((rule) => ({ rule, conditions: rule.conditions as RuleData, formula: rule.priceFormula as FormulaData }))
@@ -182,13 +182,14 @@ export async function calculateProductPrice(productId: string, rawQuantity: numb
   const quantity = normalizedQuantity;
 
   // Retrieve customer data if userId provided
-  let customer: { city: string | null; stateCode: string | null; state: string | null } | null = null;
+  let customer: { city: string | null; stateCode: string | null; state: string | null; customerType: string } | null = null;
   if (input.userId) {
-    const [c] = await db.select({ city: customers.city, stateCode: customers.stateCode, state: customers.state }).from(customers).where(eq(customers.userId, input.userId)).limit(1);
+    const [c] = await db.select({ city: customers.city, stateCode: customers.stateCode, state: customers.state, customerType: customers.customerType }).from(customers).where(eq(customers.userId, input.userId)).limit(1);
     if (c) customer = c;
   }
+  const customerType: "B2C" | "B2B" = customer?.customerType === "B2B" ? "B2B" : "B2C";
 
-  const base = await calculateBasePrice(productId, quantity, options);
+  const base = await calculateBasePrice(productId, quantity, options, customerType);
   const surcharge = await locationCharge(productId, base.ruleId, customer);
   const addonIds = [...new Set(input.addonIds ?? [])];
   if (addonIds.length !== (input.addonIds ?? []).length) throw new PricingValidationError("An add-on can only be selected once");
@@ -254,7 +255,7 @@ export async function calculateProductPrice(productId: string, rawQuantity: numb
     };
   }
 
-  const rate = taxRate ?? 18;
+  const rate = customerType === "B2B" ? 0 : taxRate ?? 18;
   const bladeExtra = (base as { blade?: { count: number; chargePerBlade: number; total: number } | null }).blade?.total ?? 0;
   const components = [
     taxableComponent(base.amount, base.taxInclusive, rate),

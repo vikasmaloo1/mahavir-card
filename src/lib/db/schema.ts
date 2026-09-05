@@ -519,6 +519,8 @@ export const pricingRules = pgTable("pricing_rules", {
   productionTime: text("productionTime"),
   sortOrder: integer("sortOrder").notNull().default(0),
   taxInclusive: boolean("taxInclusive").notNull().default(true),
+  /** Which customer segment this rule applies to. "BOTH" serves everyone (safe default for existing/new rules that aren't segmented). */
+  customerType: text("customerType").notNull().default("BOTH"),
   isActive: boolean("isActive").notNull().default(true),
   ...timestamps,
 });

@@ -145,12 +145,12 @@ async function main() {
         id: ruleId, productId, name: item.name, ruleType: item.ruleType,
         conditions: { quantity: item.referenceQuantity ?? 1, specification: item.name, size: item.size ?? null },
         priceFormula, taxRate: item.taxRate?.toFixed(3) ?? null, productionTime: item.productionTime ?? null,
-        sortOrder: itemIndex, taxInclusive: false, isActive: true,
+        sortOrder: itemIndex, taxInclusive: false, customerType: "B2C", isActive: true,
       }).onConflictDoUpdate({ target: pricingRules.id, set: {
         productId, name: item.name, ruleType: item.ruleType,
         conditions: { quantity: item.referenceQuantity ?? 1, specification: item.name, size: item.size ?? null },
         priceFormula, taxRate: item.taxRate?.toFixed(3) ?? null, productionTime: item.productionTime ?? null,
-        sortOrder: itemIndex, taxInclusive: false, isActive: true, updatedAt: new Date(),
+        sortOrder: itemIndex, taxInclusive: false, customerType: "B2C", isActive: true, updatedAt: new Date(),
       } });
 
       await db.update(artworkRequirements).set({ isActive: false, updatedAt: new Date() }).where(eq(artworkRequirements.productId, productId));

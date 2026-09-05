@@ -99,7 +99,7 @@ export async function getOwnedCart(userId: string, kind: CartKind, stateCodeOver
   const cgst = sum((price) => Number(price.cgstAmount ?? 0));
   const sgst = sum((price) => Number(price.sgstAmount ?? 0));
   const igst = sum((price) => Number(price.igstAmount ?? 0));
-  const hasTaxBreakdown = availablePrices.some((price) => price.taxRate !== null && price.taxRate !== undefined);
+  const hasTaxBreakdown = tax > 0 && availablePrices.some((price) => price.taxRate !== null && price.taxRate !== undefined);
 
   const rawSubtotal = productSubtotal + addonSubtotal + deliverySubtotal + surchargeSubtotal;
   const rawTotal = rawSubtotal + tax;

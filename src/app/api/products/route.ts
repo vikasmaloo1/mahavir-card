@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, or } from "drizzle-orm";
 
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
 import { db } from "@/lib/db/server";
@@ -6,6 +6,7 @@ import {
   artworkRequirements,
   artworkSlots,
   categories,
+  customers,
   pricingRules,
   productAddons,
   productDeliveryRules,
@@ -26,6 +27,11 @@ export async function GET(request: Request) {
   try {
     const session = await getSession(request);
     const authenticated = Boolean(session);
+    let customerType: "B2C" | "B2B" = "B2C";
+    if (session?.user?.id) {
+      const [customer] = await db.select({ customerType: customers.customerType }).from(customers).where(eq(customers.userId, session.user.id)).limit(1);
+      if (customer?.customerType === "B2B") customerType = "B2B";
+    }
     const params = new URL(request.url).searchParams;
     const search = (params.get("search") ?? params.get("q"))?.trim();
     const requestedCategory = params.get("category")?.trim();
@@ -114,7 +120,7 @@ export async function GET(request: Request) {
             })
             .from(pricingRules)
             .leftJoin(productVariants, eq(pricingRules.variantId, productVariants.id))
-            .where(and(inArray(pricingRules.productId, productIds), eq(pricingRules.isActive, true)))
+            .where(and(inArray(pricingRules.productId, productIds), eq(pricingRules.isActive, true), or(eq(pricingRules.customerType, customerType), eq(pricingRules.customerType, "BOTH"))))
             .orderBy(asc(pricingRules.sortOrder)),
           db
             .select({ productId: productAddons.productId })

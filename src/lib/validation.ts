@@ -252,6 +252,7 @@ export const adminPricingSchema = z.object({
   productionTime: z.string().trim().max(100).nullable().optional(),
   sortOrder: z.number().int().min(0).default(0),
   taxInclusive: z.boolean().default(false),
+  customerType: z.enum(["B2C", "B2B", "BOTH"]).default("BOTH"),
   isActive: z.boolean().default(true),
 });
 

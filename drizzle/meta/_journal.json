@@ -176,6 +176,13 @@
       "when": 1788379368087,
       "tag": "0024_aberrant_moonstone",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1788602591082,
+      "tag": "0025_early_karnak",
+      "breakpoints": true
     }
   ]
 }

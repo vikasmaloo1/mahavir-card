@@ -93,7 +93,7 @@ export function calculateTax({
   const customerState = resolveCommerceState(stateCode);
   const stateName = indiaStateName(customerState) ?? "Gujarat";
 
-  if (safeSubtotal === 0 || safeRate === 0) {
+  if (safeSubtotal === 0) {
     return {
       taxableSubtotal: "0.00",
       taxAmount: "0.00",
@@ -110,6 +110,29 @@ export function calculateTax({
       unroundedTotal: "0.00",
       roundOff: "0.00",
       grandTotal: "0.00",
+    };
+  }
+
+  if (safeRate === 0) {
+    // No tax to add, but the priced amount itself is still owed — e.g. B2B pricing with no GST.
+    const netAmount = roundMoney(safeSubtotal);
+    const { roundOffString, grandTotalString } = roundPaisaAdjustment(netAmount);
+    return {
+      taxableSubtotal: formatMoneyString(netAmount),
+      taxAmount: "0.00",
+      cgstRate: customerState === "GJ" ? 0 : 0,
+      cgstAmount: "0.00",
+      sgstRate: customerState === "GJ" ? 0 : 0,
+      sgstAmount: "0.00",
+      igstRate: 0,
+      igstAmount: "0.00",
+      taxType: customerState === "GJ" ? "INTRA_STATE" : "INTER_STATE",
+      taxRate: "0.000",
+      customerState,
+      stateName,
+      unroundedTotal: formatMoneyString(netAmount),
+      roundOff: roundOffString,
+      grandTotal: grandTotalString,
     };
   }
 

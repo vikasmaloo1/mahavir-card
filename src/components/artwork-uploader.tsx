@@ -92,20 +92,30 @@ export function ArtworkUploader({ productId, pricingRuleId, requirement, slot, s
     xhr.send(formData);
   }
 
+  const SERVER_UPLOAD_LIMIT_BYTES = 4.5 * 1024 * 1024; // Vercel serverless function request body limit
+
   async function upload(file: File) {
     setError("");
     const extension = file.name.toLowerCase().split(".").pop();
     if (extension !== "cdr") { setError("Only CorelDRAW (.cdr) files are accepted."); return; }
     const maximumMb = slot?.maxFileSize ?? requirement.maxFileSize;
     if (maximumMb && file.size > maximumMb * 1024 * 1024) { setError(`File exceeds the ${maximumMb} MB limit.`); return; }
-    
-    // For standard files under 4.5MB, server-assisted upload is fast and completely avoids R2 CORS errors
-    if (file.size <= 4.5 * 1024 * 1024) {
+
+    // For standard files under the server body-size limit, server-assisted upload is fast and completely avoids R2 CORS errors
+    if (file.size <= SERVER_UPLOAD_LIMIT_BYTES) {
       uploadViaServer(file);
       return;
     }
 
-    // For larger files, attempt direct presigned upload with automatic server fallback
+    // Larger files must go direct-to-R2 via a presigned URL — the server route cannot accept
+    // a body this size on Vercel, so falling back to it here would only fail a second time.
+    // Retry with a fresh presigned URL (it can expire, or the first attempt can hit a transient
+    // network/CORS error) before surfacing an error to the customer.
+    await uploadDirect(file, 1);
+  }
+
+  async function uploadDirect(file: File, attempt: number) {
+    const maxAttempts = 3;
     setPhase("processing"); setProgress(null);
     try {
       const startResponse = await fetch("/api/artworks/upload-url", {
@@ -125,43 +135,45 @@ export function ArtworkUploader({ productId, pricingRuleId, requirement, slot, s
       });
       const started = await startResponse.json().catch(() => null);
       if (!startResponse.ok || !started?.data?.uploadUrl) {
-        // If upload-url returned error, fallback to server upload
-        uploadViaServer(file);
-        return;
+        throw new Error(started?.error?.message || "Could not start the upload. Please try again.");
       }
 
-      const request = new XMLHttpRequest();
-      setPhase("uploading"); setProgress(0);
-      request.upload.addEventListener("progress", (event) => {
-        if (event.lengthComputable) setProgress(Math.round((event.loaded / event.total) * 100));
-        else setProgress(null);
+      await new Promise<void>((resolve, reject) => {
+        const request = new XMLHttpRequest();
+        setPhase("uploading"); setProgress(0);
+        request.upload.addEventListener("progress", (event) => {
+          if (event.lengthComputable) setProgress(Math.round((event.loaded / event.total) * 100));
+          else setProgress(null);
+        });
+        request.addEventListener("load", async () => {
+          if (request.status < 200 || request.status >= 300) {
+            reject(new Error(`Upload to storage failed (HTTP ${request.status}).`));
+            return;
+          }
+          setProgress(100); setPhase("processing");
+          try {
+            const finalizeResponse = await fetch(`/api/artworks/${started.data.artwork.id}/finalize`, { method: "POST" });
+            const finalized = await finalizeResponse.json().catch(() => null);
+            if (!finalizeResponse.ok || !finalized?.data) throw new Error(finalized?.error?.message || "The uploaded file could not be verified.");
+            onUploaded(finalized.data);
+            window.setTimeout(() => setPhase("idle"), 500);
+            resolve();
+          } catch (caught) {
+            reject(caught instanceof Error ? caught : new Error("The uploaded file could not be verified."));
+          }
+        });
+        request.addEventListener("error", () => reject(new Error("Connection to storage was interrupted.")));
+        request.open(started.data.method || "PUT", started.data.uploadUrl);
+        for (const [name, value] of Object.entries(started.data.headers as Record<string, string>)) request.setRequestHeader(name, value);
+        request.send(file);
       });
-      request.addEventListener("load", async () => {
-        if (request.status < 200 || request.status >= 300) {
-          uploadViaServer(file);
-          return;
-        }
-        setProgress(100); setPhase("processing");
-        try {
-          const finalizeResponse = await fetch(`/api/artworks/${started.data.artwork.id}/finalize`, { method: "POST" });
-          const finalized = await finalizeResponse.json().catch(() => null);
-          if (!finalizeResponse.ok || !finalized?.data) throw new Error(finalized?.error?.message || "The uploaded file could not be verified.");
-          onUploaded(finalized.data);
-          window.setTimeout(() => setPhase("idle"), 500);
-        } catch (caught) {
-          setError(caught instanceof Error ? caught.message : "Upload failed. Please try again.");
-          setPhase("failed");
-        }
-      });
-      request.addEventListener("error", () => {
-        // Direct R2 upload failed (e.g. CORS preflight), fallback immediately to server upload!
-        uploadViaServer(file);
-      });
-      request.open(started.data.method || "PUT", started.data.uploadUrl);
-      for (const [name, value] of Object.entries(started.data.headers as Record<string, string>)) request.setRequestHeader(name, value);
-      request.send(file);
-    } catch {
-      uploadViaServer(file);
+    } catch (caught) {
+      if (attempt < maxAttempts) {
+        await uploadDirect(file, attempt + 1);
+        return;
+      }
+      setError(caught instanceof Error ? caught.message : "Upload failed after multiple attempts. Please check your connection and try again.");
+      setPhase("failed");
     }
   }
 
