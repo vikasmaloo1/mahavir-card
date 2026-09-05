@@ -160,7 +160,7 @@ export function ArtworkUploader({ productId, pricingRuleId, requirement, slot, s
       request.open(started.data.method || "PUT", started.data.uploadUrl);
       for (const [name, value] of Object.entries(started.data.headers as Record<string, string>)) request.setRequestHeader(name, value);
       request.send(file);
-    } catch (caught) {
+    } catch {
       uploadViaServer(file);
     }
   }

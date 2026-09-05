@@ -2,7 +2,7 @@ import { config as loadDotenv } from "dotenv";
 loadDotenv({ path: ".env.local" });
 
 import assert from "node:assert/strict";
-import { and, asc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { rankProducts, normalizeQuery, extractRequirement, type ProductSearchCandidate } from "../src/lib/search-engine";
 import { evaluateStateAvailability } from "../src/lib/state-availability";

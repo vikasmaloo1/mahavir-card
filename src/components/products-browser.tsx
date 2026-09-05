@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, Clock3, FileUp, RefreshCw, Search, ShoppingBag, SlidersHorizontal, Sparkles, X, MapPin, AlertCircle, WalletCards, Zap } from "lucide-react";
+import { ArrowRight, Check, Clock3, FileUp, RefreshCw, Search, ShoppingBag, SlidersHorizontal, Sparkles, X, WalletCards, Zap } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ProductImage } from "@/components/product-image";

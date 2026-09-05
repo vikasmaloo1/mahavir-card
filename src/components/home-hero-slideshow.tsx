@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ChevronLeft, ChevronRight, MapPin, ReceiptText, Sparkles } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, MapPin, ReceiptText } from "lucide-react";
 import { useCallback, useEffect, useState, useRef } from "react";
 
 export type HeroSlide = {

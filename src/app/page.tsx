@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { and, asc, eq, gt, isNull, lt, or } from "drizzle-orm";
-import { ArrowRight, Clock3, FileCheck2, FileUp, MapPin, PackageCheck, Printer, ReceiptText, ShoppingBag } from "lucide-react";
+import { ArrowRight, Clock3, FileCheck2, MapPin, PackageCheck, Printer } from "lucide-react";
 
 import { HomeCatalogSections } from "@/components/home-catalog-sections";
 import { CustomerNotices } from "@/components/customer-notices";

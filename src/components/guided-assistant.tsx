@@ -7,9 +7,9 @@ import { MessageCircleQuestion, X } from "lucide-react";
 
 import { guidedAssistantMessageFor, type GuidedAssistantMessage } from "@/lib/guided-assistant-messages";
 
-const IDLE_DELAY_MS = 8000;
+const DEFAULT_IDLE_DELAY_MS = 8000;
 const DISMISS_KEY = "mc-guided-assistant-dismissed";
-const HIDDEN_PREFIXES = ["/admin", "/login", "/checkout", "/cart", "/api"];
+const HIDDEN_PREFIXES = ["/admin", "/login", "/api"];
 
 export function GuidedAssistant() {
   const pathname = usePathname();
@@ -26,6 +26,7 @@ export function GuidedAssistant() {
 function GuidedAssistantCard({ message }: { message: GuidedAssistantMessage }) {
   const [visible, setVisible] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idleDelay = message.idleDelayMs ?? DEFAULT_IDLE_DELAY_MS;
 
   useEffect(() => {
     let dismissed = false;
@@ -38,7 +39,7 @@ function GuidedAssistantCard({ message }: { message: GuidedAssistantMessage }) {
 
     function scheduleIdleShow() {
       if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => setVisible(true), IDLE_DELAY_MS);
+      timerRef.current = setTimeout(() => setVisible(true), idleDelay);
     }
 
     function handleActivity() {
@@ -54,7 +55,7 @@ function GuidedAssistantCard({ message }: { message: GuidedAssistantMessage }) {
       events.forEach((event) => window.removeEventListener(event, handleActivity));
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, []);
+  }, [idleDelay]);
 
   function dismiss() {
     setVisible(false);

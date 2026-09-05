@@ -8,6 +8,8 @@ export type GuidedAssistantMessage = {
   body: string;
   primary: GuidedAssistantAction;
   secondary?: GuidedAssistantAction;
+  /** Overrides the default idle delay before showing (ms). Longer on checkout so it never feels like an interruption. */
+  idleDelayMs?: number;
 };
 
 const SHARE_REQUIREMENT: GuidedAssistantAction = { label: "Share Your Requirement", href: "/quote" };
@@ -46,6 +48,23 @@ const ROUTE_MESSAGES: { test: (path: string) => boolean; message: GuidedAssistan
       heading: "Looking for a specific printing job?",
       body: "Some custom requirements aren't listed online yet — share yours and we'll check.",
       primary: SHARE_REQUIREMENT,
+    },
+  },
+  {
+    test: (path) => path === "/cart",
+    message: {
+      heading: "Almost done.",
+      body: "Review your quantity, artwork and delivery before checkout.",
+      primary: { label: "Review Order", href: "/cart" },
+    },
+  },
+  {
+    test: (path) => path === "/checkout",
+    message: {
+      heading: "Need help completing your order?",
+      body: "Your basket is saved — take your time reviewing the details before confirming.",
+      primary: { label: "Continue Checkout", href: "/checkout" },
+      idleDelayMs: 20000,
     },
   },
 ];

@@ -204,7 +204,7 @@ export function RequirementQuoteModal({
               <div className="mt-3.5 inline-flex items-center gap-2 rounded-lg bg-blue-50/80 px-3 py-1.5 text-xs text-blue-800 border border-blue-200/60">
                 <FileText size={13} />
                 <span>
-                  Context: Searched <strong>"{context.searchQuery}"</strong>
+                  Context: Searched <strong>&ldquo;{context.searchQuery}&rdquo;</strong>
                 </span>
               </div>
             ) : null}

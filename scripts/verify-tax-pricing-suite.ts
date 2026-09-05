@@ -406,9 +406,10 @@ async function runSuite() {
   let minAreaFailed = false;
   try {
     await calculateProductPrice(artBoth.id, 1000, { width: "5", height: "5" }, { stateCode: "GJ" });
-  } catch (err: any) {
+  } catch (err) {
     minAreaFailed = true;
-    assert.ok(err.message.includes("50 square inches"), "Should reject < 50 sq inches");
+    const message = err instanceof Error ? err.message : String(err);
+    assert.ok(message.includes("50 square inches"), "Should reject < 50 sq inches");
   }
   assert.ok(minAreaFailed, "Art Card Both Side must reject < 50 sq. in.");
 

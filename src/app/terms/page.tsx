@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
-import { ChevronRight, Shield } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 import { db } from "@/lib/db/server";
 import { terms } from "@/lib/db/schema";

@@ -7,7 +7,6 @@ import Link from "next/link";
 
 import { BackButton } from "@/components/back-button";
 import { ProductConfigurator } from "@/components/product-configurator";
-import { ProductImage } from "@/components/product-image";
 import { ProductImageSlideshow } from "@/components/product-image-slideshow";
 import { CustomerNotices } from "@/components/customer-notices";
 import { StorefrontFooter } from "@/components/storefront-footer";

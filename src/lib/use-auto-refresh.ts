@@ -20,18 +20,23 @@ export function useAutoRefresh(
   onRefresh: () => void | Promise<void>,
   options: AutoRefreshOptions = {},
 ) {
-  const lastRefreshRef = useRef(Date.now());
+  const lastRefreshRef = useRef<number | null>(null);
   const callbackRef = useRef(onRefresh);
-  callbackRef.current = onRefresh;
+
+  useEffect(() => {
+    callbackRef.current = onRefresh;
+  });
 
   const minInterval = options.minIntervalMs ?? 800;
   const onFocus = options.onFocus ?? true;
   const onVisibilityChange = options.onVisibilityChange ?? true;
 
   useEffect(() => {
+    if (lastRefreshRef.current === null) lastRefreshRef.current = Date.now();
+
     const trigger = () => {
       const now = Date.now();
-      if (now - lastRefreshRef.current < minInterval) return;
+      if (lastRefreshRef.current !== null && now - lastRefreshRef.current < minInterval) return;
       lastRefreshRef.current = now;
       try {
         void callbackRef.current();

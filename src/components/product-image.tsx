@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 function fallbackForSlug(slug: string): string {
   if (slug.startsWith("premium-")) return "/images/premium-card-category.jpg";
@@ -43,11 +43,23 @@ export function ProductImage({
   priority?: boolean;
 }) {
   const resolved = resolveImageForSlug(slug, src);
-  const [currentSrc, setCurrentSrc] = useState(resolved);
+  // Keying by the resolved src remounts this on slug/src change, so the
+  // error-fallback state resets naturally instead of needing an effect.
+  return <ProductImageFrame key={resolved} alt={alt} slug={slug} initialSrc={resolved} priority={priority} />;
+}
 
-  useEffect(() => {
-    setCurrentSrc(resolveImageForSlug(slug, src));
-  }, [slug, src]);
+function ProductImageFrame({
+  alt,
+  slug,
+  initialSrc,
+  priority,
+}: {
+  alt: string;
+  slug: string;
+  initialSrc: string;
+  priority: boolean;
+}) {
+  const [currentSrc, setCurrentSrc] = useState(initialSrc);
 
   return (
     <Image

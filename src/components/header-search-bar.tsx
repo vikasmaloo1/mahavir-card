@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, FileText, Loader2, Search, Sparkles, X } from "lucide-react";
+import { ArrowRight, Loader2, Search, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -49,12 +49,7 @@ export function HeaderSearchBar({
   // Debounced search suggest
   useEffect(() => {
     const trimmed = query.trim();
-    if (!trimmed) {
-      setResults(null);
-      setIsOpen(false);
-      setLoading(false);
-      return;
-    }
+    if (!trimmed) return;
 
     const controller = new AbortController();
     const timer = setTimeout(() => {
@@ -138,7 +133,15 @@ export function HeaderSearchBar({
         <input
           name="search"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            const next = e.target.value;
+            setQuery(next);
+            if (!next.trim()) {
+              setResults(null);
+              setIsOpen(false);
+              setLoading(false);
+            }
+          }}
           onFocus={() => {
             if (results) setIsOpen(true);
           }}

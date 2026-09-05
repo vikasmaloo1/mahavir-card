@@ -91,7 +91,6 @@ export function evaluateStateAvailability(
 
   // 3. Check if customer state matches any rule or wildcard
   const hasWildcard = supportedStates.includes("*");
-  const hasStateRule = state ? supportedStates.includes(state) : false;
 
   // If state is not provided or customer is checking in general
   if (!state) {

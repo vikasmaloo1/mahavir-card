@@ -1,12 +1,11 @@
-import { S3Client, PutObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { config as loadDotenv } from "dotenv";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 loadDotenv({ path: ".env.local" });
 
-const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || "600aea3784ced4b6aa2298e9304a5ec7";
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || "e687ccf05cec3306e7becf8a6d384f7c";
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || "a9ec66b4688943731fdaebb3dd7fc2537d890750985a2c33e38f6536b6ac9cca";
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || "mahavir-card-prod";
@@ -44,7 +43,7 @@ async function main() {
 
   // Dynamic import db to ensure dotenv is loaded first
   const { db } = await import("../src/lib/db/server");
-  const { categories, products, productImages, categoryImages, banners, brandingAssets } = await import("../src/lib/db/schema");
+  const { categories, products, productImages, categoryImages, banners } = await import("../src/lib/db/schema");
 
   const imagesDir = join(process.cwd(), "public", "images");
   const localFiles = readdirSync(imagesDir).filter((f) => f.endsWith(".jpg") || f.endsWith(".jpeg") || f.endsWith(".png"));

@@ -345,6 +345,12 @@ export function scoreProduct(
     matchReasons.push(`Matches category: ${product.category?.name}`);
   }
 
+  // 3b. Product code match (+400)
+  if (pCode && (pCode === qRaw || qRaw.includes(pCode))) {
+    score += 400;
+    matchReasons.push(`Matches product code: ${product.productCode}`);
+  }
+
   // 4. Check dimension match (+220)
   for (const dim of normalized.dimensions) {
     const cleanDim = dim.replace("x", " ");

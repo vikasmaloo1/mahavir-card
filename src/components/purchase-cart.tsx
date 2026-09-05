@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Minus, Pencil, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { ArrowRight, Minus, Pencil, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { ProductImage } from "@/components/product-image";

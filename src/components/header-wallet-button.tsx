@@ -11,7 +11,7 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { whatsAppUrlFor } from "@/lib/whatsapp";
 
@@ -63,7 +63,7 @@ export function HeaderWalletButton({
     }
   }, [isOpen]);
 
-  async function refreshBalance() {
+  const refreshBalance = useCallback(async () => {
     if (!isLoggedIn) return;
     try {
       const res = await fetch("/api/account/wallet/top-up", { cache: "no-store" });
@@ -74,7 +74,7 @@ export function HeaderWalletButton({
     } catch {
       // Ignore background refresh errors
     }
-  }
+  }, [isLoggedIn]);
 
   useEffect(() => {
     function onWalletUpdate() {
@@ -82,7 +82,7 @@ export function HeaderWalletButton({
     }
     window.addEventListener("wallet-updated", onWalletUpdate);
     return () => window.removeEventListener("wallet-updated", onWalletUpdate);
-  }, [isLoggedIn]);
+  }, [refreshBalance]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -139,9 +139,9 @@ export function HeaderWalletButton({
 
       window.dispatchEvent(new CustomEvent("wallet-updated"));
       await refreshBalance();
-    } catch (err: any) {
+    } catch (err) {
       setSubmitting(false);
-      setError(err?.message || "Network error. Please check connection.");
+      setError(err instanceof Error ? err.message : "Network error. Please check connection.");
     }
   }
 

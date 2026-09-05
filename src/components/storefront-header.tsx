@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { FileText, Search, ShoppingBag, UserRound } from "lucide-react";
+import { FileText, ShoppingBag, UserRound } from "lucide-react";
 import { eq } from "drizzle-orm";
 
 import { CustomerAccountMenu } from "@/components/customer-account-menu";

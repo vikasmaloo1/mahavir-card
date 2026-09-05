@@ -5,7 +5,6 @@ import { eq } from "drizzle-orm";
 
 loadDotenv({ path: ".env.local" });
 
-const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || "600aea3784ced4b6aa2298e9304a5ec7";
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || "e687ccf05cec3306e7becf8a6d384f7c";
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || "a9ec66b4688943731fdaebb3dd7fc2537d890750985a2c33e38f6536b6ac9cca";
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || "mahavir-card-prod";
@@ -38,8 +37,8 @@ async function uploadToR2(key: string, filePath: string, contentType = "image/jp
     );
     console.log(`  ✓ Uploaded to R2: ${key}`);
     return key;
-  } catch (err: any) {
-    console.warn(`  ⚠ R2 upload error for ${key}:`, err.message);
+  } catch (err) {
+    console.warn(`  ⚠ R2 upload error for ${key}:`, err instanceof Error ? err.message : String(err));
     return null;
   }
 }

@@ -19,7 +19,7 @@ async function main() {
   const {
     addons, artworkRequirements, artworkSlots, banners, businessSettings, categories, categoryImages,
     locationSurcharges, notices, pricingRules, productAddons, productContentItems,
-    productContentSections, productDeliveryRules, productImages, products,
+    productContentSections, productDeliveryRules, products,
   } = await import("../src/lib/db/schema");
   const { rateCatalog } = await import("../src/lib/rate-catalog");
 
