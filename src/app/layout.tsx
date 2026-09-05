@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { GuidedAssistant } from "@/components/guided-assistant";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://mahavircard.in"),
@@ -39,7 +40,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <meta charSet="utf-8" />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <GuidedAssistant />
+      </body>
     </html>
   );
 }

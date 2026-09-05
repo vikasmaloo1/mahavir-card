@@ -6,6 +6,7 @@ import { StorefrontHeader } from "@/components/storefront-header";
 import { StorefrontFooter } from "@/components/storefront-footer";
 import { CustomerNotices } from "@/components/customer-notices";
 import { MarketingBreadcrumb, MarketingCtaBand, MarketingHero, SectionEyebrow } from "@/components/marketing-page";
+import { ScrollHighlight } from "@/components/scroll-highlight";
 import { catalogCategories } from "@/lib/catalog-routing";
 
 export const metadata: Metadata = {
@@ -59,10 +60,15 @@ export default function AboutPage() {
           <p className="mt-3 max-w-3xl text-[15px] leading-7 text-[var(--mc-muted)]">
             The categories below are what&apos;s currently live on the online catalog with instant pricing, and more are being added over time. This isn&apos;t the full list
             of what Mahavir Card can print — bill books, packing slips, keychains, pens, general stationery, and study material/modules for coaching institutes (including
-            work done for institutes such as Allen and Bothra Classes) have all been handled directly. For anything not listed here,{" "}
-            <Link href="/quote" className="font-bold text-[var(--mc-accent)] hover:underline">share the requirement for a quote</Link> or{" "}
-            <Link href="/contact" className="font-bold text-[var(--mc-accent)] hover:underline">send an inquiry</Link>.
+            work done for institutes such as Allen and Bothra Classes) have all been handled directly.
           </p>
+          <ScrollHighlight className="mt-4 max-w-3xl">
+            <p className="p-4 text-[15px] font-semibold leading-7 text-[var(--mc-ink)] sm:p-5">
+              For anything not listed here,{" "}
+              <Link href="/quote" className="font-bold text-[var(--mc-accent)] hover:underline">share the requirement for a quote</Link> or{" "}
+              <Link href="/contact" className="font-bold text-[var(--mc-accent)] hover:underline">send an inquiry</Link>.
+            </p>
+          </ScrollHighlight>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {catalogCategories.map((category) => (
               <Link

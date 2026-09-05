@@ -38,10 +38,10 @@ export async function StorefrontHeader() {
     <header className="sticky top-0 z-30 border-b border-[var(--mc-line)] border-t-[3px] border-t-[var(--mc-accent)] bg-[var(--mc-paper)]/95 shadow-[0_8px_28px_rgba(16,33,63,0.05)] backdrop-blur">
       <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-3 px-4 py-3 sm:py-3.5 lg:px-8">
         <Link href="/" className="flex shrink-0 items-center gap-3" aria-label="Mahavir Card home">
-          <Image src="/api/branding/assets/logo.primary/file" alt="Mahavir Card mark" width={44} height={44} priority unoptimized className="size-10 sm:size-11 rounded-full object-cover" />
+          <Image src="/api/branding/assets/logo.primary/file" alt="Mahavir Card mark" width={52} height={52} priority unoptimized className="size-12 sm:size-14 rounded-full object-cover shadow-sm ring-2 ring-white" />
           <span>
-            <strong className="block text-base sm:text-[17px] text-[var(--mc-ink)] leading-tight">Mahavir Card</strong>
-            <span className="hidden text-xs font-medium text-[var(--mc-muted)] sm:block">Offset printing {"\u00b7"} Business cards {"\u00b7"} Ahmedabad, Gujarat</span>
+            <strong className="block text-xl sm:text-2xl font-extrabold tracking-tight text-[var(--mc-ink)] leading-tight">Mahavir Card</strong>
+            <span className="hidden text-[13px] sm:text-sm font-semibold text-[var(--mc-accent)] sm:block">Offset printing {"\u00b7"} Business cards {"\u00b7"} Ahmedabad, Gujarat</span>
           </span>
         </Link>
 
