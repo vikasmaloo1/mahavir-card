@@ -59,7 +59,8 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
   const [status, setStatus] = useState<"idle" | "quote" | "cart">("idle");
   const [basketError, setBasketError] = useState("");
   const [basketSignInRequired, setBasketSignInRequired] = useState(false);
-  const [profileStateCode, setProfileStateCode] = useState<string | null>(null);
+  // undefined = the profile lookup hasn't settled yet; null = settled, no saved state on file.
+  const [profileStateCode, setProfileStateCode] = useState<string | null | undefined>(undefined);
   // Prefilled from a "Use this template" link (see design-templates-gallery.tsx) — a
   // starting-point reference only; the customer still uploads their own CDR artwork.
   const [jobName, setJobName] = useState(templateName ? `Based on template: ${templateName}` : "");
@@ -75,12 +76,13 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
 
   const blockingReasons = useMemo(() => {
     const reasons: string[] = [];
+    if (!details) return ["Loading product options\u2026"];
     if (isCalculating) return ["Price is being calculated\u2026"];
     if (!estimate.calculatedAmount && estimate.warnings.length === 0) reasons.push("Price could not be calculated. Review your configuration.");
     if (estimate.warnings.length > 0) reasons.push(estimate.warnings[0]);
     if (requirement?.artworkRequired && !artworkReady) reasons.push("Upload your CDR artwork file to enable ordering.");
     return reasons;
-  }, [isCalculating, estimate, requirement, artworkReady]);
+  }, [details, isCalculating, estimate, requirement, artworkReady]);
   const configurationAddons = useMemo(() => {
     const scoped = details?.addons.filter((addon) => addon.pricingRuleId === selectedRuleId) ?? [];
     const available = scoped.length ? scoped : details?.addons.filter((addon) => addon.pricingRuleId === null) ?? [];
@@ -99,7 +101,11 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
     [details?.deliveryRules]
   );
 
+  // Wait for the profile lookup to settle before fetching product details, so the delivery
+  // default (which needs profileStateCode) is set correctly on the first pass instead of
+  // fetching+configuring everything twice — once with a placeholder state, once for real.
   useEffect(() => {
+    if (profileStateCode === undefined) return;
     let active = true;
     fetch(`/api/products/${product.id}`, { cache: "no-store" }).then(async (response) => ({ response, payload: await response.json().catch(() => null) })).then(({ response, payload }) => {
       if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "Product options could not be loaded");
@@ -128,8 +134,8 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
   useEffect(() => {
     let active = true;
     cachedFetchJson<{ success: boolean; data: { customer?: { stateCode?: string | null } } }>("/api/account/profile").then(({ payload }) => {
-      if (active && payload?.success) setProfileStateCode(payload.data.customer?.stateCode ?? null);
-    }).catch(() => undefined);
+      if (active) setProfileStateCode(payload?.success ? payload.data.customer?.stateCode ?? null : null);
+    }).catch(() => { if (active) setProfileStateCode(null); });
     return () => { active = false; };
   }, []);
 
@@ -164,6 +170,11 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
   }, [defaults, details, editItemId, editKind]);
 
   useEffect(() => {
+    // Don't price a configuration that hasn't loaded yet — details resolves selectedRuleId,
+    // addonIds and delivery together, so calculating before it arrives just schedules a request
+    // that's guaranteed to be superseded (and, on a slow connection, may not even get a chance
+    // to finish before the next real change cancels it).
+    if (!details) return;
     const controller = new AbortController();
     const timer = setTimeout(() => {
       setIsCalculating(true);
@@ -173,14 +184,17 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
           if (result.success) setEstimate(result.data);
           else setEstimate({ calculatedAmount: null, warnings: [result.error?.message ?? "This price could not be calculated. Review the selected options."] });
         })
-        .catch(() => setEstimate({ calculatedAmount: null, warnings: ["Pricing is temporarily unavailable. Check your connection and retry."] }))
+        .catch((caught) => {
+          if (caught instanceof DOMException && caught.name === "AbortError") return;
+          setEstimate({ calculatedAmount: null, warnings: ["Pricing is temporarily unavailable. Check your connection and retry."] });
+        })
         .finally(() => { if (!controller.signal.aborted) setIsCalculating(false); });
     }, 150);
     return () => {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [addonIds, delivery, product.id, quantity, selectedRuleId, values]);
+  }, [addonIds, delivery, details, product.id, quantity, selectedRuleId, values]);
 
   function update(id: string, value: string) { setValues((current) => ({ ...current, [id]: value })); setStatus("idle"); }
   function selectRule(id: string) {

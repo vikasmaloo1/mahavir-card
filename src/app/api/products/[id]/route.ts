@@ -1,8 +1,8 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, or } from "drizzle-orm";
 
 import { handleApiError, jsonError, jsonOk } from "@/lib/api";
 import { db } from "@/lib/db/server";
-import { addons, artworkRequirements, artworkSlots, pricingRules, productAddons, productContentItems, productContentSections, productDeliveryRules, productImages, products, productVariants } from "@/lib/db/schema";
+import { addons, artworkRequirements, artworkSlots, customers, pricingRules, productAddons, productContentItems, productContentSections, productDeliveryRules, productImages, products, productVariants } from "@/lib/db/schema";
 import { deriveStartingPrice } from "@/lib/product-listing-pricing";
 import { getSession } from "@/lib/permissions";
 
@@ -12,6 +12,11 @@ export async function GET(request: Request, ctx: RouteContext<"/api/products/[id
   try {
     const session = await getSession(request);
     const authenticated = Boolean(session);
+    let customerType: "B2C" | "B2B" = "B2C";
+    if (session?.user?.id) {
+      const [customer] = await db.select({ customerType: customers.customerType }).from(customers).where(eq(customers.userId, session.user.id)).limit(1);
+      if (customer?.customerType === "B2B") customerType = "B2B";
+    }
     const { id } = await ctx.params;
     const [product] = await db.select().from(products).where(and(uuidPattern.test(id) ? eq(products.id, id) : eq(products.slug, id), eq(products.isActive, true), eq(products.status, "ACTIVE"))).limit(1);
     if (!product) return jsonError("Product not found", 404);
@@ -22,7 +27,7 @@ export async function GET(request: Request, ctx: RouteContext<"/api/products/[id
       db.select().from(productContentItems).orderBy(asc(productContentItems.sortOrder)),
       db.select({ id: productAddons.id, pricingRuleId: productAddons.pricingRuleId, addonId: productAddons.addonId, name: addons.name, description: addons.description, pricingType: addons.pricingType, price: productAddons.price, isDefault: productAddons.isDefault, sortOrder: productAddons.sortOrder, taxInclusive: productAddons.taxInclusive }).from(productAddons).innerJoin(addons, eq(productAddons.addonId, addons.id)).where(and(eq(productAddons.productId, product.id), eq(productAddons.isActive, true), eq(addons.isActive, true))).orderBy(asc(productAddons.sortOrder)),
       db.select({ id: productDeliveryRules.id, deliveryMethod: productDeliveryRules.deliveryMethod, stateCode: productDeliveryRules.stateCode, price: productDeliveryRules.price, sortOrder: productDeliveryRules.sortOrder, taxInclusive: productDeliveryRules.taxInclusive }).from(productDeliveryRules).where(and(eq(productDeliveryRules.productId, product.id), eq(productDeliveryRules.isActive, true))).orderBy(asc(productDeliveryRules.sortOrder)),
-      db.select({ id: pricingRules.id, productId: pricingRules.productId, variantId: pricingRules.variantId, variantActive: productVariants.isActive, name: pricingRules.name, conditions: pricingRules.conditions, priceFormula: pricingRules.priceFormula, taxInclusive: pricingRules.taxInclusive, isActive: pricingRules.isActive }).from(pricingRules).leftJoin(productVariants, eq(pricingRules.variantId, productVariants.id)).where(and(eq(pricingRules.productId, product.id), eq(pricingRules.isActive, true))).orderBy(asc(pricingRules.createdAt)),
+      db.select({ id: pricingRules.id, productId: pricingRules.productId, variantId: pricingRules.variantId, variantActive: productVariants.isActive, name: pricingRules.name, conditions: pricingRules.conditions, priceFormula: pricingRules.priceFormula, taxInclusive: pricingRules.taxInclusive, isActive: pricingRules.isActive }).from(pricingRules).leftJoin(productVariants, eq(pricingRules.variantId, productVariants.id)).where(and(eq(pricingRules.productId, product.id), eq(pricingRules.isActive, true), or(eq(pricingRules.customerType, customerType), eq(pricingRules.customerType, "BOTH")))).orderBy(asc(pricingRules.createdAt)),
       db.select().from(artworkRequirements).where(and(eq(artworkRequirements.productId, product.id), eq(artworkRequirements.isActive, true))),
       db.select({ slot: artworkSlots, productId: artworkRequirements.productId }).from(artworkSlots).innerJoin(artworkRequirements, eq(artworkSlots.artworkRequirementId, artworkRequirements.id)).where(and(eq(artworkRequirements.productId, product.id), eq(artworkSlots.isActive, true))).orderBy(asc(artworkSlots.sortOrder)),
     ]);
