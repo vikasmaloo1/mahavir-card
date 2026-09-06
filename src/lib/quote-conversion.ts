@@ -5,6 +5,7 @@ import { eq, inArray } from "drizzle-orm";
 import { extractArtworkIds } from "@/lib/artwork-validation";
 import { db } from "@/lib/db/server";
 import { artworks, orderItems, orders, orderStatusEvents, quoteItems, quotes } from "@/lib/db/schema";
+import { emitNotification } from "@/lib/notifications/emit";
 
 export type QuoteConversionResult =
   | { ok: true; order: typeof orders.$inferSelect; created: boolean }
@@ -79,5 +80,15 @@ export async function convertQuoteToOrder(quoteId: string): Promise<QuoteConvers
     return created;
   });
 
+  if (order) {
+    await emitNotification({
+      customerId: quote.customerId,
+      event: "ORDER_CREATED",
+      relatedEntityType: "order",
+      relatedEntityId: order.id,
+      recipientEmail: quote.email,
+      context: { customerName: quote.contactName, orderNumber: order.orderNumber, amount: order.total, nextAction: "We'll update you as it moves through production." },
+    });
+  }
   return order ? { ok: true, order, created: true } : { ok: false, reason: "CREATE_FAILED" };
 }

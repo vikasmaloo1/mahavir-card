@@ -7,6 +7,7 @@ import { evaluateCreditEligibility } from "@/lib/customer-credit";
 import { db } from "@/lib/db/server";
 import { addresses, artworks, cartItems, customers, orderItems, orders, orderStatusEvents, payments, walletTransactions } from "@/lib/db/schema";
 import { indiaStateName, isCommerceStateCode } from "@/lib/india-states";
+import { emitNotification } from "@/lib/notifications/emit";
 import { createPaymentIntent, createRazorpayOrder, PaymentConfigurationError, PaymentProviderError, razorpayPublicKey } from "@/lib/payment-service";
 import { requireUser } from "@/lib/permissions";
 import { checkoutSchema } from "@/lib/validation";
@@ -160,6 +161,26 @@ export async function POST(request: Request) {
       return payment ? { order, payment, availableCredit: input.paymentMethod === "CREDIT" ? customer.availableCredit : null, razorpay: razorpayOrder ? { orderId: razorpayOrder.id, keyId: razorpayPublicKey(), amount: razorpayOrder.amount, currency: razorpayOrder.currency } : null } : null;
     });
 
+    if (result) {
+      await emitNotification({
+        customerId: result.order.customerId,
+        event: "ORDER_CREATED",
+        relatedEntityType: "order",
+        relatedEntityId: result.order.id,
+        recipientEmail: session.user.email,
+        context: { customerName: input.customer.contactName, orderNumber: result.order.orderNumber, amount: result.order.total, nextAction: "We'll update you as it moves through production." },
+      });
+      if (input.paymentMethod === "CREDIT") {
+        await emitNotification({
+          customerId: result.order.customerId,
+          event: "PAYMENT_CONFIRMED",
+          relatedEntityType: "payment",
+          relatedEntityId: result.payment.id,
+          recipientEmail: session.user.email,
+          context: { customerName: input.customer.contactName, orderNumber: result.order.orderNumber, amount: result.order.total },
+        });
+      }
+    }
     return result ? jsonOk(result, 201) : jsonError("Order was not created", 500);
   } catch (error) {
     if (error instanceof CreditCheckoutError) return jsonError(error.message, 409);

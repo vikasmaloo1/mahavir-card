@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Bookmark, FileQuestion, FileText, MapPin, Package, Palette, RefreshCw, ShoppingBag } from "lucide-react";
+import { ArrowRight, Bell, Bookmark, FileQuestion, FileText, MapPin, Package, Palette, RefreshCw, ShoppingBag } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { formatInr } from "@/lib/formatting";
@@ -125,6 +125,8 @@ export function AccountDashboard() {
   const openQuotes = data.quotes.filter((quote) => !["CUSTOMER_REJECTED", "EXPIRED", "CONVERTED_TO_ORDER", "CANCELLED"].includes(quote.status)).length;
   const activeOrders = data.orders.filter((order) => !["DELIVERED", "CANCELLED"].includes(order.status)).length;
   const isB2B = data.customer?.customerType === "B2B";
+  const pendingQuote = data.quotes.find((quote) => quote.status === "SENT_TO_CUSTOMER");
+  const awaitingArtworkCount = data.orders.filter((order) => ["PENDING", "CONFIRMED"].includes(order.status)).length;
 
   const savedJobsSection = (
     <section id="saved-jobs" className="scroll-mt-36 rounded-xl border border-[var(--mc-line)] bg-white p-5 sm:p-6 shadow-sm">
@@ -151,7 +153,7 @@ export function AccountDashboard() {
     <div>
       <header className="flex flex-col justify-between gap-4 border-b border-[var(--mc-line)] pb-7 sm:flex-row sm:items-end">
         <div><p className="text-xs font-bold uppercase text-[var(--mc-accent)]">Customer account</p><h1 className="mt-2 text-3xl font-bold sm:text-4xl">Your print desk</h1><p className="mt-2 text-[15px] text-[var(--mc-muted)]">Orders, quotes, inquiries, artwork, and delivery details from your account.</p></div>
-        <Link href="/products" className="inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-5 py-3 text-sm font-bold text-white">Browse products <ArrowRight size={16} /></Link>
+        <div className="flex items-center gap-3"><Link href="/account/notifications" className="inline-flex items-center gap-2 rounded-full border border-[var(--mc-line)] bg-white px-4 py-3 text-sm font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors"><Bell size={16} />Notifications</Link><Link href="/products" className="inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-5 py-3 text-sm font-bold text-white">Browse products <ArrowRight size={16} /></Link></div>
       </header>
       <section className="mt-6 grid grid-cols-2 sm:grid-cols-5 gap-px overflow-hidden rounded-xl border border-[var(--mc-line)] bg-[var(--mc-line)] shadow-sm">
         <ProfileValue label="Person" value={data.customer?.contactName ?? data.user.name} />
@@ -163,6 +165,12 @@ export function AccountDashboard() {
           {!data.profileComplete ? <Link href="/account/profile" className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-[var(--mc-accent)]">Complete profile <ArrowRight size={13} /></Link> : null}
         </div>
       </section>
+      {pendingQuote || awaitingArtworkCount > 0 ? (
+        <div className="mt-6 space-y-2">
+          {pendingQuote ? <Link href={`/account/quotes/${pendingQuote.id}`} className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 hover:bg-amber-100 transition-colors">You have a quote awaiting your decision ({pendingQuote.quoteNumber}). <ArrowRight size={15} /></Link> : null}
+          {awaitingArtworkCount > 0 ? <a href="#orders" className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 hover:bg-amber-100 transition-colors">Upload artwork to keep {awaitingArtworkCount > 1 ? `${awaitingArtworkCount} orders` : "your order"} moving. <ArrowRight size={15} /></a> : null}
+        </div>
+      ) : null}
       <div className="mt-7 grid gap-3 sm:grid-cols-3"><Metric label="Open quotes" value={openQuotes} Icon={FileText} /><Metric label="Active orders" value={activeOrders} Icon={Package} /><Metric label="Artwork files" value={data.artworks.length} Icon={Palette} /></div>
       <div className="mt-7 grid gap-5 xl:grid-cols-2">
         <section id="orders" className="scroll-mt-36 rounded-xl border border-[var(--mc-line)] bg-white p-5 sm:p-6 shadow-sm">

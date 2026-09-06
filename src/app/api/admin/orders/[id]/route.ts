@@ -3,6 +3,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
 import { db } from "@/lib/db/server";
 import { artworks, customers, orderItems, orders, orderStatusEvents, payments, storedDocuments, walletTransactions } from "@/lib/db/schema";
+import { emitNotification } from "@/lib/notifications/emit";
 import { requireRole } from "@/lib/permissions";
 import { adminOrderUpdateSchema } from "@/lib/validation";
 import { canTransition } from "@/lib/workflows";
@@ -56,13 +57,30 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/orde
         }
       }
 
+      const statusChanged = Boolean(input.status && input.status !== existing.status);
       const [order] = await tx.update(orders).set({ ...input, updatedAt: new Date() }).where(eq(orders.id, id)).returning();
-      if (order && input.status && input.status !== existing.status) await tx.insert(orderStatusEvents).values({ orderId: id, status: input.status, notes: input.notes ?? null, changedBy: session.user.id });
-      return { order };
+      if (order && statusChanged) await tx.insert(orderStatusEvents).values({ orderId: id, status: input.status!, notes: input.notes ?? null, changedBy: session.user.id });
+      return { order, statusChanged };
     });
     if ("error" in result) {
       if (result.error === "NOT_FOUND") return jsonError("Order not found", 404);
       return jsonError(`Cannot move an order from ${result.currentStatus} to ${input.status}`, 409);
+    }
+    if (result.order && result.statusChanged && input.status && result.order.customerId) {
+      const [customer] = await db.select({ email: customers.email, contactName: customers.contactName }).from(customers).where(eq(customers.id, result.order.customerId)).limit(1);
+      const event = input.status === "READY" ? "ORDER_READY" : input.status === "DISPATCHED" ? "ORDER_DISPATCHED" : "ORDER_STATUS_CHANGED";
+      // ORDER_STATUS_CHANGED can legitimately fire more than once per order (one per
+      // transition) — a plain (event, order, orderId) dedupe key would silently drop
+      // every transition after the first, so the status is folded into the key.
+      const dedupeEntityId = event === "ORDER_STATUS_CHANGED" ? `${result.order.id}:${input.status}` : result.order.id;
+      await emitNotification({
+        customerId: result.order.customerId,
+        event,
+        relatedEntityType: "order",
+        relatedEntityId: dedupeEntityId,
+        recipientEmail: customer?.email ?? null,
+        context: { customerName: customer?.contactName, orderNumber: result.order.orderNumber, status: input.status },
+      });
     }
     return result.order ? jsonOk(result.order) : jsonError("Order not found", 404);
   } catch (error) {

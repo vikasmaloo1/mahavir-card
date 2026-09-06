@@ -4,6 +4,7 @@ import { getOwnedCart } from "@/lib/cart-service";
 import { db } from "@/lib/db/server";
 import { cartItems, customers, quoteItems, quotes } from "@/lib/db/schema";
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
+import { emitNotification } from "@/lib/notifications/emit";
 import { getAdminAccess, requireUser } from "@/lib/permissions";
 import { quoteOwnershipCondition } from "@/lib/quote-ownership";
 import { quoteSubmitSchema } from "@/lib/validation";
@@ -101,6 +102,16 @@ export async function POST(request: Request) {
       return quote;
     });
 
+    if (result) {
+      await emitNotification({
+        customerId: customer?.id ?? null,
+        event: "QUOTE_CREATED",
+        relatedEntityType: "quote",
+        relatedEntityId: result.id,
+        recipientEmail: session.user.email,
+        context: { customerName: input.contactName, quoteNumber: result.quoteNumber },
+      });
+    }
     return result ? jsonOk(result, 201) : jsonError("Quote was not created", 500);
   } catch (error) {
     return error instanceof Response ? error : handleApiError(error);

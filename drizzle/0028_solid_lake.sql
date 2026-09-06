@@ -1,0 +1,1 @@
+ALTER TABLE "notification_log" ALTER COLUMN "relatedEntityId" SET DATA TYPE text;

@@ -4,6 +4,7 @@ import { recalculateQuote } from "@/lib/admin-quote-service";
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
 import { db } from "@/lib/db/server";
 import { artworks, customers, orders, quoteItems, quotes, storedDocuments } from "@/lib/db/schema";
+import { emitNotification } from "@/lib/notifications/emit";
 import { requireRole } from "@/lib/permissions";
 import { adminQuoteUpdateSchema } from "@/lib/validation";
 import { canTransition } from "@/lib/workflows";
@@ -37,6 +38,16 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/quot
     if (input.status && !canTransition("quote", existing.status, input.status)) return jsonError(`Cannot move a quote from ${existing.status} to ${input.status}`, 409);
     const [quote] = await db.update(quotes).set({ ...input, updatedAt: new Date() }).where(eq(quotes.id, id)).returning();
     if (!quote) return jsonError("Quote not found", 404);
+    if (input.status && input.status !== existing.status && (input.status === "SENT_TO_CUSTOMER" || input.status === "EXPIRED")) {
+      await emitNotification({
+        customerId: quote.customerId,
+        event: input.status === "SENT_TO_CUSTOMER" ? "QUOTE_SENT" : "QUOTE_EXPIRED",
+        relatedEntityType: "quote",
+        relatedEntityId: quote.id,
+        recipientEmail: quote.email,
+        context: { customerName: quote.contactName, quoteNumber: quote.quoteNumber, amount: quote.total, nextAction: "Review and approve your quote in your account." },
+      });
+    }
     return jsonOk(await recalculateQuote(id));
   } catch (error) { return error instanceof Response ? error : handleApiError(error); }
 }

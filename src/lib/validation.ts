@@ -233,6 +233,14 @@ export const pricingCalculateSchema = z.object({
   }).optional(),
 });
 
+export const faqSchema = z.object({
+  question: z.string().trim().min(3).max(300),
+  answer: z.string().trim().min(3).max(3000),
+  category: z.string().trim().min(1).max(60).default("General"),
+  sortOrder: z.number().int().min(0).default(0),
+  isActive: z.boolean().default(true),
+});
+
 export const savedJobCreateSchema = z.object({
   name: z.string().trim().min(2).max(120),
   productId: z.string().uuid(),

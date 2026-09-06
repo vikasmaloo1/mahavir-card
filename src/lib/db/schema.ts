@@ -812,3 +812,46 @@ export const productRelations = pgTable(
   },
   (table) => [uniqueIndex("product_relations_pair_idx").on(table.productId, table.relatedProductId)],
 );
+
+/**
+ * A record of a notification that WOULD be sent for a business event — no email/SMS
+ * provider is configured in this codebase, so `status` stays "NOT_CONFIGURED" until
+ * one is wired into src/lib/notifications/channels.ts. The unique index on
+ * (event, relatedEntityType, relatedEntityId) is the duplicate-prevention mechanism:
+ * re-emitting the same event for the same entity is a no-op insert, not a new row.
+ */
+export const notificationLog = pgTable(
+  "notification_log",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    customerId: uuid("customerId").references(() => customers.id, { onDelete: "cascade" }),
+    event: text("event").notNull(),
+    channel: text("channel").notNull().default("EMAIL"),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    relatedEntityType: text("relatedEntityType").notNull(),
+    /** text, not uuid: usually an entity id, but ORDER_STATUS_CHANGED folds `${orderId}:${status}` in here since that event can legitimately fire more than once per order. */
+    relatedEntityId: text("relatedEntityId").notNull(),
+    status: text("status").notNull().default("NOT_CONFIGURED"),
+    createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("notification_log_dedupe_idx").on(table.event, table.relatedEntityType, table.relatedEntityId),
+    index("notification_log_customer_idx").on(table.customerId, table.createdAt),
+  ],
+);
+
+/** Admin-editable FAQ entries, grouped by category on the public /faq page. */
+export const faqs = pgTable(
+  "faqs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    question: text("question").notNull(),
+    answer: text("answer").notNull(),
+    category: text("category").notNull().default("General"),
+    sortOrder: integer("sortOrder").notNull().default(0),
+    isActive: boolean("isActive").notNull().default(true),
+    ...timestamps,
+  },
+  (table) => [index("faqs_category_idx").on(table.category, table.sortOrder)],
+);

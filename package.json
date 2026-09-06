@@ -29,7 +29,8 @@
     "test:catalog-routing": "node --import tsx --test tests/catalog-routing.test.ts",
     "test:customer-flow": "node --import tsx --test tests/customer-flow-validation.test.ts",
     "test:payments": "node --conditions=react-server --import tsx --test tests/payment-security.test.ts",
-    "test:phase3": "node --conditions=react-server --import tsx --test tests/phase3-conversion.test.ts"
+    "test:phase3": "node --conditions=react-server --import tsx --test tests/phase3-conversion.test.ts",
+    "test:phase4": "node --import tsx --test tests/phase4-notifications.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1118.0",

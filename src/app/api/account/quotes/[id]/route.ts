@@ -4,6 +4,7 @@ import { z } from "zod";
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
 import { artworks, orders, quoteItems, quotes, storedDocuments } from "@/lib/db/schema";
 import { db } from "@/lib/db/server";
+import { emitNotification } from "@/lib/notifications/emit";
 import { requireUser } from "@/lib/permissions";
 import { convertQuoteToOrder, isQuoteExpired } from "@/lib/quote-conversion";
 import { quoteOwnershipCondition as ownershipCondition } from "@/lib/quote-ownership";
@@ -43,6 +44,15 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/account/qu
     const status = input.decision === "APPROVE" ? "CUSTOMER_APPROVED" : "CUSTOMER_REJECTED";
     const [quote] = await db.update(quotes).set({ status, customerMessage: input.message ?? null, updatedAt: new Date() }).where(and(await ownershipCondition(session.user.id, id), eq(quotes.status, "SENT_TO_CUSTOMER"))).returning();
     if (!quote) return jsonError("This quote is not awaiting your decision", 409);
+
+    await emitNotification({
+      customerId: quote.customerId,
+      event: input.decision === "APPROVE" ? "QUOTE_APPROVED" : "QUOTE_REJECTED",
+      relatedEntityType: "quote",
+      relatedEntityId: quote.id,
+      recipientEmail: quote.email,
+      context: { customerName: quote.contactName, quoteNumber: quote.quoteNumber, nextAction: input.decision === "APPROVE" ? "Your order has been created." : undefined },
+    });
 
     if (input.decision === "APPROVE") {
       const result = await convertQuoteToOrder(id);

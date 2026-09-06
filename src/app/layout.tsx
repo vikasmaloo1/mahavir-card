@@ -34,11 +34,30 @@ export const metadata: Metadata = {
   },
 };
 
+const localBusinessJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  name: "Mahavir Card",
+  image: "https://mahavircard.in/images/mahavir-print-assortment.png",
+  url: "https://mahavircard.in",
+  telephone: "+91-94263-71150",
+  email: "mahavircard2011@gmail.com",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "Khadia Golwad, Opp. Jain Digamber Mandir",
+    addressLocality: "Ahmedabad",
+    addressRegion: "Gujarat",
+    addressCountry: "IN",
+  },
+  priceRange: "₹₹",
+};
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full antialiased" data-scroll-behavior="smooth">
       <head>
         <meta charSet="utf-8" />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }} />
       </head>
       <body className="min-h-full flex flex-col">
         {children}

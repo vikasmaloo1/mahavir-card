@@ -14,7 +14,7 @@ export async function markRazorpayPaymentPaid(input: { providerOrderId: string; 
     if (input.amountPaise !== undefined && Math.round(Number(record.payment.amount) * 100) !== input.amountPaise) throw new RazorpayPaymentStateError("Razorpay payment amount does not match the order");
     if (record.payment.status === "PAID") {
       if (record.payment.providerPaymentId && record.payment.providerPaymentId !== input.providerPaymentId) throw new RazorpayPaymentStateError("This Razorpay order already has another verified payment");
-      return record;
+      return { ...record, alreadyPaid: true };
     }
     const [payment] = await tx.update(payments).set({ status: "PAID", providerPaymentId: input.providerPaymentId, updatedAt: new Date() }).where(and(eq(payments.id, record.payment.id), eq(payments.status, "PENDING"))).returning();
     if (!payment) throw new RazorpayPaymentStateError("Payment is no longer awaiting verification");
@@ -24,6 +24,6 @@ export async function markRazorpayPaymentPaid(input: { providerOrderId: string; 
       [order] = await tx.update(orders).set({ status: "CONFIRMED", updatedAt: new Date() }).where(and(eq(orders.id, order.id), eq(orders.status, "PENDING"))).returning();
       if (order) await tx.insert(orderStatusEvents).values({ orderId: order.id, status: "CONFIRMED", notes: "Razorpay payment verified", changedBy: input.changedBy ?? null });
     }
-    return { payment, order: order ?? record.order };
+    return { payment, order: order ?? record.order, alreadyPaid: false };
   });
 }

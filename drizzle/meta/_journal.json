@@ -190,6 +190,20 @@
       "when": 1788678302487,
       "tag": "0026_gray_deathbird",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1788718389828,
+      "tag": "0027_confused_boomerang",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1788718778621,
+      "tag": "0028_solid_lake",
+      "breakpoints": true
     }
   ]
 }

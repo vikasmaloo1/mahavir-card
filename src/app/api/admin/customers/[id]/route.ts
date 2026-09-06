@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
 import { db } from "@/lib/db/server";
-import { addresses, customers, inquiries, orders, quotes, walletTransactions } from "@/lib/db/schema";
+import { addresses, customers, inquiries, notificationLog, orders, quotes, savedJobs, walletTransactions } from "@/lib/db/schema";
 import { requireRole } from "@/lib/permissions";
 
 const customerUpdateSchema = z.object({
@@ -22,14 +22,16 @@ export async function GET(request: Request, ctx: RouteContext<"/api/admin/custom
     const { id } = await ctx.params;
     const [customer] = await db.select().from(customers).where(eq(customers.id, id)).limit(1);
     if (!customer) return jsonError("Customer not found", 404);
-    const [addressRows, orderRows, quoteRows, inquiryRows, walletRows] = await Promise.all([
+    const [addressRows, orderRows, quoteRows, inquiryRows, walletRows, savedJobRows, notificationRows] = await Promise.all([
       db.select().from(addresses).where(eq(addresses.customerId, id)),
       db.select().from(orders).where(eq(orders.customerId, id)),
       db.select().from(quotes).where(eq(quotes.customerId, id)),
       db.select().from(inquiries).where(eq(inquiries.customerId, id)),
       db.select().from(walletTransactions).where(eq(walletTransactions.customerId, id)).orderBy(desc(walletTransactions.createdAt)),
+      db.select().from(savedJobs).where(eq(savedJobs.customerId, id)),
+      db.select().from(notificationLog).where(eq(notificationLog.customerId, id)).orderBy(desc(notificationLog.createdAt)).limit(20),
     ]);
-    return jsonOk({ customer, addresses: addressRows, orders: orderRows, quotes: quoteRows, inquiries: inquiryRows, walletTransactions: walletRows });
+    return jsonOk({ customer, addresses: addressRows, orders: orderRows, quotes: quoteRows, inquiries: inquiryRows, walletTransactions: walletRows, savedJobs: savedJobRows, notifications: notificationRows });
   } catch (error) { return error instanceof Response ? error : handleApiError(error); }
 }
 
