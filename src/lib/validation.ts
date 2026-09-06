@@ -233,6 +233,13 @@ export const pricingCalculateSchema = z.object({
   }).optional(),
 });
 
+export const savedJobCreateSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  productId: z.string().uuid(),
+  configuration: metadata,
+  quantity: z.number().int().positive().max(1_000_000),
+});
+
 export const quoteSubmitSchema = z.object({
   contactName: z.string().trim().min(2).max(120),
   email: z.email(),

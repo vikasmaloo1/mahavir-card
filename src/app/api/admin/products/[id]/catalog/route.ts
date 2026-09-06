@@ -3,11 +3,11 @@ import { z } from "zod";
 
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
 import { db } from "@/lib/db/server";
-import { addons, artworkRequirements, artworkSlots, locationSurcharges, pricingRules, productAddons, productContentItems, productContentSections, productDeliveryRules, productImages, products } from "@/lib/db/schema";
+import { addons, artworkRequirements, artworkSlots, locationSurcharges, pricingRules, productAddons, productContentItems, productContentSections, productDeliveryRules, productImages, productRelations, products } from "@/lib/db/schema";
 import { requireRole } from "@/lib/permissions";
 import { adminPricingSchema, artworkRequirementSchema, artworkSlotSchema, locationSurchargeSchema, productAddonSchema, productContentItemSchema, productContentSectionSchema, productDeliveryRuleSchema } from "@/lib/validation";
 
-const resourceSchema = z.enum(["SECTION", "SECTION_ITEM", "ADDON", "DELIVERY_RULE", "LOCATION_SURCHARGE", "PRICING_RULE", "ARTWORK_REQUIREMENT", "ARTWORK_SLOT"]);
+const resourceSchema = z.enum(["SECTION", "SECTION_ITEM", "ADDON", "DELIVERY_RULE", "LOCATION_SURCHARGE", "PRICING_RULE", "ARTWORK_REQUIREMENT", "ARTWORK_SLOT", "RELATED_PRODUCT"]);
 const mutationSchema = z.object({ resource: resourceSchema, id: z.string().uuid().optional(), data: z.record(z.string(), z.unknown()) });
 
 async function productExists(id: string) {
@@ -40,7 +40,7 @@ export async function GET(request: Request, ctx: RouteContext<"/api/admin/produc
     await requireRole(request, ["ADMIN"]);
     const { id } = await ctx.params;
     if (!await productExists(id)) return jsonError("Product not found", 404);
-    const [images, sections, contentItems, mappedAddons, deliveryRules, surchargeRows, rules, requirements, slotRows] = await Promise.all([
+    const [images, sections, contentItems, mappedAddons, deliveryRules, surchargeRows, rules, requirements, slotRows, relatedRows] = await Promise.all([
       db.select().from(productImages).where(eq(productImages.productId, id)).orderBy(asc(productImages.sortOrder)),
       db.select().from(productContentSections).where(eq(productContentSections.productId, id)).orderBy(asc(productContentSections.sortOrder)),
       db.select().from(productContentItems).orderBy(asc(productContentItems.sortOrder)),
@@ -50,8 +50,9 @@ export async function GET(request: Request, ctx: RouteContext<"/api/admin/produc
       db.select().from(pricingRules).where(eq(pricingRules.productId, id)).orderBy(asc(pricingRules.sortOrder)),
       db.select().from(artworkRequirements).where(eq(artworkRequirements.productId, id)).orderBy(asc(artworkRequirements.createdAt)),
       db.select({ slot: artworkSlots, requirementProductId: artworkRequirements.productId }).from(artworkSlots).innerJoin(artworkRequirements, eq(artworkSlots.artworkRequirementId, artworkRequirements.id)).where(eq(artworkRequirements.productId, id)).orderBy(asc(artworkSlots.sortOrder)),
+      db.select({ id: productRelations.id, relatedProductId: productRelations.relatedProductId, relatedProductName: products.name }).from(productRelations).innerJoin(products, eq(productRelations.relatedProductId, products.id)).where(eq(productRelations.productId, id)).orderBy(asc(productRelations.sortOrder)),
     ]);
-    return jsonOk({ images, sections: sections.map((section) => ({ ...section, items: contentItems.filter((item) => item.sectionId === section.id) })), addons: mappedAddons, deliveryRules, locationSurcharges: surchargeRows, pricingRules: rules, artworkRequirements: requirements.map((requirement) => ({ ...requirement, slots: slotRows.filter((row) => row.slot.artworkRequirementId === requirement.id).map((row) => row.slot) })) });
+    return jsonOk({ images, sections: sections.map((section) => ({ ...section, items: contentItems.filter((item) => item.sectionId === section.id) })), addons: mappedAddons, deliveryRules, locationSurcharges: surchargeRows, pricingRules: rules, artworkRequirements: requirements.map((requirement) => ({ ...requirement, slots: slotRows.filter((row) => row.slot.artworkRequirementId === requirement.id).map((row) => row.slot) })), relatedProducts: relatedRows });
   } catch (error) {
     return error instanceof Response ? error : handleApiError(error);
   }
@@ -103,6 +104,13 @@ export async function POST(request: Request, ctx: RouteContext<"/api/admin/produ
       if (data.pricingRuleId && !await productOwnsPricingRule(productId, data.pricingRuleId)) return jsonError("Pricing configuration not found", 404);
       const [slot] = await db.insert(artworkSlots).values(data).returning();
       return slot ? jsonOk(slot, 201) : jsonError("Artwork slot was not created", 500);
+    }
+    if (input.resource === "RELATED_PRODUCT") {
+      const data = z.object({ relatedProductId: z.string().uuid() }).parse(input.data);
+      if (data.relatedProductId === productId) return jsonError("A product cannot be related to itself", 422);
+      if (!await productExists(data.relatedProductId)) return jsonError("Related product not found", 404);
+      const [relation] = await db.insert(productRelations).values({ productId, relatedProductId: data.relatedProductId }).onConflictDoNothing().returning();
+      return relation ? jsonOk(relation, 201) : jsonError("This product is already related", 409);
     }
     const [rule] = await db.insert(pricingRules).values({ ...adminPricingSchema.omit({ productId: true }).parse(input.data), productId }).returning();
     return rule ? jsonOk(rule, 201) : jsonError("Pricing rule was not created", 500);
@@ -184,6 +192,7 @@ export async function DELETE(request: Request, ctx: RouteContext<"/api/admin/pro
       if (!slot || !await productOwnsRequirement(productId, slot.requirementId)) return jsonError("Artwork slot not found", 404);
       await db.delete(artworkSlots).where(eq(artworkSlots.id, input.id));
     }
+    else if (input.resource === "RELATED_PRODUCT") await db.delete(productRelations).where(and(eq(productRelations.id, input.id), eq(productRelations.productId, productId)));
     else await db.delete(pricingRules).where(and(eq(pricingRules.id, input.id), eq(pricingRules.productId, productId)));
     return jsonOk({ deleted: true, id: input.id });
   } catch (error) {

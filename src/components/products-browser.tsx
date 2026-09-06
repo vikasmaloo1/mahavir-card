@@ -79,6 +79,16 @@ type RecentProduct = {
   lastOrderedAt: string;
 };
 
+type FrequentProduct = {
+  productId: string;
+  name: string | null;
+  slug: string | null;
+  imageUrl: string | null;
+  orderCount: number;
+  quantity: number;
+  configuration: Record<string, unknown>;
+};
+
 type MiniCartArtworkFile = { slotKey: string; id: string; fileName: string | null; artworkSlotId: string | null };
 type MiniCartItem = { id: string; productId: string; quantity: number; calculatedAmount: string | null; name: string; slug: string; pricingRuleId: string | null; artworkFiles: MiniCartArtworkFile[] };
 
@@ -89,6 +99,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
   const [quickAddedId, setQuickAddedId] = useState<string | null>(null);
   const [quickError, setQuickError] = useState<Record<string, string>>({});
   const [recentProducts, setRecentProducts] = useState<RecentProduct[]>([]);
+  const [frequentProducts, setFrequentProducts] = useState<FrequentProduct[]>([]);
   const [cartProductIds, setCartProductIds] = useState<Set<string>>(new Set());
   const [miniCartItems, setMiniCartItems] = useState<MiniCartItem[]>([]);
   const [miniCartBusyId, setMiniCartBusyId] = useState<string | null>(null);
@@ -221,7 +232,10 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
     fetch("/api/account/recent-products", { cache: "no-store" })
       .then((response) => response.json())
       .then((payload) => {
-        if (active && payload.success) setRecentProducts(payload.data.items);
+        if (active && payload.success) {
+          setRecentProducts(payload.data.items);
+          setFrequentProducts(payload.data.frequent ?? []);
+        }
       })
       .catch(() => undefined);
     return () => {
@@ -439,7 +453,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
   }
 
   /** Re-adds a previously ordered product using the exact configuration it was ordered with last time. */
-  async function quickReorder(item: RecentProduct, checkout: boolean) {
+  async function quickReorder(item: { productId: string; quantity: number; configuration: Record<string, unknown> }, checkout: boolean) {
     const actionKey = `${item.productId}:${checkout ? "buy" : "cart"}`;
     setQuickActionId(actionKey);
     setQuickError((current) => ({ ...current, [item.productId]: "" }));
@@ -535,6 +549,54 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
           ) : null}
         </div>
 
+        {/* Frequently ordered — surfaced above Recently for B2B accounts, since repeat-buy speed matters most there */}
+        {isB2B && frequentProducts.length ? (
+          <section className="mt-6">
+            <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[var(--mc-muted)]">
+              <RefreshCw size={15} />
+              Frequently ordered
+            </h2>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {frequentProducts.map((item) => {
+                const isAdding = quickActionId === `${item.productId}:cart`;
+                const isBuying = quickActionId === `${item.productId}:buy`;
+                const rowError = quickError[item.productId];
+                const slug = item.slug ?? "";
+                return (
+                  <div key={item.productId} className="rounded-xl border border-[var(--mc-line)] bg-[var(--mc-paper)] p-3.5 shadow-[0_5px_16px_rgba(16,33,63,0.035)]">
+                    <div className="flex gap-3">
+                      <Link href={`/catalog/${slug}`} className="relative h-14 w-16 shrink-0 overflow-hidden rounded-lg bg-[var(--mc-accent-soft)]">
+                        <ProductImage src={item.imageUrl || "/images/mahavir-print-assortment.png"} alt={`${item.name ?? "Product"} print sample`} slug={slug} />
+                      </Link>
+                      <div className="min-w-0">
+                        <Link href={`/catalog/${slug}`} className="block truncate text-sm font-bold text-[var(--mc-ink)] hover:text-[var(--mc-accent)] transition-colors">{item.name}</Link>
+                        <p className="mt-0.5 text-xs text-[var(--mc-muted)]">Ordered {item.orderCount} times</p>
+                      </div>
+                    </div>
+                    {quickAddedId === item.productId ? (
+                      <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 border border-emerald-200">
+                        <Check size={13} /> Added to basket
+                      </p>
+                    ) : (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        <button type="button" disabled={Boolean(quickActionId)} onClick={() => void quickReorder(item, true)} className="inline-flex items-center gap-1 rounded-full bg-[var(--mc-accent)] px-3 py-1.5 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors disabled:cursor-not-allowed disabled:opacity-60">
+                          <Zap size={12} />
+                          {isBuying ? "Starting..." : "Buy now"}
+                        </button>
+                        <button type="button" disabled={Boolean(quickActionId)} onClick={() => void quickReorder(item, false)} className="inline-flex items-center gap-1 rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors disabled:cursor-not-allowed disabled:opacity-60">
+                          <ShoppingBag size={12} />
+                          {isAdding ? "Adding..." : "Reorder"}
+                        </button>
+                      </div>
+                    )}
+                    {rowError ? <p className="mt-2 text-[11px] font-semibold text-[#a53025]">{rowError} <Link href={`/catalog/${slug}`} className="underline">Configure</Link></p> : null}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+
         {/* Recently ordered — landing-view shortcut back into repeat products */}
         {recentProducts.length ? (
           <section className="mt-6">
@@ -585,6 +647,54 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
                       </div>
                     )}
                     {rowError ? <p className="mt-2 text-[11px] font-semibold text-[#a53025]">{rowError} <Link href={`/catalog/${item.slug}`} className="underline">Configure</Link></p> : null}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+
+        {/* Frequently ordered for non-B2B — same data, shown after Recently since B2C repeat-buy urgency is lower */}
+        {!isB2B && frequentProducts.length ? (
+          <section className="mt-6">
+            <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[var(--mc-muted)]">
+              <RefreshCw size={15} />
+              Frequently ordered
+            </h2>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {frequentProducts.map((item) => {
+                const isAdding = quickActionId === `${item.productId}:cart`;
+                const isBuying = quickActionId === `${item.productId}:buy`;
+                const rowError = quickError[item.productId];
+                const slug = item.slug ?? "";
+                return (
+                  <div key={item.productId} className="rounded-xl border border-[var(--mc-line)] bg-[var(--mc-paper)] p-3.5 shadow-[0_5px_16px_rgba(16,33,63,0.035)]">
+                    <div className="flex gap-3">
+                      <Link href={`/catalog/${slug}`} className="relative h-14 w-16 shrink-0 overflow-hidden rounded-lg bg-[var(--mc-accent-soft)]">
+                        <ProductImage src={item.imageUrl || "/images/mahavir-print-assortment.png"} alt={`${item.name ?? "Product"} print sample`} slug={slug} />
+                      </Link>
+                      <div className="min-w-0">
+                        <Link href={`/catalog/${slug}`} className="block truncate text-sm font-bold text-[var(--mc-ink)] hover:text-[var(--mc-accent)] transition-colors">{item.name}</Link>
+                        <p className="mt-0.5 text-xs text-[var(--mc-muted)]">Ordered {item.orderCount} times</p>
+                      </div>
+                    </div>
+                    {quickAddedId === item.productId ? (
+                      <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 border border-emerald-200">
+                        <Check size={13} /> Added to basket
+                      </p>
+                    ) : (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        <button type="button" disabled={Boolean(quickActionId)} onClick={() => void quickReorder(item, true)} className="inline-flex items-center gap-1 rounded-full bg-[var(--mc-accent)] px-3 py-1.5 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors disabled:cursor-not-allowed disabled:opacity-60">
+                          <Zap size={12} />
+                          {isBuying ? "Starting..." : "Buy now"}
+                        </button>
+                        <button type="button" disabled={Boolean(quickActionId)} onClick={() => void quickReorder(item, false)} className="inline-flex items-center gap-1 rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors disabled:cursor-not-allowed disabled:opacity-60">
+                          <ShoppingBag size={12} />
+                          {isAdding ? "Adding..." : "Reorder"}
+                        </button>
+                      </div>
+                    )}
+                    {rowError ? <p className="mt-2 text-[11px] font-semibold text-[#a53025]">{rowError} <Link href={`/catalog/${slug}`} className="underline">Configure</Link></p> : null}
                   </div>
                 );
               })}

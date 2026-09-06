@@ -2,13 +2,16 @@ import { and, asc, eq } from "drizzle-orm";
 
 import { handleApiError, jsonOk } from "@/lib/api";
 import { db } from "@/lib/db/server";
-import { categories, products } from "@/lib/db/schema";
+import { categories, products, searchLogs } from "@/lib/db/schema";
+import { getSession } from "@/lib/permissions";
 import { rankProducts } from "@/lib/search-engine";
 
 export async function GET(request: Request) {
   try {
+    const session = await getSession(request);
     const params = new URL(request.url).searchParams;
     const query = (params.get("q") ?? params.get("search"))?.trim();
+    const customerState = params.get("state")?.trim().toUpperCase();
 
     if (!query) {
       return jsonOk({
@@ -48,6 +51,21 @@ export async function GET(request: Request) {
     }));
 
     const searchResult = rankProducts(candidates, query);
+
+    // Mirrors the search-telemetry insert in /api/products/route.ts so both search
+    // entry points feed the same searchLogs table for missing-product analysis.
+    db.insert(searchLogs)
+      .values({
+        query,
+        normalizedQuery: searchResult.normalizedQuery,
+        customerState: customerState || null,
+        customerType: session?.user ? "AUTHENTICATED" : "GUEST",
+        resultCount: searchResult.total,
+        confidence: searchResult.confidence,
+        matchedProductId: searchResult.results[0]?.id || null,
+        userId: session?.user?.id || null,
+      })
+      .catch(() => undefined);
 
     const suggestions = searchResult.results.slice(0, 5).map((p) => ({
       id: p.id,

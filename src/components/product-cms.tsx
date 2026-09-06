@@ -9,8 +9,8 @@ import { adminRequest, asItems, formattedAmount } from "@/lib/admin-client";
 import { ArtworkRequirementsPanel, ConfigurationAddonsPanel } from "@/components/product-configuration-admin";
 
 type Row = Record<string, unknown>;
-type Tab = "overview" | "images" | "description" | "pricing" | "addons" | "delivery" | "artwork";
-const tabs: { id: Tab; label: string }[] = [{ id: "overview", label: "Overview" }, { id: "images", label: "Images" }, { id: "description", label: "Description" }, { id: "pricing", label: "Pricing" }, { id: "addons", label: "Add-ons" }, { id: "delivery", label: "Delivery" }, { id: "artwork", label: "Artwork" }];
+type Tab = "overview" | "images" | "description" | "pricing" | "addons" | "delivery" | "artwork" | "related";
+const tabs: { id: Tab; label: string }[] = [{ id: "overview", label: "Overview" }, { id: "images", label: "Images" }, { id: "description", label: "Description" }, { id: "pricing", label: "Pricing" }, { id: "addons", label: "Add-ons" }, { id: "delivery", label: "Delivery" }, { id: "artwork", label: "Artwork" }, { id: "related", label: "Related products" }];
 
 function text(value: unknown) { return value === null || value === undefined ? "" : String(value); }
 function bool(value: unknown, fallback = false) { return typeof value === "boolean" ? value : fallback; }
@@ -79,7 +79,7 @@ export function ProductEditor({ productId: id }: { productId?: string }) {
   return <div><header className="flex flex-col justify-between gap-4 border-b border-[#d7dce5] pb-6 sm:flex-row sm:items-end"><div><Link href="/admin/products" className="inline-flex items-center gap-1 text-sm font-semibold text-[#2457b8]"><ChevronLeft size={16} />Products</Link><p className="mt-5 text-xs font-bold uppercase tracking-[0.14em] text-[#2457b8]">Catalogue CMS</p><h1 className="mt-2 text-2xl font-bold text-[#162237] sm:text-3xl">{id ? text(product?.name) : "New product"}</h1><p className="mt-2 text-sm text-[#607089]">{id ? "Everything customer-facing for this product is managed here." : "Create the base product before adding pricing, delivery, and product content."}</p></div>{id && product ? <Link href={`/catalog/${text(product.slug)}`} target="_blank" className="inline-flex items-center gap-2 border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-bold text-[#24324a]"><ExternalLink size={16} />Customer page</Link> : null}</header>
     {error ? <Message tone="error" onDismiss={() => setError("")}>{error}</Message> : null}{notice ? <Message tone="success" onDismiss={() => setNotice("")}>{notice}</Message> : null}
     {id ? <nav className="mt-6 flex gap-1 overflow-x-auto border-b border-[#d7dce5]" aria-label="Product settings">{tabs.map((item) => <button type="button" key={item.id} onClick={() => setTab(item.id)} className={`shrink-0 border-b-2 px-3 py-3 text-sm font-bold ${activeTab === item.id ? "border-[#2457b8] text-[#2457b8]" : "border-transparent text-[#607089] hover:text-[#162237]"}`}>{item.label}</button>)}</nav> : null}
-    <section className="mt-6 border border-[#d7dce5] bg-white p-4 sm:p-6">{activeTab === "overview" || !id ? <OverviewForm product={product} categories={categories} onSave={saveOverview} /> : null}{activeTab === "images" && id ? <ImagesPanel productId={id} rows={array(catalog?.images)} onChanged={load} /> : null}{activeTab === "description" ? <DescriptionPanel rows={array(catalog?.sections)} mutate={mutateCatalog} /> : null}{activeTab === "pricing" ? <PricingPanel rows={array(catalog?.pricingRules)} mutate={mutateCatalog} /> : null}{activeTab === "addons" ? <ConfigurationAddonsPanel rows={array(catalog?.addons)} addons={addons} pricingRules={array(catalog?.pricingRules)} mutate={mutateCatalog} /> : null}{activeTab === "delivery" ? <div className="space-y-8"><DeliveryPanel rows={array(catalog?.deliveryRules)} mutate={mutateCatalog} /><LocationSurchargesPanel rows={array(catalog?.locationSurcharges)} pricingRules={array(catalog?.pricingRules)} mutate={mutateCatalog} /></div> : null}{activeTab === "artwork" ? <ArtworkRequirementsPanel rows={array(catalog?.artworkRequirements)} pricingRules={array(catalog?.pricingRules)} mutate={mutateCatalog} /> : null}</section></div>;
+    <section className="mt-6 border border-[#d7dce5] bg-white p-4 sm:p-6">{activeTab === "overview" || !id ? <OverviewForm product={product} categories={categories} onSave={saveOverview} /> : null}{activeTab === "images" && id ? <ImagesPanel productId={id} rows={array(catalog?.images)} onChanged={load} /> : null}{activeTab === "description" ? <DescriptionPanel rows={array(catalog?.sections)} mutate={mutateCatalog} /> : null}{activeTab === "pricing" ? <PricingPanel rows={array(catalog?.pricingRules)} mutate={mutateCatalog} /> : null}{activeTab === "addons" ? <ConfigurationAddonsPanel rows={array(catalog?.addons)} addons={addons} pricingRules={array(catalog?.pricingRules)} mutate={mutateCatalog} /> : null}{activeTab === "delivery" ? <div className="space-y-8"><DeliveryPanel rows={array(catalog?.deliveryRules)} mutate={mutateCatalog} /><LocationSurchargesPanel rows={array(catalog?.locationSurcharges)} pricingRules={array(catalog?.pricingRules)} mutate={mutateCatalog} /></div> : null}{activeTab === "artwork" ? <ArtworkRequirementsPanel rows={array(catalog?.artworkRequirements)} pricingRules={array(catalog?.pricingRules)} mutate={mutateCatalog} /> : null}{activeTab === "related" && id ? <RelatedProductsPanel productId={id} rows={array(catalog?.relatedProducts)} mutate={mutateCatalog} /> : null}</section></div>;
 }
 
 function OverviewForm({ product, categories, onSave }: { product: Row | null; categories: Row[]; onSave: (data: Row) => Promise<void> }) {
@@ -409,6 +409,35 @@ function DescriptionPanel({ rows, mutate }: { rows: Row[]; mutate: CatalogMutati
 
 function ContentSection({ section, mutate }: { section: Row; mutate: CatalogMutation }) { const [title, setTitle] = useState(text(section.title)); const [label, setLabel] = useState(""); const [content, setContent] = useState(""); const items = array(section.items); return <section className="border border-[#d7dce5] p-4"><div className="flex flex-col gap-3 sm:flex-row"><input value={title} onChange={(event) => setTitle(event.target.value)} className="min-w-0 flex-1 border border-[#c9d2df] px-3 py-2 text-sm font-bold" /><button type="button" onClick={() => void mutate("PATCH", "SECTION", { title }, text(section.id))} className="border border-[#c9d2df] px-3 py-2 text-xs font-bold">Save title</button><DeleteButton onClick={() => mutate("DELETE", "SECTION", {}, text(section.id))} /></div><div className="mt-4 divide-y divide-[#e8ecf2]">{items.map((item) => <ContentItem key={text(item.id)} item={item} mutate={mutate} />)}</div><form className="mt-4 grid gap-2 sm:grid-cols-[12rem_minmax(0,1fr)_auto]" onSubmit={async (event) => { event.preventDefault(); await mutate("POST", "SECTION_ITEM", { sectionId: text(section.id), label: label || null, content, sortOrder: items.length }); setLabel(""); setContent(""); }}><input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Label" className="border border-[#c9d2df] px-3 py-2 text-sm" /><input required value={content} onChange={(event) => setContent(event.target.value)} placeholder="Content" className="border border-[#c9d2df] px-3 py-2 text-sm" /><button className="bg-[#edf3ff] px-3 py-2 text-sm font-bold text-[#2457b8]">Add row</button></form></section>; }
 function ContentItem({ item, mutate }: { item: Row; mutate: CatalogMutation }) { const [label, setLabel] = useState(text(item.label)); const [content, setContent] = useState(text(item.content)); return <div className="grid gap-2 py-3 sm:grid-cols-[12rem_minmax(0,1fr)_auto]"><input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Label" className="border border-[#c9d2df] px-2 py-1.5 text-sm" /><input value={content} onChange={(event) => setContent(event.target.value)} className="border border-[#c9d2df] px-2 py-1.5 text-sm" /><div className="flex gap-2"><button type="button" onClick={() => void mutate("PATCH", "SECTION_ITEM", { label: label || null, content }, text(item.id))} className="border border-[#c9d2df] px-2 py-1.5 text-xs font-bold">Save</button><DeleteButton onClick={() => mutate("DELETE", "SECTION_ITEM", {}, text(item.id))} /></div></div>; }
+
+/** "You might also need" pairings shown on the customer product page — curated here, falls back to same-category products when empty. No template builder, just pick-and-remove. */
+function RelatedProductsPanel({ productId, rows, mutate }: { productId: string; rows: Row[]; mutate: CatalogMutation }) {
+  const [allProducts, setAllProducts] = useState<Row[]>([]);
+  const [selected, setSelected] = useState("");
+  useEffect(() => { void adminRequest<Row[]>("/api/admin/products").then(setAllProducts).catch(() => undefined); }, []);
+  const relatedIds = new Set(rows.map((row) => text(row.relatedProductId)));
+  const options = allProducts.filter((item) => productId !== text(item.id) && !relatedIds.has(text(item.id)));
+  return (
+    <div>
+      <PanelTitle title="Related products" description="Shown as “You might also need” on this product's customer page. Falls back to same-category products when nothing is picked here." />
+      <form className="mt-5 flex flex-col gap-3 sm:flex-row" onSubmit={async (event) => { event.preventDefault(); if (!selected) return; await mutate("POST", "RELATED_PRODUCT", { relatedProductId: selected }); setSelected(""); }}>
+        <select required value={selected} onChange={(event) => setSelected(event.target.value)} className="min-w-0 flex-1 border border-[#c9d2df] px-3 py-2.5 text-sm">
+          <option value="">Choose a product to relate...</option>
+          {options.map((item) => <option key={text(item.id)} value={text(item.id)}>{text(item.name)}</option>)}
+        </select>
+        <button className="inline-flex items-center justify-center gap-2 bg-[#2457b8] px-3 py-2.5 text-sm font-bold text-white"><Plus size={16} />Add</button>
+      </form>
+      <div className="mt-5 divide-y divide-[#e8ecf2]">
+        {rows.length ? rows.map((row) => (
+          <div key={text(row.id)} className="flex items-center justify-between gap-3 py-3 text-sm">
+            <span className="font-semibold text-[#162237]">{text(row.relatedProductName)}</span>
+            <DeleteButton onClick={() => mutate("DELETE", "RELATED_PRODUCT", {}, text(row.id))} />
+          </div>
+        )) : <p className="py-3 text-sm text-[#607089]">No related products curated yet.</p>}
+      </div>
+    </div>
+  );
+}
 
 function PricingPanel({ rows, mutate }: { rows: Row[]; mutate: CatalogMutation }) {
   const b2c = rows.filter((row) => text(row.customerType) !== "B2B");

@@ -1,7 +1,7 @@
 "use client";
 
-import { CheckCircle2, FileBox, RefreshCw, Trash2, UploadCloud, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { CheckCircle2, FileBox, History, RefreshCw, Trash2, UploadCloud, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { formatDimensions } from "@/lib/formatting";
 
@@ -37,6 +37,35 @@ export function ArtworkUploader({ productId, pricingRuleId, requirement, slot, s
   const [phase, setPhase] = useState<"idle" | "uploading" | "processing" | "failed">("idle");
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [reusable, setReusable] = useState<{ id: string; fileName: string } | null>(null);
+  const [reusing, setReusing] = useState(false);
+
+  // A prior upload for this exact product + configuration is offered as "Use previous
+  // artwork" — never applied automatically. Picking it still goes through the same
+  // compatibility check (validateRequiredArtwork) as a fresh upload does at checkout.
+  useEffect(() => {
+    if (artwork) return;
+    let active = true;
+    const params = new URLSearchParams();
+    if (pricingRuleId) params.set("pricingRuleId", pricingRuleId);
+    fetch(`/api/products/${productId}/artwork/reusable?${params.toString()}`, { cache: "no-store" })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!active || !payload?.success) return;
+        const slotKey = slot?.slotKey ?? "MAIN";
+        const match = (payload.data.candidates as Array<{ id: string; fileName: string; slotKey: string }>).find((candidate) => candidate.slotKey === slotKey);
+        setReusable(match ? { id: match.id, fileName: match.fileName } : null);
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [artwork, productId, pricingRuleId, slot?.slotKey]);
+
+  function useReusable() {
+    if (!reusable) return;
+    setReusing(true);
+    onUploaded({ id: reusable.id, originalFileName: reusable.fileName, fileSize: 0, fileType: "cdr", status: "APPROVED", uploadedAt: new Date().toISOString(), artworkSlotKey: slot?.slotKey ?? "MAIN" });
+    setReusing(false);
+  }
 
   function choose() { input.current?.click(); }
 
@@ -214,17 +243,24 @@ export function ArtworkUploader({ productId, pricingRuleId, requirement, slot, s
           }}
         />
         {!artwork ? (
-          <button
-            type="button"
-            onClick={choose}
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={drop}
-            disabled={busy}
-            className="flex w-full items-center justify-center gap-2 rounded-full border border-dashed border-[#9caed0] bg-white px-4 py-2 text-sm font-bold text-[#2457b8] hover:border-[#2457b8] transition disabled:opacity-60"
-          >
-            <UploadCloud size={16} />
-            {busy ? (phase === "processing" ? "Processing..." : progress === null ? "Uploading..." : `Uploading ${progress}%`) : `Upload ${slot?.name ?? "CDR artwork"}`}
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={choose}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={drop}
+              disabled={busy}
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-dashed border-[#9caed0] bg-white px-4 py-2 text-sm font-bold text-[#2457b8] hover:border-[#2457b8] transition disabled:opacity-60"
+            >
+              <UploadCloud size={16} />
+              {busy ? (phase === "processing" ? "Processing..." : progress === null ? "Uploading..." : `Uploading ${progress}%`) : `Upload ${slot?.name ?? "CDR artwork"}`}
+            </button>
+            {reusable ? (
+              <button type="button" onClick={useReusable} disabled={busy || reusing} className="flex w-full items-center justify-center gap-1.5 text-xs font-bold text-[#2457b8] hover:underline disabled:opacity-60">
+                <History size={13} />Use previous artwork ({reusable.fileName})
+              </button>
+            ) : null}
+          </>
         ) : (
           <div className="flex w-full items-center justify-between gap-2 rounded-full border border-[#c8d7f1] bg-[#f5f8ff] px-4 py-2 text-sm">
             <span className="flex min-w-0 items-center gap-1.5 truncate font-semibold text-[#162237]">
@@ -302,18 +338,25 @@ export function ArtworkUploader({ productId, pricingRuleId, requirement, slot, s
       ) : null}
 
       {!artwork ? (
-        <button
-          type="button"
-          onClick={choose}
-          onDragOver={(event) => event.preventDefault()}
-          onDrop={drop}
-          disabled={phase === "uploading" || phase === "processing"}
-          className="mt-4 flex w-full flex-col items-center justify-center border border-dashed border-[#9caed0] bg-white px-4 py-7 text-center hover:border-[#2457b8] transition cursor-pointer"
-        >
-          <UploadCloud size={28} className="text-[#2457b8]" />
-          <span className="mt-2 text-[15px] font-bold text-[#162237]">Upload CDR artwork</span>
-          <span className="mt-1 text-[13px] text-[#607089]">Drop your CorelDRAW file here, or select it from your device.</span>
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={choose}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={drop}
+            disabled={phase === "uploading" || phase === "processing"}
+            className="mt-4 flex w-full flex-col items-center justify-center border border-dashed border-[#9caed0] bg-white px-4 py-7 text-center hover:border-[#2457b8] transition cursor-pointer"
+          >
+            <UploadCloud size={28} className="text-[#2457b8]" />
+            <span className="mt-2 text-[15px] font-bold text-[#162237]">Upload CDR artwork</span>
+            <span className="mt-1 text-[13px] text-[#607089]">Drop your CorelDRAW file here, or select it from your device.</span>
+          </button>
+          {reusable ? (
+            <button type="button" onClick={useReusable} disabled={phase === "uploading" || phase === "processing" || reusing} className="mt-2 flex w-full items-center justify-center gap-1.5 text-[13px] font-bold text-[#2457b8] hover:underline disabled:opacity-60">
+              <History size={14} />Use previous artwork ({reusable.fileName})
+            </button>
+          ) : null}
+        </>
       ) : (
         <div
           className="relative mt-4 border border-[#c8d7f1] bg-white p-4 transition"

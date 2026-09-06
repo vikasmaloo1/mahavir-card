@@ -1,68 +1,16 @@
-import { eq, inArray } from "drizzle-orm";
-
 import { handleApiError, jsonError, jsonOk } from "@/lib/api";
-import { extractArtworkIds } from "@/lib/artwork-validation";
-import { db } from "@/lib/db/server";
-import { artworks, orderItems, orders, orderStatusEvents, quoteItems, quotes } from "@/lib/db/schema";
 import { requireRole } from "@/lib/permissions";
+import { convertQuoteToOrder } from "@/lib/quote-conversion";
 
 export async function POST(request: Request, ctx: RouteContext<"/api/admin/quotes/[id]/convert-to-order">) {
   try {
     await requireRole(request, ["ADMIN"]);
     const { id } = await ctx.params;
-    const [quote] = await db.select().from(quotes).where(eq(quotes.id, id)).limit(1);
-    if (!quote) return jsonError("Quote not found", 404);
-    if (quote.status !== "CUSTOMER_APPROVED") return jsonError("Only a customer-approved quote can be converted", 409);
-    const [existing] = await db.select().from(orders).where(eq(orders.quoteId, id)).limit(1);
-    if (existing) return jsonOk(existing);
-    const items = await db.select().from(quoteItems).where(eq(quoteItems.quoteId, id));
-    if (!items.length) return jsonError("Add at least one quote item before conversion", 409);
-    const order = await db.transaction(async (tx) => {
-      const [created] = await tx.insert(orders).values({
-        orderNumber: `MHC-O-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
-        quoteId: quote.id,
-        customerId: quote.customerId,
-        status: "CONFIRMED",
-        subtotal: quote.subtotal,
-        taxableSubtotal: quote.taxableSubtotal,
-        tax: quote.tax,
-        taxType: quote.taxType,
-        taxRate: quote.taxRate,
-        cgstRate: quote.cgstRate,
-        cgstAmount: quote.cgstAmount,
-        sgstRate: quote.sgstRate,
-        sgstAmount: quote.sgstAmount,
-        igstRate: quote.igstRate,
-        igstAmount: quote.igstAmount,
-        taxJurisdictionState: quote.taxJurisdictionState,
-        total: quote.total,
-        notes: quote.notes,
-      }).returning();
-      if (!created) return null;
-      await tx.insert(orderStatusEvents).values({ orderId: created.id, status: created.status, notes: `Created from quote ${quote.quoteNumber}` });
-      await tx.insert(orderItems).values(items.map((item) => ({
-        orderId: created.id,
-        productId: item.productId,
-        variantId: item.variantId,
-        description: item.description,
-        configuration: item.configuration,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        taxableAmount: item.taxableAmount,
-        taxAmount: item.taxAmount,
-        cgstAmount: item.cgstAmount,
-        sgstAmount: item.sgstAmount,
-        igstAmount: item.igstAmount,
-        totalPrice: item.totalPrice,
-        pricingSnapshot: { ...item.pricingSnapshot, quoteId: quote.id, quoteItemId: item.id, discountAmount: quote.discountAmount },
-      })));
-      await tx.update(quotes).set({ status: "CONVERTED_TO_ORDER", updatedAt: new Date() }).where(eq(quotes.id, id));
-      const quoteArtworkIds = [...new Set(items.flatMap((item) => extractArtworkIds((item.configuration ?? {}) as Record<string, unknown>)))];
-      if (quoteArtworkIds.length) {
-        await tx.update(artworks).set({ orderId: created.id }).where(inArray(artworks.id, quoteArtworkIds));
-      }
-      return created;
-    });
-    return order ? jsonOk(order, 201) : jsonError("Order was not created", 500);
+    const result = await convertQuoteToOrder(id);
+    if (result.ok) return jsonOk(result.order, result.created ? 201 : 200);
+    if (result.reason === "NOT_FOUND") return jsonError("Quote not found", 404);
+    if (result.reason === "NOT_APPROVED") return jsonError("Only a customer-approved quote can be converted", 409);
+    if (result.reason === "EMPTY") return jsonError("Add at least one quote item before conversion", 409);
+    return jsonError("Order was not created", 500);
   } catch (error) { return error instanceof Response ? error : handleApiError(error); }
 }

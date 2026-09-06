@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { ArtworkUploader, type ArtworkRequirement, type UploadedArtwork } from "@/components/artwork-uploader";
+import { ProductImage } from "@/components/product-image";
 import type { CatalogProduct } from "@/lib/catalog";
 import { formatInr, formatRoundOff } from "@/lib/formatting";
 import { commerceStates } from "@/lib/india-states";
@@ -36,7 +37,7 @@ type Estimate = {
   warnings: string[];
   applicableRule?: string | null;
 };
-type ProductDetails = { addons: Addon[]; pricingRules: PricingRule[]; deliveryRules: Array<{ deliveryMethod: Delivery["method"]; stateCode: string; price: string }>; artworkRequirements: Array<ArtworkRequirement & { pricingRuleId: string | null }>; };
+type ProductDetails = { addons: Addon[]; pricingRules: PricingRule[]; deliveryRules: Array<{ deliveryMethod: Delivery["method"]; stateCode: string; price: string }>; artworkRequirements: Array<ArtworkRequirement & { pricingRuleId: string | null }>; relatedProducts?: Array<{ id: string; name: string; slug: string; imageUrl: string | null }>; };
 type CartKind = "PURCHASE" | "QUOTE";
 type EditableCartItem = { id: string; quantity: number; jobName: string | null; configuration: Record<string, unknown> };
 
@@ -443,8 +444,42 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
             </div>
           )}
           {status === "cart" ? <a href="/cart" className="block text-center text-[15px] font-bold text-[#2457b8] hover:underline">View purchase basket &rarr;</a> : null}
+          <button
+            type="button"
+            onClick={() => {
+              setQuoteContext({
+                mode: "CUSTOM_REQUEST",
+                title: "Need something different?",
+                subtitle: `Tell us how ${product.name} needs to differ (size, quantity, material) and we'll send a custom quote.`,
+                productName: product.name,
+                category: product.category,
+                quantity,
+                customerState: delivery?.stateCode && delivery.stateCode !== "*" ? delivery.stateCode : undefined,
+              });
+              setIsQuoteModalOpen(true);
+            }}
+            className="block w-full text-center text-[13px] font-semibold text-[#607089] hover:text-[#2457b8] hover:underline transition-colors"
+          >
+            Need something different? Request a custom quote &rarr;
+          </button>
         </div>
       </section>
+
+      {details?.relatedProducts?.length ? (
+        <section className="mt-5 rounded-xl border border-[#dfe5ef] bg-white p-5">
+          <p className="text-[13px] font-bold uppercase tracking-[0.13em] text-[#2457b8]">You might also need</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {details.relatedProducts.map((related) => (
+              <Link key={related.id} href={`/catalog/${related.slug}`} className="flex items-center gap-3 rounded-lg border border-[#dfe5ef] p-2.5 hover:border-[#2457b8] transition-colors">
+                <span className="relative h-12 w-14 shrink-0 overflow-hidden rounded bg-[#eef4ff]">
+                  <ProductImage src={related.imageUrl || "/images/mahavir-print-assortment.png"} alt={related.name} slug={related.slug} />
+                </span>
+                <span className="text-sm font-bold text-[#162237]">{related.name}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* Mobile Sticky Bottom Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--mc-line)] bg-white/95 p-3 backdrop-blur shadow-[0_-8px_20px_rgba(16,33,63,0.08)] sm:hidden">

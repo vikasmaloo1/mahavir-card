@@ -5,6 +5,7 @@ import { db } from "@/lib/db/server";
 import { cartItems, customers, quoteItems, quotes } from "@/lib/db/schema";
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
 import { getAdminAccess, requireUser } from "@/lib/permissions";
+import { quoteOwnershipCondition } from "@/lib/quote-ownership";
 import { quoteSubmitSchema } from "@/lib/validation";
 
 function makeNumber() {
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
     const admin = await getAdminAccess(request);
     const data = admin
       ? await db.select().from(quotes).orderBy(desc(quotes.createdAt))
-      : await db.select().from(quotes).where(eq(quotes.userId, session.user.id)).orderBy(desc(quotes.createdAt));
+      : await db.select().from(quotes).where(await quoteOwnershipCondition(session.user.id)).orderBy(desc(quotes.createdAt));
     return jsonOk(data);
   } catch (error) {
     return error instanceof Response ? error : handleApiError(error);

@@ -3,6 +3,7 @@ import { desc, eq } from "drizzle-orm";
 import { handleApiError, jsonOk } from "@/lib/api";
 import { db } from "@/lib/db/server";
 import { customers, orderItems, orders, products } from "@/lib/db/schema";
+import { groupFrequentProducts } from "@/lib/frequent-products";
 import { requireUser } from "@/lib/permissions";
 
 /**
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
   try {
     const session = await requireUser(request);
     const [customer] = await db.select().from(customers).where(eq(customers.userId, session.user.id)).limit(1);
-    if (!customer) return jsonOk({ items: [] });
+    if (!customer) return jsonOk({ items: [], frequent: [] });
 
     const rows = await db
       .select({
@@ -59,7 +60,7 @@ export async function GET(request: Request) {
       if (items.length >= 5) break;
     }
 
-    return jsonOk({ items });
+    return jsonOk({ items, frequent: groupFrequentProducts(rows) });
   } catch (error) {
     return error instanceof Response ? error : handleApiError(error);
   }

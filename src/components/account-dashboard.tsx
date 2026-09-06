@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, FileQuestion, FileText, MapPin, Package, Palette, RefreshCw, ShoppingBag } from "lucide-react";
+import { ArrowRight, Bookmark, FileQuestion, FileText, MapPin, Package, Palette, RefreshCw, ShoppingBag } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { formatInr } from "@/lib/formatting";
 import { cachedFetchJson } from "@/lib/client-fetch-cache";
 import { useAutoRefresh } from "@/lib/use-auto-refresh";
+
+type SavedJob = { id: string; name: string; productId: string; productName: string; productSlug: string; quantity: number };
 
 type AccountData = {
   user: { name: string; email: string; phoneNumber?: string | null };
@@ -38,6 +40,46 @@ export function AccountDashboard() {
   const [reorderingId, setReorderingId] = useState<string | null>(null);
   const [reorderError, setReorderError] = useState("");
   const [orderFilter, setOrderFilter] = useState<OrderBucket>("ALL");
+  const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
+  const [savedJobActionId, setSavedJobActionId] = useState<string | null>(null);
+  const [savedJobError, setSavedJobError] = useState("");
+
+  const loadSavedJobs = useCallback(async () => {
+    try {
+      const response = await fetch("/api/account/saved-jobs", { cache: "no-store" });
+      const payload = await response.json().catch(() => null);
+      if (payload?.success) {
+        setSavedJobs(payload.data.items.map((item: { id: string; name: string; productId: string; productName: string; productSlug: string; quantity: number }) => ({ id: item.id, name: item.name, productId: item.productId, productName: item.productName, productSlug: item.productSlug, quantity: item.quantity })));
+      }
+    } catch { /* Saved jobs are a convenience panel — a failed fetch just leaves it empty. */ }
+  }, []);
+
+  async function orderJobAgain(jobId: string) {
+    setSavedJobActionId(jobId); setSavedJobError("");
+    try {
+      const response = await fetch(`/api/account/saved-jobs/${jobId}/order-again`, { method: "POST" });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "This job could not be added to your basket");
+      router.push("/cart");
+    } catch (caught) {
+      setSavedJobError(caught instanceof Error ? caught.message : "This job could not be added to your basket");
+      setSavedJobActionId(null);
+    }
+  }
+
+  async function deleteSavedJob(jobId: string) {
+    setSavedJobActionId(jobId); setSavedJobError("");
+    try {
+      const response = await fetch(`/api/account/saved-jobs/${jobId}`, { method: "DELETE" });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "This job could not be removed");
+      setSavedJobs((current) => current.filter((job) => job.id !== jobId));
+    } catch (caught) {
+      setSavedJobError(caught instanceof Error ? caught.message : "This job could not be removed");
+    } finally {
+      setSavedJobActionId(null);
+    }
+  }
 
   async function reorder(orderId: string) {
     setReorderingId(orderId);
@@ -70,9 +112,9 @@ export function AccountDashboard() {
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0);
+    const timer = window.setTimeout(() => { void load(); void loadSavedJobs(); }, 0);
     return () => window.clearTimeout(timer);
-  }, [load]);
+  }, [load, loadSavedJobs]);
 
   useAutoRefresh(load);
 
@@ -82,6 +124,28 @@ export function AccountDashboard() {
 
   const openQuotes = data.quotes.filter((quote) => !["CUSTOMER_REJECTED", "EXPIRED", "CONVERTED_TO_ORDER", "CANCELLED"].includes(quote.status)).length;
   const activeOrders = data.orders.filter((order) => !["DELIVERED", "CANCELLED"].includes(order.status)).length;
+  const isB2B = data.customer?.customerType === "B2B";
+
+  const savedJobsSection = (
+    <section id="saved-jobs" className="scroll-mt-36 rounded-xl border border-[var(--mc-line)] bg-white p-5 sm:p-6 shadow-sm">
+      <h2 className="flex items-center gap-2 font-bold text-[var(--mc-ink)]"><Bookmark size={17} className="text-[var(--mc-accent)]" />Saved jobs</h2>
+      {savedJobError ? <p className="mt-2 text-xs font-semibold text-[#9b2525]">{savedJobError}</p> : null}
+      <div className="mt-3 space-y-3">
+        {savedJobs.length ? savedJobs.map((job) => (
+          <div key={job.id} className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] pt-3 text-sm">
+            <div className="min-w-0">
+              <strong className="block truncate">{job.name}</strong>
+              <small className="mt-1 block text-[var(--mc-muted)]">{job.productName} · Qty {job.quantity.toLocaleString("en-IN")}</small>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <button type="button" disabled={savedJobActionId === job.id} onClick={() => void orderJobAgain(job.id)} className="inline-flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-3 py-1.5 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"><ShoppingBag size={13} />{savedJobActionId === job.id ? "Adding..." : "Order again"}</button>
+              <button type="button" disabled={savedJobActionId === job.id} onClick={() => void deleteSavedJob(job.id)} className="rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-muted)] hover:bg-[var(--mc-surface)] transition-colors disabled:cursor-not-allowed disabled:opacity-60">Remove</button>
+            </div>
+          </div>
+        )) : <p className="border-t border-dashed border-[var(--mc-line)] pt-5 text-sm text-[var(--mc-muted)]">No saved jobs yet. Save a job from any order to reorder it in one click.</p>}
+      </div>
+    </section>
+  );
 
   return (
     <div>
@@ -158,7 +222,11 @@ export function AccountDashboard() {
             })()}
           </div>
         </section>
-        <Records id="quotes" title="Quotes" items={data.quotes} empty="No quote requests yet." action="Open quote basket" href="/quote" itemHref={(item) => `/account/quotes/${item.id}`} render={(item) => <><span><strong>{item.quoteNumber}</strong><small className="mt-1 block text-[var(--mc-muted)]">{labelStatus(item.status)} / {date(item.createdAt)}</small></span><strong>{formatInr(item.total)}</strong></>} />
+        {(() => {
+          const quotesSection = <Records key="quotes" id="quotes" title="Quotes" items={data.quotes} empty="No quote requests yet." action="Open quote basket" href="/quote" itemHref={(item) => `/account/quotes/${item.id}`} render={(item) => <><span><strong>{item.quoteNumber}</strong><small className="mt-1 block text-[var(--mc-muted)]">{labelStatus(item.status)} / {date(item.createdAt)}</small></span><strong>{formatInr(item.total)}</strong></>} />;
+          // B2B accounts see Saved jobs and Quotes ahead of Inquiries/Artwork — repeat-order and quote-status are what a B2B customer checks first.
+          return isB2B ? <>{savedJobsSection}{quotesSection}</> : <>{quotesSection}{savedJobsSection}</>;
+        })()}
         <Records title="Inquiries" items={data.inquiries} empty="No inquiries yet." action="Contact Mahavir Card" href="/contact" render={(item) => <><span className="min-w-0"><strong className="block truncate">{item.subject || "General inquiry"}</strong><small className="mt-1 block text-[var(--mc-muted)]">{labelStatus(item.status)} / {date(item.createdAt)}</small></span><FileQuestion size={18} className="shrink-0 text-[var(--mc-accent)]" /></>} />
         <Records title="Artwork" items={data.artworks} empty="No CDR artwork uploaded yet." action="Choose a product" href="/products" render={(item) => <><span className="min-w-0"><strong className="block truncate">{item.fileName}</strong><small className="mt-1 block text-[var(--mc-muted)]">{labelStatus(item.status)} / {date(item.createdAt)}</small></span><Palette size={18} className="shrink-0 text-[var(--mc-accent)]" /></>} />
       </div>

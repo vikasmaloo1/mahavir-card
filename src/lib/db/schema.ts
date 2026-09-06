@@ -778,3 +778,37 @@ export const searchLogs = pgTable(
   },
   (table) => [index("search_logs_query_idx").on(table.query), index("search_logs_created_idx").on(table.createdAt)],
 );
+
+/**
+ * A customer's saved, reusable job (e.g. "ABC Company Visiting Card") — product +
+ * configuration + quantity captured from a past order, so "Order Again" skips
+ * reconfiguration entirely. Deliberately thin: no template builder, just a named
+ * snapshot of inputs that already flow through the normal cart pricing path.
+ */
+export const savedJobs = pgTable(
+  "saved_jobs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    customerId: uuid("customerId").notNull().references(() => customers.id, { onDelete: "cascade" }),
+    productId: uuid("productId").notNull().references(() => products.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    configuration: jsonb("configuration").$type<Record<string, unknown>>().notNull().default({}),
+    quantity: integer("quantity").notNull().default(1),
+    sortOrder: integer("sortOrder").notNull().default(0),
+    ...timestamps,
+  },
+  (table) => [index("saved_jobs_customer_idx").on(table.customerId, table.sortOrder)],
+);
+
+/** Curated "you might also need" pairings between products, admin-managed. Falls back to same-category products when a product has no curated relations. */
+export const productRelations = pgTable(
+  "product_relations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    productId: uuid("productId").notNull().references(() => products.id, { onDelete: "cascade" }),
+    relatedProductId: uuid("relatedProductId").notNull().references(() => products.id, { onDelete: "cascade" }),
+    sortOrder: integer("sortOrder").notNull().default(0),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex("product_relations_pair_idx").on(table.productId, table.relatedProductId)],
+);

@@ -1,17 +1,14 @@
-import { and, eq, or } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
-import { artworks, customers, orders, quoteItems, quotes, storedDocuments } from "@/lib/db/schema";
+import { artworks, orders, quoteItems, quotes, storedDocuments } from "@/lib/db/schema";
 import { db } from "@/lib/db/server";
 import { requireUser } from "@/lib/permissions";
+import { convertQuoteToOrder, isQuoteExpired } from "@/lib/quote-conversion";
+import { quoteOwnershipCondition as ownershipCondition } from "@/lib/quote-ownership";
 
 const decisionSchema = z.object({ decision: z.enum(["APPROVE", "REJECT"]), message: z.string().trim().max(1000).nullable().optional() });
-
-async function ownershipCondition(userId: string, quoteId: string) {
-  const [customer] = await db.select({ id: customers.id }).from(customers).where(eq(customers.userId, userId)).limit(1);
-  return and(eq(quotes.id, quoteId), customer ? or(eq(quotes.userId, userId), eq(quotes.customerId, customer.id)) : eq(quotes.userId, userId));
-}
 
 export async function GET(request: Request, ctx: RouteContext<"/api/account/quotes/[id]">) {
   try {
@@ -36,9 +33,24 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/account/qu
     const session = await requireUser(request);
     const { id } = await ctx.params;
     const input = await readBody(request, decisionSchema);
+
+    if (input.decision === "APPROVE") {
+      const [existing] = await db.select({ validUntil: quotes.validUntil }).from(quotes).where(and(await ownershipCondition(session.user.id, id), eq(quotes.status, "SENT_TO_CUSTOMER"))).limit(1);
+      if (!existing) return jsonError("This quote is not awaiting your decision", 409);
+      if (isQuoteExpired(existing)) return jsonError("This quotation's validity period has passed. Request a new quote for the same or updated specifications.", 409);
+    }
+
     const status = input.decision === "APPROVE" ? "CUSTOMER_APPROVED" : "CUSTOMER_REJECTED";
     const [quote] = await db.update(quotes).set({ status, customerMessage: input.message ?? null, updatedAt: new Date() }).where(and(await ownershipCondition(session.user.id, id), eq(quotes.status, "SENT_TO_CUSTOMER"))).returning();
-    return quote ? jsonOk(quote) : jsonError("This quote is not awaiting your decision", 409);
+    if (!quote) return jsonError("This quote is not awaiting your decision", 409);
+
+    if (input.decision === "APPROVE") {
+      const result = await convertQuoteToOrder(id);
+      if (!result.ok) return jsonOk(quote); // Approved, but order creation needs admin attention (e.g. quote had no items) — surfaced via the admin quote view.
+      return jsonOk({ ...quote, order: result.order });
+    }
+
+    return jsonOk(quote);
   } catch (error) {
     return error instanceof Response ? error : handleApiError(error);
   }
