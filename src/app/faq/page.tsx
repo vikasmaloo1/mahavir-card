@@ -9,6 +9,13 @@ import { StorefrontHeader } from "@/components/storefront-header";
 export const metadata: Metadata = {
   title: "Frequently Asked Questions",
   description: "Answers about ordering, artwork, GST/pricing, payment, delivery, B2B accounts, quotes, and reorders at Mahavir Card.",
+  alternates: { canonical: "/faq" },
+  openGraph: {
+    title: "Frequently Asked Questions | Mahavir Card",
+    description: "Ordering, artwork, GST/pricing, payment, delivery, B2B, quotes, and reorders — answered from how the system actually works.",
+    url: "https://mahavircard.in/faq",
+    type: "website",
+  },
 };
 
 export default async function FaqPage() {

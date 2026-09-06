@@ -7,7 +7,7 @@ import { citiesForState, commerceStates, indiaStateName } from "@/lib/india-stat
 
 type ProfilePayload = {
   user: { name: string; email: string; phoneNumber?: string | null };
-  customer: { contactName: string; companyName: string; phone: string | null; customerType: "B2B" | "B2C"; city: string | null; state: string | null; stateCode: string | null; gstNumber: string | null } | null;
+  customer: { contactName: string; companyName: string; phone: string | null; customerType: "B2B" | "B2C"; city: string | null; state: string | null; stateCode: string | null; gstNumber: string | null; emailNotificationsEnabled?: boolean; whatsappNotificationsEnabled?: boolean } | null;
   address: { line1: string; line2: string | null; postalCode: string } | null;
   profileComplete: boolean;
 };
@@ -16,7 +16,7 @@ const fieldClass = "mt-1.5 w-full rounded-lg border border-[var(--mc-line)] bg-w
 
 export function CustomerProfileForm() {
   const [data, setData] = useState<ProfilePayload | null>(null);
-  const [form, setForm] = useState({ contactName: "", companyName: "", phone: "", city: "", stateCode: "GJ", gstNumber: "", line1: "", line2: "", postalCode: "" });
+  const [form, setForm] = useState({ contactName: "", companyName: "", phone: "", city: "", stateCode: "GJ", gstNumber: "", line1: "", line2: "", postalCode: "", emailNotificationsEnabled: true, whatsappNotificationsEnabled: true });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -40,6 +40,8 @@ export function CustomerProfileForm() {
           line1: next.address?.line1 ?? "",
           line2: next.address?.line2 ?? "",
           postalCode: next.address?.postalCode ?? "",
+          emailNotificationsEnabled: next.customer?.emailNotificationsEnabled ?? true,
+          whatsappNotificationsEnabled: next.customer?.whatsappNotificationsEnabled ?? true,
         });
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Profile could not be loaded.");
@@ -70,6 +72,8 @@ export function CustomerProfileForm() {
           state: indiaStateName(form.stateCode),
           gstNumber: form.gstNumber || null,
           address: hasAddress ? { line1: form.line1, line2: form.line2 || null, postalCode: form.postalCode } : null,
+          emailNotificationsEnabled: form.emailNotificationsEnabled,
+          whatsappNotificationsEnabled: form.whatsappNotificationsEnabled,
         }),
       });
       const payload = await response.json();
@@ -106,6 +110,14 @@ export function CustomerProfileForm() {
       <label className="block text-sm font-semibold text-[var(--mc-ink)] sm:col-span-2">Address line 2 <span className="font-normal text-[var(--mc-muted)]">(optional)</span><input value={form.line2} onChange={update("line2")} className={fieldClass} /></label>
       <Field label="Postal code" value={form.postalCode} onChange={update("postalCode")} required={Boolean(form.line1)} />
     </div></section>
+    <section className="rounded-xl border border-[var(--mc-line)] bg-white p-5 sm:p-6 shadow-sm">
+      <h2 className="font-bold text-lg text-[var(--mc-ink)]">Notification preferences</h2>
+      <p className="mt-1 text-sm text-[var(--mc-muted)]">Transactional updates about your quotes, orders, and payments — not marketing.</p>
+      <div className="mt-4 space-y-3">
+        <label className="flex items-center gap-2.5 text-sm font-semibold text-[var(--mc-ink)]"><input type="checkbox" checked={form.emailNotificationsEnabled} onChange={(event) => setForm((current) => ({ ...current, emailNotificationsEnabled: event.target.checked }))} className="size-4" />Email notifications</label>
+        <label className="flex items-center gap-2.5 text-sm font-semibold text-[var(--mc-ink)]"><input type="checkbox" checked={form.whatsappNotificationsEnabled} onChange={(event) => setForm((current) => ({ ...current, whatsappNotificationsEnabled: event.target.checked }))} className="size-4" />WhatsApp notifications</label>
+      </div>
+    </section>
     {error ? <p role="alert" className="rounded-xl border border-[#efc4be] bg-[#fff6f4] p-3.5 text-sm text-[#a9362c]">{error}</p> : null}
     {message ? <p className="rounded-xl border border-[#b9dec9] bg-[#f2fbf6] p-3.5 text-sm font-semibold text-[#187044]">{message}</p> : null}
     <div className="flex justify-end"><button disabled={saving} className="inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-6 py-3 text-sm font-bold text-white shadow-sm hover:bg-[var(--mc-accent-dark)] transition-colors disabled:opacity-60"><Save size={17} />{saving ? "Saving..." : "Save profile"}</button></div>

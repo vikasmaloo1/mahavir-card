@@ -8,6 +8,13 @@ import { StorefrontHeader } from "@/components/storefront-header";
 export const metadata: Metadata = {
   title: "Artwork & CDR Guide",
   description: "CorelDRAW (CDR) artwork specifications — accepted formats, dimensions, safe area, and slots — for Mahavir Card products.",
+  alternates: { canonical: "/artwork-guide" },
+  openGraph: {
+    title: "Artwork & CDR Guide | Mahavir Card",
+    description: "Exact CDR artwork specifications — dimensions, safe area, and required files — pulled from real product requirements.",
+    url: "https://mahavircard.in/artwork-guide",
+    type: "website",
+  },
 };
 
 const COMMON_MISTAKES = [

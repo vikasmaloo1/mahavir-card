@@ -103,6 +103,9 @@ export const customers = pgTable(
     walletBalance: numeric("walletBalance", { precision: 12, scale: 2 }).notNull().default("0"),
     paymentTermsDays: integer("paymentTermsDays").notNull().default(0),
     status: text("status").notNull().default("ACTIVE"),
+    /** Transactional-only toggles — no marketing flag yet since no marketing sends exist. Default on: these are order/quote status updates the customer already expects. */
+    emailNotificationsEnabled: boolean("emailNotificationsEnabled").notNull().default(true),
+    whatsappNotificationsEnabled: boolean("whatsappNotificationsEnabled").notNull().default(true),
     ...timestamps,
   },
   (table) => [uniqueIndex("customers_user_idx").on(table.userId)],

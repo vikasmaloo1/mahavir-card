@@ -385,6 +385,8 @@ export const customerProfileUpdateSchema = z.object({
     line2: z.string().trim().max(200).nullable().optional(),
     postalCode: z.string().trim().regex(/^\d{6}$/, "Enter a valid 6-digit postal code"),
   }).nullable().optional(),
+  emailNotificationsEnabled: z.boolean().optional(),
+  whatsappNotificationsEnabled: z.boolean().optional(),
 });
 
 export const adminCreateSchema = z.object({

@@ -1,0 +1,2 @@
+ALTER TABLE "customers" ADD COLUMN "emailNotificationsEnabled" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+ALTER TABLE "customers" ADD COLUMN "whatsappNotificationsEnabled" boolean DEFAULT true NOT NULL;

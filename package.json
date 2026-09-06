@@ -30,7 +30,8 @@
     "test:customer-flow": "node --import tsx --test tests/customer-flow-validation.test.ts",
     "test:payments": "node --conditions=react-server --import tsx --test tests/payment-security.test.ts",
     "test:phase3": "node --conditions=react-server --import tsx --test tests/phase3-conversion.test.ts",
-    "test:phase4": "node --import tsx --test tests/phase4-notifications.test.ts"
+    "test:phase4": "node --import tsx --test tests/phase4-notifications.test.ts",
+    "test:phase5": "node --conditions=react-server --import tsx --test tests/phase5-followup.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1118.0",
@@ -47,6 +48,7 @@
     "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "resend": "^6.26.0",
     "server-only": "^0.0.1",
     "swagger-ui-react": "^5.32.14",
     "tailwind-merge": "^3.6.0",

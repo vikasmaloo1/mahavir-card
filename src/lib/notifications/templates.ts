@@ -22,12 +22,18 @@ export function renderNotification(event: NotificationEvent, context: Notificati
       return { subject: `Changes requested on quote ${context.quoteNumber ?? ""}`, body: `Hi ${name}, we've noted your requested changes on quote ${context.quoteNumber ?? ""}. Our team will follow up with a revised quotation.\n\n${SUPPORT_LINE}` };
     case "QUOTE_EXPIRED":
       return { subject: `Quote ${context.quoteNumber ?? ""} has expired`, body: `Hi ${name}, quote ${context.quoteNumber ?? ""} has passed its validity period. Request a fresh quote for the same or updated specifications.\n\n${SUPPORT_LINE}` };
+    case "QUOTE_EXPIRING_SOON":
+      return { subject: `Quote ${context.quoteNumber ?? ""} expires soon`, body: `Hi ${name}, your quotation ${context.quoteNumber ?? ""}${context.amount ? ` (${context.amount})` : ""} is due to expire soon. Review and approve it before it lapses.\n\nNext step: ${context.nextAction ?? "View your quotation and approve it."}\n\n${SUPPORT_LINE}` };
     case "ORDER_CREATED":
       return { subject: `Order ${context.orderNumber ?? ""} confirmed`, body: `Hi ${name}, your order ${context.orderNumber ?? ""}${context.amount ? ` for ${context.amount}` : ""} has been created. ${context.nextAction ?? "We'll update you as it moves through production."}\n\n${SUPPORT_LINE}` };
     case "PAYMENT_CONFIRMED":
       return { subject: `Payment received for ${context.orderNumber ?? "your order"}`, body: `Hi ${name}, we've received your payment${context.amount ? ` of ${context.amount}` : ""} for order ${context.orderNumber ?? ""}. Your order is confirmed.\n\n${SUPPORT_LINE}` };
     case "PAYMENT_FAILED":
       return { subject: `Payment could not be completed`, body: `Hi ${name}, your payment${context.orderNumber ? ` for order ${context.orderNumber}` : ""} could not be completed. Please retry from your account, or contact us if this keeps happening.\n\n${SUPPORT_LINE}` };
+    case "PAYMENT_PENDING_REMINDER":
+      return { subject: `Payment pending for ${context.orderNumber ?? "your order"}`, body: `Hi ${name}, order ${context.orderNumber ?? ""}${context.amount ? ` (${context.amount})` : ""} is still awaiting payment.\n\nNext step: ${context.nextAction ?? "Complete payment from your order page."}\n\n${SUPPORT_LINE}` };
+    case "ARTWORK_REQUIRED":
+      return { subject: `Artwork needed for ${context.orderNumber ?? "your order"}`, body: `Hi ${name}, order ${context.orderNumber ?? ""} is waiting on your CDR artwork before we can start production.\n\nNext step: ${context.nextAction ?? "Upload your artwork from the order page."}\n\n${SUPPORT_LINE}` };
     case "ARTWORK_REJECTED":
       return { subject: `Artwork needs changes — ${context.orderNumber ?? ""}`, body: `Hi ${name}, the artwork you uploaded for order ${context.orderNumber ?? ""} needs changes before we can proceed.${context.status ? ` Reason: ${context.status}.` : ""} Please re-upload a corrected CDR file.\n\n${SUPPORT_LINE}` };
     case "ORDER_STATUS_CHANGED":

@@ -204,6 +204,13 @@
       "when": 1788718778621,
       "tag": "0028_solid_lake",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1788722718531,
+      "tag": "0029_clever_brother_voodoo",
+      "breakpoints": true
     }
   ]
 }

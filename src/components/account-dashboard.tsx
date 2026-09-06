@@ -15,7 +15,7 @@ type AccountData = {
   user: { name: string; email: string; phoneNumber?: string | null };
   customer: { companyName: string; contactName: string; phone: string | null; customerType: string; state: string | null; availableCredit: string } | null;
   profileComplete: boolean;
-  orders: { id: string; orderNumber: string; status: string; total: string; createdAt: string }[];
+  orders: { id: string; orderNumber: string; status: string; total: string; createdAt: string; paymentStatus: string | null }[];
   quotes: { id: string; quoteNumber: string; status: string; total: string; createdAt: string }[];
   inquiries: { id: string; subject: string | null; status: string; createdAt: string }[];
   artworks: { id: string; fileName: string; status: string; createdAt: string }[];
@@ -127,6 +127,8 @@ export function AccountDashboard() {
   const isB2B = data.customer?.customerType === "B2B";
   const pendingQuote = data.quotes.find((quote) => quote.status === "SENT_TO_CUSTOMER");
   const awaitingArtworkCount = data.orders.filter((order) => ["PENDING", "CONFIRMED"].includes(order.status)).length;
+  // COD_PENDING is excluded deliberately — that's the expected resting state for cash-on-delivery until dispatch, not something the customer needs to act on.
+  const pendingPaymentOrders = data.orders.filter((order) => order.paymentStatus === "PENDING");
 
   const savedJobsSection = (
     <section id="saved-jobs" className="scroll-mt-36 rounded-xl border border-[var(--mc-line)] bg-white p-5 sm:p-6 shadow-sm">
@@ -165,10 +167,11 @@ export function AccountDashboard() {
           {!data.profileComplete ? <Link href="/account/profile" className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-[var(--mc-accent)]">Complete profile <ArrowRight size={13} /></Link> : null}
         </div>
       </section>
-      {pendingQuote || awaitingArtworkCount > 0 ? (
+      {pendingQuote || awaitingArtworkCount > 0 || pendingPaymentOrders.length > 0 ? (
         <div className="mt-6 space-y-2">
           {pendingQuote ? <Link href={`/account/quotes/${pendingQuote.id}`} className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 hover:bg-amber-100 transition-colors">You have a quote awaiting your decision ({pendingQuote.quoteNumber}). <ArrowRight size={15} /></Link> : null}
           {awaitingArtworkCount > 0 ? <a href="#orders" className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 hover:bg-amber-100 transition-colors">Upload artwork to keep {awaitingArtworkCount > 1 ? `${awaitingArtworkCount} orders` : "your order"} moving. <ArrowRight size={15} /></a> : null}
+          {pendingPaymentOrders.length > 0 ? <Link href={`/account/orders/${pendingPaymentOrders[0].id}`} className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 hover:bg-amber-100 transition-colors">Payment pending for {pendingPaymentOrders.length > 1 ? `${pendingPaymentOrders.length} orders` : `order ${pendingPaymentOrders[0].orderNumber}`}. <ArrowRight size={15} /></Link> : null}
         </div>
       ) : null}
       <div className="mt-7 grid gap-3 sm:grid-cols-3"><Metric label="Open quotes" value={openQuotes} Icon={FileText} /><Metric label="Active orders" value={activeOrders} Icon={Package} /><Metric label="Artwork files" value={data.artworks.length} Icon={Palette} /></div>

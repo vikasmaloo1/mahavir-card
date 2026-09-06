@@ -93,6 +93,8 @@ export async function PATCH(request: Request) {
         state: input.state,
         stateCode: input.stateCode,
         gstNumber: input.gstNumber?.trim() || null,
+        ...(input.emailNotificationsEnabled !== undefined ? { emailNotificationsEnabled: input.emailNotificationsEnabled } : {}),
+        ...(input.whatsappNotificationsEnabled !== undefined ? { whatsappNotificationsEnabled: input.whatsappNotificationsEnabled } : {}),
         updatedAt: new Date(),
       }).where(eq(customers.id, existing.id)).returning();
       if (!customer) return null;

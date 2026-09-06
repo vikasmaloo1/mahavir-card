@@ -6,7 +6,8 @@ import { adminRequest } from "@/lib/admin-client";
 
 type Analytics = {
   search: { confidenceBreakdown: Record<string, number>; topNoResultSearches: Array<{ query: string; count: number }>; searchStateDemand: Array<{ state: string; count: number }>; totalSearches: number };
-  quotes: { funnel: Record<string, number>; totalQuotes: number; conversionRate: number };
+  quotes: { funnel: Record<string, number>; totalQuotes: number; conversionRate: number; followup: { awaitingResponse: number; expiringSoon: number; expiredUnconverted: number; highValueAwaiting: number } };
+  inquiries: { total: number; converted: number; inquiryToQuoteRate: number; quoteToApprovalRate: number };
   products: {
     mostOrderedProducts: Array<{ productId: string; name: string; lines: number; totalQuantity: number }>;
     mostReorderedProducts: Array<{ productId: string; name: string; customers: number }>;
@@ -14,6 +15,7 @@ type Analytics = {
     stateDemand: Array<{ state: string; count: number }>;
     popularAddons: Array<{ addonId: string; name: string; count: number }>;
   };
+  customers: { repeatB2BCount: number };
 };
 
 export function AdminAnalytics() {
@@ -42,9 +44,16 @@ export function AdminAnalytics() {
 
       <section className="mt-6 border border-[#d7dce5] bg-white p-5">
         <h2 className="font-bold text-[#162237]">Quote funnel</h2>
-        <p className="mt-1 text-sm text-[#607089]">{data.quotes.totalQuotes} total quotes · {data.quotes.conversionRate}% converted to orders.</p>
+        <p className="mt-1 text-sm text-[#607089]">{data.quotes.totalQuotes} total quotes · {data.quotes.conversionRate}% converted to orders · {data.inquiries.total} inquiries ({data.inquiries.inquiryToQuoteRate}% converted to quotes) · {data.inquiries.quoteToApprovalRate}% of quotes reach approval.</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
           {Object.entries(data.quotes.funnel).map(([status, count]) => <div key={status} className="border border-[#e8ecf2] p-3 text-sm"><p className="text-xs font-bold uppercase text-[#607089]">{status.replace(/_/g, " ")}</p><p className="mt-1 text-lg font-bold text-[#162237]">{count}</p></div>)}
+        </div>
+        <h3 className="mt-4 text-sm font-bold text-[#162237]">Quote follow-up</h3>
+        <div className="mt-2 grid gap-2 sm:grid-cols-4">
+          <div className="border border-[#e8ecf2] p-3 text-sm"><p className="text-xs font-bold uppercase text-[#607089]">Awaiting response</p><p className="mt-1 text-lg font-bold text-[#162237]">{data.quotes.followup.awaitingResponse}</p></div>
+          <div className="border border-amber-200 bg-amber-50 p-3 text-sm"><p className="text-xs font-bold uppercase text-amber-800">Expiring soon</p><p className="mt-1 text-lg font-bold text-amber-900">{data.quotes.followup.expiringSoon}</p></div>
+          <div className="border border-[#e8ecf2] p-3 text-sm"><p className="text-xs font-bold uppercase text-[#607089]">Expired, unconverted</p><p className="mt-1 text-lg font-bold text-[#162237]">{data.quotes.followup.expiredUnconverted}</p></div>
+          <div className="border border-[#e8ecf2] p-3 text-sm"><p className="text-xs font-bold uppercase text-[#607089]">High-value awaiting</p><p className="mt-1 text-lg font-bold text-[#162237]">{data.quotes.followup.highValueAwaiting}</p></div>
         </div>
       </section>
 
@@ -64,6 +73,10 @@ export function AdminAnalytics() {
         <div className="border border-[#d7dce5] bg-white p-5">
           <h2 className="font-bold text-[#162237]">State demand (orders)</h2>
           <div className="mt-2 divide-y divide-[#e8ecf2]">{data.products.stateDemand.length ? data.products.stateDemand.map((row) => <div key={row.state} className="flex justify-between py-2 text-sm"><span>{row.state}</span><strong>{row.count}</strong></div>) : <p className="py-2 text-sm text-[#607089]">No delivery-state data yet.</p>}</div>
+        </div>
+        <div className="border border-[#d7dce5] bg-white p-5">
+          <h2 className="font-bold text-[#162237]">B2B retention</h2>
+          <p className="mt-2 text-sm text-[#607089]"><strong className="text-lg text-[#162237]">{data.customers.repeatB2BCount}</strong> B2B customers with 2 or more orders.</p>
         </div>
       </section>
     </div>

@@ -24,7 +24,7 @@ export function FaqAdmin() {
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timer);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   async function create(event: FormEvent) {
     event.preventDefault(); setSaving(true); setError("");
