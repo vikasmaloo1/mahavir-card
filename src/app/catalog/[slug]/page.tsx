@@ -184,11 +184,11 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
     <main className="mc-storefront min-h-screen bg-[#fcfbf9] text-slate-900">
       <StorefrontHeader />
       <CustomerNotices placement="ORDERING" />
-      <div className="mx-auto max-w-[1440px] px-4 py-8 xl:px-8">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200/80 pb-4">
+      <div className="mx-auto max-w-[1440px] px-4 py-4 sm:py-6 xl:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
           <div>
             <BackButton fallbackHref={returnPath} label="Back to products" />
-            <nav aria-label="Breadcrumb" className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <nav aria-label="Breadcrumb" className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
               <Link href="/" className="hover:text-[#1e3a5f]">Home</Link>
               <span>/</span>
               <Link href={returnPath} className="hover:text-[#1e3a5f]">Order now</Link>
@@ -198,14 +198,14 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
               <span aria-current="page" className="font-semibold text-slate-900">{product.name}</span>
             </nav>
           </div>
-          <span className="rounded-full border border-slate-200 bg-white px-3.5 py-1 text-xs font-bold text-slate-700 shadow-xs">
+          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-700 shadow-xs">
             {descriptor}
           </span>
         </div>
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,0.38fr)_minmax(0,0.62fr)] lg:items-start">
-          {/* LEFT: Product Presentation & Gallery (~38%) with Slideshow */}
-          <section className="space-y-6">
+        <div className="mt-4 sm:mt-5 grid gap-5 lg:gap-6 lg:grid-cols-[minmax(0,0.4fr)_minmax(0,0.6fr)] lg:items-start">
+          {/* LEFT: Product Presentation & Gallery */}
+          <section className="space-y-3.5 sm:space-y-4">
             <ProductImageSlideshow
               images={product.images}
               productName={product.name}
@@ -214,9 +214,9 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
 
             {/* Visual Finish Badges */}
             {finishes.length > 0 && (
-              <div className="flex flex-wrap gap-2 pt-1">
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
                 {finishes.map((f) => (
-                  <span key={f.label} className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${f.tone}`}>
+                  <span key={f.label} className={`rounded-md px-2 py-0.5 text-xs font-semibold ${f.tone}`}>
                     {f.label}
                   </span>
                 ))}
@@ -224,43 +224,43 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
             )}
 
             {/* Specifications Bar */}
-            <div className="grid grid-cols-3 gap-3 rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs">
+            <div className="grid grid-cols-3 gap-2.5 rounded-xl border border-slate-200/90 bg-white p-3 shadow-xs">
               <div>
-                <Clock3 size={18} className="text-[#1e3a5f]" />
-                <p className="mt-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Turnaround</p>
+                <Clock3 size={16} className="text-[#1e3a5f]" />
+                <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Turnaround</p>
                 <p className="mt-0.5 text-xs font-bold text-slate-900">{product.turnaround}</p>
               </div>
               <div>
-                <ShieldCheck size={18} className="text-[#1e3a5f]" />
-                <p className="mt-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Order Route</p>
+                <ShieldCheck size={16} className="text-[#1e3a5f]" />
+                <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Order Route</p>
                 <p className="mt-0.5 text-xs font-bold text-slate-900">
                   {product.orderable ? (product.quoteable ? "Buy or Quote" : "Direct Buy") : "Quote Review"}
                 </p>
               </div>
               <div>
-                <FileUp size={18} className="text-[#1e3a5f]" />
-                <p className="mt-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Artwork</p>
+                <FileUp size={16} className="text-[#1e3a5f]" />
+                <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Artwork</p>
                 <p className="mt-0.5 text-xs font-bold text-slate-900">{product.artworkFormatLabel}</p>
               </div>
             </div>
 
             {/* Product Overview Card */}
-            <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#1e3a5f]">
+            <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#1e3a5f]">
                 Product Information
               </span>
-              <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
+              <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">
                 {product.name}
               </h1>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
                 {product.description}
               </p>
 
-              <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3 text-xs">
-                <span className="font-bold text-slate-500 uppercase tracking-wider">Base Rate:</span>
-                <strong className="text-base text-slate-950">{product.priceLabel}</strong>
+              <div className="mt-3 flex flex-wrap items-center gap-2.5 border-t border-slate-100 pt-2.5 text-xs">
+                <span className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Base Rate:</span>
+                <strong className="text-sm sm:text-base text-slate-950">{product.priceLabel}</strong>
                 {product.startingPrice && product.customerType !== "B2B" ? (
-                  <span className="text-slate-400">
+                  <span className="text-slate-400 text-[11px]">
                     {product.taxInclusive ? "(GST included)" : "(GST extra as applicable)"}
                   </span>
                 ) : null}
@@ -269,15 +269,15 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
 
             {/* Contextual Category Promo */}
             {promo && (
-              <div className="rounded-2xl border border-slate-200/80 bg-[#f8fafc] p-4 text-xs shadow-xs">
+              <div className="rounded-xl border border-slate-200/80 bg-[#f8fafc] p-3 text-xs shadow-xs">
                 <p className="font-bold text-slate-900">{promo.headline}</p>
-                <p className="mt-1 text-slate-600">{promo.note}</p>
+                <p className="mt-0.5 text-slate-600">{promo.note}</p>
               </div>
             )}
           </section>
 
-          {/* RIGHT: Configurator Workspace (~62%) */}
-          <aside className="lg:sticky lg:top-[120px]">
+          {/* RIGHT: Configurator Workspace (~60%) */}
+          <aside className="lg:sticky lg:top-[90px]">
             <ProductConfigurator
               product={product}
               editItemId={typeof query.editItem === "string" ? query.editItem : undefined}

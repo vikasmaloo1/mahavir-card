@@ -4,6 +4,7 @@ import { handleApiError, jsonOk } from "@/lib/api";
 import { db } from "@/lib/db/server";
 import { artworks, customers, orderItems, orders } from "@/lib/db/schema";
 import { requireRole } from "@/lib/permissions";
+import { mapItemsWithArtworks } from "@/lib/order-artwork-mapping";
 
 export async function GET(request: Request) {
   try {
@@ -23,7 +24,7 @@ export async function GET(request: Request) {
       .offset((page - 1) * limit);
 
     const orderIds = rows.map((row) => row.order.id);
-    const [artworkRows, jobNameRows] = orderIds.length
+    const [artworkRows, orderItemRows] = orderIds.length
       ? await Promise.all([
           db
             .select({
@@ -32,43 +33,57 @@ export async function GET(request: Request) {
               fileName: artworks.fileName,
               status: artworks.status,
               fileSize: artworks.fileSize,
+              productId: artworks.productId,
             })
             .from(artworks)
             .where(inArray(artworks.orderId, orderIds)),
           db
-            .select({ orderId: orderItems.orderId, jobName: orderItems.jobName, description: orderItems.description })
+            .select({
+              id: orderItems.id,
+              orderId: orderItems.orderId,
+              productId: orderItems.productId,
+              jobName: orderItems.jobName,
+              description: orderItems.description,
+              quantity: orderItems.quantity,
+              unitPrice: orderItems.unitPrice,
+              totalPrice: orderItems.totalPrice,
+              configuration: orderItems.configuration,
+            })
             .from(orderItems)
             .where(inArray(orderItems.orderId, orderIds)),
         ])
       : [[], []];
 
-    const artworksByOrder = new Map<string, Array<{ id: string; fileName: string; status: string; fileSize: number | null }>>();
+    const artworksByOrder = new Map<string, Array<{ id: string; fileName: string; status: string; fileSize: number | null; productId: string | null }>>();
     for (const art of artworkRows) {
       if (!art.orderId) continue;
       if (!artworksByOrder.has(art.orderId)) artworksByOrder.set(art.orderId, []);
-      artworksByOrder.get(art.orderId)!.push({
-        id: art.id,
-        fileName: art.fileName,
-        status: art.status,
-        fileSize: art.fileSize,
-      });
+      artworksByOrder.get(art.orderId)!.push(art);
     }
 
-    const jobNameByOrder = new Map<string, string>();
-    for (const item of jobNameRows) {
-      if (!jobNameByOrder.has(item.orderId)) jobNameByOrder.set(item.orderId, item.jobName || item.description);
+    const itemsByOrder = new Map<string, typeof orderItemRows>();
+    for (const item of orderItemRows) {
+      if (!itemsByOrder.has(item.orderId)) itemsByOrder.set(item.orderId, []);
+      itemsByOrder.get(item.orderId)!.push(item);
     }
 
     const data = rows.map((row) => {
       const orderArtworks = artworksByOrder.get(row.order.id) ?? [];
+      const orderItemList = itemsByOrder.get(row.order.id) ?? [];
+      const { mappedItems, unmappedArtworks } = mapItemsWithArtworks(orderItemList, orderArtworks);
+      const jobNames = orderItemList.map((item) => item.jobName || item.description).filter(Boolean);
+
       return {
         ...row.order,
         customerName: row.customerName,
         customerType: row.customerType,
         artworkCount: orderArtworks.length,
         artworks: orderArtworks,
+        items: mappedItems,
+        unmappedArtworks,
         firstArtworkId: orderArtworks[0]?.id ?? null,
-        jobName: jobNameByOrder.get(row.order.id) ?? null,
+        jobName: jobNames.join(", ") || null,
+        jobNames,
       };
     });
     return jsonOk({ items: data, page, limit });

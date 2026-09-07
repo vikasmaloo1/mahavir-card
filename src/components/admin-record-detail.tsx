@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { adminRequest, formattedAmount, formattedDate } from "@/lib/admin-client";
 import { useAutoRefresh } from "@/lib/use-auto-refresh";
+import { mapItemsWithArtworks } from "@/lib/order-artwork-mapping";
 
 type Row = Record<string, unknown>;
 export type DetailSection = "orders" | "quotes" | "customers" | "inquiries" | "payments" | "artworks";
@@ -71,7 +72,7 @@ function DetailBody({ section, id, data, primary, saving, mutate }: { section: D
   if (section === "quotes") return <QuoteDetail id={id} data={data} quote={primary} saving={saving} mutate={mutate} />;
   if (section === "customers") return <CustomerDetail data={data} customer={primary} />;
   const fields = section === "orders" ? ["orderNumber", "status", "subtotal", "deliveryPrice", "tax", "total", "deliveryMethod", "deliveryState", "notes", "createdAt"] : section === "inquiries" ? ["contactName", "companyName", "email", "phone", "subject", "message", "internalNotes", "status", "createdAt"] : section === "payments" ? ["orderId", "customerId", "method", "status", "amount", "provider", "providerOrderId", "providerPaymentId", "codCollectedAt", "createdAt"] : ["fileName", "fileSize", "customerId", "productId", "orderId", "quoteId", "status", "notes", "createdAt"];
-  return <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]"><div className="space-y-6">{section === "orders" ? <OrderOverview data={data} primary={primary} /> : null}<FieldGrid row={primary} fields={fields} />{section === "orders" ? <><Rows title="Status history" items={rows(data.history)} fields={["status", "notes", "createdAt"]} /><Rows title="Order items" items={rows(data.items)} fields={["jobName", "description", "quantity", "unitPrice", "totalPrice"]} /><ArtworkList items={rows(data.artworks)} /><Rows title="Documents" items={rows(data.documents)} fields={["originalFilename", "documentType", "status"]} /></> : null}{section === "inquiries" ? <InquiryRelations data={data} id={id} saving={saving} mutate={mutate} /> : null}</div><RecordActions section={section} id={id} row={primary} saving={saving} mutate={mutate} />{section === "orders" ? <div className="xl:col-span-2 grid gap-6 lg:grid-cols-2"><FieldGrid title="Customer" row={record(data.customer)} fields={["contactName", "companyName", "email", "phone", "customerType", "state"]} /><FieldGrid title="Payment" row={record(data.payment)} fields={["method", "status", "amount", "provider", "codCollectedAt"]} /></div> : null}</div>;
+  return <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]"><div className="space-y-6">{section === "orders" ? <OrderOverview data={data} primary={primary} /> : null}<FieldGrid row={primary} fields={fields} />{section === "orders" ? <><Rows title="Status history" items={rows(data.history)} fields={["status", "notes", "createdAt"]} /><OrderItemsList items={rows(data.items)} orderArtworks={rows(data.artworks)} /><ArtworkList items={rows(data.artworks)} /><Rows title="Documents" items={rows(data.documents)} fields={["originalFilename", "documentType", "status"]} /></> : null}{section === "inquiries" ? <InquiryRelations data={data} id={id} saving={saving} mutate={mutate} /> : null}</div><RecordActions section={section} id={id} row={primary} saving={saving} mutate={mutate} />{section === "orders" ? <div className="xl:col-span-2 grid gap-6 lg:grid-cols-2"><FieldGrid title="Customer" row={record(data.customer)} fields={["contactName", "companyName", "email", "phone", "customerType", "state"]} /><FieldGrid title="Payment" row={record(data.payment)} fields={["method", "status", "amount", "provider", "codCollectedAt"]} /></div> : null}</div>;
 }
 
 function OrderOverview({ data, primary }: { data: Row; primary: Row }) {
@@ -137,6 +138,112 @@ function FieldGrid({ row, fields, title }: { row: Row; fields: string[]; title?:
     </section>
   );
 }
+function OrderItemsList({ items, orderArtworks }: { items: Row[]; orderArtworks: Row[] }) {
+  const { mappedItems, unmappedArtworks } = mapItemsWithArtworks(
+    items as Array<{ id: string; productId?: string | null; configuration?: unknown; description?: string; jobName?: string | null; quantity: number; unitPrice: string; totalPrice: string }>,
+    orderArtworks as Array<{ id: string; fileName: string; fileSize?: number | null; status?: string; productId?: string | null }>
+  );
+
+  return (
+    <section className="border border-[#d7dce5] bg-white p-4 sm:p-6">
+      <div className="flex items-center justify-between gap-4 border-b border-[#e1e6ee] pb-3">
+        <h2 className="font-bold text-[#162237]">Order items</h2>
+        <span className="text-xs font-semibold text-[#607089]">
+          {mappedItems.length} {mappedItems.length === 1 ? "item" : "items"}
+        </span>
+      </div>
+
+      <div className="mt-4 divide-y divide-[#e8ecf2]">
+        {mappedItems.map((item, index) => {
+          const itemArts = (item.artworks || []) as Array<{ id: string; fileName: string; fileSize?: number | null; status?: string }>;
+          return (
+            <div key={text(item.id || index)} className="py-4 first:pt-0 last:pb-0">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                {/* Left: Item Specs & Pricing */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <strong className="text-base font-bold text-[#162237]">
+                      {text(item.jobName || item.description)}
+                    </strong>
+                    {item.jobName && item.description !== item.jobName ? (
+                      <span className="text-xs text-[#607089] font-normal">({text(item.description)})</span>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-[#607089]">
+                    <span>
+                      Quantity: <strong className="text-[#162237]">{Number(item.quantity || 1).toLocaleString("en-IN")}</strong>
+                    </span>
+                    <span>
+                      Unit price: <strong className="text-[#162237]">{formattedAmount(item.unitPrice)}</strong>
+                    </span>
+                    <span>
+                      Total price: <strong className="text-[#162237] font-bold text-sm">{formattedAmount(item.totalPrice)}</strong>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Right: Artwork Download in front of this cart item */}
+                <div className="shrink-0 md:text-right">
+                  {itemArts.length ? (
+                    <div className="flex flex-col md:items-end gap-1.5">
+                      <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#607089]">
+                        CDR Artwork ({itemArts.length})
+                      </span>
+                      {itemArts.map((art) => (
+                        <a
+                          key={art.id}
+                          href={`/api/artworks/${art.id}/download`}
+                          download
+                          title={`Download ${art.fileName}`}
+                          className="inline-flex items-center gap-1.5 rounded border border-[#2457b8] bg-[#f0f4ff] px-3 py-2 text-xs font-bold text-[#2457b8] shadow-sm hover:bg-[#2457b8] hover:text-white transition-colors"
+                        >
+                          <Download size={14} className="shrink-0" />
+                          <span className="max-w-[220px] truncate">{art.fileName || "Download CDR"}</span>
+                          {art.fileSize ? (
+                            <span className="text-[10px] opacity-75">
+                              ({Math.max(1, Math.round(Number(art.fileSize) / 1024))} KB)
+                            </span>
+                          ) : null}
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-1.5 rounded border border-dashed border-[#cfd7e3] px-3 py-1.5 text-xs text-[#8896ab]">
+                      No CDR uploaded for this item
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {unmappedArtworks.length ? (
+        <div className="mt-5 border-t border-dashed border-[#e1e6ee] pt-4">
+          <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#607089]">
+            Other order files ({unmappedArtworks.length})
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {unmappedArtworks.map((art) => (
+              <a
+                key={art.id}
+                href={`/api/artworks/${art.id}/download`}
+                download
+                className="inline-flex items-center gap-1 rounded border border-[#c9d2df] bg-slate-50 px-2.5 py-1 text-xs font-bold text-[#2457b8] hover:bg-slate-100"
+              >
+                <Download size={13} />
+                <span className="max-w-[180px] truncate">{art.fileName}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function ArtworkList({ items }: { items: Row[] }) { return <section className="border border-[#d7dce5] bg-white p-4 sm:p-6"><h2 className="font-bold">Artwork</h2>{items.length ? <div className="mt-4 divide-y divide-[#e1e6ee]">{items.map((item) => <div key={text(item.id)} className="flex items-center justify-between gap-3 py-4 text-sm"><span className="min-w-0"><strong className="block truncate text-[#263753]">{text(item.fileName)}</strong><small className="text-[#607089]">{text(item.status)}{item.fileSize ? ` · ${Math.max(1, Math.round(Number(item.fileSize) / 1024))} KB` : ""}</small></span><a href={`/api/artworks/${text(item.id)}/download`} className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-[#2457b8]"><Download size={14} />Download</a></div>)}</div> : <p className="mt-4 text-sm text-[#607089]">No artwork linked yet.</p>}</section>; }
 function Rows({ title, items, fields, link }: { title: string; items: Row[]; fields: string[]; link?: DetailSection }) { return <section className="border border-[#d7dce5] bg-white p-4 sm:p-6"><h2 className="font-bold">{title}</h2>{items.length ? <div className="mt-4 divide-y divide-[#e1e6ee]">{items.map((item, index) => <div key={text(item.id || index)} className="grid gap-3 py-4 sm:grid-cols-2 lg:grid-cols-3">{fields.filter((field) => item[field] !== undefined && item[field] !== null).map((field) => <div key={field}><p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#607089]">{field.replace(/([A-Z])/g, " $1")}</p><p className="mt-1 break-words text-sm text-[#263753]">{display(field, item[field])}</p></div>)}{link ? <Link href={`/admin/${link}/${text(item.id)}`} className="self-end text-sm font-bold text-[#2457b8]">Open record</Link> : null}</div>)}</div> : <p className="mt-4 text-sm text-[#607089]">No related records.</p>}</section>; }
 function Amount({ label, value: amount, strong }: { label: string; value: unknown; strong?: boolean }) { return <div className={`flex justify-between gap-4 ${strong ? "border-t border-[#d7dce5] pt-3 font-bold" : ""}`}><dt>{label}</dt><dd>{formattedAmount(amount)}</dd></div>; }

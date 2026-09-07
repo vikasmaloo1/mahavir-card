@@ -7,6 +7,7 @@ import { emitNotification } from "@/lib/notifications/emit";
 import { requireRole } from "@/lib/permissions";
 import { adminOrderUpdateSchema } from "@/lib/validation";
 import { canTransition } from "@/lib/workflows";
+import { mapItemsWithArtworks } from "@/lib/order-artwork-mapping";
 
 export async function GET(request: Request, ctx: RouteContext<"/api/admin/orders/[id]">) {
   try {
@@ -22,7 +23,8 @@ export async function GET(request: Request, ctx: RouteContext<"/api/admin/orders
       order.customerId ? db.select().from(customers).where(eq(customers.id, order.customerId)).limit(1) : Promise.resolve([]),
       db.select().from(orderStatusEvents).where(eq(orderStatusEvents.orderId, id)).orderBy(asc(orderStatusEvents.createdAt)),
     ]);
-    return jsonOk({ order, items, payment: payment[0] ?? null, artworks: artworkRows, documents, customer: customer[0] ?? null, history });
+    const { mappedItems, unmappedArtworks } = mapItemsWithArtworks(items, artworkRows);
+    return jsonOk({ order, items: mappedItems, payment: payment[0] ?? null, artworks: artworkRows, unmappedArtworks, documents, customer: customer[0] ?? null, history });
   } catch (error) { return error instanceof Response ? error : handleApiError(error); }
 }
 

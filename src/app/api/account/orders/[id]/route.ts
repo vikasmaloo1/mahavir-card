@@ -5,6 +5,8 @@ import { artworks, customers, orderItems, orders, orderStatusEvents, payments, s
 import { db } from "@/lib/db/server";
 import { requireUser } from "@/lib/permissions";
 
+import { mapItemsWithArtworks } from "@/lib/order-artwork-mapping";
+
 export async function GET(request: Request, ctx: RouteContext<"/api/account/orders/[id]">) {
   try {
     const session = await requireUser(request);
@@ -18,7 +20,8 @@ export async function GET(request: Request, ctx: RouteContext<"/api/account/orde
       db.select({ id: storedDocuments.id, documentType: storedDocuments.documentType, originalFilename: storedDocuments.originalFilename, status: storedDocuments.status }).from(storedDocuments).where(eq(storedDocuments.orderId, id)),
       db.select({ id: orderStatusEvents.id, status: orderStatusEvents.status, notes: orderStatusEvents.notes, createdAt: orderStatusEvents.createdAt }).from(orderStatusEvents).where(eq(orderStatusEvents.orderId, id)).orderBy(asc(orderStatusEvents.createdAt)),
     ]);
-    return jsonOk({ order: owned.order, items, payment: payment[0] ?? null, artworks: artworkRows, documents, history });
+    const { mappedItems } = mapItemsWithArtworks(items, artworkRows);
+    return jsonOk({ order: owned.order, items: mappedItems, payment: payment[0] ?? null, artworks: artworkRows, documents, history });
   } catch (error) {
     return error instanceof Response ? error : handleApiError(error);
   }

@@ -36,26 +36,102 @@ const columns: Record<ModuleKey, { label: string; value: (row: Row) => string; r
     { label: "Order", value: (r) => text(r.orderNumber) },
     { label: "Customer", value: (r) => text(r.customerName) },
     { label: "Type", value: (r) => text(r.customerType) },
-    { label: "Job", value: (r) => text(r.jobName) },
+    {
+      label: "Job / Items",
+      value: (r) => text(r.jobName),
+      render: (r) => {
+        const items = (r.items as Array<{ jobName?: string | null; description: string; quantity: number }>) || [];
+        if (!items.length) return <span className="font-semibold">{text(r.jobName)}</span>;
+        return (
+          <div className="flex flex-col gap-1.5 min-w-[140px]">
+            {items.map((it, idx) => (
+              <div key={idx} className="text-xs leading-tight">
+                <span className="font-bold text-[#162237] block truncate max-w-[200px]" title={it.jobName || it.description}>
+                  {it.jobName || it.description}
+                </span>
+                <span className="text-[11px] text-[#607089]">
+                  {it.jobName && it.jobName !== it.description ? `${it.description} · ` : ""}
+                  Qty {Number(it.quantity || 1).toLocaleString("en-IN")}
+                </span>
+              </div>
+            ))}
+          </div>
+        );
+      },
+    },
     {
       label: "Artwork",
       value: (r) => (Number(r.artworkCount) > 0 ? `${r.artworkCount} file${Number(r.artworkCount) === 1 ? "" : "s"}` : "None"),
       render: (r) => {
-        const artworks = (r.artworks as Array<{ id: string; fileName: string }>) || [];
-        if (!artworks.length) return <span className="text-[#8896ab]">None</span>;
+        const items = (r.items as Array<{ jobName?: string | null; description: string; artworks?: Array<{ id: string; fileName: string }> }>) || [];
+        const unmapped = (r.unmappedArtworks as Array<{ id: string; fileName: string }>) || [];
+        const orderArtworks = (r.artworks as Array<{ id: string; fileName: string }>) || [];
+
+        if (!orderArtworks.length) return <span className="text-[#8896ab]">None</span>;
+
+        if (items.length > 0) {
+          return (
+            <div className="flex flex-col gap-2 min-w-[170px]" onClick={(e) => e.stopPropagation()}>
+              {items.map((it, idx) => {
+                const arts = it.artworks || [];
+                return (
+                  <div key={idx} className="text-xs">
+                    {items.length > 1 ? (
+                      <span className="text-[10px] font-bold text-[#607089] block truncate max-w-[180px]" title={it.jobName || it.description}>
+                        {it.jobName || it.description}:
+                      </span>
+                    ) : null}
+                    {arts.length ? (
+                      arts.map((art) => (
+                        <a
+                          key={art.id}
+                          href={`/api/artworks/${art.id}/download`}
+                          download
+                          title={`Download ${art.fileName}`}
+                          className="inline-flex items-center gap-1 font-bold text-[#2457b8] hover:underline"
+                        >
+                          <Download size={13} className="shrink-0 text-[#2457b8]" />
+                          <span className="max-w-[160px] truncate">{art.fileName || "Download CDR"}</span>
+                        </a>
+                      ))
+                    ) : (
+                      <span className="text-[11px] text-[#8896ab] italic">No CDR</span>
+                    )}
+                  </div>
+                );
+              })}
+              {unmapped.length ? (
+                <div className="border-t border-dashed border-[#cfd7e3] pt-1">
+                  {unmapped.map((art) => (
+                    <a
+                      key={art.id}
+                      href={`/api/artworks/${art.id}/download`}
+                      download
+                      title={`Download ${art.fileName}`}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-[#2457b8] hover:underline"
+                    >
+                      <Download size={12} className="shrink-0 text-[#2457b8]" />
+                      <span className="max-w-[160px] truncate">{art.fileName}</span>
+                    </a>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          );
+        }
+
         return (
-          <div className="flex flex-col gap-1">
-            {artworks.map((art) => (
+          <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+            {orderArtworks.map((art) => (
               <a
                 key={art.id}
                 href={`/api/artworks/${art.id}/download`}
                 download
                 title={`Download ${art.fileName}`}
                 className="inline-flex items-center gap-1 text-xs font-bold text-[#2457b8] hover:underline"
-                onClick={(e) => e.stopPropagation()}
               >
                 <Download size={13} className="shrink-0 text-[#2457b8]" />
-                <span className="max-w-[130px] truncate">{art.fileName || "Download CDR"}</span>
+                <span className="max-w-[160px] truncate">{art.fileName || "Download CDR"}</span>
               </a>
             ))}
           </div>

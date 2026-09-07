@@ -229,165 +229,178 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
   return (
     <>
       <section className="overflow-hidden rounded-xl border border-[#cfd8e8] bg-white shadow-[0_10px_30px_rgba(16,33,63,0.08)] mb-20 sm:mb-0">
-        <div className="border-b border-[#dfe5ef] px-5 py-4">
-          <p className="text-[13px] font-bold uppercase tracking-[0.13em] text-[#2457b8]">Configure your order</p>
+        <div className="border-b border-[#dfe5ef] px-4 py-2.5 sm:px-5 sm:py-3">
+          <p className="text-xs sm:text-[13px] font-bold uppercase tracking-[0.13em] text-[#2457b8]">Configure your order</p>
         </div>
-        <div className="space-y-3.5 p-4">
+        <div className="space-y-2.5 p-3 sm:space-y-3 sm:p-4">
           {product.categorySlug === "premium-card" || product.slug.startsWith("premium-") ? (
-            <div className="flex items-center gap-2 rounded-lg border border-[#c7d7f3] bg-[#eef4ff] px-3.5 py-2.5 text-[13px] font-semibold text-[#1e4da1]">
-              <span className="grid size-5 place-items-center rounded-full bg-[#2457b8] text-white text-[11px] font-bold">✓</span>
+            <div className="flex items-center gap-2 rounded-lg border border-[#c7d7f3] bg-[#eef4ff] px-3 py-1.5 text-xs font-semibold text-[#1e4da1]">
+              <span className="grid size-4 place-items-center rounded-full bg-[#2457b8] text-white text-[10px] font-bold">✓</span>
               <span>Corner cut included by default</span>
             </div>
           ) : null}
-          <label className="block">
-            <span className="mb-1 block text-[13px] font-bold text-[#263753]">Job name <span className="font-normal text-[#607089]">(optional)</span></span>
-            <input value={jobName} onChange={(event) => setJobName(event.target.value)} maxLength={160} placeholder="e.g. Restaurant visiting cards" className="w-full rounded-lg border border-[#c9d2df] px-3 py-2 text-sm outline-none focus:border-[#2457b8]" />
-          </label>
-          {detailsError ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#efc4be] bg-[#fff6f4] p-3 text-sm text-[#a53025]"><span>{detailsError}</span><button type="button" onClick={() => { setDetailsError(""); setDetailsVersion((version) => version + 1); }} className="rounded-full border border-[#d99d95] bg-white px-3 py-1.5 font-bold">Retry</button></div> : null}
-          <label className="block">
-            <span className="mb-1 block text-[13px] font-bold text-[#263753]">Quantity</span>
-            <div className="flex items-center rounded-lg border border-[#c9d2df]">
-              <input inputMode="numeric" value={values.quantity || String(defaultQty)} onChange={(event) => update("quantity", event.target.value)} onBlur={() => update("quantity", String(quantity))} className="min-w-0 flex-1 px-3 py-2 text-sm outline-none" />
-              <div className="flex gap-1 pr-2">
-                <button type="button" onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "DOWN", product.categorySlug, product.slug)))} className="grid size-8 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors" aria-label="Decrease quantity"><Minus size={14} /></button>
-                <button type="button" onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "UP", product.categorySlug, product.slug)))} className="grid size-8 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors" aria-label="Increase quantity"><Plus size={14} /></button>
+
+          {/* Job Name & Quantity side-by-side */}
+          <div className="grid gap-2 sm:gap-2.5 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1 block text-xs font-bold text-[#263753]">Job name <span className="font-normal text-[#607089]">(optional)</span></span>
+              <input value={jobName} onChange={(event) => setJobName(event.target.value)} maxLength={160} placeholder="e.g. Restaurant cards" className="w-full rounded-lg border border-[#c9d2df] px-3 py-1.5 text-sm outline-none focus:border-[#2457b8]" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-bold text-[#263753]">Quantity</span>
+              <div className="flex items-center rounded-lg border border-[#c9d2df] bg-white">
+                <input inputMode="numeric" value={values.quantity || String(defaultQty)} onChange={(event) => update("quantity", event.target.value)} onBlur={() => update("quantity", String(quantity))} className="min-w-0 flex-1 px-3 py-1.5 text-sm font-semibold outline-none" />
+                <div className="flex gap-0.5 pr-1.5">
+                  <button type="button" onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "DOWN", product.categorySlug, product.slug)))} className="grid size-7 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors" aria-label="Decrease quantity"><Minus size={13} /></button>
+                  <button type="button" onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "UP", product.categorySlug, product.slug)))} className="grid size-7 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors" aria-label="Increase quantity"><Plus size={13} /></button>
+                </div>
               </div>
-            </div>
-          </label>
+            </label>
+          </div>
+
+          {detailsError ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#efc4be] bg-[#fff6f4] p-2.5 text-xs text-[#a53025]"><span>{detailsError}</span><button type="button" onClick={() => { setDetailsError(""); setDetailsVersion((version) => version + 1); }} className="rounded-full border border-[#d99d95] bg-white px-2.5 py-1 text-xs font-bold">Retry</button></div> : null}
+
+          {/* Product configuration fields */}
           {product.configuration.filter((field) => field.id !== "quantity").length ? (
-            <div className="grid gap-2.5 sm:grid-cols-2">
+            <div className="grid gap-2 sm:gap-2.5 sm:grid-cols-2">
               {product.configuration.filter((field) => field.id !== "quantity").map((field) => (
-                <label key={field.id}>
-                  <span className="mb-1 block text-[13px] font-bold text-[#263753]">{field.label}</span>
+                <label key={field.id} className="block">
+                  <span className="mb-1 block text-xs font-bold text-[#263753]">{field.label}</span>
                   {field.type === "select" ? (
-                    <select value={values[field.id] ?? field.defaultValue} onChange={(event) => update(field.id, event.target.value)} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-2 text-sm outline-none">
+                    <select value={values[field.id] ?? field.defaultValue} onChange={(event) => update(field.id, event.target.value)} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-1.5 text-sm outline-none">
                       {field.options?.map((option) => <option key={option}>{option}</option>)}
                     </select>
                   ) : (
                     <div>
                       <div className="flex rounded-lg border border-[#c9d2df]">
-                        <input inputMode={field.type === "number" ? "decimal" : undefined} value={values[field.id] ?? field.defaultValue} onChange={(event) => update(field.id, event.target.value)} className="min-w-0 flex-1 px-3 py-2 text-sm outline-none" />
-                        {field.suffix ? <span className="border-l border-[#c9d2df] px-3 py-3 text-sm text-[#607089]">{field.suffix}</span> : null}
+                        <input inputMode={field.type === "number" ? "decimal" : undefined} value={values[field.id] ?? field.defaultValue} onChange={(event) => update(field.id, event.target.value)} className="min-w-0 flex-1 px-3 py-1.5 text-sm outline-none" />
+                        {field.suffix ? <span className="border-l border-[#c9d2df] px-2.5 py-1.5 text-xs text-[#607089] flex items-center">{field.suffix}</span> : null}
                       </div>
-                      {field.id === "bladeCount" ? <span className="mt-1 block text-xs font-semibold text-[#2457b8]">Blade: ₹50 / blade</span> : null}
+                      {field.id === "bladeCount" ? <span className="mt-0.5 block text-[11px] font-semibold text-[#2457b8]">Blade: ₹50 / blade</span> : null}
                     </div>
                   )}
                 </label>
               ))}
             </div>
           ) : null}
-          {details?.pricingRules.length && details.pricingRules.length > 1 ? (
+
+          {/* Card stock and print & Delivery side-by-side */}
+          {(details?.pricingRules.length && details.pricingRules.length > 1) || deliveryMethods.length > 1 ? (
+            <div className="grid gap-2 sm:gap-2.5 sm:grid-cols-2">
+              {details?.pricingRules.length && details.pricingRules.length > 1 ? (
+                <label className="block">
+                  <span className="mb-1 block text-xs font-bold text-[#263753]">Card stock and print</span>
+                  <select value={selectedRuleId ?? ""} onChange={(event) => selectRule(event.target.value)} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-1.5 text-sm font-semibold outline-none focus:border-[#2457b8]">
+                    {details.pricingRules.map((rule) => <option key={rule.id} value={rule.id}>{rule.name}</option>)}
+                  </select>
+                </label>
+              ) : null}
+              {deliveryMethods.length > 1 ? (
+                <label className="block">
+                  <span className="mb-1 block text-xs font-bold text-[#263753]">Delivery</span>
+                  <select value={delivery?.method ?? ""} onChange={(event) => setDelivery({ method: event.target.value as Delivery["method"], stateCode: event.target.value === "PICKUP" ? "*" : delivery?.stateCode === "*" ? (profileStateCode ?? "GJ") : delivery?.stateCode || (profileStateCode ?? "GJ") })} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-1.5 text-sm outline-none">
+                    <option value="">Choose delivery</option>
+                    {deliveryMethods.map((method) => <option key={method} value={method}>{method.replaceAll("_", " ")}</option>)}
+                  </select>
+                </label>
+              ) : null}
+            </div>
+          ) : null}
+
+          {delivery?.method && delivery.method !== "PICKUP" ? (
             <label className="block">
-              <span className="mb-1 block text-[13px] font-bold text-[#263753]">Card stock and print</span>
-              <select value={selectedRuleId ?? ""} onChange={(event) => selectRule(event.target.value)} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-[#2457b8]">
-                {details.pricingRules.map((rule) => <option key={rule.id} value={rule.id}>{rule.name}</option>)}
+              <span className="mb-1 block text-xs font-bold text-[#263753]">Delivery state {profileStateCode && delivery.stateCode === profileStateCode ? <span className="font-normal text-[#8b9bb5]">(from your profile)</span> : null}</span>
+              <select value={delivery.stateCode} onChange={(event) => setDelivery({ ...delivery, stateCode: event.target.value })} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-1.5 text-sm outline-none">
+                {commerceStates.map(([code, state]) => <option key={code} value={code}>{state}</option>)}
               </select>
             </label>
           ) : null}
+
+          {/* Add-ons in compact 2-column or list */}
           {configurationAddons.length ? (
             <div>
-              <p className="mb-2 text-[13px] font-bold text-[#263753]">Add-ons</p>
-              <div className="space-y-2">
+              <p className="mb-1.5 text-xs font-bold text-[#263753]">Add-ons</p>
+              <div className="grid gap-2 sm:grid-cols-2">
                 {configurationAddons.map((addon) => (
-                  <label key={addon.addonId} className="flex cursor-pointer items-start gap-3 rounded-lg border border-[#d9e0eb] p-3 text-[15px] hover:border-[#b6c4da] transition-colors">
-                    <input type="checkbox" checked={addonIds.includes(addon.addonId)} onChange={() => setAddonIds((current) => current.includes(addon.addonId) ? current.filter((id) => id !== addon.addonId) : [...current, addon.addonId])} className="mt-0.5 size-4 accent-[#2457b8] rounded" />
-                    <span className="min-w-0 flex-1">
-                      <strong className="block text-[#162237]">{addon.name}</strong>
-                      {addon.description ? <span className="mt-1 block text-[13px] text-[#607089]">{addon.description}</span> : null}
-                    </span>
-                    <span className="font-bold text-[#2457b8]">{money(addon.displayPrice)}</span>
+                  <label key={addon.addonId} className="flex cursor-pointer items-center justify-between gap-2 rounded-lg border border-[#d9e0eb] p-2 text-xs hover:border-[#b6c4da] transition-colors bg-[#fafbfc]">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <input type="checkbox" checked={addonIds.includes(addon.addonId)} onChange={() => setAddonIds((current) => current.includes(addon.addonId) ? current.filter((id) => id !== addon.addonId) : [...current, addon.addonId])} className="size-3.5 accent-[#2457b8] rounded shrink-0" />
+                      <strong className="truncate font-semibold text-[#162237]">{addon.name}</strong>
+                    </div>
+                    <span className="font-bold text-[#2457b8] shrink-0 text-xs">{money(addon.displayPrice)}</span>
                   </label>
                 ))}
               </div>
             </div>
           ) : null}
-          {deliveryMethods.length > 1 ? (
-            <div className="grid gap-2.5 sm:grid-cols-2">
-              <label>
-                <span className="mb-1 block text-[13px] font-bold text-[#263753]">Delivery</span>
-                <select value={delivery?.method ?? ""} onChange={(event) => setDelivery({ method: event.target.value as Delivery["method"], stateCode: event.target.value === "PICKUP" ? "*" : delivery?.stateCode === "*" ? (profileStateCode ?? "GJ") : delivery?.stateCode || (profileStateCode ?? "GJ") })} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-2 text-sm outline-none">
-                  <option value="">Choose delivery</option>
-                  {deliveryMethods.map((method) => <option key={method} value={method}>{method.replaceAll("_", " ")}</option>)}
-                </select>
-              </label>
-              {delivery?.method && delivery.method !== "PICKUP" ? (
-                <label>
-                  <span className="mb-1 block text-[13px] font-bold text-[#263753]">Delivery state {profileStateCode && delivery.stateCode === profileStateCode ? <span className="font-normal text-[#8b9bb5]">(from your profile)</span> : null}</span>
-                  <select value={delivery.stateCode} onChange={(event) => setDelivery({ ...delivery, stateCode: event.target.value })} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-2 text-sm outline-none">
-                    {commerceStates.map(([code, state]) => <option key={code} value={code}>{state}</option>)}
-                  </select>
-                </label>
-              ) : null}
-            </div>
-          ) : delivery?.method && delivery.method !== "PICKUP" ? (
-            <label className="block max-w-xs">
-              <span className="mb-1 block text-[13px] font-bold text-[#263753]">Delivery state {profileStateCode && delivery.stateCode === profileStateCode ? <span className="font-normal text-[#8b9bb5]">(from your profile)</span> : null}</span>
-              <select value={delivery.stateCode} onChange={(event) => setDelivery({ ...delivery, stateCode: event.target.value })} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-2 text-sm outline-none">
-                {commerceStates.map(([code, state]) => <option key={code} value={code}>{state}</option>)}
-              </select>
-            </label>
-          ) : null}
+
+          {/* Artwork uploader */}
           {requirement ? (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {artworkSlots.length ? artworkSlots.map((slot, index) => <ArtworkUploader key={slot.id} productId={product.id} pricingRuleId={selectedRuleId} requirement={requirement} slot={slot} showRequirements={index === 0} configuration={values} artwork={artworks[slot.slotKey] ?? null} onUploaded={(uploaded) => setArtworks((current) => ({ ...current, [slot.slotKey]: uploaded }))} onRemoved={() => setArtworks((current) => { const next = { ...current }; delete next[slot.slotKey]; return next; })} />) : <ArtworkUploader productId={product.id} pricingRuleId={selectedRuleId} requirement={requirement} configuration={values} artwork={artworks.MAIN ?? null} onUploaded={(uploaded) => setArtworks((current) => ({ ...current, MAIN: uploaded }))} onRemoved={() => setArtworks((current) => { const next = { ...current }; delete next.MAIN; return next; })} />}
             </div>
           ) : null}
-          <div className="border-t border-[#dfe5ef] pt-5">
-            <div className="flex items-end justify-between gap-4">
+
+          {/* Grand total and breakdown */}
+          <div className="border-t border-[#dfe5ef] pt-3">
+            <div className="flex items-baseline justify-between gap-3">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#607089]">Grand total</p>
-                <p className="mt-1 text-2xl font-bold text-[#162237]">
-                  {isCalculating ? <span className="text-[#607089] text-xl font-medium animate-pulse">Calculating...</span> : estimate.calculatedAmount ? money(estimate.calculatedAmount) : "Checking price..."}
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#607089]">Grand total</p>
+                <p className="text-xl sm:text-2xl font-bold text-[#162237]">
+                  {isCalculating ? <span className="text-[#607089] text-base font-medium animate-pulse">Calculating...</span> : estimate.calculatedAmount ? money(estimate.calculatedAmount) : "Checking price..."}
                 </p>
               </div>
-              <span className="text-right text-[13px] text-[#607089]">{estimate.applicableRule ?? "Server pricing"}</span>
+              <span className="text-right text-xs text-[#607089]">{estimate.applicableRule ?? "Server pricing"}</span>
             </div>
             {estimate.productPrice ? (
-              <div className="mt-3 space-y-1.5 text-[13px] text-[#607089]">
-                <p className="flex justify-between"><span>Base price</span><strong>{money(estimate.productPrice)}</strong></p>
+              <div className="mt-2 rounded-lg bg-[#f8fafc] border border-[#e8edf4] p-2.5 text-xs text-[#607089] space-y-1">
+                <div className="flex justify-between"><span>Base price</span><strong className="text-[#162237]">{money(estimate.productPrice)}</strong></div>
                 {estimate.blade ? (
-                  <p className="flex justify-between text-[#162237]">
+                  <div className="flex justify-between text-[#162237]">
                     <span>Blade ({estimate.blade.count} &times; {money(estimate.blade.rate)})</span>
                     <strong className="text-[#2457b8]">{money(estimate.blade.amount)}</strong>
-                  </p>
+                  </div>
                 ) : null}
                 {estimate.addons && estimate.addons.length > 0 ? (
                   estimate.addons.filter((addon) => addon.addonId !== "blade").map((addon) => (
-                    <p key={addon.addonId} className="flex justify-between text-[#162237]">
+                    <div key={addon.addonId} className="flex justify-between text-[#162237]">
                       <span>{addon.name}</span>
                       <strong>{money(addon.price)}</strong>
-                    </p>
+                    </div>
                   ))
                 ) : null}
-                {Number(estimate.locationSurcharge?.amount || 0) > 0 ? <p className="flex justify-between"><span>{estimate.locationSurcharge?.label ?? "Location charge"}</span><strong>{money(estimate.locationSurcharge?.amount)}</strong></p> : null}
-                {Number(estimate.delivery?.price || 0) > 0 ? <p className="flex justify-between"><span>Courier</span><strong>{money(estimate.delivery?.price)}</strong></p> : null}
+                {Number(estimate.locationSurcharge?.amount || 0) > 0 ? <div className="flex justify-between"><span>{estimate.locationSurcharge?.label ?? "Location charge"}</span><strong className="text-[#162237]">{money(estimate.locationSurcharge?.amount)}</strong></div> : null}
+                {Number(estimate.delivery?.price || 0) > 0 ? <div className="flex justify-between"><span>Courier</span><strong className="text-[#162237]">{money(estimate.delivery?.price)}</strong></div> : null}
                 {estimate.taxRate && Number(estimate.taxRate) > 0 && estimate.priceBeforeTax ? (
-                  <>
-                    <p className="flex justify-between border-t border-[#e2e7ef] pt-2"><span>Taxable subtotal</span><strong>{money(estimate.priceBeforeTax)}</strong></p>
+                  <div className="border-t border-[#e2e7ef] pt-1 mt-1 space-y-1">
+                    <div className="flex justify-between"><span>Taxable subtotal</span><strong className="text-[#162237]">{money(estimate.priceBeforeTax)}</strong></div>
                     {estimate.taxJurisdictionState === "GJ" ? (
-                      <>
-                        <p className="flex justify-between"><span>CGST {Number(estimate.taxRate) / 2}%</span><strong>{money(estimate.cgstAmount)}</strong></p>
-                        <p className="flex justify-between"><span>SGST {Number(estimate.taxRate) / 2}%</span><strong>{money(estimate.sgstAmount)}</strong></p>
-                      </>
+                      <div className="flex justify-between text-[#607089]">
+                        <span>GST ({Number(estimate.taxRate)}% CGST+SGST)</span>
+                        <strong>{money(Number(estimate.cgstAmount || 0) + Number(estimate.sgstAmount || 0))}</strong>
+                      </div>
                     ) : (
-                      <p className="flex justify-between"><span>IGST {Number(estimate.taxRate)}%</span><strong>{money(estimate.igstAmount || estimate.taxAmount)}</strong></p>
+                      <div className="flex justify-between text-[#607089]">
+                        <span>IGST ({Number(estimate.taxRate)}%)</span>
+                        <strong>{money(estimate.igstAmount || estimate.taxAmount)}</strong>
+                      </div>
                     )}
                     {estimate.roundOff && Math.abs(Number(estimate.roundOff)) > 0.001 ? (
-                      <p className="flex justify-between text-xs text-slate-500">
-                        <span>Paisa adjustment (Round off)</span>
+                      <div className="flex justify-between text-[11px] text-slate-500">
+                        <span>Round off</span>
                         <strong className={Number(estimate.roundOff) < 0 ? "text-emerald-700" : "text-slate-700"}>
                           {formatRoundOff(estimate.roundOff)}
                         </strong>
-                      </p>
+                      </div>
                     ) : null}
-                  </>
+                  </div>
                 ) : null}
               </div>
             ) : null}
-            {estimate.warnings[0] ? <p className="mt-3 border-l-2 border-[#c78b30] pl-3 text-[13px] leading-5 text-[#805910]">{estimate.warnings[0]}</p> : null}
+            {estimate.warnings[0] ? <p className="mt-2 border-l-2 border-[#c78b30] pl-2.5 text-xs leading-4 text-[#805910]">{estimate.warnings[0]}</p> : null}
           </div>
           {basketError ? (
-            <p className="text-[15px] font-semibold text-[#a53025]">
+            <p className="text-xs sm:text-sm font-semibold text-[#a53025]">
               {basketError}
               {basketSignInRequired && typeof window !== "undefined" ? (
                 <Link href={`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`} className="ml-2 font-bold underline">
@@ -397,12 +410,12 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
             </p>
           ) : null}
           {estimate.warnings.some((w) => w.toLowerCase().includes("not available for the selected state") || w.toLowerCase().includes("delivery option is not available")) ? (
-            <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50/80 p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="size-5 shrink-0 text-amber-600 mt-0.5" />
-                <div className="flex-1 text-sm">
+            <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50/80 p-3">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="size-4 shrink-0 text-amber-600 mt-0.5" />
+                <div className="flex-1 text-xs">
                   <strong className="block font-bold text-slate-900">Not available in your state?</strong>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                  <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
                     Standard automated courier is currently not configured for {delivery?.stateCode || "this state"}. We may still be able to arrange special courier dispatch. Send us your requirement and our production desk will check.
                   </p>
                   <button
@@ -419,31 +432,31 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
                       });
                       setIsQuoteModalOpen(true);
                     }}
-                    className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#1e3a5f] px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#152a45] transition-colors"
+                    className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#1e3a5f] px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-[#152a45] transition-colors"
                   >
                     <span>Request a Quote</span>
-                    <ArrowRight size={13} />
+                    <ArrowRight size={12} />
                   </button>
                 </div>
               </div>
             </div>
           ) : null}
           {!directReady && blockingReasons.length > 0 && !estimate.warnings.some((w) => w.toLowerCase().includes("not available for the selected state") || w.toLowerCase().includes("delivery option is not available")) ? (
-            <div role="alert" className="rounded-lg border border-[#f0c060] bg-[#fffbea] px-4 py-3 text-[13px] font-medium text-[#7c5c00]">
+            <div role="alert" className="rounded-lg border border-[#f0c060] bg-[#fffbea] px-3 py-2 text-xs font-medium text-[#7c5c00]">
               {blockingReasons.map((reason, index) => (
-                <p key={index} className={index > 0 ? "mt-1" : ""}>{reason}</p>
+                <p key={index} className={index > 0 ? "mt-0.5" : ""}>{reason}</p>
               ))}
             </div>
           ) : null}
           {editItemId ? (
-            <button type="button" onClick={() => void add(editKind)} disabled={editKind === "PURCHASE" && !directReady} className="flex w-full items-center justify-center gap-2 rounded-full bg-[#2457b8] px-4 py-3.5 text-[15px] font-bold text-white shadow-sm hover:bg-[#1a4494] transition-colors disabled:cursor-not-allowed disabled:bg-[#9bb6e8]"><Check size={16} />Update {editKind === "QUOTE" ? "quote" : "purchase"} basket</button>
+            <button type="button" onClick={() => void add(editKind)} disabled={editKind === "PURCHASE" && !directReady} className="flex w-full items-center justify-center gap-2 rounded-full bg-[#2457b8] px-4 py-2.5 sm:py-3 text-sm font-bold text-white shadow-sm hover:bg-[#1a4494] transition-colors disabled:cursor-not-allowed disabled:bg-[#9bb6e8]"><Check size={15} />Update {editKind === "QUOTE" ? "quote" : "purchase"} basket</button>
           ) : (
-            <div className="grid gap-2 sm:grid-cols-2">
-              <button type="button" onClick={() => void add("PURCHASE", true)} disabled={!directReady} className="flex items-center justify-center gap-2 rounded-full bg-[#2457b8] px-4 py-3.5 text-[15px] font-bold text-white shadow-sm hover:bg-[#1a4494] transition-colors disabled:cursor-not-allowed disabled:bg-[#9bb6e8]">Buy now <ArrowRight size={16} /></button>
-              <button type="button" onClick={() => void add("PURCHASE")} disabled={!directReady} className="flex items-center justify-center gap-2 rounded-full border border-[#2457b8] bg-white px-4 py-3.5 text-[15px] font-bold text-[#2457b8] hover:bg-[#f0f4fc] transition-colors disabled:cursor-not-allowed disabled:text-[#9bb6e8] disabled:border-[#d0dbeb]"><ShoppingBag size={16} />Add to basket</button>
+            <div className="grid gap-2 sm:grid-cols-2 pt-1">
+              <button type="button" onClick={() => void add("PURCHASE", true)} disabled={!directReady} className="flex items-center justify-center gap-1.5 rounded-full bg-[#2457b8] px-4 py-2.5 sm:py-3 text-sm font-bold text-white shadow-sm hover:bg-[#1a4494] transition-colors disabled:cursor-not-allowed disabled:bg-[#9bb6e8]">Buy now <ArrowRight size={15} /></button>
+              <button type="button" onClick={() => void add("PURCHASE")} disabled={!directReady} className="flex items-center justify-center gap-1.5 rounded-full border border-[#2457b8] bg-white px-4 py-2.5 sm:py-3 text-sm font-bold text-[#2457b8] hover:bg-[#f0f4fc] transition-colors disabled:cursor-not-allowed disabled:text-[#9bb6e8] disabled:border-[#d0dbeb]"><ShoppingBag size={15} />Add to basket</button>
             </div>
           )}
-          {status === "cart" ? <a href="/cart" className="block text-center text-[15px] font-bold text-[#2457b8] hover:underline">View purchase basket &rarr;</a> : null}
+          {status === "cart" ? <a href="/cart" className="block text-center text-xs sm:text-sm font-bold text-[#2457b8] hover:underline">View purchase basket &rarr;</a> : null}
           <button
             type="button"
             onClick={() => {
@@ -458,7 +471,7 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
               });
               setIsQuoteModalOpen(true);
             }}
-            className="block w-full text-center text-[13px] font-semibold text-[#607089] hover:text-[#2457b8] hover:underline transition-colors"
+            className="block w-full text-center text-xs font-semibold text-[#607089] hover:text-[#2457b8] hover:underline transition-colors pt-0.5"
           >
             Need something different? Request a custom quote &rarr;
           </button>

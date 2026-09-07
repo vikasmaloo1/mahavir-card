@@ -1,7 +1,7 @@
 "use client";
 
-import { CheckCircle2, FileBox, History, RefreshCw, Trash2, UploadCloud, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { CheckCircle2, FileBox, RefreshCw, Trash2, UploadCloud, X } from "lucide-react";
+import { useRef, useState } from "react";
 
 import { formatDimensions } from "@/lib/formatting";
 
@@ -37,35 +37,6 @@ export function ArtworkUploader({ productId, pricingRuleId, requirement, slot, s
   const [phase, setPhase] = useState<"idle" | "uploading" | "processing" | "failed">("idle");
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState("");
-  const [reusable, setReusable] = useState<{ id: string; fileName: string } | null>(null);
-  const [reusing, setReusing] = useState(false);
-
-  // A prior upload for this exact product + configuration is offered as "Use previous
-  // artwork" — never applied automatically. Picking it still goes through the same
-  // compatibility check (validateRequiredArtwork) as a fresh upload does at checkout.
-  useEffect(() => {
-    if (artwork) return;
-    let active = true;
-    const params = new URLSearchParams();
-    if (pricingRuleId) params.set("pricingRuleId", pricingRuleId);
-    fetch(`/api/products/${productId}/artwork/reusable?${params.toString()}`, { cache: "no-store" })
-      .then((response) => response.json())
-      .then((payload) => {
-        if (!active || !payload?.success) return;
-        const slotKey = slot?.slotKey ?? "MAIN";
-        const match = (payload.data.candidates as Array<{ id: string; fileName: string; slotKey: string }>).find((candidate) => candidate.slotKey === slotKey);
-        setReusable(match ? { id: match.id, fileName: match.fileName } : null);
-      })
-      .catch(() => undefined);
-    return () => { active = false; };
-  }, [artwork, productId, pricingRuleId, slot?.slotKey]);
-
-  function useReusable() {
-    if (!reusable) return;
-    setReusing(true);
-    onUploaded({ id: reusable.id, originalFileName: reusable.fileName, fileSize: 0, fileType: "cdr", status: "APPROVED", uploadedAt: new Date().toISOString(), artworkSlotKey: slot?.slotKey ?? "MAIN" });
-    setReusing(false);
-  }
 
   function choose() { input.current?.click(); }
 
@@ -243,24 +214,17 @@ export function ArtworkUploader({ productId, pricingRuleId, requirement, slot, s
           }}
         />
         {!artwork ? (
-          <>
-            <button
-              type="button"
-              onClick={choose}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={drop}
-              disabled={busy}
-              className="flex w-full items-center justify-center gap-2 rounded-full border border-dashed border-[#9caed0] bg-white px-4 py-2 text-sm font-bold text-[#2457b8] hover:border-[#2457b8] transition disabled:opacity-60"
-            >
-              <UploadCloud size={16} />
-              {busy ? (phase === "processing" ? "Processing..." : progress === null ? "Uploading..." : `Uploading ${progress}%`) : `Upload ${slot?.name ?? "CDR artwork"}`}
-            </button>
-            {reusable ? (
-              <button type="button" onClick={useReusable} disabled={busy || reusing} className="flex w-full items-center justify-center gap-1.5 text-xs font-bold text-[#2457b8] hover:underline disabled:opacity-60">
-                <History size={13} />Use previous artwork ({reusable.fileName})
-              </button>
-            ) : null}
-          </>
+          <button
+            type="button"
+            onClick={choose}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={drop}
+            disabled={busy}
+            className="flex w-full items-center justify-center gap-2 rounded-full border border-dashed border-[#9caed0] bg-white px-4 py-2 text-sm font-bold text-[#2457b8] hover:border-[#2457b8] transition disabled:opacity-60"
+          >
+            <UploadCloud size={16} />
+            {busy ? (phase === "processing" ? "Processing..." : progress === null ? "Uploading..." : `Uploading ${progress}%`) : `Upload ${slot?.name ?? "CDR artwork"}`}
+          </button>
         ) : (
           <div className="flex w-full items-center justify-between gap-2 rounded-full border border-[#c8d7f1] bg-[#f5f8ff] px-4 py-2 text-sm">
             <span className="flex min-w-0 items-center gap-1.5 truncate font-semibold text-[#162237]">
@@ -285,7 +249,7 @@ export function ArtworkUploader({ productId, pricingRuleId, requirement, slot, s
   }
 
   return (
-    <section className="border border-[#d4dbe7] bg-[#fbfcff] p-4 sm:p-5">
+    <section className="rounded-xl border border-[#d4dbe7] bg-[#f8faff] p-3 sm:p-3.5">
       <input
         ref={input}
         type="file"
@@ -297,125 +261,118 @@ export function ArtworkUploader({ productId, pricingRuleId, requirement, slot, s
           if (file) upload(file);
         }}
       />
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[13px] font-bold uppercase tracking-[0.13em] text-[#2457b8]">
-            {slot?.name ?? "Upload artwork"}{slot && !slot.required ? " (optional)" : ""}
-          </p>
-          <p className="mt-1 text-[15px] font-semibold text-[#162237]">
-            {formatLabel()} only{maximumMb ? `, maximum ${maximumMb} MB` : ""}
-          </p>
-          {slot?.instructions ? <p className="mt-1 text-[13px] text-[#607089]">{slot.instructions}</p> : null}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <span className="text-[12px] font-bold uppercase tracking-wider text-[#2457b8]">
+            {slot?.name ?? "Production artwork"}{slot && !slot.required ? " (optional)" : ""}
+          </span>
+          <span className="rounded bg-[#e8eefa] px-2 py-0.5 text-[11px] font-semibold text-[#1e4da1]">
+            {formatLabel()} only{maximumMb ? ` · Max ${maximumMb}MB` : ""}
+          </span>
         </div>
-        <FileBox size={23} className="text-[#2457b8]" />
+        <FileBox size={18} className="text-[#2457b8] shrink-0" />
       </div>
 
-      {showRequirements ? (
-        <>
-          <div className="mt-3 grid gap-2 text-[13px] text-[#52647e] sm:grid-cols-3">
-            {full ? <p><strong>Full design:</strong> {full}</p> : null}
-            {safe ? <p><strong>Safe area:</strong> {safe}</p> : null}
-            {final ? <p><strong>Final size:</strong> {final}</p> : null}
-          </div>
-          {pages.length ? (
-            <div className="mt-4 border-l-2 border-[#2457b8] pl-4">
-              <p className="text-[13px] font-bold uppercase tracking-[0.1em] text-[#263753]">Required artwork files</p>
-              <ol className="mt-2 space-y-1.5 text-[15px] text-[#52647e]">
-                {pages.map((page, index) => (
-                  <li key={`${page.pageNumber}-${page.label}`}>
-                    <span className="font-semibold text-[#162237]">{index + 1}. {page.label}</span>
-                    {page.colorMode ? ` (${page.colorMode})` : ""}
-                    {page.required === false ? " - when applicable" : ""}
-                    {page.notes ? <span className="block text-[13px]">{page.notes}</span> : null}
-                  </li>
-                ))}
-              </ol>
-            </div>
+      {showRequirements && (full || safe || final) ? (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-[#e0e7f3] bg-white px-2.5 py-1.5 text-xs text-[#52647e]">
+          {full ? <span><strong className="text-[#162237]">Design:</strong> {full}</span> : null}
+          {safe ? <span><strong className="text-[#162237]">Safe:</strong> {safe}</span> : null}
+          {final ? <span><strong className="text-[#162237]">Final:</strong> {final}</span> : null}
+        </div>
+      ) : null}
+
+      {showRequirements && pages.length ? (
+        <div className="mt-1.5 text-xs text-[#52647e]">
+          <span className="font-semibold text-[#162237]">Required files: </span>
+          {pages.map((page, index) => (
+            <span key={`${page.pageNumber}-${page.label}`}>
+              {index > 0 ? ", " : ""}
+              {page.label}
+              {page.colorMode ? ` (${page.colorMode})` : ""}
+            </span>
+          ))}
+          {pages.some((p) => p.notes) ? (
+            <span className="block text-[11px] text-[#607089] mt-0.5">
+              {pages.map((p) => p.notes).filter(Boolean).join(" · ")}
+            </span>
           ) : null}
-          {requirement.multiplePageInstructions ? <p className="mt-3 whitespace-pre-line text-[15px] leading-5 text-[#52647e]">{requirement.multiplePageInstructions}</p> : null}
-          {requirement.additionalInstructions ? <p className="mt-3 whitespace-pre-line text-[15px] leading-5 text-[#52647e]">{requirement.additionalInstructions}</p> : null}
-        </>
+        </div>
       ) : null}
 
       {!artwork ? (
-        <>
-          <button
-            type="button"
-            onClick={choose}
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={drop}
-            disabled={phase === "uploading" || phase === "processing"}
-            className="mt-4 flex w-full flex-col items-center justify-center border border-dashed border-[#9caed0] bg-white px-4 py-7 text-center hover:border-[#2457b8] transition cursor-pointer"
-          >
-            <UploadCloud size={28} className="text-[#2457b8]" />
-            <span className="mt-2 text-[15px] font-bold text-[#162237]">Upload CDR artwork</span>
-            <span className="mt-1 text-[13px] text-[#607089]">Drop your CorelDRAW file here, or select it from your device.</span>
-          </button>
-          {reusable ? (
-            <button type="button" onClick={useReusable} disabled={phase === "uploading" || phase === "processing" || reusing} className="mt-2 flex w-full items-center justify-center gap-1.5 text-[13px] font-bold text-[#2457b8] hover:underline disabled:opacity-60">
-              <History size={14} />Use previous artwork ({reusable.fileName})
-            </button>
-          ) : null}
-        </>
+        <button
+          type="button"
+          onClick={choose}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={drop}
+          disabled={busy}
+          className="mt-2.5 flex w-full items-center justify-center gap-3 rounded-lg border border-dashed border-[#9caed0] bg-white px-3 py-3 hover:border-[#2457b8] hover:bg-[#f3f7fd] transition cursor-pointer disabled:opacity-60"
+        >
+          <UploadCloud size={22} className="text-[#2457b8] shrink-0" />
+          <div className="text-left min-w-0">
+            <span className="block text-xs font-bold text-[#162237]">Upload CDR artwork</span>
+            <span className="block text-[11px] text-[#607089] truncate">Drop CorelDRAW (.cdr) file or click to browse</span>
+          </div>
+        </button>
       ) : (
         <div
-          className="relative mt-4 border border-[#c8d7f1] bg-white p-4 transition"
+          className="relative mt-2.5 rounded-lg border border-[#c8d7f1] bg-white p-2.5 sm:p-3 transition"
           onDragOver={(event) => event.preventDefault()}
           onDrop={drop}
         >
-          {/* Prominent Cross (X) button at top-right to easily remove/cancel */}
           <button
             type="button"
             onClick={() => void remove()}
-            disabled={phase === "uploading" || phase === "processing"}
+            disabled={busy}
             title="Remove file and upload another"
             aria-label="Remove artwork"
-            className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 transition"
+            className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 transition disabled:opacity-60"
           >
-            <X size={18} />
+            <X size={15} />
           </button>
 
-          <div className="flex items-start gap-3 pr-8">
-            <div className="grid size-10 shrink-0 place-items-center bg-[#edf3ff] text-[#2457b8]">
-              <FileBox size={20} />
+          <div className="flex items-center gap-2.5 pr-6">
+            <div className="grid size-8 shrink-0 place-items-center rounded bg-[#edf3ff] text-[#2457b8]">
+              <FileBox size={16} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="flex items-center gap-1 text-[15px] font-bold text-[#1f633d]">
-                <CheckCircle2 size={16} />Artwork uploaded successfully
+              <p className="flex items-center gap-1 text-xs font-bold text-[#1f633d]">
+                <CheckCircle2 size={13} className="shrink-0" /> Artwork uploaded
               </p>
-              <p className="mt-1 truncate text-[15px] font-semibold text-[#162237]">{artwork.originalFileName}</p>
-              <p className="mt-1 text-[13px] text-[#607089]">{bytes(artwork.fileSize)} / {artwork.fileType.toUpperCase()} / Ready for review</p>
+              <p className="truncate text-xs font-semibold text-[#162237] mt-0.5">{artwork.originalFileName}</p>
+              <p className="text-[11px] text-[#607089]">{bytes(artwork.fileSize)} · CDR file ready</p>
             </div>
           </div>
-          <p className="mt-3 text-[13px] text-[#607089]">A visual document preview is not shown because CorelDRAW files are not browser-native images.</p>
-          <div className="mt-3 flex flex-wrap gap-2">
+
+          <div className="mt-2 flex items-center gap-2 border-t border-slate-100 pt-1.5">
             <button
               type="button"
               onClick={choose}
-              disabled={phase === "uploading" || phase === "processing"}
-              className="inline-flex items-center gap-2 border border-[#aab9d1] px-3 py-2 text-[13px] font-bold text-[#2457b8] hover:bg-[#edf3ff] transition"
+              disabled={busy}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-[#2457b8] hover:underline transition"
             >
-              <RefreshCw size={14} />Change file / Upload another
+              <RefreshCw size={12} /> Change file
             </button>
+            <span className="text-slate-300">·</span>
             <button
               type="button"
               onClick={() => void remove()}
-              disabled={phase === "uploading" || phase === "processing"}
-              className="inline-flex items-center gap-2 border border-[#e3c5c0] px-3 py-2 text-[13px] font-bold text-[#a53025] hover:bg-[#fdf2f2] transition"
+              disabled={busy}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-[#a53025] hover:underline transition"
             >
-              <Trash2 size={14} />Remove
+              <Trash2 size={12} /> Remove
             </button>
           </div>
         </div>
       )}
 
-      {(phase === "uploading" || phase === "processing") ? (
-        <div className="mt-4">
-          <div className="flex items-center justify-between text-[13px] font-semibold text-[#2457b8]">
-            <span>{phase === "processing" ? "Processing artwork" : "Uploading artwork"}</span>
+      {busy ? (
+        <div className="mt-2.5">
+          <div className="flex items-center justify-between text-xs font-semibold text-[#2457b8]">
+            <span>{phase === "processing" ? "Processing artwork..." : "Uploading artwork..."}</span>
             <span>{progress === null ? "In progress" : `${progress}%`}</span>
           </div>
-          <div className="mt-2 h-2 overflow-hidden bg-[#dbe4f3]">
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded bg-[#dbe4f3]">
             <div
               className={progress === null ? "h-full w-1/2 animate-pulse bg-[#2457b8]" : "h-full bg-[#2457b8] transition-[width]"}
               style={progress === null ? undefined : { width: `${progress}%` }}
@@ -424,7 +381,7 @@ export function ArtworkUploader({ productId, pricingRuleId, requirement, slot, s
         </div>
       ) : null}
 
-      {error ? <p className="mt-3 text-[15px] font-semibold text-[#a53025]">{error}</p> : null}
+      {error ? <p className="mt-2 text-xs font-semibold text-[#a53025]">{error}</p> : null}
     </section>
   );
 }
