@@ -55,22 +55,21 @@ async function getDatabaseCatalogProduct(slug: string, customerType: "B2C" | "B2
   const [row] = await db.select({ product: products, category: { name: categories.name, slug: categories.slug } }).from(products).leftJoin(categories, eq(products.categoryId, categories.id)).where(and(eq(products.slug, slug), eq(products.isActive, true), eq(products.status, "ACTIVE"))).limit(1);
   if (!row) return null;
 
+  const effectiveType = customerType ?? "B2C";
   const [rules, requirements, galleryImages] = await Promise.all([
-    customerType
-      ? db
-          .select({
-            productId: pricingRules.productId,
-            variantId: pricingRules.variantId,
-            variantActive: productVariants.isActive,
-            conditions: pricingRules.conditions,
-            priceFormula: pricingRules.priceFormula,
-            taxInclusive: pricingRules.taxInclusive,
-            isActive: pricingRules.isActive,
-          })
-          .from(pricingRules)
-          .leftJoin(productVariants, eq(pricingRules.variantId, productVariants.id))
-          .where(and(eq(pricingRules.productId, row.product.id), eq(pricingRules.isActive, true), or(eq(pricingRules.customerType, customerType), eq(pricingRules.customerType, "BOTH"))))
-      : Promise.resolve([]),
+    db
+      .select({
+        productId: pricingRules.productId,
+        variantId: pricingRules.variantId,
+        variantActive: productVariants.isActive,
+        conditions: pricingRules.conditions,
+        priceFormula: pricingRules.priceFormula,
+        taxInclusive: pricingRules.taxInclusive,
+        isActive: pricingRules.isActive,
+      })
+      .from(pricingRules)
+      .leftJoin(productVariants, eq(pricingRules.variantId, productVariants.id))
+      .where(and(eq(pricingRules.productId, row.product.id), eq(pricingRules.isActive, true), or(eq(pricingRules.customerType, effectiveType), eq(pricingRules.customerType, "BOTH")))),
     db
       .select({ acceptedFormats: artworkRequirements.acceptedFormats })
       .from(artworkRequirements)
@@ -127,16 +126,7 @@ async function getDatabaseCatalogProduct(slug: string, customerType: "B2C" | "B2
             label: "Studio View",
           },
         ],
-    ...(customerType
-      ? deriveStartingPrice(row.product, rules)
-      : {
-          startingPrice: null,
-          startingQuantity: null,
-          currency: "INR" as const,
-          priceLabel: "Login to view price",
-          priceState: "CONTACT" as const,
-          taxInclusive: null,
-        }),
+    ...deriveStartingPrice(row.product, rules),
     artworkFormatLabel: row.product.artworkRequired || requirements.length ? "CDR only" : "Optional",
     customerType,
   };
@@ -192,18 +182,22 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
       "@type": "Brand",
       name: "Mahavir Card",
     },
-    offers: {
-      "@type": "Offer",
-      url: `https://mahavircard.in/catalog/${product.slug}`,
-      priceCurrency: "INR",
-      price: product.startingPrice ? String(product.startingPrice) : "100",
-      priceValidUntil: "2027-12-31",
-      availability: "https://schema.org/InStock",
-      seller: {
-        "@type": "Organization",
-        name: "Mahavir Card",
-      },
-    },
+    ...(product.startingPrice
+      ? {
+          offers: {
+            "@type": "Offer",
+            url: `https://mahavircard.in/catalog/${product.slug}`,
+            priceCurrency: "INR",
+            price: String(product.startingPrice),
+            priceValidUntil: "2027-12-31",
+            availability: "https://schema.org/InStock",
+            seller: {
+              "@type": "Organization",
+              name: "Mahavir Card",
+            },
+          },
+        }
+      : {}),
   };
 
   const breadcrumbJsonLd = {
@@ -330,6 +324,14 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
                   </span>
                 ) : null}
               </div>
+              {!product.customerType ? (
+                <div className="mt-2.5 rounded-lg bg-blue-50/70 border border-blue-100 p-2 text-[11px] text-blue-900 flex items-center justify-between gap-2">
+                  <span>Printing agency or reseller?</span>
+                  <Link href={`/login?next=${encodeURIComponent(`/catalog/${product.slug}`)}`} className="font-bold text-[#1e3a5f] hover:underline shrink-0">
+                    Login for B2B Rates &rarr;
+                  </Link>
+                </div>
+              ) : null}
             </div>
 
             {/* Contextual Category Promo */}

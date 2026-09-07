@@ -186,12 +186,10 @@ export async function GET(request: Request) {
         ])
       : [[], [], [], [], [], []];
 
-    const startingPrices = authenticated
-      ? deriveStartingPriceMap(
-          pageData.map(({ product }) => product),
-          rules
-        )
-      : new Map();
+    const startingPrices = deriveStartingPriceMap(
+      pageData.map(({ product }) => product),
+      rules
+    );
     const productAddonsMap = new Set(addonRows.map((row) => row.productId));
     const productionTimeMap = new Map<string, string>();
     for (const rule of rules) {
@@ -236,9 +234,7 @@ export async function GET(request: Request) {
         listingSpecification: conciseProductSpecification(product.name, product.shortDescription, categoryData?.name ?? null),
         productSize: typeof configuration?.size === "string" && configuration.size.trim() ? configuration.size.trim() : null,
         productionTime: product.productionTime || productionTimeMap.get(product.id) || null,
-        ...(authenticated
-          ? startingPrices.get(product.id)
-          : { startingPrice: null, startingQuantity: null, currency: "INR", priceLabel: "Login to view price", priceState: "LOGIN", taxInclusive: null }),
+        ...startingPrices.get(product.id),
         hasAddons: productAddonsMap.has(product.id),
         hasArtworkRequirement: Boolean(requirement),
         artworkSummary,

@@ -5,8 +5,7 @@ import type { CatalogProduct } from "@/lib/catalog";
 import { ProductImage } from "@/components/product-image";
 
 export function ProductCard({ product }: { product: CatalogProduct & { priceLabel: string; isLoggedIn?: boolean } }) {
-  const isLoggedOut = !product.isLoggedIn && product.priceLabel === "Login to view price";
-  const targetHref = isLoggedOut ? `/login?next=${encodeURIComponent(`/catalog/${product.slug}`)}` : `/catalog/${product.slug}`;
+  const targetHref = `/catalog/${product.slug}`;
 
   return (
     <article className="group overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-[#1e3a5f]/40 hover:shadow-md">

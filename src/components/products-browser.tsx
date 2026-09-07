@@ -375,11 +375,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
     return `/catalog/${item.slug}?${params}`;
   };
   const destinationHref = (item: Product) => {
-    const target = productHref(item);
-    if (!isLoggedIn || item.priceState === "LOGIN") {
-      return `/login?next=${encodeURIComponent(target)}`;
-    }
-    return target;
+    return productHref(item);
   };
 
   const openQuoteFallback = (reqCtx: RequirementContext) => {
@@ -963,17 +959,6 @@ function RowActions({
   productHref: (item: Product) => string;
   isLoggedIn?: boolean;
 }) {
-  const isLoggedOut = !isLoggedIn || item.priceState === "LOGIN";
-  if (isLoggedOut) {
-    return (
-      <Link
-        href={`/login?next=${encodeURIComponent(productHref(item))}`}
-        className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm"
-      >
-        Configure <ArrowRight size={16} />
-      </Link>
-    );
-  }
   if (isUnavailableInState) {
     return (
       <button

@@ -44,7 +44,7 @@ type EditableCartItem = { id: string; quantity: number; jobName: string | null; 
 const money = formatInr;
 function requirementFor(details: ProductDetails | null, ruleId: string | null) { return details?.artworkRequirements.find((rule) => rule.pricingRuleId === ruleId) ?? details?.artworkRequirements.find((rule) => !rule.pricingRuleId) ?? null; }
 
-export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE", templateName }: { product: CatalogProduct; editItemId?: string; editKind?: CartKind; templateName?: string }) {
+export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE", templateName }: { product: CatalogProduct & { customerType?: "B2C" | "B2B" | null; priceLabel?: string }; editItemId?: string; editKind?: CartKind; templateName?: string }) {
   const router = useRouter();
   const defaults = useMemo(() => Object.fromEntries(product.configuration.map((field) => [field.id, field.defaultValue])), [product.configuration]);
   const [values, setValues] = useState<Record<string, string>>(defaults);
@@ -175,7 +175,7 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
     // addonIds and delivery together, so calculating before it arrives just schedules a request
     // that's guaranteed to be superseded (and, on a slow connection, may not even get a chance
     // to finish before the next real change cancels it).
-    if (!details) return;
+    if (!details || !product.customerType) return;
     const controller = new AbortController();
     const timer = setTimeout(() => {
       setIsCalculating(true);
@@ -343,61 +343,81 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
 
           {/* Grand total and breakdown */}
           <div className="border-t border-[#dfe5ef] pt-3">
-            <div className="flex items-baseline justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#607089]">Grand total</p>
-                <p className="text-xl sm:text-2xl font-bold text-[#162237]">
-                  {isCalculating ? <span className="text-[#607089] text-base font-medium animate-pulse">Calculating...</span> : estimate.calculatedAmount ? money(estimate.calculatedAmount) : "Checking price..."}
+            {!product.customerType ? (
+              <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3.5 text-xs text-blue-950">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-bold text-sm text-[#1e3a5f]">Starting Rate</span>
+                  <strong className="text-base text-slate-950 font-bold">{product.priceLabel}</strong>
+                </div>
+                <p className="mt-1.5 text-slate-600 leading-relaxed">
+                  Sign in to calculate your exact order amount with your delivery location, quantity, and GST (or unlock B2B wholesale rates).
                 </p>
+                <Link
+                  href={`/login?next=${encodeURIComponent(typeof window !== "undefined" ? window.location.pathname + window.location.search : `/catalog/${product.slug}`)}`}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#1e3a5f] px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#152a45] transition-colors"
+                >
+                  Sign in to Order &amp; Upload Artwork &rarr;
+                </Link>
               </div>
-              <span className="text-right text-xs text-[#607089]">{estimate.applicableRule ?? "Server pricing"}</span>
-            </div>
-            {estimate.productPrice ? (
-              <div className="mt-2 rounded-lg bg-[#f8fafc] border border-[#e8edf4] p-2.5 text-xs text-[#607089] space-y-1">
-                <div className="flex justify-between"><span>Base price</span><strong className="text-[#162237]">{money(estimate.productPrice)}</strong></div>
-                {estimate.blade ? (
-                  <div className="flex justify-between text-[#162237]">
-                    <span>Blade ({estimate.blade.count} &times; {money(estimate.blade.rate)})</span>
-                    <strong className="text-[#2457b8]">{money(estimate.blade.amount)}</strong>
+            ) : (
+              <>
+                <div className="flex items-baseline justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#607089]">Grand total</p>
+                    <p className="text-xl sm:text-2xl font-bold text-[#162237]">
+                      {isCalculating ? <span className="text-[#607089] text-base font-medium animate-pulse">Calculating...</span> : estimate.calculatedAmount ? money(estimate.calculatedAmount) : "Checking price..."}
+                    </p>
                   </div>
-                ) : null}
-                {estimate.addons && estimate.addons.length > 0 ? (
-                  estimate.addons.filter((addon) => addon.addonId !== "blade").map((addon) => (
-                    <div key={addon.addonId} className="flex justify-between text-[#162237]">
-                      <span>{addon.name}</span>
-                      <strong>{money(addon.price)}</strong>
-                    </div>
-                  ))
-                ) : null}
-                {Number(estimate.locationSurcharge?.amount || 0) > 0 ? <div className="flex justify-between"><span>{estimate.locationSurcharge?.label ?? "Location charge"}</span><strong className="text-[#162237]">{money(estimate.locationSurcharge?.amount)}</strong></div> : null}
-                {Number(estimate.delivery?.price || 0) > 0 ? <div className="flex justify-between"><span>Courier</span><strong className="text-[#162237]">{money(estimate.delivery?.price)}</strong></div> : null}
-                {estimate.taxRate && Number(estimate.taxRate) > 0 && estimate.priceBeforeTax ? (
-                  <div className="border-t border-[#e2e7ef] pt-1 mt-1 space-y-1">
-                    <div className="flex justify-between"><span>Taxable subtotal</span><strong className="text-[#162237]">{money(estimate.priceBeforeTax)}</strong></div>
-                    {estimate.taxJurisdictionState === "GJ" ? (
-                      <div className="flex justify-between text-[#607089]">
-                        <span>GST ({Number(estimate.taxRate)}% CGST+SGST)</span>
-                        <strong>{money(Number(estimate.cgstAmount || 0) + Number(estimate.sgstAmount || 0))}</strong>
+                  <span className="text-right text-xs text-[#607089]">{estimate.applicableRule ?? "Server pricing"}</span>
+                </div>
+                {estimate.productPrice ? (
+                  <div className="mt-2 rounded-lg bg-[#f8fafc] border border-[#e8edf4] p-2.5 text-xs text-[#607089] space-y-1">
+                    <div className="flex justify-between"><span>Base price</span><strong className="text-[#162237]">{money(estimate.productPrice)}</strong></div>
+                    {estimate.blade ? (
+                      <div className="flex justify-between text-[#162237]">
+                        <span>Blade ({estimate.blade.count} &times; {money(estimate.blade.rate)})</span>
+                        <strong className="text-[#2457b8]">{money(estimate.blade.amount)}</strong>
                       </div>
-                    ) : (
-                      <div className="flex justify-between text-[#607089]">
-                        <span>IGST ({Number(estimate.taxRate)}%)</span>
-                        <strong>{money(estimate.igstAmount || estimate.taxAmount)}</strong>
-                      </div>
-                    )}
-                    {estimate.roundOff && Math.abs(Number(estimate.roundOff)) > 0.001 ? (
-                      <div className="flex justify-between text-[11px] text-slate-500">
-                        <span>Round off</span>
-                        <strong className={Number(estimate.roundOff) < 0 ? "text-emerald-700" : "text-slate-700"}>
-                          {formatRoundOff(estimate.roundOff)}
-                        </strong>
+                    ) : null}
+                    {estimate.addons && estimate.addons.length > 0 ? (
+                      estimate.addons.filter((addon) => addon.addonId !== "blade").map((addon) => (
+                        <div key={addon.addonId} className="flex justify-between text-[#162237]">
+                          <span>{addon.name}</span>
+                          <strong>{money(addon.price)}</strong>
+                        </div>
+                      ))
+                    ) : null}
+                    {Number(estimate.locationSurcharge?.amount || 0) > 0 ? <div className="flex justify-between"><span>{estimate.locationSurcharge?.label ?? "Location charge"}</span><strong className="text-[#162237]">{money(estimate.locationSurcharge?.amount)}</strong></div> : null}
+                    {Number(estimate.delivery?.price || 0) > 0 ? <div className="flex justify-between"><span>Courier</span><strong className="text-[#162237]">{money(estimate.delivery?.price)}</strong></div> : null}
+                    {estimate.taxRate && Number(estimate.taxRate) > 0 && estimate.priceBeforeTax ? (
+                      <div className="border-t border-[#e2e7ef] pt-1 mt-1 space-y-1">
+                        <div className="flex justify-between"><span>Taxable subtotal</span><strong className="text-[#162237]">{money(estimate.priceBeforeTax)}</strong></div>
+                        {estimate.taxJurisdictionState === "GJ" ? (
+                          <div className="flex justify-between text-[#607089]">
+                            <span>GST ({Number(estimate.taxRate)}% CGST+SGST)</span>
+                            <strong>{money(Number(estimate.cgstAmount || 0) + Number(estimate.sgstAmount || 0))}</strong>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between text-[#607089]">
+                            <span>IGST ({Number(estimate.taxRate)}%)</span>
+                            <strong>{money(estimate.igstAmount || estimate.taxAmount)}</strong>
+                          </div>
+                        )}
+                        {estimate.roundOff && Math.abs(Number(estimate.roundOff)) > 0.001 ? (
+                          <div className="flex justify-between text-[11px] text-slate-500">
+                            <span>Round off</span>
+                            <strong className={Number(estimate.roundOff) < 0 ? "text-emerald-700" : "text-slate-700"}>
+                              {formatRoundOff(estimate.roundOff)}
+                            </strong>
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>
                 ) : null}
-              </div>
-            ) : null}
-            {estimate.warnings[0] ? <p className="mt-2 border-l-2 border-[#c78b30] pl-2.5 text-xs leading-4 text-[#805910]">{estimate.warnings[0]}</p> : null}
+                {estimate.warnings[0] ? <p className="mt-2 border-l-2 border-[#c78b30] pl-2.5 text-xs leading-4 text-[#805910]">{estimate.warnings[0]}</p> : null}
+              </>
+            )}
           </div>
           {basketError ? (
             <p className="text-xs sm:text-sm font-semibold text-[#a53025]">
@@ -448,7 +468,16 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
               ))}
             </div>
           ) : null}
-          {editItemId ? (
+          {!product.customerType ? (
+            <div className="pt-1">
+              <Link
+                href={`/login?next=${encodeURIComponent(typeof window !== "undefined" ? window.location.pathname + window.location.search : `/catalog/${product.slug}`)}`}
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-[#1e3a5f] px-4 py-2.5 sm:py-3 text-sm font-bold text-white shadow-sm hover:bg-[#152a45] transition-colors"
+              >
+                Sign in to Order &amp; Upload Artwork <ArrowRight size={15} />
+              </Link>
+            </div>
+          ) : editItemId ? (
             <button type="button" onClick={() => void add(editKind)} disabled={editKind === "PURCHASE" && !directReady} className="flex w-full items-center justify-center gap-2 rounded-full bg-[#2457b8] px-4 py-2.5 sm:py-3 text-sm font-bold text-white shadow-sm hover:bg-[#1a4494] transition-colors disabled:cursor-not-allowed disabled:bg-[#9bb6e8]"><Check size={15} />Update {editKind === "QUOTE" ? "quote" : "purchase"} basket</button>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 pt-1">
@@ -496,36 +525,53 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
 
       {/* Mobile Sticky Bottom Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--mc-line)] bg-white/95 p-3 backdrop-blur shadow-[0_-8px_20px_rgba(16,33,63,0.08)] sm:hidden">
-        {!directReady && blockingReasons.length > 0 ? (
-          <p className="mb-2 text-center text-[12px] font-medium text-[#7c5c00]">{blockingReasons[0]}</p>
-        ) : null}
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--mc-muted)]">Grand Total</p>
-            <p className="text-lg font-bold text-[var(--mc-ink)]">
-              {isCalculating ? <span className="text-sm font-medium animate-pulse text-[var(--mc-muted)]">...</span> : estimate.calculatedAmount ? money(estimate.calculatedAmount) : "—"}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => void add("PURCHASE", true)}
-              disabled={!directReady}
-              className="flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-[#9bb6e8]"
+        {!product.customerType ? (
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--mc-muted)]">Starting from</p>
+              <p className="text-base font-bold text-[var(--mc-ink)]">{product.priceLabel}</p>
+            </div>
+            <Link
+              href={`/login?next=${encodeURIComponent(typeof window !== "undefined" ? window.location.pathname + window.location.search : `/catalog/${product.slug}`)}`}
+              className="inline-flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[var(--mc-accent-dark)] transition-colors"
             >
-              Buy now <ArrowRight size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={() => void add("PURCHASE")}
-              disabled={!directReady}
-              className="grid size-10 place-items-center rounded-full border border-[var(--mc-accent)] bg-white text-[var(--mc-accent)] disabled:cursor-not-allowed disabled:opacity-40"
-              aria-label="Add to basket"
-            >
-              <ShoppingBag size={16} />
-            </button>
+              Sign in to Order <ArrowRight size={15} />
+            </Link>
           </div>
-        </div>
+        ) : (
+          <>
+            {!directReady && blockingReasons.length > 0 ? (
+              <p className="mb-2 text-center text-[12px] font-medium text-[#7c5c00]">{blockingReasons[0]}</p>
+            ) : null}
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--mc-muted)]">Grand Total</p>
+                <p className="text-lg font-bold text-[var(--mc-ink)]">
+                  {isCalculating ? <span className="text-sm font-medium animate-pulse text-[var(--mc-muted)]">...</span> : estimate.calculatedAmount ? money(estimate.calculatedAmount) : "—"}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void add("PURCHASE", true)}
+                  disabled={!directReady}
+                  className="flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-[#9bb6e8]"
+                >
+                  Buy now <ArrowRight size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void add("PURCHASE")}
+                  disabled={!directReady}
+                  className="grid size-10 place-items-center rounded-full border border-[var(--mc-accent)] bg-white text-[var(--mc-accent)] disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Add to basket"
+                >
+                  <ShoppingBag size={16} />
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       <RequirementQuoteModal
