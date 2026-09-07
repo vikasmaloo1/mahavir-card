@@ -4,7 +4,7 @@ import { and, eq, isNotNull, isNull, lt } from "drizzle-orm";
 
 import { resolveArtworkRequirementWithSlots } from "@/lib/artwork-requirements";
 import { db } from "@/lib/db/server";
-import { artworks, customers, pricingRules, products } from "@/lib/db/schema";
+import { artworks, customers, pricingRules, products, user } from "@/lib/db/schema";
 import { storage, storageKeys, validateCdrMetadata } from "@/lib/storage";
 
 export type InitiateArtworkInput = {
@@ -52,7 +52,7 @@ async function cleanupExpiredUploads(userId: string) {
 
 export async function initiateArtworkUpload(userId: string, input: InitiateArtworkInput) {
   await cleanupExpiredUploads(userId);
-  const [product] = await db.select({ id: products.id }).from(products).where(and(eq(products.id, input.productId), eq(products.isActive, true), eq(products.status, "ACTIVE"))).limit(1);
+  const [product] = await db.select({ id: products.id, slug: products.slug, name: products.name }).from(products).where(and(eq(products.id, input.productId), eq(products.isActive, true), eq(products.status, "ACTIVE"))).limit(1);
   if (!product) throw new Error("Product not found.");
   await validatePricingRule(input.productId, input.pricingRuleId);
   const requirement = await resolveArtworkRequirementWithSlots(input.productId, input.pricingRuleId);
@@ -92,10 +92,34 @@ export async function initiateArtworkUpload(userId: string, input: InitiateArtwo
     }
   }
 
-  const [customer] = await db.select({ id: customers.id }).from(customers).where(eq(customers.userId, userId)).limit(1);
+  const [customer] = await db
+    .select({
+      id: customers.id,
+      companyName: customers.companyName,
+      contactName: customers.contactName,
+      phone: customers.phone,
+    })
+    .from(customers)
+    .where(eq(customers.userId, userId))
+    .limit(1);
+
+  const [userRow] = await db
+    .select({
+      name: user.name,
+      phoneNumber: user.phoneNumber,
+    })
+    .from(user)
+    .where(eq(user.id, userId))
+    .limit(1);
+
+  const phone = (customer?.phone || userRow?.phoneNumber || "").replace(/[^0-9]/g, "");
+  const name = customer?.companyName || customer?.contactName || userRow?.name || "";
+  const customerFolder = [phone, name].filter(Boolean).join("-") || `user-${userId.slice(0, 8)}`;
+  const productFolder = product.slug || product.name || input.productId.slice(0, 8);
+
   const artworkId = crypto.randomUUID();
   const contentType = input.contentType && input.contentType.trim() ? input.contentType.toLowerCase() : "application/octet-stream";
-  const key = storageKeys.artwork(customer?.id ?? userId, input.productId, input.filename);
+  const key = storageKeys.artwork(customerFolder, productFolder, input.filename, slotKey);
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
   const uploadUrl = await storage.getSignedUploadUrl({ key, contentType, expiresIn: 300 });
   const [artwork] = await db.insert(artworks).values({

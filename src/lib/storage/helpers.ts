@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 
 const extensionPattern = /\.[a-z0-9]{1,12}$/i;
 
@@ -12,10 +12,9 @@ export function filenameExtension(value: string) {
   return sanitizeFilename(value).match(extensionPattern)?.[0].toLowerCase() ?? "";
 }
 
-function safeSegment(value: string) {
-  const segment = value.trim().replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-  if (!segment || segment === "." || segment === "..") throw new Error("Invalid storage path segment");
-  return segment.slice(0, 120);
+function safeSegment(value: string, fallback = "item") {
+  const segment = (value || "").trim().normalize("NFKD").replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  return (segment || fallback).slice(0, 120);
 }
 
 export function uniqueFilename(originalFilename: string) {
@@ -27,7 +26,7 @@ export function uniqueFilename(originalFilename: string) {
 
 export function objectKey(namespace: readonly string[], originalFilename: string) {
   if (!namespace.length) throw new Error("A storage namespace is required");
-  return [...namespace.map(safeSegment), uniqueFilename(originalFilename)].join("/");
+  return [...namespace.map((s) => safeSegment(s)), uniqueFilename(originalFilename)].join("/");
 }
 
 export const storageKeys = {
@@ -38,7 +37,18 @@ export const storageKeys = {
   bannerImage(filename: string) { return objectKey(["banners", "images"], filename); },
   templateImage(templateId: string, filename: string) { return objectKey(["design-templates", templateId, "images"], filename); },
   templateSourceFile(templateId: string, filename: string) { return objectKey(["design-templates", templateId, "source"], filename); },
-  artwork(ownerId: string, associationId: string, filename: string) { return objectKey(["artwork", ownerId, associationId], filename); },
+  artwork(customerFolder: string, productFolder: string, filename: string, slotKey?: string | null) {
+    const safeCustomer = safeSegment(customerFolder, "customer");
+    const safeProduct = safeSegment(productFolder, "product");
+    const safeName = sanitizeFilename(filename);
+    const ext = filenameExtension(safeName) || ".cdr";
+    const stem = (ext ? safeName.slice(0, -ext.length) : safeName).slice(0, 50).replace(/[._-]+$/g, "") || "artwork";
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const slotPart = slotKey && slotKey.toUpperCase() !== "MAIN" ? `-${safeSegment(slotKey, "slot").toUpperCase()}` : "";
+    const shortId = randomBytes(4).toString("hex");
+    const cleanFilename = `${dateStr}${slotPart}-${stem}-${shortId}${ext}`;
+    return ["artwork", safeCustomer, safeProduct, cleanFilename].join("/");
+  },
   quote(quoteId: string, filename: string) { return objectKey(["quotes", quoteId], filename); },
   invoice(customerId: string, invoiceId: string, filename: string) { return objectKey(["invoices", customerId, invoiceId], filename); },
   document(entityType: string, entityId: string, filename: string) { return objectKey(["documents", entityType.toLowerCase(), entityId], filename); },
