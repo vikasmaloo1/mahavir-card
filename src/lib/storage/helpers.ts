@@ -42,6 +42,8 @@ export const storageKeys = {
   quote(quoteId: string, filename: string) { return objectKey(["quotes", quoteId], filename); },
   invoice(customerId: string, invoiceId: string, filename: string) { return objectKey(["invoices", customerId, invoiceId], filename); },
   document(entityType: string, entityId: string, filename: string) { return objectKey(["documents", entityType.toLowerCase(), entityId], filename); },
+  paymentProof(userId: string, filename: string) { return objectKey(["payments", userId, "proofs"], filename); },
+  qrCode(variant: string, filename: string) { return objectKey(["branding", "qr", variant.toLowerCase()], filename); },
 };
 
 export function safeContentDispositionFilename(value: string) {

@@ -25,9 +25,9 @@ type AccountData = {
 type OrderBucket = "ALL" | "AWAITING_ARTWORK" | "IN_PRODUCTION" | "READY" | "DELIVERED";
 const ORDER_BUCKETS: Array<{ id: OrderBucket; label: string; statuses: string[] | null }> = [
   { id: "ALL", label: "All", statuses: null },
-  { id: "AWAITING_ARTWORK", label: "Awaiting artwork", statuses: ["PENDING", "CONFIRMED"] },
-  { id: "IN_PRODUCTION", label: "In production", statuses: ["ARTWORK_APPROVED", "IN_PRODUCTION"] },
-  { id: "READY", label: "Ready", statuses: ["READY", "DISPATCHED"] },
+  { id: "AWAITING_ARTWORK", label: "Pending / Confirmed", statuses: ["PENDING", "CONFIRMED"] },
+  { id: "IN_PRODUCTION", label: "In production", statuses: ["IN_PRODUCTION"] },
+  { id: "READY", label: "Ready / Dispatched", statuses: ["READY", "DISPATCHED"] },
   { id: "DELIVERED", label: "Delivered", statuses: ["DELIVERED"] },
 ];
 
@@ -38,6 +38,7 @@ export function AccountDashboard() {
   const [loading, setLoading] = useState(true);
   const [signedOut, setSignedOut] = useState(false);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [reorderError, setReorderError] = useState("");
   const [orderFilter, setOrderFilter] = useState<OrderBucket>("ALL");
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
@@ -92,6 +93,23 @@ export function AccountDashboard() {
     } catch (caught) {
       setReorderError(caught instanceof Error ? caught.message : "This order could not be reordered");
       setReorderingId(null);
+    }
+  }
+
+  async function cancelOrder(orderId: string, orderNumber: string) {
+    if (!window.confirm(`Are you sure you want to cancel order ${orderNumber}? If already paid, the full amount will be credited back to your wallet balance.`)) return;
+    setCancellingId(orderId);
+    setReorderError("");
+    try {
+      const response = await fetch(`/api/orders/${orderId}/cancel`, { method: "POST" });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "This order could not be cancelled");
+      window.alert(payload.data?.message || "Order cancelled successfully. If paid, refund was credited to your wallet.");
+      await load();
+    } catch (caught) {
+      setReorderError(caught instanceof Error ? caught.message : "This order could not be cancelled");
+    } finally {
+      setCancellingId(null);
     }
   }
 
@@ -155,7 +173,7 @@ export function AccountDashboard() {
     <div>
       <header className="flex flex-col justify-between gap-4 border-b border-[var(--mc-line)] pb-7 sm:flex-row sm:items-end">
         <div><p className="text-xs font-bold uppercase text-[var(--mc-accent)]">Customer account</p><h1 className="mt-2 text-3xl font-bold sm:text-4xl">Your print desk</h1><p className="mt-2 text-[15px] text-[var(--mc-muted)]">Orders, quotes, inquiries, artwork, and delivery details from your account.</p></div>
-        <div className="flex items-center gap-3"><Link href="/account/notifications" className="inline-flex items-center gap-2 rounded-full border border-[var(--mc-line)] bg-white px-4 py-3 text-sm font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors"><Bell size={16} />Notifications</Link><Link href="/products" className="inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-5 py-3 text-sm font-bold text-white">Browse products <ArrowRight size={16} /></Link></div>
+        <div className="flex items-center gap-3"><Link href="/products" className="inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-5 py-3 text-sm font-bold text-white shadow-xs hover:bg-[var(--mc-accent-dark)] transition-colors">Browse products <ArrowRight size={16} /></Link></div>
       </header>
       <section className="mt-6 grid grid-cols-2 sm:grid-cols-5 gap-px overflow-hidden rounded-xl border border-[var(--mc-line)] bg-[var(--mc-line)] shadow-sm">
         <ProfileValue label="Person" value={data.customer?.contactName ?? data.user.name} />
@@ -202,16 +220,29 @@ export function AccountDashboard() {
               const activeBucket = ORDER_BUCKETS.find((bucket) => bucket.id === orderFilter);
               const filteredOrders = activeBucket?.statuses ? data.orders.filter((order) => activeBucket.statuses!.includes(order.status)) : data.orders;
               return filteredOrders.length ? filteredOrders.map((item) => (
-              <div key={item.id} className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] pt-3 text-sm">
+              <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--mc-line)] pt-3 text-sm">
                 <Link href={`/account/orders/${item.id}`} className="min-w-0 flex-1 hover:text-[var(--mc-accent)] transition-colors">
-                  <strong>{item.orderNumber}</strong>
-                  <small className="mt-1 block text-[var(--mc-muted)]">{labelStatus(item.status)} / {date(item.createdAt)}</small>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <strong>{item.orderNumber}</strong>
+                    <OrderStatusBadge status={item.status} />
+                  </div>
+                  <small className="mt-1 block text-[var(--mc-muted)]">{date(item.createdAt)}</small>
                 </Link>
                 <strong className="shrink-0">{formatInr(item.total)}</strong>
                 <Link href={`/account/orders/${item.id}#documents`} className="hidden shrink-0 items-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors sm:inline-flex">
                   <FileText size={13} />
                   Invoice
                 </Link>
+                {(item.status === "PENDING" || item.status === "CONFIRMED") ? (
+                  <button
+                    type="button"
+                    disabled={cancellingId === item.id}
+                    onClick={() => void cancelOrder(item.id, item.orderNumber)}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-red-200 bg-red-50/70 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
+                  >
+                    {cancellingId === item.id ? "Cancelling..." : "Cancel"}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   disabled={reorderingId === item.id}
@@ -254,3 +285,22 @@ function ProfileValue({ label, value }: { label: string; value: string }) { retu
 function AccountSkeleton() { return <div className="animate-pulse py-8"><div className="h-8 w-56 rounded bg-[#dce4f0]" /><div className="mt-3 h-4 w-96 max-w-full rounded bg-[#e6ebf3]" /><div className="mt-8 grid gap-3 sm:grid-cols-3">{Array.from({ length: 3 }, (_, index) => <div key={index} className="h-28 rounded-xl border border-[var(--mc-line)] bg-white" />)}</div><div className="mt-5 grid gap-5 xl:grid-cols-2">{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-44 rounded-xl border border-[var(--mc-line)] bg-white" />)}</div></div>; }
 function date(value: string) { return new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }); }
 function labelStatus(value: string) { return value.toLowerCase().split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" "); }
+
+function OrderStatusBadge({ status }: { status: string }) {
+  const styles: Record<string, { bg: string; text: string; label: string }> = {
+    PENDING: { bg: "bg-amber-50 border-amber-200", text: "text-amber-800", label: "Pending" },
+    CONFIRMED: { bg: "bg-sky-50 border-sky-200", text: "text-sky-800", label: "Order Confirmed" },
+    IN_PRODUCTION: { bg: "bg-indigo-50 border-indigo-200", text: "text-indigo-800", label: "In Production" },
+    READY: { bg: "bg-emerald-50 border-emerald-200", text: "text-emerald-800", label: "Ready" },
+    DISPATCHED: { bg: "bg-purple-50 border-purple-200", text: "text-purple-800", label: "Dispatched" },
+    DELIVERED: { bg: "bg-green-50 border-green-200", text: "text-green-800", label: "Delivered" },
+    CANCELLED: { bg: "bg-red-50 border-red-200", text: "text-red-800", label: "Cancelled" },
+  };
+  const config = styles[status] || { bg: "bg-slate-50 border-slate-200", text: "text-slate-700", label: labelStatus(status) };
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold ${config.bg} ${config.text}`}>
+      {config.label}
+    </span>
+  );
+}
+

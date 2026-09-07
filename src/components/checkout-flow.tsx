@@ -8,6 +8,7 @@ import { formatInr, formatRoundOff } from "@/lib/formatting";
 import { citiesForState, commerceStates, indiaStateName } from "@/lib/india-states";
 import { cachedFetchJson } from "@/lib/client-fetch-cache";
 import { UpiQrCode } from "@/components/upi-qr-code";
+import { PaymentBankDetails } from "@/components/payment-bank-details";
 
 type Item = { id: string; quantity: number; calculatedAmount: string | null; available: boolean; product: { name: string }; pricingSnapshot: { applicableRule?: string | null; addons?: Array<{ name: string; price: string }>; delivery?: { method?: string | null; price?: string } } };
 type CartData = { items: Item[]; summary: { productSubtotal: string; addonSubtotal: string; deliverySubtotal: string; surchargeSubtotal: string; priceBeforeTax: string; tax: string; cgst: string; sgst: string; igst: string; roundOff?: string; total: string; taxInclusive: boolean; hasTaxBreakdown: boolean; hasUnavailableItems: boolean } };
@@ -24,6 +25,7 @@ export function CheckoutFlow({ upiVpa }: { upiVpa: string }) {
   const [cart, setCart] = useState<CartData>({ items: [], summary: { productSubtotal: "0.00", addonSubtotal: "0.00", deliverySubtotal: "0.00", surchargeSubtotal: "0.00", priceBeforeTax: "0.00", tax: "0.00", cgst: "0.00", sgst: "0.00", igst: "0.00", total: "0.00", taxInclusive: false, hasTaxBreakdown: false, hasUnavailableItems: false } });
   const [method, setMethod] = useState<"RAZORPAY" | "COD" | "CREDIT" | "UPI_QR">("COD");
   const [utr, setUtr] = useState("");
+  const [proofImageUrl, setProofImageUrl] = useState<string | null>(null);
   const [utrSubmitting, setUtrSubmitting] = useState(false);
   const [utrSubmitted, setUtrSubmitted] = useState(false);
   const [utrError, setUtrError] = useState("");
@@ -134,7 +136,15 @@ export function CheckoutFlow({ upiVpa }: { upiVpa: string }) {
     if (!result) return;
     setUtrSubmitting(true); setUtrError("");
     try {
-      const response = await fetch("/api/payments/upi/submit-reference", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId: result.order.id, utr: utr.trim() }) });
+      const response = await fetch("/api/payments/upi/submit-reference", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: result.order.id,
+          utr: utr.trim(),
+          proofImageUrl: proofImageUrl || null,
+        }),
+      });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "Could not save your payment reference");
       setUtrSubmitted(true);
@@ -149,21 +159,29 @@ export function CheckoutFlow({ upiVpa }: { upiVpa: string }) {
 
   if (result && result.payment.method === "UPI_QR" && !utrSubmitted) {
     return (
-      <div className="mx-auto max-w-md py-14 text-center">
-        <p className="text-xs font-bold uppercase text-[var(--mc-accent)]">Order {result.order.orderNumber} created</p>
-        <h2 className="mt-2 text-2xl font-bold text-[var(--mc-ink)]">Pay {formatInr(result.payment.amount)} via UPI</h2>
-        <p className="mt-2 text-sm leading-6 text-[var(--mc-muted)]">Scan the QR and pay directly &mdash; there&apos;s no payment gateway involved. After paying, enter the UPI reference number (UTR) below so we can confirm it against our bank statement.</p>
-        <div className="mt-6">
-          <UpiQrCode amount={result.payment.amount} note={`Order ${result.order.orderNumber}`} upiId={upiVpa} />
+      <div className="mx-auto max-w-xl py-10 sm:py-14 text-center">
+        <p className="text-xs font-bold uppercase text-[var(--mc-accent)]">Order #{result.order.orderNumber} placed</p>
+        <h2 className="mt-2 text-2xl font-bold text-[var(--mc-ink)]">Pay {formatInr(result.payment.amount)} via UPI / Bank Transfer</h2>
+        <p className="mt-2 text-sm leading-6 text-[var(--mc-muted)]">Scan the QR code with any UPI app or transfer directly to our Bank of Baroda account. After payment, enter your 12-digit UTR/reference number and attach your payment screenshot for immediate verification.</p>
+        
+        <div className="mt-6 text-left">
+          <PaymentBankDetails
+            customerType={accountCustomer?.customerType || "B2C"}
+            amount={result.payment.amount}
+            proofImageUrl={proofImageUrl}
+            onProofUploaded={setProofImageUrl}
+            onClearProof={() => setProofImageUrl(null)}
+          />
         </div>
-        <form onSubmit={submitUtr} className="mt-5 text-left">
+
+        <form onSubmit={submitUtr} className="mt-5 text-left rounded-xl border border-[var(--mc-line)] bg-white p-4 sm:p-5 shadow-xs">
           <label className="block">
-            <span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">UPI transaction reference (UTR)</span>
-            <input required value={utr} onChange={(event) => setUtr(event.target.value)} placeholder="Enter 12-digit UPI reference (UTR)" className="w-full rounded-lg border border-[var(--mc-line)] bg-white px-3.5 py-3 text-[15px] outline-none focus:border-[var(--mc-accent)] transition-colors" />
+            <span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">12-Digit UPI Transaction Reference (UTR)</span>
+            <input required value={utr} onChange={(event) => setUtr(event.target.value)} placeholder="e.g. 423456789012" className="w-full rounded-lg border border-[var(--mc-line)] bg-white px-3.5 py-3 text-[15px] outline-none focus:border-[var(--mc-accent)] transition-colors font-mono" />
           </label>
-          <p className="mt-1.5 text-xs text-[var(--mc-muted)]">Find this in your UPI app&apos;s payment history / success screen.</p>
+          <p className="mt-1.5 text-xs text-[var(--mc-muted)]">Find the 12-digit UTR or Transaction ID in your payment receipt screen.</p>
           {utrError ? <p className="mt-3 rounded-lg border border-[#efb7b7] bg-[#fff4f4] p-3 text-sm text-[#9b2525]">{utrError}</p> : null}
-          <button disabled={utrSubmitting} className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-[var(--mc-accent)] px-5 py-3.5 text-sm font-bold text-white shadow-sm hover:bg-[var(--mc-accent-dark)] transition-colors disabled:cursor-not-allowed disabled:opacity-60">{utrSubmitting ? "Saving..." : "I’ve paid — submit reference"}</button>
+          <button disabled={utrSubmitting} className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-[var(--mc-accent)] px-5 py-3.5 text-sm font-bold text-white shadow-sm hover:bg-[var(--mc-accent-dark)] transition-colors disabled:cursor-not-allowed disabled:opacity-60">{utrSubmitting ? "Submitting payment details..." : "I’ve Paid — Submit Reference & Proof"}</button>
         </form>
         <Link href={`/account/orders/${result.order.id}`} className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[var(--mc-muted)] hover:text-[var(--mc-accent)] transition-colors">View order status <ArrowRight size={15} /></Link>
       </div>

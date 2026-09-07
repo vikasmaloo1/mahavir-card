@@ -6,6 +6,7 @@ import { useEffect, useState, useRef } from "react";
 
 import { formatInr } from "@/lib/formatting";
 import { UpiQrCode } from "@/components/upi-qr-code";
+import { PaymentBankDetails } from "@/components/payment-bank-details";
 import { useAutoRefresh } from "@/lib/use-auto-refresh";
 
 type WalletData = {
@@ -32,6 +33,7 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
   const [data, setData] = useState<WalletData | null>(null);
   const [amount, setAmount] = useState("");
   const [utr, setUtr] = useState("");
+  const [proofImageUrl, setProofImageUrl] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [lastSubmission, setLastSubmission] = useState<LastSubmission | null>(null);
   const [saving, setSaving] = useState(false);
@@ -93,7 +95,11 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
       const response = await fetch("/api/account/wallet/top-up", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: parsedAmount, utr: submittedUtr || null }),
+        body: JSON.stringify({
+          amount: parsedAmount,
+          utr: submittedUtr || null,
+          proofImageUrl: proofImageUrl || null,
+        }),
       });
       const payload = await response.json();
       setSaving(false);
@@ -107,6 +113,7 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
 
       setAmount("");
       setUtr("");
+      setProofImageUrl(null);
       setLastSubmission({
         amount: submittedAmount,
         utr: submittedUtr,
@@ -224,18 +231,18 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
             </div>
           )}
 
-          <div className="mt-7 grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
-            <form onSubmit={submit} className="h-fit rounded-xl border border-[var(--mc-line)] bg-white p-5 sm:p-6 shadow-sm">
+          <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+            <form onSubmit={submit} className="h-fit rounded-xl border border-[var(--mc-line)] bg-white p-5 sm:p-6 shadow-sm space-y-4">
               <div className="flex items-center gap-2">
                 <CreditCard size={18} className="text-[var(--mc-accent)]" />
-                <h2 className="font-bold text-lg text-[var(--mc-ink)]">Add balance via UPI</h2>
+                <h2 className="font-bold text-lg text-[var(--mc-ink)]">Add balance via UPI / Bank Transfer</h2>
               </div>
-              <p className="mt-1.5 text-xs leading-5 text-[var(--mc-muted)]">
-                Enter an amount, scan the QR to pay directly (no gateway fee), then submit your UPI reference below.
+              <p className="text-xs leading-5 text-[var(--mc-muted)]">
+                Enter your top-up amount, pay via QR or direct Bank of Baroda transfer (zero fee), then enter the reference and screenshot proof below.
               </p>
 
-              <label className="mt-5 block">
-                <span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">Amount (₹) <span className="font-normal text-[var(--mc-muted)]">— minimum ₹500</span></span>
+              <label className="block">
+                <span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">Top-up Amount (₹) <span className="font-normal text-[var(--mc-muted)]">— minimum ₹500</span></span>
                 <input
                   required
                   min="500"
@@ -244,34 +251,36 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
                   value={amount}
                   onChange={(event) => setAmount(event.target.value)}
                   placeholder="Enter amount (₹)"
-                  className="w-full rounded-lg border border-[var(--mc-line)] px-3.5 py-3 outline-none focus:border-[var(--mc-accent)] transition-colors"
+                  className="w-full rounded-lg border border-[var(--mc-line)] px-3.5 py-3 outline-none focus:border-[var(--mc-accent)] transition-colors font-semibold"
                 />
               </label>
 
-              {Number(amount) > 0 ? (
-                <div className="mt-4">
-                  <UpiQrCode amount={Number(amount).toFixed(2)} note="Wallet top-up" upiId={upiVpa} />
-                </div>
-              ) : null}
+              <PaymentBankDetails
+                customerType={data.customer?.customerType || "B2C"}
+                amount={Number(amount) > 0 ? Number(amount).toFixed(2) : undefined}
+                proofImageUrl={proofImageUrl}
+                onProofUploaded={setProofImageUrl}
+                onClearProof={() => setProofImageUrl(null)}
+              />
 
-              <label className="mt-4 block">
+              <label className="block">
                 <span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">
-                  UPI reference (UTR){" "}
-                  <span className="font-normal text-[var(--mc-muted)]">(optional, but speeds up confirmation)</span>
+                  12-Digit UPI / IMPS Reference (UTR){" "}
+                  <span className="font-normal text-[var(--mc-muted)]">(optional, speeds up confirmation)</span>
                 </span>
                 <input
                   value={utr}
                   onChange={(event) => setUtr(event.target.value)}
-                  placeholder="Enter 12-digit UPI reference (UTR)"
-                  className="w-full rounded-lg border border-[var(--mc-line)] px-3.5 py-3 outline-none focus:border-[var(--mc-accent)] transition-colors"
+                  placeholder="e.g. 423456789012"
+                  className="w-full rounded-lg border border-[var(--mc-line)] px-3.5 py-3 outline-none focus:border-[var(--mc-accent)] transition-colors font-mono"
                 />
               </label>
 
               <button
                 disabled={saving}
-                className="mt-4 w-full rounded-full bg-[var(--mc-accent)] px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-[var(--mc-accent-dark)] transition-colors disabled:opacity-60"
+                className="w-full rounded-full bg-[var(--mc-accent)] px-4 py-3.5 text-sm font-bold text-white shadow-sm hover:bg-[var(--mc-accent-dark)] transition-colors disabled:opacity-60"
               >
-                {saving ? "Submitting..." : "Submit top-up request"}
+                {saving ? "Submitting top-up request..." : "Submit Top-up Request"}
               </button>
 
               {/* IN-CARD SUCCESS ALERT BANNER */}

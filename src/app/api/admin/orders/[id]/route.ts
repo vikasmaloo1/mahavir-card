@@ -38,19 +38,19 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/orde
 
       if (input.status === "CANCELLED" && existing.status !== "CANCELLED") {
         const [payment] = await tx.select().from(payments).where(eq(payments.orderId, id)).limit(1);
-        if (payment?.method === "CREDIT" && payment.status === "CREDIT_APPROVED" && payment.customerId) {
-          const [releasedPayment] = await tx.update(payments).set({ status: "REFUNDED", updatedAt: new Date() }).where(and(eq(payments.id, payment.id), eq(payments.status, "CREDIT_APPROVED"))).returning({ id: payments.id });
+        if (payment && payment.customerId && (payment.status === "PAID" || (payment.method === "CREDIT" && payment.status === "CREDIT_APPROVED"))) {
+          const [releasedPayment] = await tx.update(payments).set({ status: "REFUNDED", updatedAt: new Date() }).where(eq(payments.id, payment.id)).returning({ id: payments.id });
           if (releasedPayment) {
-            const restoredBalance = sql`least(${customers.creditLimit}, ${customers.availableCredit} + ${payment.amount})`;
+            const restoredBalance = sql`${customers.availableCredit} + ${payment.amount}`;
             const [creditCustomer] = await tx.update(customers).set({ availableCredit: restoredBalance, walletBalance: restoredBalance, updatedAt: new Date() }).where(eq(customers.id, payment.customerId)).returning({ availableCredit: customers.availableCredit });
             if (creditCustomer) await tx.insert(walletTransactions).values({
               customerId: payment.customerId,
-              transactionType: "CREDIT_RELEASE",
+              transactionType: payment.method === "CREDIT" ? "CREDIT_RELEASE" : "REFUND",
               status: "APPROVED",
               amount: payment.amount,
               balanceAfter: creditCustomer.availableCredit,
               reference: existing.orderNumber,
-              notes: `Credit released after cancellation of ${existing.orderNumber}`,
+              notes: `Refund credited to wallet for cancelled order ${existing.orderNumber}`,
               createdBy: session.user.id,
             });
           }

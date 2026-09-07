@@ -11,12 +11,23 @@ type Row = Record<string, unknown>;
 export type DetailSection = "orders" | "quotes" | "customers" | "inquiries" | "payments" | "artworks";
 
 const statusOptions: Partial<Record<DetailSection, string[]>> = {
-  orders: ["PENDING", "CONFIRMED", "ARTWORK_APPROVED", "IN_PRODUCTION", "READY", "DISPATCHED", "DELIVERED", "CANCELLED"],
+  orders: ["PENDING", "CONFIRMED", "IN_PRODUCTION", "READY", "DISPATCHED", "DELIVERED", "CANCELLED"],
   quotes: ["NEW", "REVIEWING", "QUOTE_CREATED", "SENT_TO_CUSTOMER", "CUSTOMER_APPROVED", "CUSTOMER_REJECTED", "EXPIRED", "CONVERTED_TO_ORDER", "CANCELLED"],
   inquiries: ["NEW", "CONTACTED", "QUALIFIED", "QUOTATION_REQUESTED", "CONVERTED", "CLOSED", "LOST"],
   payments: ["PENDING", "PAID", "FAILED", "REFUNDED", "COD_PENDING", "COD_COLLECTED", "CREDIT_APPROVED"],
   artworks: ["PENDING_REVIEW", "APPROVED", "CHANGES_REQUIRED", "REJECTED"],
 };
+
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Pending",
+  CONFIRMED: "Order Confirmed",
+  IN_PRODUCTION: "In Production",
+  READY: "Ready",
+  DISPATCHED: "Dispatched",
+  DELIVERED: "Delivered",
+  CANCELLED: "Cancelled",
+};
+
 
 function text(value: unknown) { return value === null || value === undefined || value === "" ? "-" : String(value); }
 function value(value: unknown) { return value === null || value === undefined ? "" : String(value); }
@@ -83,7 +94,7 @@ function RecordActions({ section, id, row, saving, mutate }: { section: DetailSe
   const [status, setStatus] = useState(value(row.status));
   const [notes, setNotes] = useState(value(section === "inquiries" ? row.internalNotes : row.notes));
   const [amount, setAmount] = useState(value(row.amount));
-  return <aside className="h-fit border border-[#d7dce5] bg-white p-4 sm:p-5"><h2 className="font-bold">Manage record</h2>{statusOptions[section] ? <label className="mt-4 block text-sm font-semibold">Status<select value={status} onChange={(event) => setStatus(event.target.value)} className="mt-1.5 w-full border border-[#c9d2df] px-3 py-2.5 font-normal">{statusOptions[section]?.map((item) => <option key={item}>{item}</option>)}</select></label> : null}{section === "payments" ? <label className="mt-4 block text-sm font-semibold">Amount<input value={amount} onChange={(event) => setAmount(event.target.value)} className="mt-1.5 w-full border border-[#c9d2df] px-3 py-2.5 font-normal" /></label> : null}{section !== "payments" ? <label className="mt-4 block text-sm font-semibold">{section === "inquiries" ? "Internal notes" : "Notes"}<textarea rows={5} value={notes} onChange={(event) => setNotes(event.target.value)} className="mt-1.5 w-full border border-[#c9d2df] p-3 font-normal" /></label> : null}<button type="button" disabled={saving} onClick={() => void mutate(`/api/admin/${section}/${id}`, { method: "PATCH", body: JSON.stringify({ status, ...(section === "payments" ? { amount } : section === "inquiries" ? { internalNotes: notes || null } : { notes: notes || undefined }) }) }, "Record updated.")} className="mt-4 inline-flex w-full items-center justify-center gap-2 bg-[#2457b8] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"><Check size={16} />Save changes</button>{section === "artworks" ? <a href={`/api/artworks/${id}/download`} className="mt-2 inline-flex w-full items-center justify-center gap-2 border border-[#c9d2df] px-4 py-2.5 text-sm font-bold text-[#2457b8]"><Download size={16} />Download CDR</a> : null}</aside>;
+  return <aside className="h-fit border border-[#d7dce5] bg-white p-4 sm:p-5"><h2 className="font-bold">Manage record</h2>{statusOptions[section] ? <label className="mt-4 block text-sm font-semibold">Status<select value={status} onChange={(event) => setStatus(event.target.value)} className="mt-1.5 w-full border border-[#c9d2df] px-3 py-2.5 font-normal">{statusOptions[section]?.map((item) => <option key={item} value={item}>{section === "orders" ? (ORDER_STATUS_LABELS[item] || item) : item}</option>)}</select></label> : null}{section === "payments" ? <label className="mt-4 block text-sm font-semibold">Amount<input value={amount} onChange={(event) => setAmount(event.target.value)} className="mt-1.5 w-full border border-[#c9d2df] px-3 py-2.5 font-normal" /></label> : null}{section !== "payments" ? <label className="mt-4 block text-sm font-semibold">{section === "inquiries" ? "Internal notes" : "Notes"}<textarea rows={5} value={notes} onChange={(event) => setNotes(event.target.value)} className="mt-1.5 w-full border border-[#c9d2df] p-3 font-normal" /></label> : null}<button type="button" disabled={saving} onClick={() => { if (section === "orders" && status === "CANCELLED" && row.status !== "CANCELLED") { if (!window.confirm("Are you sure you want to cancel this order? Any payment made will be refunded to the customer's wallet.")) return; } void mutate(`/api/admin/${section}/${id}`, { method: "PATCH", body: JSON.stringify({ status, ...(section === "payments" ? { amount } : section === "inquiries" ? { internalNotes: notes || null } : { notes: notes || undefined }) }) }, "Record updated."); }} className="mt-4 inline-flex w-full items-center justify-center gap-2 bg-[#2457b8] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"><Check size={16} />Save changes</button>{section === "artworks" ? <a href={`/api/artworks/${id}/download`} className="mt-2 inline-flex w-full items-center justify-center gap-2 border border-[#c9d2df] px-4 py-2.5 text-sm font-bold text-[#2457b8]"><Download size={16} />Download CDR</a> : null}</aside>;
 }
 
 type AdminMutate = (path: string, options: RequestInit, message: string) => Promise<void>;
@@ -96,7 +107,36 @@ function QuoteItem({ quoteId, item, saving, mutate }: { quoteId: string; item?: 
 
 function CustomerDetail({ data, customer }: { data: Row; customer: Row }) { return <div className="mt-6 space-y-6"><FieldGrid row={customer} fields={["contactName", "companyName", "email", "phone", "gstNumber", "customerType", "state", "creditEnabled", "creditLimit", "availableCredit", "status", "createdAt"]} /><Rows title="Balance and credit activity" items={rows(data.walletTransactions)} fields={["transactionType", "status", "amount", "balanceAfter", "reference", "notes", "createdAt"]} /><Rows title="Addresses" items={rows(data.addresses)} fields={["type", "line1", "line2", "city", "state", "postalCode", "isDefault"]} /><Rows title="Orders" items={rows(data.orders)} fields={["orderNumber", "status", "total", "createdAt"]} link="orders" /><Rows title="Quotes" items={rows(data.quotes)} fields={["quoteNumber", "status", "total", "createdAt"]} link="quotes" /><Rows title="Inquiries" items={rows(data.inquiries)} fields={["subject", "status", "createdAt"]} link="inquiries" /></div>; }
 function InquiryRelations({ data, id, saving, mutate }: { data: Row; id: string; saving: boolean; mutate: AdminMutate }) { return <button type="button" disabled={saving || data.status === "CONVERTED"} onClick={() => { if (window.confirm("Create a quote from this inquiry?")) void mutate(`/api/admin/inquiries/${id}/convert-to-quote`, { method: "POST" }, "Draft quote created."); }} className="bg-[#2457b8] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">Create quote</button>; }
-function FieldGrid({ row, fields, title }: { row: Row; fields: string[]; title?: string }) { return <section className="border border-[#d7dce5] bg-white p-4 sm:p-6">{title ? <h2 className="mb-4 font-bold">{title}</h2> : null}<dl className="grid gap-5 sm:grid-cols-2">{fields.map((field) => <div key={field}><dt className="text-xs font-bold uppercase tracking-[0.08em] text-[#607089]">{field.replace(/([A-Z])/g, " $1")}</dt><dd className="mt-1 break-words text-sm font-semibold text-[#263753]">{display(field, row[field])}</dd></div>)}</dl></section>; }
+function FieldGrid({ row, fields, title }: { row: Row; fields: string[]; title?: string }) {
+  return (
+    <section className="border border-[#d7dce5] bg-white p-4 sm:p-6">
+      {title ? <h2 className="mb-4 font-bold">{title}</h2> : null}
+      <dl className="grid gap-5 sm:grid-cols-2">
+        {fields.map((field) => (
+          <div key={field}>
+            <dt className="text-xs font-bold uppercase tracking-[0.08em] text-[#607089]">{field.replace(/([A-Z])/g, " $1")}</dt>
+            <dd className="mt-1 break-words text-sm font-semibold text-[#263753]">{display(field, row[field])}</dd>
+          </div>
+        ))}
+      </dl>
+      {row.proofImageUrl ? (
+        <div className="mt-5 border-t border-[#e1e6ee] pt-4">
+          <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#607089]">Payment Screenshot Proof</p>
+          <div className="mt-2">
+            <a href={String(row.proofImageUrl)} target="_blank" rel="noopener noreferrer" className="group inline-block">
+              <img
+                src={String(row.proofImageUrl)}
+                alt="Payment proof screenshot"
+                className="max-h-52 rounded border border-[#cfd7e3] object-contain shadow-sm transition-transform group-hover:scale-[1.02]"
+              />
+              <span className="mt-1.5 block text-xs font-bold text-[#2457b8] group-hover:underline">Click to view full image in new tab &rarr;</span>
+            </a>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
 function ArtworkList({ items }: { items: Row[] }) { return <section className="border border-[#d7dce5] bg-white p-4 sm:p-6"><h2 className="font-bold">Artwork</h2>{items.length ? <div className="mt-4 divide-y divide-[#e1e6ee]">{items.map((item) => <div key={text(item.id)} className="flex items-center justify-between gap-3 py-4 text-sm"><span className="min-w-0"><strong className="block truncate text-[#263753]">{text(item.fileName)}</strong><small className="text-[#607089]">{text(item.status)}{item.fileSize ? ` · ${Math.max(1, Math.round(Number(item.fileSize) / 1024))} KB` : ""}</small></span><a href={`/api/artworks/${text(item.id)}/download`} className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-[#2457b8]"><Download size={14} />Download</a></div>)}</div> : <p className="mt-4 text-sm text-[#607089]">No artwork linked yet.</p>}</section>; }
 function Rows({ title, items, fields, link }: { title: string; items: Row[]; fields: string[]; link?: DetailSection }) { return <section className="border border-[#d7dce5] bg-white p-4 sm:p-6"><h2 className="font-bold">{title}</h2>{items.length ? <div className="mt-4 divide-y divide-[#e1e6ee]">{items.map((item, index) => <div key={text(item.id || index)} className="grid gap-3 py-4 sm:grid-cols-2 lg:grid-cols-3">{fields.filter((field) => item[field] !== undefined && item[field] !== null).map((field) => <div key={field}><p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#607089]">{field.replace(/([A-Z])/g, " $1")}</p><p className="mt-1 break-words text-sm text-[#263753]">{display(field, item[field])}</p></div>)}{link ? <Link href={`/admin/${link}/${text(item.id)}`} className="self-end text-sm font-bold text-[#2457b8]">Open record</Link> : null}</div>)}</div> : <p className="mt-4 text-sm text-[#607089]">No related records.</p>}</section>; }
 function Amount({ label, value: amount, strong }: { label: string; value: unknown; strong?: boolean }) { return <div className={`flex justify-between gap-4 ${strong ? "border-t border-[#d7dce5] pt-3 font-bold" : ""}`}><dt>{label}</dt><dd>{formattedAmount(amount)}</dd></div>; }

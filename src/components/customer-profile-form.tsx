@@ -110,14 +110,7 @@ export function CustomerProfileForm() {
       <label className="block text-sm font-semibold text-[var(--mc-ink)] sm:col-span-2">Address line 2 <span className="font-normal text-[var(--mc-muted)]">(optional)</span><input value={form.line2} onChange={update("line2")} className={fieldClass} /></label>
       <Field label="Postal code" value={form.postalCode} onChange={update("postalCode")} required={Boolean(form.line1)} />
     </div></section>
-    <section className="rounded-xl border border-[var(--mc-line)] bg-white p-5 sm:p-6 shadow-sm">
-      <h2 className="font-bold text-lg text-[var(--mc-ink)]">Notification preferences</h2>
-      <p className="mt-1 text-sm text-[var(--mc-muted)]">Transactional updates about your quotes, orders, and payments — not marketing.</p>
-      <div className="mt-4 space-y-3">
-        <label className="flex items-center gap-2.5 text-sm font-semibold text-[var(--mc-ink)]"><input type="checkbox" checked={form.emailNotificationsEnabled} onChange={(event) => setForm((current) => ({ ...current, emailNotificationsEnabled: event.target.checked }))} className="size-4" />Email notifications</label>
-        <label className="flex items-center gap-2.5 text-sm font-semibold text-[var(--mc-ink)]"><input type="checkbox" checked={form.whatsappNotificationsEnabled} onChange={(event) => setForm((current) => ({ ...current, whatsappNotificationsEnabled: event.target.checked }))} className="size-4" />WhatsApp notifications</label>
-      </div>
-    </section>
+    {/* Notification preferences section hidden until notification provider is configured */}
     {error ? <p role="alert" className="rounded-xl border border-[#efc4be] bg-[#fff6f4] p-3.5 text-sm text-[#a9362c]">{error}</p> : null}
     {message ? <p className="rounded-xl border border-[#b9dec9] bg-[#f2fbf6] p-3.5 text-sm font-semibold text-[#187044]">{message}</p> : null}
     <div className="flex justify-end"><button disabled={saving} className="inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-6 py-3 text-sm font-bold text-white shadow-sm hover:bg-[var(--mc-accent-dark)] transition-colors disabled:opacity-60"><Save size={17} />{saving ? "Saving..." : "Save profile"}</button></div>

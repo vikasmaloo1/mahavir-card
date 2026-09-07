@@ -256,6 +256,22 @@ export const businessSettings = pgTable("business_settings", {
   businessHours: text("businessHours"),
   footerText: text("footerText"),
   logoAssetId: uuid("logoAssetId").references(() => brandingAssets.id, { onDelete: "set null" }),
+  // B2C Bank & QR Settings
+  b2cBankBeneficiary: text("b2cBankBeneficiary").default("MAHAVIR CARD"),
+  b2cBankName: text("b2cBankName").default("BANK OF BARODA"),
+  b2cBankBranch: text("b2cBankBranch").default("AHMEDABAD(M) BRANCH"),
+  b2cBankAccountNumber: text("b2cBankAccountNumber").default("03280200003947"),
+  b2cBankIfsc: text("b2cBankIfsc").default("BARB0GANAHM"),
+  b2cUpiId: text("b2cUpiId").default("mahavircard2011-2@oksbi"),
+  b2cQrImageUrl: text("b2cQrImageUrl").default("/images/qr/b2c-qr.jpg"),
+  // B2B Bank & QR Settings
+  b2bBankBeneficiary: text("b2bBankBeneficiary").default("MAHAVIR CARD & PAPER CUTTING"),
+  b2bBankName: text("b2bBankName").default("BANK OF BARODA"),
+  b2bBankBranch: text("b2bBankBranch").default("AHMEDABAD(M) BRANCH"),
+  b2bBankAccountNumber: text("b2bBankAccountNumber").default("12410200000662"),
+  b2bBankIfsc: text("b2bBankIfsc").default("BARB0GANAHM"),
+  b2bUpiId: text("b2bUpiId").default("mahavircard2011-4@oksbi"),
+  b2bQrImageUrl: text("b2bQrImageUrl").default("/images/qr/b2b-qr.jpg"),
   updatedBy: uuid("updatedBy").references(() => user.id, { onDelete: "set null" }),
   ...timestamps,
 });
@@ -733,6 +749,7 @@ export const payments = pgTable("payments", {
   provider: text("provider"),
   providerOrderId: text("providerOrderId"),
   providerPaymentId: text("providerPaymentId"),
+  proofImageUrl: text("proofImageUrl"),
   codCollectedAt: timestamp("codCollectedAt", { withTimezone: true }),
   ...timestamps,
 });
@@ -757,6 +774,7 @@ export const walletTransactions = pgTable(
     amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
     balanceAfter: numeric("balanceAfter", { precision: 12, scale: 2 }),
     reference: text("reference"),
+    proofImageUrl: text("proofImageUrl"),
     notes: text("notes"),
     createdBy: uuid("createdBy").references(() => user.id, { onDelete: "set null" }),
     ...timestamps,

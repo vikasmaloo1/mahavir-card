@@ -9,12 +9,13 @@ import { requireUser } from "@/lib/permissions";
 const submitReferenceSchema = z.object({
   orderId: z.string().uuid(),
   utr: z.string().trim().min(4, "Enter the UPI transaction reference number").max(64),
+  proofImageUrl: z.string().trim().nullable().optional(),
 });
 
 /**
  * Customer-facing step of the no-gateway UPI QR flow: after paying the QR
  * directly (no webhook exists for this), the customer records the UTR/reference
- * number from their UPI app here. This only marks the payment as "reference
+ * number from their UPI app here, and optionally an uploaded screenshot proof. This only marks the payment as "reference
  * submitted" (via providerPaymentId) — an admin still has to check the bank
  * statement and flip payments.status to PAID via the existing admin payments
  * screen before the order is treated as paid.
@@ -34,7 +35,11 @@ export async function POST(request: Request) {
     if (!payment || payment.method !== "UPI_QR") return jsonError("This order is not using UPI QR payment", 422);
     if (payment.status === "PAID") return jsonError("This order has already been marked as paid", 409);
 
-    const [updated] = await db.update(payments).set({ providerPaymentId: input.utr, updatedAt: new Date() }).where(eq(payments.id, payment.id)).returning();
+    const [updated] = await db.update(payments).set({
+      providerPaymentId: input.utr,
+      ...(input.proofImageUrl ? { proofImageUrl: input.proofImageUrl } : {}),
+      updatedAt: new Date(),
+    }).where(eq(payments.id, payment.id)).returning();
     return updated ? jsonOk(updated) : jsonError("Could not save your payment reference", 500);
   } catch (error) {
     return error instanceof Response ? error : handleApiError(error);

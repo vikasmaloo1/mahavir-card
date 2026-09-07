@@ -27,6 +27,8 @@ export function CustomerRecordDetail({ kind, id, upiVpa }: { kind: "order" | "qu
   const [savingJobId, setSavingJobId] = useState<string | null>(null);
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
   const [saveJobError, setSaveJobError] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -52,6 +54,25 @@ export function CustomerRecordDetail({ kind, id, upiVpa }: { kind: "order" | "qu
     } catch (caught) {
       setReorderError(caught instanceof Error ? caught.message : "This order could not be reordered");
       setReordering(false);
+    }
+  }
+
+  async function cancelOrder() {
+    const confirmed = window.confirm("Are you sure you want to cancel this order? Any payment made will be immediately refunded to your wallet.");
+    if (!confirmed) return;
+    setCancelling(true);
+    setCancelError("");
+    try {
+      const response = await fetch(`/api/orders/${id}/cancel`, { method: "POST" });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error?.message ?? "Could not cancel order");
+      }
+      await load();
+    } catch (caught) {
+      setCancelError(caught instanceof Error ? caught.message : "Could not cancel order");
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -96,8 +117,39 @@ export function CustomerRecordDetail({ kind, id, upiVpa }: { kind: "order" | "qu
 
   return <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:py-12">
     <Link href="/account" className="inline-flex items-center gap-2 text-sm font-bold text-[var(--mc-accent)]"><ArrowLeft size={16} />Back to account</Link>
-    <header className="mt-5 flex flex-col justify-between gap-4 border-b border-[var(--mc-line)] pb-6 sm:flex-row sm:items-end"><div><p className="text-xs font-bold uppercase text-[var(--mc-accent)]">{kind}</p><h1 className="mt-2 text-2xl font-bold sm:text-3xl">{number}</h1><p className="mt-2 text-sm text-[var(--mc-muted)]">Created {date(primary.createdAt)}</p></div><div className="flex items-center gap-3"><Status value={primary.status} />{order ? <button type="button" disabled={reordering} onClick={() => void reorder()} className="inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[var(--mc-accent-dark)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"><ShoppingBag size={15} />{reordering ? "Adding to basket..." : "Reorder"}</button> : null}</div></header>
+    <header className="mt-5 flex flex-col justify-between gap-4 border-b border-[var(--mc-line)] pb-6 sm:flex-row sm:items-end">
+      <div>
+        <p className="text-xs font-bold uppercase text-[var(--mc-accent)]">{kind}</p>
+        <h1 className="mt-2 text-2xl font-bold sm:text-3xl">{number}</h1>
+        <p className="mt-2 text-sm text-[var(--mc-muted)]">Created {date(primary.createdAt)}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Status value={primary.status} />
+        {order && (order.order.status === "PENDING" || order.order.status === "CONFIRMED") ? (
+          <button
+            type="button"
+            disabled={cancelling}
+            onClick={() => void cancelOrder()}
+            className="inline-flex items-center gap-1.5 rounded-full border border-red-300 bg-red-50 px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
+          >
+            {cancelling ? "Cancelling..." : "Cancel Order"}
+          </button>
+        ) : null}
+        {order ? (
+          <button
+            type="button"
+            disabled={reordering}
+            onClick={() => void reorder()}
+            className="inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[var(--mc-accent-dark)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <ShoppingBag size={15} />
+            {reordering ? "Adding to basket..." : "Reorder"}
+          </button>
+        ) : null}
+      </div>
+    </header>
     {error ? <ErrorMessage text={error} /> : null}
+    {cancelError ? <ErrorMessage text={cancelError} /> : null}
     {reorderError ? <ErrorMessage text={reorderError} /> : null}
     {saveJobError ? <ErrorMessage text={saveJobError} /> : null}
     {quote?.quote.status === "SENT_TO_CUSTOMER" && !isPastValidUntil(quote.quote.validUntil) ? <section className="mt-6 border border-[#b8ccf5] bg-[#f5f8ff] p-5"><h2 className="font-bold">Your quotation is ready</h2><p className="mt-2 text-sm text-[var(--mc-muted)]">Review the line items and total before approving or requesting changes.</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" disabled={saving} onClick={() => void decide("APPROVE")} className="inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"><Check size={16} />Approve quote</button><button type="button" disabled={saving} onClick={() => void decide("REJECT")} className="inline-flex items-center gap-2 rounded-full border border-[#c9d2df] bg-white px-4 py-2.5 text-sm font-bold disabled:opacity-50"><X size={16} />Request changes</button></div></section> : null}
@@ -111,9 +163,8 @@ export function CustomerRecordDetail({ kind, id, upiVpa }: { kind: "order" | "qu
 }
 
 const ORDER_STEPS = [
-  { status: "PENDING", label: "Order Placed" },
-  { status: "CONFIRMED", label: "Confirmed" },
-  { status: "ARTWORK_APPROVED", label: "Artwork Approved" },
+  { status: "PENDING", label: "Pending" },
+  { status: "CONFIRMED", label: "Order Confirmed" },
   { status: "IN_PRODUCTION", label: "In Production" },
   { status: "READY", label: "Ready" },
   { status: "DISPATCHED", label: "Dispatched" },
@@ -149,7 +200,19 @@ function OrderProgressTracker({ status }: { status: string }) {
 }
 function Section({ title, icon, children, className = "", id }: { title: string; icon: React.ReactNode; children: React.ReactNode; className?: string; id?: string }) { return <section id={id} className={`scroll-mt-24 border border-[var(--mc-line)] bg-white p-5 ${className}`}><h2 className="flex items-center gap-2 font-bold">{icon}{title}</h2><div className="mt-3">{children}</div></section>; }
 function Money({ label: text, value, strong = false }: { label: string; value: string; strong?: boolean }) { return <p className={`mt-3 flex justify-between gap-3 border-t border-[var(--mc-line)] pt-3 text-sm ${strong ? "text-base font-bold" : "text-[var(--mc-muted)]"}`}><span>{text}</span><strong className="text-[var(--mc-ink)]">{formatInr(value)}</strong></p>; }
-function Status({ value, small = false }: { value: string; small?: boolean }) { return <span className={`inline-flex h-fit w-fit bg-[var(--mc-accent-soft)] font-bold text-[var(--mc-accent-dark)] ${small ? "px-2 py-1 text-[11px]" : "px-3 py-2 text-xs"}`}>{label(value)}</span>; }
+function Status({ value, small = false }: { value: string; small?: boolean }) {
+  const styles: Record<string, string> = {
+    PENDING: "bg-amber-50 text-amber-800 border-amber-200",
+    CONFIRMED: "bg-sky-50 text-sky-800 border-sky-200",
+    IN_PRODUCTION: "bg-indigo-50 text-indigo-800 border-indigo-200",
+    READY: "bg-emerald-50 text-emerald-800 border-emerald-200",
+    DISPATCHED: "bg-purple-50 text-purple-800 border-purple-200",
+    DELIVERED: "bg-green-50 text-green-800 border-green-200",
+    CANCELLED: "bg-red-50 text-red-800 border-red-200",
+  };
+  const color = styles[value] || "bg-[var(--mc-accent-soft)] text-[var(--mc-accent-dark)] border-transparent";
+  return <span className={`inline-flex h-fit w-fit items-center rounded-full border font-bold ${color} ${small ? "px-2 py-0.5 text-[11px]" : "px-3 py-1 text-xs"}`}>{label(value)}</span>;
+}
 function ErrorMessage({ text }: { text: string }) { return <p role="alert" className="mt-5 border border-[#efb7b7] bg-[#fff4f4] p-3 text-sm font-semibold text-[#9b2525]">{text}</p>; }
 function Empty({ text }: { text: string }) { return <p className="border-t border-dashed border-[var(--mc-line)] py-5 text-sm text-[var(--mc-muted)]">{text}</p>; }
 function label(value: string) { return value.toLowerCase().split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" "); }

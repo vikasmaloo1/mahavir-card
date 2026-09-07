@@ -62,7 +62,11 @@ const columns: Record<ModuleKey, { label: string; value: (row: Row) => string; r
         );
       },
     },
-    { label: "Status", value: (r) => text(r.status) },
+    {
+      label: "Status",
+      value: (r) => text(r.status),
+      render: (r) => <AdminOrderStatusSelect orderId={String(r.id)} initialStatus={String(r.status)} />,
+    },
     { label: "Total", value: (r) => formattedAmount(r.total) },
     { label: "Created", value: (r) => formattedDate(r.createdAt) },
   ],
@@ -95,6 +99,84 @@ function pricingValue(row: Row) {
   if (formula.ratePaisePerSqInch) return `${text(formula.ratePaisePerSqInch)} paise / sq.in`;
   if (formula.ratePerSqInch) return `${formattedAmount(formula.ratePerSqInch)} / sq.in`;
   return formattedAmount(formula.amount);
+}
+
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Pending",
+  CONFIRMED: "Order Confirmed",
+  IN_PRODUCTION: "In Production",
+  READY: "Ready",
+  DISPATCHED: "Dispatched",
+  DELIVERED: "Delivered",
+  CANCELLED: "Cancelled",
+};
+
+const ORDER_STATUS_COLORS: Record<string, string> = {
+  PENDING: "bg-amber-50 text-amber-800 border-amber-300",
+  CONFIRMED: "bg-sky-50 text-sky-800 border-sky-300",
+  IN_PRODUCTION: "bg-indigo-50 text-indigo-800 border-indigo-300",
+  READY: "bg-emerald-50 text-emerald-800 border-emerald-300",
+  DISPATCHED: "bg-purple-50 text-purple-800 border-purple-300",
+  DELIVERED: "bg-green-50 text-green-800 border-green-300",
+  CANCELLED: "bg-red-50 text-red-800 border-red-300",
+};
+
+function AdminOrderStatusSelect({ orderId, initialStatus }: { orderId: string; initialStatus: string }) {
+  const [status, setStatus] = useState(initialStatus);
+  const [updating, setUpdating] = useState(false);
+
+  useEffect(() => {
+    setStatus(initialStatus);
+  }, [initialStatus]);
+
+  async function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    e.stopPropagation();
+    const nextStatus = e.target.value;
+    if (nextStatus === status) return;
+
+    if (nextStatus === "CANCELLED") {
+      const confirm = window.confirm("Are you sure you want to cancel this order? Any payment made will be refunded to the customer's wallet.");
+      if (!confirm) return;
+    }
+
+    const previousStatus = status;
+    setStatus(nextStatus);
+    setUpdating(true);
+
+    try {
+      await adminRequest(`/api/admin/orders/${orderId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: nextStatus }),
+      });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update order status");
+      setStatus(previousStatus);
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  const colorClass = ORDER_STATUS_COLORS[status] || "bg-slate-50 text-slate-700 border-slate-300";
+
+  return (
+    <div className="relative inline-flex items-center" onClick={(e) => e.stopPropagation()}>
+      <select
+        value={status}
+        disabled={updating}
+        onChange={(e) => void handleChange(e)}
+        className={`cursor-pointer rounded-full border px-2.5 py-1 text-xs font-bold outline-none transition-all disabled:opacity-50 ${colorClass}`}
+      >
+        {Object.entries(ORDER_STATUS_LABELS).map(([val, label]) => (
+          <option key={val} value={val} className="bg-white text-slate-800">
+            {label}
+          </option>
+        ))}
+      </select>
+      {updating ? (
+        <RefreshCw size={11} className="ml-1 animate-spin text-slate-500" />
+      ) : null}
+    </div>
+  );
 }
 
 export function AdminModule({ section }: { section: ModuleKey }) {

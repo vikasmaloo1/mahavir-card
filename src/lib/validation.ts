@@ -433,10 +433,26 @@ export const businessSettingsSchema = z.object({
   businessHours: z.string().trim().max(500).nullable().optional(),
   footerText: z.string().trim().max(1000).nullable().optional(),
   logoAssetId: z.string().uuid().nullable().optional(),
+  // B2C Bank & QR Settings
+  b2cBankBeneficiary: z.string().trim().max(200).nullable().optional(),
+  b2cBankName: z.string().trim().max(200).nullable().optional(),
+  b2cBankBranch: z.string().trim().max(200).nullable().optional(),
+  b2cBankAccountNumber: z.string().trim().max(50).nullable().optional(),
+  b2cBankIfsc: z.string().trim().max(30).nullable().optional(),
+  b2cUpiId: z.string().trim().max(100).nullable().optional(),
+  b2cQrImageUrl: z.string().trim().max(1000).nullable().optional(),
+  // B2B Bank & QR Settings
+  b2bBankBeneficiary: z.string().trim().max(200).nullable().optional(),
+  b2bBankName: z.string().trim().max(200).nullable().optional(),
+  b2bBankBranch: z.string().trim().max(200).nullable().optional(),
+  b2bBankAccountNumber: z.string().trim().max(50).nullable().optional(),
+  b2bBankIfsc: z.string().trim().max(30).nullable().optional(),
+  b2bUpiId: z.string().trim().max(100).nullable().optional(),
+  b2bQrImageUrl: z.string().trim().max(1000).nullable().optional(),
 });
 
 export const adminOrderUpdateSchema = z.object({
-  status: z.enum(["PENDING", "CONFIRMED", "ARTWORK_APPROVED", "IN_PRODUCTION", "READY", "DISPATCHED", "DELIVERED", "CANCELLED"]).optional(),
+  status: z.enum(["PENDING", "CONFIRMED", "IN_PRODUCTION", "READY", "DISPATCHED", "DELIVERED", "CANCELLED"]).optional(),
   notes: z.string().trim().max(3000).optional(),
 });
 
