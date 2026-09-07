@@ -316,28 +316,7 @@ function Actions({ section, item, saving, actionLabel, onEdit, onDelete, onConve
   if (section === "inquiries") return <div className="mt-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={() => onConvert(item)} disabled={saving || item.status === "CONVERTED"} className="border border-[#b8ccf5] px-2.5 py-1.5 text-xs font-bold text-[#2457b8] disabled:opacity-40">Create quote</button><Link href={`/admin/inquiries/${rowId(section, item)}`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold">View details</Link></div>;
   if (section === "quotes" && text(item.status) === "SENT_TO_CUSTOMER") return <div className="mt-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={() => onRemind(item)} disabled={saving} className="border border-[#b8ccf5] px-2.5 py-1.5 text-xs font-bold text-[#2457b8] disabled:opacity-40">Send Reminder</button><button type="button" onClick={() => onEdit(item)} className="border border-[#c9d2df] p-1.5 text-[#24324a]" aria-label="Edit"><Pencil size={15} /></button></div>;
   if (section === "artworks") return <div className="mt-4 flex flex-wrap justify-end gap-2"><a href={`/api/artworks/${text(item.id)}/download`} className="inline-flex items-center gap-1.5 border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold text-[#2457b8]"><Download size={14} />Download CDR</a><Link href={`/admin/artworks/${rowId(section, item)}`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold">Review</Link></div>;
-  if (section === "orders") {
-    const artworks = (item.artworks as Array<{ id: string; fileName: string }>) || [];
-    const firstArt = artworks[0];
-    return (
-      <div className="mt-4 flex flex-wrap justify-end gap-2">
-        {firstArt ? (
-          <a
-            href={`/api/artworks/${firstArt.id}/download`}
-            download
-            className="inline-flex items-center gap-1.5 border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold text-[#2457b8] hover:bg-[#f0f4ff]"
-            title={`Download ${firstArt.fileName || "CDR"}`}
-          >
-            <Download size={14} />Download CDR
-          </a>
-        ) : null}
-        <Link href={`/admin/orders/${rowId(section, item)}`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold text-[#2457b8]">
-          View details
-        </Link>
-      </div>
-    );
-  }
-  if (["quotes", "customers", "payments"].includes(section)) return <div className="mt-4 flex justify-end"><Link href={`/admin/${section}/${rowId(section, item)}`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold text-[#2457b8]">View details</Link></div>;
+  if (["orders", "quotes", "customers", "payments"].includes(section)) return <div className="mt-4 flex justify-end"><Link href={`/admin/${section}/${rowId(section, item)}`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold text-[#2457b8]">View details</Link></div>;
   return <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => onEdit(item)} className="border border-[#c9d2df] p-1.5 text-[#24324a]" aria-label="Edit"><Pencil size={15} /></button><button type="button" onClick={() => onDelete(item)} disabled={saving} className="border border-[#efc4be] p-1.5 text-[#b13a2f]" aria-label={actionLabel}><Trash2 size={15} /></button></div>;
 }
 
