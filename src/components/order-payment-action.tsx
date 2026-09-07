@@ -14,7 +14,21 @@ import { PaymentBankDetails } from "@/components/payment-bank-details";
  * and POST /api/orders/[id]/payment doesn't create one, so wiring Razorpay in here
  * would silently mark a payment PENDING with no way to actually collect it.
  */
-export function OrderPaymentAction({ orderId, amount, upiVpa, onPaid }: { orderId: string; amount: string; upiVpa: string; onPaid: () => void }) {
+export function OrderPaymentAction({
+  orderId,
+  orderNumber,
+  amount,
+  upiVpa,
+  onPaid,
+  customerType,
+}: {
+  orderId: string;
+  orderNumber?: string;
+  amount: string;
+  upiVpa: string;
+  onPaid: () => void;
+  customerType?: string;
+}) {
   const [method, setMethod] = useState<"COD" | "UPI_QR" | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -74,7 +88,9 @@ export function OrderPaymentAction({ orderId, amount, upiVpa, onPaid }: { orderI
       <div className="mt-4 border-t border-[var(--mc-line)] pt-4 space-y-4">
         <p className="text-sm font-bold text-[var(--mc-ink)]">Pay {formatInr(amount)} via UPI / Bank Transfer</p>
         <PaymentBankDetails
+          customerType={customerType}
           amount={amount}
+          orderNumber={orderNumber}
           proofImageUrl={proofImageUrl}
           onProofUploaded={setProofImageUrl}
           onClearProof={() => setProofImageUrl(null)}

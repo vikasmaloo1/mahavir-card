@@ -168,6 +168,7 @@ export function CheckoutFlow({ upiVpa }: { upiVpa: string }) {
           <PaymentBankDetails
             customerType={accountCustomer?.customerType || "B2C"}
             amount={result.payment.amount}
+            orderNumber={result.order.orderNumber}
             proofImageUrl={proofImageUrl}
             onProofUploaded={setProofImageUrl}
             onClearProof={() => setProofImageUrl(null)}
