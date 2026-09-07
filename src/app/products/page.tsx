@@ -55,8 +55,42 @@ export default async function ProductsPage({ searchParams }: PageProps<"/product
     const query = canonicalParams.toString();
     redirect(query ? `/products?${query}` : "/products");
   }
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://mahavircard.in",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Products",
+        item: "https://mahavircard.in/products",
+      },
+      ...(initialFilters.category
+        ? [
+            {
+              "@type": "ListItem",
+              position: 3,
+              name: catalogCategories.find((c) => c.slug === initialFilters.category)?.name ?? initialFilters.category,
+              item: `https://mahavircard.in/products?category=${initialFilters.category}`,
+            },
+          ]
+        : []),
+    ],
+  };
+
   return (
     <div className="mc-storefront bg-[var(--mc-surface)]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <StorefrontHeader />
       <CustomerNotices placement="ORDERING" />
       {!initialFilters.category && !initialFilters.search ? (

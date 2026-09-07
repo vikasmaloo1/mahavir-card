@@ -37,7 +37,7 @@ const localBusinessJsonLd = {
   name: "Mahavir Card",
   alternateName: "Mahavir Card Offset Printing",
   image: "https://mahavircard.in/images/home-hero-printing.jpg",
-  logo: "https://mahavircard.in/api/branding/assets/logo.primary/file",
+  logo: "https://mahavircard.in/icon.png",
   url: "https://mahavircard.in",
   telephone: "+919426371150",
   email: "mahavircard2011@gmail.com",

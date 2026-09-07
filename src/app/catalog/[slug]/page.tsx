@@ -147,20 +147,11 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   const query = await searchParams;
   if (slug === "business-cards") redirect("/products?category=visiting-card");
   const session = await getCachedSession();
-  if (!session?.user?.id) {
-    const searchParamsObj = new URLSearchParams();
-    for (const [key, value] of Object.entries(query)) {
-      if (typeof value === "string") searchParamsObj.set(key, value);
-      else if (Array.isArray(value)) value.forEach((entry) => searchParamsObj.append(key, entry));
-    }
-    const searchString = searchParamsObj.toString();
-    const nextUrl = `/catalog/${slug}${searchString ? `?${searchString}` : ""}`;
-    redirect(`/login?next=${encodeURIComponent(nextUrl)}`);
-  }
-
   let customerType: "B2C" | "B2B" | null = null;
-  const [customer] = await db.select({ customerType: customers.customerType }).from(customers).where(eq(customers.userId, session.user.id)).limit(1);
-  customerType = customer?.customerType === "B2B" ? "B2B" : "B2C";
+  if (session?.user?.id) {
+    const [customer] = await db.select({ customerType: customers.customerType }).from(customers).where(eq(customers.userId, session.user.id)).limit(1);
+    customerType = customer?.customerType === "B2B" ? "B2B" : "B2C";
+  }
   const product = await getDatabaseCatalogProduct(slug, customerType);
   if (!product) notFound();
   const descriptor = `${product.category} · Commercial printing`;
@@ -189,8 +180,73 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   };
   const promo = categoryPromo[product.categorySlug];
 
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description || product.shortDescription,
+    image: product.imageUrl ? [`https://mahavircard.in${product.imageUrl.startsWith("/") ? "" : "/"}${product.imageUrl}`] : undefined,
+    sku: product.slug,
+    category: product.category,
+    brand: {
+      "@type": "Brand",
+      name: "Mahavir Card",
+    },
+    offers: {
+      "@type": "Offer",
+      url: `https://mahavircard.in/catalog/${product.slug}`,
+      priceCurrency: "INR",
+      price: product.startingPrice ? String(product.startingPrice) : "100",
+      priceValidUntil: "2027-12-31",
+      availability: "https://schema.org/InStock",
+      seller: {
+        "@type": "Organization",
+        name: "Mahavir Card",
+      },
+    },
+  };
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://mahavircard.in",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Products",
+        item: "https://mahavircard.in/products",
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: product.category,
+        item: `https://mahavircard.in/products?category=${product.categorySlug}`,
+      },
+      {
+        "@type": "ListItem",
+        position: 4,
+        name: product.name,
+        item: `https://mahavircard.in/catalog/${product.slug}`,
+      },
+    ],
+  };
+
   return (
     <main className="mc-storefront min-h-screen bg-[#fcfbf9] text-slate-900">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <StorefrontHeader />
       <CustomerNotices placement="ORDERING" />
       <div className="mx-auto max-w-[1440px] px-4 py-4 sm:py-6 xl:px-8">
