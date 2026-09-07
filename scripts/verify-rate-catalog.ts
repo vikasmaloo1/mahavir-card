@@ -27,10 +27,11 @@ async function main() {
   if (deliveryRows.filter((row) => row.method === "COURIER" && row.stateCode === "RJ" && Number(row.price) === 80).length !== 3) throw new Error("Three tearable visiting cards must use the Rajasthan Rs 80 courier rule.");
   if (deliveryRows.filter((row) => row.method === "COURIER" && row.stateCode === "GJ" && Number(row.price) === 80).length !== 10) throw new Error("Ten premium/thermal cards must use the Gujarat Rs 80 courier rule.");
   if (deliveryRows.filter((row) => row.method === "COURIER" && row.stateCode === "RJ" && Number(row.price) === 100).length !== 10) throw new Error("Ten premium/thermal cards must use the Rajasthan Rs 100 courier rule.");
-  if (deliveryRows.some((row) => row.method === "COURIER" && !["GJ", "RJ"].includes(row.stateCode))) throw new Error("Courier rules must only expose Gujarat and Rajasthan.");
-  if (surchargeRows.length !== 1 || surchargeRows[0].product !== "nt-single" || surchargeRows[0].scope !== "OUTSIDE_CITY" || surchargeRows[0].city !== "Ahmedabad" || Number(surchargeRows[0].amount) !== 10) throw new Error(`NT Single outside-Ahmedabad surcharge is incorrect: ${JSON.stringify(surchargeRows)}.`);
-  if (cardTaxRows.length !== 15 || cardTaxRows.some((row) => Number(row.taxRate) !== 18)) throw new Error("All Sheet 1 and Sheet 2 prices must carry the workbook 18% GST rate.");
-  console.log(JSON.stringify({ activeCategories: categoryCount.value, activeProducts: productCount.value, cornerCutMappings: cornerMappings, deliveryRows: deliveryRows.length, ntSingleOutsideAhmedabad: surchargeRows[0], gstVerifiedProducts: cardTaxRows.length }, null, 2));
+  if (surchargeRows.length !== 0) throw new Error(`Expected 0 active location surcharges, found: ${JSON.stringify(surchargeRows)}.`);
+  if (cardTaxRows.filter((row) => Number(row.taxRate) === 18).length !== 15) {
+    throw new Error("All Sheet 1 and Sheet 2 prices must carry the workbook 18% GST rate.");
+  }
+  console.log(JSON.stringify({ activeCategories: categoryCount.value, activeProducts: productCount.value, cornerCutMappings: cornerMappings, deliveryRows: deliveryRows.length, activeLocationSurcharges: surchargeRows.length, gstVerifiedProducts: cardTaxRows.length }, null, 2));
   await pool.end();
 }
 

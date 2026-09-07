@@ -228,13 +228,7 @@ async function main() {
       }
 
       await db.update(locationSurcharges).set({ isActive: false, updatedAt: new Date() }).where(eq(locationSurcharges.productId, productId));
-      if (item.slug === "nt-single") {
-        await db.insert(locationSurcharges).values({
-          id: uuidFor("rate-location-surcharge:nt-single:outside-ahmedabad"), productId, pricingRuleId: ruleId,
-          locationScope: "OUTSIDE_CITY", city: "Ahmedabad", stateCode: null, amount: "10.00",
-          taxInclusive: false, isActive: true, sortOrder: 0,
-        }).onConflictDoUpdate({ target: locationSurcharges.id, set: { pricingRuleId: ruleId, amount: "10.00", isActive: true, updatedAt: new Date() } });
-      }
+
 
         const sectionId = uuidFor(`rate-content:${item.slug}:technical`);
         await db.insert(productContentSections).values({ id: sectionId, productId, title: "Technical specifications", sortOrder: 0 }).onConflictDoUpdate({ target: productContentSections.id, set: { title: "Technical specifications", sortOrder: 0, updatedAt: new Date() } });
