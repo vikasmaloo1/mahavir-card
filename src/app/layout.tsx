@@ -29,8 +29,16 @@ export const metadata: Metadata = {
     images: ["/images/mahavir-print-assortment.png"],
   },
   icons: {
-    icon: [{ url: "/icon.jpeg", type: "image/jpeg" }],
-    apple: [{ url: "/apple-icon.jpeg", type: "image/jpeg" }],
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon-48x48.png", sizes: "48x48", type: "image/png" },
+      { url: "/icon-96x96.png", sizes: "96x96", type: "image/png" },
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
 };
 
@@ -39,6 +47,7 @@ const localBusinessJsonLd = {
   "@type": "LocalBusiness",
   name: "Mahavir Card",
   image: "https://mahavircard.in/images/mahavir-print-assortment.png",
+  logo: "https://mahavircard.in/icon.png",
   url: "https://mahavircard.in",
   telephone: "+91-94263-71150",
   email: "mahavircard2011@gmail.com",
@@ -57,6 +66,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className="h-full antialiased" data-scroll-behavior="smooth">
       <head>
         <meta charSet="utf-8" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/icon-48x48.png" type="image/png" sizes="48x48" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }} />
       </head>
       <body className="min-h-full flex flex-col">
