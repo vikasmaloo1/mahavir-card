@@ -65,7 +65,7 @@ export function OrderPaymentAction({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderId,
-          utr: utr.trim(),
+          utr: utr.trim() || undefined,
           proofImageUrl: proofImageUrl || null,
         }),
       });
@@ -97,9 +97,9 @@ export function OrderPaymentAction({
         />
         <form onSubmit={submitUtr} className="space-y-3 rounded-xl border border-[var(--mc-line)] bg-white p-3.5 sm:p-4">
           <label className="block text-xs font-bold uppercase text-[var(--mc-muted)]">
-            12-Digit UPI Transaction Reference (UTR)
+            12-Digit UPI Transaction Reference (UTR) <span className="normal-case font-normal">(optional)</span>
           </label>
-          <input required value={utr} onChange={(event) => setUtr(event.target.value)} placeholder="Enter 12-digit UPI reference (UTR)" className="w-full rounded-lg border border-[var(--mc-line)] px-3 py-2.5 text-sm outline-none focus:border-[var(--mc-accent)] font-mono" />
+          <input value={utr} onChange={(event) => setUtr(event.target.value)} placeholder="Enter 12-digit UPI reference (UTR)" className="w-full rounded-lg border border-[var(--mc-line)] px-3 py-2.5 text-sm outline-none focus:border-[var(--mc-accent)] font-mono" />
           {error ? <p className="text-xs font-semibold text-[#9b2525]">{error}</p> : null}
           <button disabled={utrSubmitting} className="w-full rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white shadow-xs hover:bg-[var(--mc-accent-dark)] disabled:opacity-60">{utrSubmitting ? "Submitting..." : "I've Paid — Submit Reference & Proof"}</button>
         </form>

@@ -8,7 +8,7 @@ import { requireUser } from "@/lib/permissions";
 
 const submitReferenceSchema = z.object({
   orderId: z.string().uuid(),
-  utr: z.string().trim().min(4, "Enter the UPI transaction reference number").max(64),
+  utr: z.string().trim().max(64).nullable().optional(),
   proofImageUrl: z.string().trim().nullable().optional(),
 });
 
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     if (payment.status === "PAID") return jsonError("This order has already been marked as paid", 409);
 
     const [updated] = await db.update(payments).set({
-      providerPaymentId: input.utr,
+      ...(input.utr ? { providerPaymentId: input.utr } : {}),
       ...(input.proofImageUrl ? { proofImageUrl: input.proofImageUrl } : {}),
       updatedAt: new Date(),
     }).where(eq(payments.id, payment.id)).returning();

@@ -141,7 +141,7 @@ export function CheckoutFlow({ upiVpa }: { upiVpa: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderId: result.order.id,
-          utr: utr.trim(),
+          utr: utr.trim() || undefined,
           proofImageUrl: proofImageUrl || null,
         }),
       });
@@ -177,8 +177,10 @@ export function CheckoutFlow({ upiVpa }: { upiVpa: string }) {
 
         <form onSubmit={submitUtr} className="mt-5 text-left rounded-xl border border-[var(--mc-line)] bg-white p-4 sm:p-5 shadow-xs">
           <label className="block">
-            <span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">12-Digit UPI Transaction Reference (UTR)</span>
-            <input required value={utr} onChange={(event) => setUtr(event.target.value)} placeholder="e.g. 423456789012" className="w-full rounded-lg border border-[var(--mc-line)] bg-white px-3.5 py-3 text-[15px] outline-none focus:border-[var(--mc-accent)] transition-colors font-mono" />
+            <span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">
+              12-Digit UPI Transaction Reference (UTR) <span className="font-normal text-[var(--mc-muted)]">(optional)</span>
+            </span>
+            <input value={utr} onChange={(event) => setUtr(event.target.value)} placeholder="e.g. 423456789012" className="w-full rounded-lg border border-[var(--mc-line)] bg-white px-3.5 py-3 text-[15px] outline-none focus:border-[var(--mc-accent)] transition-colors font-mono" />
           </label>
           <p className="mt-1.5 text-xs text-[var(--mc-muted)]">Find the 12-digit UTR or Transaction ID in your payment receipt screen.</p>
           {utrError ? <p className="mt-3 rounded-lg border border-[#efb7b7] bg-[#fff4f4] p-3 text-sm text-[#9b2525]">{utrError}</p> : null}
