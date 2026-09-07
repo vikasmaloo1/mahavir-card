@@ -9,8 +9,8 @@ import { normalizeProductQuantity } from "@/lib/quantity-helper";
 type RuleData = { quantity?: number; specification?: string; [key: string]: unknown };
 type FormulaData = { amount?: string; unit?: "batch" | "piece" | "reference_batch_area"; ratePerSqInch?: number; minimumArea?: number | null; minimumCharge?: number | null; bladeCharge?: number | null; [key: string]: unknown };
 
-export type DeliverySelection = { method: "PICKUP" | "LOCAL_DELIVERY" | "COURIER"; stateCode?: string };
-export type PriceCalculationInput = { addonIds?: string[]; delivery?: DeliverySelection; userId?: string; stateCode?: string };
+export type DeliverySelection = { method: "PICKUP" | "LOCAL_DELIVERY" | "COURIER"; stateCode?: string; city?: string };
+export type PriceCalculationInput = { addonIds?: string[]; delivery?: DeliverySelection; userId?: string; stateCode?: string; city?: string };
 
 export type CalculatedPrice = {
   calculatedAmount: string | null;
@@ -151,11 +151,11 @@ async function calculateBasePrice(productId: string, quantity: number, options: 
   return { amount: Number(variant.basePrice) * quantity, rule: variant.name, ruleId: null, taxInclusive: true, taxRate: null, details: { quantity, source: "BASE_VARIANT" }, warnings: [] };
 }
 
-async function locationCharge(productId: string, ruleId: string | null, customer: { city: string | null; stateCode: string | null } | null) {
-  if (!customer) return { amount: 0, label: null as string | null, taxInclusive: true, stateCode: null as string | null };
+async function locationCharge(productId: string, ruleId: string | null, deliveryLocation: { city: string | null; stateCode: string | null } | null) {
+  if (!deliveryLocation) return { amount: 0, label: null as string | null, taxInclusive: true, stateCode: null as string | null };
   const rules = await db.select().from(locationSurcharges).where(and(eq(locationSurcharges.productId, productId), eq(locationSurcharges.isActive, true), ruleId ? or(eq(locationSurcharges.pricingRuleId, ruleId), isNull(locationSurcharges.pricingRuleId)) : isNull(locationSurcharges.pricingRuleId))).orderBy(asc(locationSurcharges.sortOrder));
-  const city = customer.city ? normalizedCity(customer.city) : null;
-  const stateCode = customer.stateCode?.toUpperCase() ?? null;
+  const city = deliveryLocation.city ? normalizedCity(deliveryLocation.city) : null;
+  const stateCode = deliveryLocation.stateCode?.toUpperCase() ?? null;
   const matched = rules.find((rule) => {
     if (rule.locationScope === "CITY") return Boolean(city && rule.city && city === normalizedCity(rule.city));
     if (rule.locationScope === "OUTSIDE_CITY") return Boolean(city && rule.city && city !== normalizedCity(rule.city));
@@ -190,7 +190,13 @@ export async function calculateProductPrice(productId: string, rawQuantity: numb
   const customerType: "B2C" | "B2B" = customer?.customerType === "B2B" ? "B2B" : "B2C";
 
   const base = await calculateBasePrice(productId, quantity, options, customerType);
-  const surcharge = await locationCharge(productId, base.ruleId, customer);
+  // Bound to the delivery address actually selected for this order, never the
+  // customer's signup-time profile city — that produced surprise charges
+  // before any delivery destination had even been picked. input.city/stateCode
+  // only ever come from an explicit delivery selection or override, never a
+  // customer-profile fallback (that fallback only happens later, for GST).
+  const deliveryLocation = input.city || input.stateCode ? { city: input.city?.trim() || null, stateCode: input.stateCode?.trim().toUpperCase() || null } : null;
+  const surcharge = await locationCharge(productId, base.ruleId, deliveryLocation);
   const addonIds = [...new Set(input.addonIds ?? [])];
   if (addonIds.length !== (input.addonIds ?? []).length) throw new PricingValidationError("An add-on can only be selected once");
   const configuredAddons = addonIds.length ? await db.select({

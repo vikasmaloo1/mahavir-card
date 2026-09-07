@@ -232,7 +232,7 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
         <div className="border-b border-[#dfe5ef] px-5 py-4">
           <p className="text-[13px] font-bold uppercase tracking-[0.13em] text-[#2457b8]">Configure your order</p>
         </div>
-        <div className="space-y-5 p-5">
+        <div className="space-y-3.5 p-4">
           {product.categorySlug === "premium-card" || product.slug.startsWith("premium-") ? (
             <div className="flex items-center gap-2 rounded-lg border border-[#c7d7f3] bg-[#eef4ff] px-3.5 py-2.5 text-[13px] font-semibold text-[#1e4da1]">
               <span className="grid size-5 place-items-center rounded-full bg-[#2457b8] text-white text-[11px] font-bold">✓</span>
@@ -240,33 +240,33 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
             </div>
           ) : null}
           <label className="block">
-            <span className="mb-2 block text-[13px] font-bold text-[#263753]">Job name <span className="font-normal text-[#607089]">(optional)</span></span>
-            <input value={jobName} onChange={(event) => setJobName(event.target.value)} maxLength={160} placeholder="e.g. Restaurant visiting cards" className="w-full rounded-lg border border-[#c9d2df] px-3 py-3 text-[15px] outline-none focus:border-[#2457b8]" />
+            <span className="mb-1 block text-[13px] font-bold text-[#263753]">Job name <span className="font-normal text-[#607089]">(optional)</span></span>
+            <input value={jobName} onChange={(event) => setJobName(event.target.value)} maxLength={160} placeholder="e.g. Restaurant visiting cards" className="w-full rounded-lg border border-[#c9d2df] px-3 py-2 text-sm outline-none focus:border-[#2457b8]" />
           </label>
           {detailsError ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#efc4be] bg-[#fff6f4] p-3 text-sm text-[#a53025]"><span>{detailsError}</span><button type="button" onClick={() => { setDetailsError(""); setDetailsVersion((version) => version + 1); }} className="rounded-full border border-[#d99d95] bg-white px-3 py-1.5 font-bold">Retry</button></div> : null}
           <label className="block">
-            <span className="mb-2 block text-[13px] font-bold text-[#263753]">Quantity</span>
+            <span className="mb-1 block text-[13px] font-bold text-[#263753]">Quantity</span>
             <div className="flex items-center rounded-lg border border-[#c9d2df]">
-              <input inputMode="numeric" value={values.quantity || String(defaultQty)} onChange={(event) => update("quantity", event.target.value)} onBlur={() => update("quantity", String(quantity))} className="min-w-0 flex-1 px-3 py-3 text-[15px] outline-none" />
+              <input inputMode="numeric" value={values.quantity || String(defaultQty)} onChange={(event) => update("quantity", event.target.value)} onBlur={() => update("quantity", String(quantity))} className="min-w-0 flex-1 px-3 py-2 text-sm outline-none" />
               <div className="flex gap-1 pr-2">
-                <button type="button" onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "DOWN", product.categorySlug, product.slug)))} className="grid size-9 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors" aria-label="Decrease quantity"><Minus size={14} /></button>
-                <button type="button" onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "UP", product.categorySlug, product.slug)))} className="grid size-9 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors" aria-label="Increase quantity"><Plus size={14} /></button>
+                <button type="button" onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "DOWN", product.categorySlug, product.slug)))} className="grid size-8 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors" aria-label="Decrease quantity"><Minus size={14} /></button>
+                <button type="button" onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "UP", product.categorySlug, product.slug)))} className="grid size-8 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors" aria-label="Increase quantity"><Plus size={14} /></button>
               </div>
             </div>
           </label>
           {product.configuration.filter((field) => field.id !== "quantity").length ? (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2.5 sm:grid-cols-2">
               {product.configuration.filter((field) => field.id !== "quantity").map((field) => (
                 <label key={field.id}>
-                  <span className="mb-2 block text-[13px] font-bold text-[#263753]">{field.label}</span>
+                  <span className="mb-1 block text-[13px] font-bold text-[#263753]">{field.label}</span>
                   {field.type === "select" ? (
-                    <select value={values[field.id] ?? field.defaultValue} onChange={(event) => update(field.id, event.target.value)} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-3 text-[15px] outline-none">
+                    <select value={values[field.id] ?? field.defaultValue} onChange={(event) => update(field.id, event.target.value)} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-2 text-sm outline-none">
                       {field.options?.map((option) => <option key={option}>{option}</option>)}
                     </select>
                   ) : (
                     <div>
                       <div className="flex rounded-lg border border-[#c9d2df]">
-                        <input inputMode={field.type === "number" ? "decimal" : undefined} value={values[field.id] ?? field.defaultValue} onChange={(event) => update(field.id, event.target.value)} className="min-w-0 flex-1 px-3 py-3 text-[15px] outline-none" />
+                        <input inputMode={field.type === "number" ? "decimal" : undefined} value={values[field.id] ?? field.defaultValue} onChange={(event) => update(field.id, event.target.value)} className="min-w-0 flex-1 px-3 py-2 text-sm outline-none" />
                         {field.suffix ? <span className="border-l border-[#c9d2df] px-3 py-3 text-sm text-[#607089]">{field.suffix}</span> : null}
                       </div>
                       {field.id === "bladeCount" ? <span className="mt-1 block text-xs font-semibold text-[#2457b8]">Blade: ₹50 / blade</span> : null}
@@ -278,8 +278,8 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
           ) : null}
           {details?.pricingRules.length && details.pricingRules.length > 1 ? (
             <label className="block">
-              <span className="mb-2 block text-[13px] font-bold text-[#263753]">Card stock and print</span>
-              <select value={selectedRuleId ?? ""} onChange={(event) => selectRule(event.target.value)} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-3 text-[15px] font-semibold outline-none focus:border-[#2457b8]">
+              <span className="mb-1 block text-[13px] font-bold text-[#263753]">Card stock and print</span>
+              <select value={selectedRuleId ?? ""} onChange={(event) => selectRule(event.target.value)} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-[#2457b8]">
                 {details.pricingRules.map((rule) => <option key={rule.id} value={rule.id}>{rule.name}</option>)}
               </select>
             </label>
@@ -302,18 +302,18 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
             </div>
           ) : null}
           {deliveryMethods.length > 1 ? (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2.5 sm:grid-cols-2">
               <label>
-                <span className="mb-2 block text-[13px] font-bold text-[#263753]">Delivery</span>
-                <select value={delivery?.method ?? ""} onChange={(event) => setDelivery({ method: event.target.value as Delivery["method"], stateCode: event.target.value === "PICKUP" ? "*" : delivery?.stateCode === "*" ? (profileStateCode ?? "GJ") : delivery?.stateCode || (profileStateCode ?? "GJ") })} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-3 text-[15px] outline-none">
+                <span className="mb-1 block text-[13px] font-bold text-[#263753]">Delivery</span>
+                <select value={delivery?.method ?? ""} onChange={(event) => setDelivery({ method: event.target.value as Delivery["method"], stateCode: event.target.value === "PICKUP" ? "*" : delivery?.stateCode === "*" ? (profileStateCode ?? "GJ") : delivery?.stateCode || (profileStateCode ?? "GJ") })} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-2 text-sm outline-none">
                   <option value="">Choose delivery</option>
                   {deliveryMethods.map((method) => <option key={method} value={method}>{method.replaceAll("_", " ")}</option>)}
                 </select>
               </label>
               {delivery?.method && delivery.method !== "PICKUP" ? (
                 <label>
-                  <span className="mb-2 block text-[13px] font-bold text-[#263753]">Delivery state {profileStateCode && delivery.stateCode === profileStateCode ? <span className="font-normal text-[#8b9bb5]">(from your profile)</span> : null}</span>
-                  <select value={delivery.stateCode} onChange={(event) => setDelivery({ ...delivery, stateCode: event.target.value })} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-3 text-[15px] outline-none">
+                  <span className="mb-1 block text-[13px] font-bold text-[#263753]">Delivery state {profileStateCode && delivery.stateCode === profileStateCode ? <span className="font-normal text-[#8b9bb5]">(from your profile)</span> : null}</span>
+                  <select value={delivery.stateCode} onChange={(event) => setDelivery({ ...delivery, stateCode: event.target.value })} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-2 text-sm outline-none">
                     {commerceStates.map(([code, state]) => <option key={code} value={code}>{state}</option>)}
                   </select>
                 </label>
@@ -321,8 +321,8 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
             </div>
           ) : delivery?.method && delivery.method !== "PICKUP" ? (
             <label className="block max-w-xs">
-              <span className="mb-2 block text-[13px] font-bold text-[#263753]">Delivery state {profileStateCode && delivery.stateCode === profileStateCode ? <span className="font-normal text-[#8b9bb5]">(from your profile)</span> : null}</span>
-              <select value={delivery.stateCode} onChange={(event) => setDelivery({ ...delivery, stateCode: event.target.value })} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-3 text-[15px] outline-none">
+              <span className="mb-1 block text-[13px] font-bold text-[#263753]">Delivery state {profileStateCode && delivery.stateCode === profileStateCode ? <span className="font-normal text-[#8b9bb5]">(from your profile)</span> : null}</span>
+              <select value={delivery.stateCode} onChange={(event) => setDelivery({ ...delivery, stateCode: event.target.value })} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-2 text-sm outline-none">
                 {commerceStates.map(([code, state]) => <option key={code} value={code}>{state}</option>)}
               </select>
             </label>

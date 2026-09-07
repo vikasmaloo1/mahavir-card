@@ -14,7 +14,8 @@ export async function GET(request: Request) {
     const parsed = cartKindSchema.safeParse(url.searchParams.get("kind") ?? "PURCHASE");
     if (!parsed.success) return jsonError("Invalid basket type", 422);
     const stateCode = url.searchParams.get("stateCode")?.trim() || undefined;
-    return jsonOk(await getOwnedCart(session.user.id, parsed.data, stateCode));
+    const city = url.searchParams.get("city")?.trim() || undefined;
+    return jsonOk(await getOwnedCart(session.user.id, parsed.data, stateCode, city));
   } catch (error) {
     return error instanceof Response ? error : handleApiError(error);
   }

@@ -14,21 +14,21 @@ export function selectionsFromConfiguration(configuration: Record<string, unknow
   const value = configuration.delivery;
   const record = value && typeof value === "object" ? value as Record<string, unknown> : null;
   const delivery = record && (record.method === "PICKUP" || record.method === "LOCAL_DELIVERY" || record.method === "COURIER")
-    ? { method: record.method, stateCode: typeof record.stateCode === "string" ? record.stateCode : undefined } satisfies DeliverySelection
+    ? { method: record.method, stateCode: typeof record.stateCode === "string" ? record.stateCode : undefined, city: typeof record.city === "string" ? record.city : undefined } satisfies DeliverySelection
     : undefined;
   return { addonIds, delivery };
 }
 
-export async function calculateCartSelection(productId: string, quantity: number, configuration: Record<string, unknown>, userId?: string, stateCodeOverride?: string) {
+export async function calculateCartSelection(productId: string, quantity: number, configuration: Record<string, unknown>, userId?: string, stateCodeOverride?: string, cityOverride?: string) {
   const selections = selectionsFromConfiguration(configuration);
-  return calculateProductPrice(productId, quantity, configuration, { ...selections, userId, stateCode: stateCodeOverride ?? selections.delivery?.stateCode });
+  return calculateProductPrice(productId, quantity, configuration, { ...selections, userId, stateCode: stateCodeOverride ?? selections.delivery?.stateCode, city: cityOverride ?? selections.delivery?.city });
 }
 
 export function purchasablePrice(price: CalculatedPrice | null) {
   return Boolean(price?.calculatedAmount && price.warnings.length === 0);
 }
 
-export async function getOwnedCart(userId: string, kind: CartKind, stateCodeOverride?: string) {
+export async function getOwnedCart(userId: string, kind: CartKind, stateCodeOverride?: string, cityOverride?: string) {
   const [cart] = await db.select().from(carts).where(and(eq(carts.userId, userId), eq(carts.kind, kind))).limit(1);
   if (!cart) return { id: null, kind, items: [], summary: { itemCount: 0, productSubtotal: "0.00", addonSubtotal: "0.00", deliverySubtotal: "0.00", surchargeSubtotal: "0.00", priceBeforeTax: "0.00", tax: "0.00", cgst: "0.00", sgst: "0.00", igst: "0.00", total: "0.00", currency: "INR", taxInclusive: false, hasTaxBreakdown: false, hasUnavailableItems: false } };
 
@@ -55,7 +55,7 @@ export async function getOwnedCart(userId: string, kind: CartKind, stateCodeOver
     const capable = row.product.isActive && row.product.status === "ACTIVE" && (kind === "PURCHASE" ? row.product.orderable : row.product.quoteable);
     if (!capable) return { ...row, calculatedAmount: null, pricingSnapshot: row.storedPricingSnapshot, available: false, message: "This product is no longer available for this basket." };
     try {
-      const price = await calculateCartSelection(row.productId, row.quantity, row.configuration, userId, stateCodeOverride);
+      const price = await calculateCartSelection(row.productId, row.quantity, row.configuration, userId, stateCodeOverride, cityOverride);
       const available = kind === "QUOTE" ? Boolean(price) : purchasablePrice(price);
       return {
         ...row,

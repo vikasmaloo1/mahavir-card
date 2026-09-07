@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, Clock3, FileUp, RefreshCw, Search, ShoppingBag, SlidersHorizontal, Sparkles, X, WalletCards, Zap } from "lucide-react";
+import { ArrowRight, Check, FileUp, RefreshCw, Search, ShoppingBag, SlidersHorizontal, Sparkles, X, WalletCards, Zap } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ProductImage } from "@/components/product-image";
@@ -68,26 +68,7 @@ type SearchMeta = {
   extractedRequirement?: Record<string, unknown>;
 };
 
-type RecentProduct = {
-  orderId: string;
-  productId: string;
-  name: string;
-  slug: string;
-  imageUrl: string | null;
-  quantity: number;
-  configuration: Record<string, unknown>;
-  lastOrderedAt: string;
-};
-
-type FrequentProduct = {
-  productId: string;
-  name: string | null;
-  slug: string | null;
-  imageUrl: string | null;
-  orderCount: number;
-  quantity: number;
-  configuration: Record<string, unknown>;
-};
+type OrderHistoryEntry = { id: string; orderNumber: string; status: string; total: string; createdAt: string; paymentStatus: string | null };
 
 type MiniCartArtworkFile = { slotKey: string; id: string; fileName: string | null; artworkSlotId: string | null };
 type MiniCartItem = { id: string; productId: string; quantity: number; calculatedAmount: string | null; name: string; slug: string; pricingRuleId: string | null; artworkFiles: MiniCartArtworkFile[] };
@@ -98,8 +79,8 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
   const [quickActionId, setQuickActionId] = useState<string | null>(null);
   const [quickAddedId, setQuickAddedId] = useState<string | null>(null);
   const [quickError, setQuickError] = useState<Record<string, string>>({});
-  const [recentProducts, setRecentProducts] = useState<RecentProduct[]>([]);
-  const [frequentProducts, setFrequentProducts] = useState<FrequentProduct[]>([]);
+  const [orderHistory, setOrderHistory] = useState<OrderHistoryEntry[]>([]);
+  const [orderHistoryPage, setOrderHistoryPage] = useState(1);
   const [cartProductIds, setCartProductIds] = useState<Set<string>>(new Set());
   const [miniCartItems, setMiniCartItems] = useState<MiniCartItem[]>([]);
   const [miniCartBusyId, setMiniCartBusyId] = useState<string | null>(null);
@@ -227,21 +208,17 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
   }, [category, debouncedQuery, orderable, page]);
 
   useEffect(() => {
-    if (category || debouncedQuery) return; // Recently ordered is a landing-view shortcut, not relevant mid-search/filter.
     let active = true;
-    fetch("/api/account/recent-products", { cache: "no-store" })
+    fetch("/api/account/summary", { cache: "no-store" })
       .then((response) => response.json())
       .then((payload) => {
-        if (active && payload.success) {
-          setRecentProducts(payload.data.items);
-          setFrequentProducts(payload.data.frequent ?? []);
-        }
+        if (active && payload?.success) setOrderHistory(payload.data.orders ?? []);
       })
       .catch(() => undefined);
     return () => {
       active = false;
     };
-  }, [category, debouncedQuery]);
+  }, []);
 
   const refreshCartProductIds = useCallback(() => {
     fetch("/api/cart?kind=PURCHASE", { cache: "no-store" })
@@ -453,28 +430,6 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
   }
 
   /** Re-adds a previously ordered product using the exact configuration it was ordered with last time. */
-  async function quickReorder(item: { productId: string; quantity: number; configuration: Record<string, unknown> }, checkout: boolean) {
-    const actionKey = `${item.productId}:${checkout ? "buy" : "cart"}`;
-    setQuickActionId(actionKey);
-    setQuickError((current) => ({ ...current, [item.productId]: "" }));
-    try {
-      const response = await fetch("/api/cart/items", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId: item.productId, quantity: item.quantity, configuration: item.configuration, kind: "PURCHASE" }),
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "Could not add this product to your basket");
-      if (checkout) { router.push("/checkout"); return; }
-      setQuickAddedId(item.productId);
-      window.setTimeout(() => setQuickAddedId((current) => (current === item.productId ? null : current)), 2500);
-    } catch (caught) {
-      setQuickError((current) => ({ ...current, [item.productId]: caught instanceof Error ? caught.message : "Could not add this product to your basket" }));
-    } finally {
-      setQuickActionId(null);
-    }
-  }
-
   return (
     <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
       <div className="mx-auto max-w-[1440px] px-4 py-7 lg:px-8 lg:py-10">
@@ -548,159 +503,6 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
             </button>
           ) : null}
         </div>
-
-        {/* Frequently ordered — surfaced above Recently for B2B accounts, since repeat-buy speed matters most there */}
-        {isB2B && frequentProducts.length ? (
-          <section className="mt-6">
-            <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[var(--mc-muted)]">
-              <RefreshCw size={15} />
-              Frequently ordered
-            </h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {frequentProducts.map((item) => {
-                const isAdding = quickActionId === `${item.productId}:cart`;
-                const isBuying = quickActionId === `${item.productId}:buy`;
-                const rowError = quickError[item.productId];
-                const slug = item.slug ?? "";
-                return (
-                  <div key={item.productId} className="rounded-xl border border-[var(--mc-line)] bg-[var(--mc-paper)] p-3.5 shadow-[0_5px_16px_rgba(16,33,63,0.035)]">
-                    <div className="flex gap-3">
-                      <Link href={`/catalog/${slug}`} className="relative h-14 w-16 shrink-0 overflow-hidden rounded-lg bg-[var(--mc-accent-soft)]">
-                        <ProductImage src={item.imageUrl || "/images/mahavir-print-assortment.png"} alt={`${item.name ?? "Product"} print sample`} slug={slug} />
-                      </Link>
-                      <div className="min-w-0">
-                        <Link href={`/catalog/${slug}`} className="block truncate text-sm font-bold text-[var(--mc-ink)] hover:text-[var(--mc-accent)] transition-colors">{item.name}</Link>
-                        <p className="mt-0.5 text-xs text-[var(--mc-muted)]">Ordered {item.orderCount} times</p>
-                      </div>
-                    </div>
-                    {quickAddedId === item.productId ? (
-                      <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 border border-emerald-200">
-                        <Check size={13} /> Added to basket
-                      </p>
-                    ) : (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        <button type="button" disabled={Boolean(quickActionId)} onClick={() => void quickReorder(item, true)} className="inline-flex items-center gap-1 rounded-full bg-[var(--mc-accent)] px-3 py-1.5 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors disabled:cursor-not-allowed disabled:opacity-60">
-                          <Zap size={12} />
-                          {isBuying ? "Starting..." : "Buy now"}
-                        </button>
-                        <button type="button" disabled={Boolean(quickActionId)} onClick={() => void quickReorder(item, false)} className="inline-flex items-center gap-1 rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors disabled:cursor-not-allowed disabled:opacity-60">
-                          <ShoppingBag size={12} />
-                          {isAdding ? "Adding..." : "Reorder"}
-                        </button>
-                      </div>
-                    )}
-                    {rowError ? <p className="mt-2 text-[11px] font-semibold text-[#a53025]">{rowError} <Link href={`/catalog/${slug}`} className="underline">Configure</Link></p> : null}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
-
-        {/* Recently ordered — landing-view shortcut back into repeat products */}
-        {recentProducts.length ? (
-          <section className="mt-6">
-            <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[var(--mc-muted)]">
-              <Clock3 size={15} />
-              Recently ordered
-            </h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {recentProducts.map((item) => {
-                const isAdding = quickActionId === `${item.productId}:cart`;
-                const isBuying = quickActionId === `${item.productId}:buy`;
-                const rowError = quickError[item.productId];
-                return (
-                  <div key={item.productId} className="rounded-xl border border-[var(--mc-line)] bg-[var(--mc-paper)] p-3.5 shadow-[0_5px_16px_rgba(16,33,63,0.035)]">
-                    <div className="flex gap-3">
-                      <Link href={`/catalog/${item.slug}`} className="relative h-14 w-16 shrink-0 overflow-hidden rounded-lg bg-[var(--mc-accent-soft)]">
-                        <ProductImage src={item.imageUrl || "/images/mahavir-print-assortment.png"} alt={`${item.name} print sample`} slug={item.slug} />
-                      </Link>
-                      <div className="min-w-0">
-                        <Link href={`/catalog/${item.slug}`} className="block truncate text-sm font-bold text-[var(--mc-ink)] hover:text-[var(--mc-accent)] transition-colors">{item.name}</Link>
-                        <p className="mt-0.5 text-xs text-[var(--mc-muted)]">Qty {item.quantity.toLocaleString("en-IN")}</p>
-                      </div>
-                    </div>
-                    {quickAddedId === item.productId ? (
-                      <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 border border-emerald-200">
-                        <Check size={13} /> Added to basket
-                      </p>
-                    ) : (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        <button
-                          type="button"
-                          disabled={Boolean(quickActionId)}
-                          onClick={() => void quickReorder(item, true)}
-                          className="inline-flex items-center gap-1 rounded-full bg-[var(--mc-accent)] px-3 py-1.5 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          <Zap size={12} />
-                          {isBuying ? "Starting..." : "Buy now"}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={Boolean(quickActionId)}
-                          onClick={() => void quickReorder(item, false)}
-                          className="inline-flex items-center gap-1 rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          <ShoppingBag size={12} />
-                          {isAdding ? "Adding..." : "Reorder"}
-                        </button>
-                      </div>
-                    )}
-                    {rowError ? <p className="mt-2 text-[11px] font-semibold text-[#a53025]">{rowError} <Link href={`/catalog/${item.slug}`} className="underline">Configure</Link></p> : null}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
-
-        {/* Frequently ordered for non-B2B — same data, shown after Recently since B2C repeat-buy urgency is lower */}
-        {!isB2B && frequentProducts.length ? (
-          <section className="mt-6">
-            <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-[var(--mc-muted)]">
-              <RefreshCw size={15} />
-              Frequently ordered
-            </h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {frequentProducts.map((item) => {
-                const isAdding = quickActionId === `${item.productId}:cart`;
-                const isBuying = quickActionId === `${item.productId}:buy`;
-                const rowError = quickError[item.productId];
-                const slug = item.slug ?? "";
-                return (
-                  <div key={item.productId} className="rounded-xl border border-[var(--mc-line)] bg-[var(--mc-paper)] p-3.5 shadow-[0_5px_16px_rgba(16,33,63,0.035)]">
-                    <div className="flex gap-3">
-                      <Link href={`/catalog/${slug}`} className="relative h-14 w-16 shrink-0 overflow-hidden rounded-lg bg-[var(--mc-accent-soft)]">
-                        <ProductImage src={item.imageUrl || "/images/mahavir-print-assortment.png"} alt={`${item.name ?? "Product"} print sample`} slug={slug} />
-                      </Link>
-                      <div className="min-w-0">
-                        <Link href={`/catalog/${slug}`} className="block truncate text-sm font-bold text-[var(--mc-ink)] hover:text-[var(--mc-accent)] transition-colors">{item.name}</Link>
-                        <p className="mt-0.5 text-xs text-[var(--mc-muted)]">Ordered {item.orderCount} times</p>
-                      </div>
-                    </div>
-                    {quickAddedId === item.productId ? (
-                      <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 border border-emerald-200">
-                        <Check size={13} /> Added to basket
-                      </p>
-                    ) : (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        <button type="button" disabled={Boolean(quickActionId)} onClick={() => void quickReorder(item, true)} className="inline-flex items-center gap-1 rounded-full bg-[var(--mc-accent)] px-3 py-1.5 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors disabled:cursor-not-allowed disabled:opacity-60">
-                          <Zap size={12} />
-                          {isBuying ? "Starting..." : "Buy now"}
-                        </button>
-                        <button type="button" disabled={Boolean(quickActionId)} onClick={() => void quickReorder(item, false)} className="inline-flex items-center gap-1 rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors disabled:cursor-not-allowed disabled:opacity-60">
-                          <ShoppingBag size={12} />
-                          {isAdding ? "Adding..." : "Reorder"}
-                        </button>
-                      </div>
-                    )}
-                    {rowError ? <p className="mt-2 text-[11px] font-semibold text-[#a53025]">{rowError} <Link href={`/catalog/${slug}`} className="underline">Configure</Link></p> : null}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
 
         {/* Category Pills */}
         <div
@@ -1058,6 +860,57 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
               )}
             </div>
           </div>
+        ) : null}
+
+        {orderHistory.length ? (
+          <section className="mt-8 border-t border-[var(--mc-line)] pt-6">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-[var(--mc-muted)]">Your orders</h2>
+            <div className="mt-3 overflow-x-auto rounded-xl border border-[var(--mc-line)] bg-[var(--mc-paper)]">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--mc-line)] text-xs font-bold uppercase text-[var(--mc-muted)]">
+                    <th className="px-4 py-2.5">Order</th>
+                    <th className="px-4 py-2.5">Date</th>
+                    <th className="px-4 py-2.5">Status</th>
+                    <th className="px-4 py-2.5 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orderHistory.slice((orderHistoryPage - 1) * 10, orderHistoryPage * 10).map((order) => (
+                    <tr key={order.id} className="border-b border-[var(--mc-line)] last:border-b-0 hover:bg-[var(--mc-surface)] transition-colors">
+                      <td className="px-4 py-2.5"><Link href={`/account/orders/${order.id}`} className="font-bold text-[var(--mc-accent)] hover:underline">{order.orderNumber}</Link></td>
+                      <td className="px-4 py-2.5 text-[var(--mc-muted)]">{new Date(order.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                      <td className="px-4 py-2.5 text-[var(--mc-muted)]">{order.status.replaceAll("_", " ")}</td>
+                      <td className="px-4 py-2.5 text-right font-bold text-[var(--mc-ink)]">{formatInr(order.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {orderHistory.length > 10 ? (
+              <nav aria-label="Order history pages" className="mt-3 flex items-center justify-between">
+                <button
+                  type="button"
+                  disabled={orderHistoryPage <= 1}
+                  onClick={() => setOrderHistoryPage((current) => Math.max(1, current - 1))}
+                  className="rounded-full border border-[var(--mc-line)] bg-white px-4 py-2 text-xs font-bold text-[var(--mc-accent)] disabled:cursor-not-allowed disabled:opacity-40 hover:bg-[var(--mc-surface)] transition-colors"
+                >
+                  Previous
+                </button>
+                <p className="text-xs font-semibold text-[var(--mc-muted)]">
+                  Page {orderHistoryPage} of {Math.ceil(orderHistory.length / 10)}
+                </p>
+                <button
+                  type="button"
+                  disabled={orderHistoryPage >= Math.ceil(orderHistory.length / 10)}
+                  onClick={() => setOrderHistoryPage((current) => Math.min(Math.ceil(orderHistory.length / 10), current + 1))}
+                  className="rounded-full bg-[var(--mc-accent)] px-4 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 hover:bg-[var(--mc-accent-dark)] transition-colors"
+                >
+                  Next
+                </button>
+              </nav>
+            ) : null}
+          </section>
         ) : null}
       </div>
 
