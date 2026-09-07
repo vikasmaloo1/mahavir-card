@@ -73,7 +73,7 @@ type OrderHistoryEntry = { id: string; orderNumber: string; status: string; tota
 type MiniCartArtworkFile = { slotKey: string; id: string; fileName: string | null; artworkSlotId: string | null };
 type MiniCartItem = { id: string; productId: string; quantity: number; calculatedAmount: string | null; name: string; slug: string; pricingRuleId: string | null; artworkFiles: MiniCartArtworkFile[] };
 
-export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { initialFilters: ProductFilters; isB2B: boolean; walletBalance: string | null }) {
+export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLoggedIn = false }: { initialFilters: ProductFilters; isB2B: boolean; walletBalance: string | null; isLoggedIn?: boolean }) {
   const router = useRouter();
   const [items, setItems] = useState<Product[]>([]);
   const [quickActionId, setQuickActionId] = useState<string | null>(null);
@@ -374,6 +374,13 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
     params.set("returnTo", listingHref);
     return `/catalog/${item.slug}?${params}`;
   };
+  const destinationHref = (item: Product) => {
+    const target = productHref(item);
+    if (!isLoggedIn || item.priceState === "LOGIN") {
+      return `/login?next=${encodeURIComponent(target)}`;
+    }
+    return target;
+  };
 
   const openQuoteFallback = (reqCtx: RequirementContext) => {
     setQuoteContext(reqCtx);
@@ -643,6 +650,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
                   quickOrder={quickOrder}
                   setExpandedId={setExpandedId}
                   productHref={productHref}
+                  isLoggedIn={isLoggedIn}
                 />
               );
 
@@ -655,7 +663,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
                       }`}
                     >
                       <div className="min-w-0">
-                        <Link href={productHref(item)} className="font-bold text-[var(--mc-ink)] hover:text-[var(--mc-accent)] transition-colors">
+                        <Link href={destinationHref(item)} className="font-bold text-[var(--mc-ink)] hover:text-[var(--mc-accent)] transition-colors">
                           {item.name}
                         </Link>
                         <div className="mt-0.5 flex flex-wrap items-center gap-1.5 sm:hidden">
@@ -712,7 +720,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
                   {/* Product Visual + Title */}
                   <div className="flex min-w-0 gap-3.5">
                     <Link
-                      href={productHref(item)}
+                      href={destinationHref(item)}
                       className="relative h-[76px] w-[92px] shrink-0 overflow-hidden rounded-lg bg-[var(--mc-accent-soft)]"
                     >
                       <ProductImage
@@ -733,7 +741,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance }: { init
                         )}
                       </div>
                       <h2 className="mt-1 text-[17px] font-bold leading-snug text-[var(--mc-ink)]">
-                        <Link href={productHref(item)} className="hover:text-[var(--mc-accent)] transition-colors">
+                        <Link href={destinationHref(item)} className="hover:text-[var(--mc-accent)] transition-colors">
                           {item.name}
                         </Link>
                       </h2>
@@ -938,6 +946,7 @@ function RowActions({
   quickOrder,
   setExpandedId,
   productHref,
+  isLoggedIn = false,
 }: {
   item: Product;
   isUnavailableInState: boolean;
@@ -952,7 +961,19 @@ function RowActions({
   quickOrder: (item: Product, checkout: boolean) => Promise<void>;
   setExpandedId: (id: string | null) => void;
   productHref: (item: Product) => string;
+  isLoggedIn?: boolean;
 }) {
+  const isLoggedOut = !isLoggedIn || item.priceState === "LOGIN";
+  if (isLoggedOut) {
+    return (
+      <Link
+        href={`/login?next=${encodeURIComponent(productHref(item))}`}
+        className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm"
+      >
+        Configure <ArrowRight size={16} />
+      </Link>
+    );
+  }
   if (isUnavailableInState) {
     return (
       <button

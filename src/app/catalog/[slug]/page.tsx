@@ -147,11 +147,20 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   const query = await searchParams;
   if (slug === "business-cards") redirect("/products?category=visiting-card");
   const session = await getCachedSession();
-  let customerType: "B2C" | "B2B" | null = null;
-  if (session?.user?.id) {
-    const [customer] = await db.select({ customerType: customers.customerType }).from(customers).where(eq(customers.userId, session.user.id)).limit(1);
-    customerType = customer?.customerType === "B2B" ? "B2B" : "B2C";
+  if (!session?.user?.id) {
+    const searchParamsObj = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+      if (typeof value === "string") searchParamsObj.set(key, value);
+      else if (Array.isArray(value)) value.forEach((entry) => searchParamsObj.append(key, entry));
+    }
+    const searchString = searchParamsObj.toString();
+    const nextUrl = `/catalog/${slug}${searchString ? `?${searchString}` : ""}`;
+    redirect(`/login?next=${encodeURIComponent(nextUrl)}`);
   }
+
+  let customerType: "B2C" | "B2B" | null = null;
+  const [customer] = await db.select({ customerType: customers.customerType }).from(customers).where(eq(customers.userId, session.user.id)).limit(1);
+  customerType = customer?.customerType === "B2B" ? "B2B" : "B2C";
   const product = await getDatabaseCatalogProduct(slug, customerType);
   if (!product) notFound();
   const descriptor = `${product.category} · Commercial printing`;
