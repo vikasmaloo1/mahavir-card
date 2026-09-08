@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ArrowLeft, Check, CreditCard, Download, FileText, Package, RefreshCw, ShoppingBag, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, Check, CreditCard, Download, FileText, Package, Printer, RefreshCw, ShoppingBag, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { formatInr } from "@/lib/formatting";
@@ -153,6 +153,17 @@ export function CustomerRecordDetail({ kind, id, upiVpa }: { kind: "order" | "qu
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <Status value={primary.status} />
+        {order ? (
+          <Link
+            href={`/account/orders/${order.order.id}/invoice`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full border border-emerald-600 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-sm"
+          >
+            <Printer size={15} />
+            Tax Invoice
+          </Link>
+        ) : null}
         {order && order.order.status === "PENDING" ? (
           <button
             type="button"
@@ -267,7 +278,27 @@ export function CustomerRecordDetail({ kind, id, upiVpa }: { kind: "order" | "qu
           {data.artworks.length ? data.artworks.map((artwork) => <div key={artwork.id} className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] py-4 text-sm"><span className="min-w-0"><strong className="block truncate">{artwork.fileName}</strong><small className="text-[var(--mc-muted)]">{fileSize(artwork.fileSize)}{artwork.notes ? ` · ${artwork.notes}` : ""}</small></span><span className="flex shrink-0 items-center gap-2"><Status value={artwork.status} small /><a href={`/api/artworks/${artwork.id}/download`} className="inline-flex items-center gap-1 text-xs font-bold text-[var(--mc-accent)] hover:underline"><Download size={14} />Download</a></span></div>) : <Empty text="No artwork linked yet." />}
         </Section>
         <Section title="Documents" icon={<Download size={18} />} id="documents">
-          {data.documents.length ? data.documents.map((document) => <a key={document.id} href={document.documentType === "INVOICE" ? `/api/invoices/${document.id}/download` : `/api/quotes/${id}/document/download`} className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] py-4 text-sm font-bold text-[var(--mc-accent)]"><span>{document.originalFilename}</span><Download size={16} /></a>) : <Empty text="No documents available yet." />}
+          {order ? (
+            <div className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] py-4 text-sm font-bold">
+              <div className="flex items-center gap-2 text-slate-800">
+                <FileText size={16} className="text-emerald-700 shrink-0" />
+                <div>
+                  <span>Official GST Tax Invoice</span>
+                  <p className="text-[11px] font-normal text-[var(--mc-muted)]">Order #{order.order.orderNumber}</p>
+                </div>
+              </div>
+              <Link
+                href={`/account/orders/${order.order.id}/invoice`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-bold text-[var(--mc-accent)] hover:underline"
+              >
+                <Printer size={14} />
+                View & Print
+              </Link>
+            </div>
+          ) : null}
+          {data.documents.length ? data.documents.map((document) => <a key={document.id} href={document.documentType === "INVOICE" ? `/api/invoices/${document.id}/download` : `/api/quotes/${id}/document/download`} className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] py-4 text-sm font-bold text-[var(--mc-accent)]"><span>{document.originalFilename}</span><Download size={16} /></a>) : (!order ? <Empty text="No documents available yet." /> : null)}
         </Section>
       </div>
 
@@ -291,6 +322,17 @@ export function CustomerRecordDetail({ kind, id, upiVpa }: { kind: "order" | "qu
               <strong className={`tabular-nums ${outstanding > 0.001 ? "text-red-700" : "text-slate-700"}`}>
                 {formatInr(outstanding)}
               </strong>
+            </div>
+            <div className="pt-2">
+              <Link
+                href={`/account/orders/${order.order.id}/invoice`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center gap-2 rounded-full border border-emerald-600 bg-emerald-50 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-sm"
+              >
+                <Printer size={14} />
+                Print GST Tax Invoice
+              </Link>
             </div>
           </div>
         ) : null}

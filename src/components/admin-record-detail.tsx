@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Check, CircleAlert, Download, Plus, RefreshCw, Trash2, X } from "lucide-react";
+import { ArrowLeft, Check, CircleAlert, Download, FileText, Plus, Printer, RefreshCw, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { adminRequest, formattedAmount, formattedDate } from "@/lib/admin-client";
 import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import { mapItemsWithArtworks } from "@/lib/order-artwork-mapping";
 import { HorizontalScrollContainer } from "@/components/horizontal-scroll-container";
+import { AdminInvoiceManagerModal } from "@/components/admin-invoice-manager-modal";
 
 type Row = Record<string, unknown>;
 export type DetailSection = "orders" | "quotes" | "customers" | "inquiries" | "payments" | "artworks";
@@ -44,6 +45,7 @@ export function AdminRecordDetail({ section, id }: { section: DetailSection; id:
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   const primary = useMemo(() => record(payload[section.slice(0, -1)] ?? payload), [payload, section]);
 
@@ -63,13 +65,14 @@ export function AdminRecordDetail({ section, id }: { section: DetailSection; id:
     finally { setSaving(false); }
   }
 
-  return <div><header className="flex flex-col justify-between gap-4 border-b border-[#d7dce5] pb-6 sm:flex-row sm:items-end"><div><Link href={`/admin/${section}`} className="inline-flex items-center gap-1 text-sm font-bold text-[#2457b8]"><ArrowLeft size={16} />{section[0].toUpperCase() + section.slice(1)}</Link><p className="mt-5 text-xs font-bold uppercase tracking-[0.14em] text-[#2457b8]">Admin record</p><h1 className="mt-2 break-words text-2xl font-bold sm:text-3xl">{title(section, primary)}</h1><p className="mt-2 text-sm text-[#607089]">Live data, related records, and authorized actions for this {section.slice(0, -1)}.</p></div><button type="button" onClick={() => void load()} disabled={loading} className="inline-flex items-center gap-2 border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-bold"><RefreshCw size={16} className={loading ? "animate-spin" : ""} />Refresh</button></header>
+  return <div><header className="flex flex-col justify-between gap-4 border-b border-[#d7dce5] pb-6 sm:flex-row sm:items-end"><div><Link href={`/admin/${section}`} className="inline-flex items-center gap-1 text-sm font-bold text-[#2457b8]"><ArrowLeft size={16} />{section[0].toUpperCase() + section.slice(1)}</Link><p className="mt-5 text-xs font-bold uppercase tracking-[0.14em] text-[#2457b8]">Admin record</p><h1 className="mt-2 break-words text-2xl font-bold sm:text-3xl">{title(section, primary)}</h1><p className="mt-2 text-sm text-[#607089]">Live data, related records, and authorized actions for this {section.slice(0, -1)}.</p></div><div className="flex flex-wrap items-center gap-2">{section === "orders" ? <button type="button" onClick={() => setShowInvoiceModal(true)} className="inline-flex items-center gap-2 border border-emerald-600 bg-emerald-50 px-3 py-2.5 text-sm font-bold text-emerald-800 hover:bg-emerald-100"><Printer size={16} />Tax Invoice</button> : null}<button type="button" onClick={() => void load()} disabled={loading} className="inline-flex items-center gap-2 border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-bold"><RefreshCw size={16} className={loading ? "animate-spin" : ""} />Refresh</button></div></header>
     {notice ? <Message tone="success">{notice}</Message> : null}{error ? <Message tone="error">{error}</Message> : null}
-    {loading ? <p className="mt-6 border border-[#d7dce5] bg-white p-6 text-sm text-[#607089]">Loading record...</p> : <DetailBody section={section} id={id} data={payload} primary={primary} saving={saving} mutate={mutate} />}
+    {loading ? <p className="mt-6 border border-[#d7dce5] bg-white p-6 text-sm text-[#607089]">Loading record...</p> : <DetailBody section={section} id={id} data={payload} primary={primary} saving={saving} mutate={mutate} onOpenInvoice={() => setShowInvoiceModal(true)} />}
+    {showInvoiceModal && section === "orders" ? <AdminInvoiceManagerModal orderId={id} onClose={() => { setShowInvoiceModal(false); void load(); }} /> : null}
   </div>;
 }
 
-function DetailBody({ section, id, data, primary, saving, mutate }: { section: DetailSection; id: string; data: Row; primary: Row; saving: boolean; mutate: (path: string, options: RequestInit, message: string) => Promise<void> }) {
+function DetailBody({ section, id, data, primary, saving, mutate, onOpenInvoice }: { section: DetailSection; id: string; data: Row; primary: Row; saving: boolean; mutate: (path: string, options: RequestInit, message: string) => Promise<void>; onOpenInvoice?: () => void }) {
   if (section === "quotes") return <QuoteDetail id={id} data={data} quote={primary} saving={saving} mutate={mutate} />;
   if (section === "customers") return <CustomerDetail data={data} customer={primary} mutate={mutate} />;
   const fields = section === "orders" ? ["orderNumber", "status", "subtotal", "deliveryPrice", "tax", "total", "deliveryMethod", "deliveryState", "notes", "createdAt"] : section === "inquiries" ? ["contactName", "companyName", "email", "phone", "subject", "message", "internalNotes", "status", "createdAt"] : section === "payments" ? ["orderId", "customerId", "method", "status", "amount", "paidAmount", "refundedAmount", "provider", "providerOrderId", "providerPaymentId", "codCollectedAt", "createdAt"] : ["fileName", "fileSize", "customerId", "productId", "orderId", "quoteId", "status", "notes", "createdAt"];
@@ -96,7 +99,7 @@ function DetailBody({ section, id, data, primary, saving, mutate }: { section: D
         ) : null}
         {section === "inquiries" ? <InquiryRelations data={data} id={id} saving={saving} mutate={mutate} /> : null}
       </div>
-      <RecordActions section={section} id={id} row={primary} saving={saving} mutate={mutate} />
+      <RecordActions section={section} id={id} row={primary} saving={saving} mutate={mutate} onOpenInvoice={onOpenInvoice} />
       {section === "orders" ? (
         <div className="xl:col-span-2 grid gap-6 lg:grid-cols-2">
           <FieldGrid title="Customer" row={record(data.customer)} fields={["contactName", "companyName", "email", "phone", "customerType", "state"]} />
@@ -123,11 +126,82 @@ function OrderOverview({ data, primary }: { data: Row; primary: Row }) {
   return <section className="border border-[#d7dce5] bg-white p-4 sm:p-6"><h2 className="font-bold">Overview</h2><div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{cells.map(([label, val]) => <div key={label}><p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#607089]">{label}</p><p className="mt-1 break-words text-sm font-semibold text-[#263753]">{val}</p></div>)}</div></section>;
 }
 
-function RecordActions({ section, id, row, saving, mutate }: { section: DetailSection; id: string; row: Row; saving: boolean; mutate: AdminMutate }) {
+function RecordActions({ section, id, row, saving, mutate, onOpenInvoice }: { section: DetailSection; id: string; row: Row; saving: boolean; mutate: AdminMutate; onOpenInvoice?: () => void }) {
   const [status, setStatus] = useState(value(row.status));
   const [notes, setNotes] = useState(value(section === "inquiries" ? row.internalNotes : row.notes));
   const [amount, setAmount] = useState(value(row.amount));
-  return <aside className="h-fit border border-[#d7dce5] bg-white p-4 sm:p-5"><h2 className="font-bold">Manage record</h2>{statusOptions[section] ? <label className="mt-4 block text-sm font-semibold">Status<select value={status} onChange={(event) => setStatus(event.target.value)} className="mt-1.5 w-full border border-[#c9d2df] px-3 py-2.5 font-normal">{statusOptions[section]?.map((item) => <option key={item} value={item}>{section === "orders" ? (ORDER_STATUS_LABELS[item] || item) : item}</option>)}</select></label> : null}{section === "payments" ? <label className="mt-4 block text-sm font-semibold">Amount<input value={amount} onChange={(event) => setAmount(event.target.value)} className="mt-1.5 w-full border border-[#c9d2df] px-3 py-2.5 font-normal" /></label> : null}{section !== "payments" ? <label className="mt-4 block text-sm font-semibold">{section === "inquiries" ? "Internal notes" : "Notes"}<textarea rows={5} value={notes} onChange={(event) => setNotes(event.target.value)} className="mt-1.5 w-full border border-[#c9d2df] p-3 font-normal" /></label> : null}<button type="button" disabled={saving} onClick={() => { if (section === "orders" && status === "CANCELLED" && row.status !== "CANCELLED") { if (!window.confirm("Are you sure you want to cancel this order? Note: Balance will NOT be automatically refunded. If approved, you can credit the balance manually using the Credit to Balance button.")) return; } void mutate(`/api/admin/${section}/${id}`, { method: "PATCH", body: JSON.stringify({ status, ...(section === "payments" ? { amount } : section === "inquiries" ? { internalNotes: notes || null } : { notes: notes || undefined }) }) }, "Record updated."); }} className="mt-4 inline-flex w-full items-center justify-center gap-2 bg-[#2457b8] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"><Check size={16} />Save changes</button>{section === "artworks" ? <a href={`/api/artworks/${id}/download`} className="mt-2 inline-flex w-full items-center justify-center gap-2 border border-[#c9d2df] px-4 py-2.5 text-sm font-bold text-[#2457b8]"><Download size={16} />Download CDR</a> : null}</aside>;
+  return (
+    <aside className="h-fit border border-[#d7dce5] bg-white p-4 sm:p-5">
+      <h2 className="font-bold">Manage record</h2>
+      {statusOptions[section] ? (
+        <label className="mt-4 block text-sm font-semibold">
+          Status
+          <select value={status} onChange={(event) => setStatus(event.target.value)} className="mt-1.5 w-full border border-[#c9d2df] px-3 py-2.5 font-normal">
+            {statusOptions[section]?.map((item) => (
+              <option key={item} value={item}>{section === "orders" ? (ORDER_STATUS_LABELS[item] || item) : item}</option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      {section === "payments" ? (
+        <label className="mt-4 block text-sm font-semibold">
+          Amount
+          <input value={amount} onChange={(event) => setAmount(event.target.value)} className="mt-1.5 w-full border border-[#c9d2df] px-3 py-2.5 font-normal" />
+        </label>
+      ) : null}
+      {section !== "payments" ? (
+        <label className="mt-4 block text-sm font-semibold">
+          {section === "inquiries" ? "Internal notes" : "Notes"}
+          <textarea rows={5} value={notes} onChange={(event) => setNotes(event.target.value)} className="mt-1.5 w-full border border-[#c9d2df] p-3 font-normal" />
+        </label>
+      ) : null}
+      <button
+        type="button"
+        disabled={saving}
+        onClick={() => {
+          if (section === "orders" && status === "CANCELLED" && row.status !== "CANCELLED") {
+            if (!window.confirm("Are you sure you want to cancel this order? Note: Balance will NOT be automatically refunded. If approved, you can credit the balance manually using the Credit to Balance button.")) return;
+          }
+          void mutate(`/api/admin/${section}/${id}`, {
+            method: "PATCH",
+            body: JSON.stringify({
+              status,
+              ...(section === "payments" ? { amount } : section === "inquiries" ? { internalNotes: notes || null } : { notes: notes || undefined }),
+            }),
+          }, "Record updated.");
+        }}
+        className="mt-4 inline-flex w-full items-center justify-center gap-2 bg-[#2457b8] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
+      >
+        <Check size={16} />Save changes
+      </button>
+      {section === "orders" ? (
+        <div className="mt-4 border-t border-[#e1e6ee] pt-4 space-y-2">
+          <p className="text-xs font-bold uppercase tracking-wider text-[#607089]">Tax Invoice & GST</p>
+          <button
+            type="button"
+            onClick={onOpenInvoice}
+            className="inline-flex w-full items-center justify-center gap-2 rounded bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800 transition-colors shadow-sm"
+          >
+            <Printer size={16} />
+            Tax Invoice Desk
+          </button>
+          <a
+            href={`/admin/orders/${id}/invoice`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex w-full items-center justify-center gap-2 rounded border border-[#c9d2df] bg-slate-50 px-4 py-2 text-xs font-bold text-[#2457b8] hover:bg-slate-100 transition-colors"
+          >
+            Open Printable View
+          </a>
+        </div>
+      ) : null}
+      {section === "artworks" ? (
+        <a href={`/api/artworks/${id}/download`} className="mt-2 inline-flex w-full items-center justify-center gap-2 border border-[#c9d2df] px-4 py-2.5 text-sm font-bold text-[#2457b8]">
+          <Download size={16} />Download CDR
+        </a>
+      ) : null}
+    </aside>
+  );
 }
 
 type AdminMutate = (path: string, options: RequestInit, message: string) => Promise<void>;
