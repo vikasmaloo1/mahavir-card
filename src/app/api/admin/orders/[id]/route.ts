@@ -1,8 +1,8 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
 import { db } from "@/lib/db/server";
-import { artworks, customers, orderItems, orders, orderStatusEvents, payments, storedDocuments, walletTransactions } from "@/lib/db/schema";
+import { artworks, customers, orderItems, orders, orderStatusEvents, payments, paymentTransactions, storedDocuments, walletTransactions } from "@/lib/db/schema";
 import { emitNotification } from "@/lib/notifications/emit";
 import { requireRole } from "@/lib/permissions";
 import { adminOrderUpdateSchema } from "@/lib/validation";
@@ -15,7 +15,7 @@ export async function GET(request: Request, ctx: RouteContext<"/api/admin/orders
     const { id } = await ctx.params;
     const [order] = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
     if (!order) return jsonError("Order not found", 404);
-    const [items, payment, artworkRows, documents, customer, history] = await Promise.all([
+    const [items, paymentRows, artworkRows, documents, customer, history] = await Promise.all([
       db.select().from(orderItems).where(eq(orderItems.orderId, id)),
       db.select().from(payments).where(eq(payments.orderId, id)).limit(1),
       db.select().from(artworks).where(eq(artworks.orderId, id)),
@@ -23,8 +23,44 @@ export async function GET(request: Request, ctx: RouteContext<"/api/admin/orders
       order.customerId ? db.select().from(customers).where(eq(customers.id, order.customerId)).limit(1) : Promise.resolve([]),
       db.select().from(orderStatusEvents).where(eq(orderStatusEvents.orderId, id)).orderBy(asc(orderStatusEvents.createdAt)),
     ]);
+
+    const activePayment = paymentRows[0] ?? null;
+    let transactions: Array<{
+      id: string;
+      transactionId: string | null;
+      status: string;
+      amount: string;
+      rawData: Record<string, unknown>;
+      createdAt: Date | string;
+    }> = [];
+
+    if (activePayment) {
+      transactions = await db
+        .select({
+          id: paymentTransactions.id,
+          transactionId: paymentTransactions.transactionId,
+          status: paymentTransactions.status,
+          amount: paymentTransactions.amount,
+          rawData: paymentTransactions.rawData,
+          createdAt: paymentTransactions.createdAt,
+        })
+        .from(paymentTransactions)
+        .where(eq(paymentTransactions.paymentId, activePayment.id))
+        .orderBy(desc(paymentTransactions.createdAt));
+    }
+
     const { mappedItems, unmappedArtworks } = mapItemsWithArtworks(items, artworkRows);
-    return jsonOk({ order, items: mappedItems, payment: payment[0] ?? null, artworks: artworkRows, unmappedArtworks, documents, customer: customer[0] ?? null, history });
+    return jsonOk({
+      order,
+      items: mappedItems,
+      payment: activePayment ? { ...activePayment, transactions } : null,
+      paymentTransactions: transactions,
+      artworks: artworkRows,
+      unmappedArtworks,
+      documents,
+      customer: customer[0] ?? null,
+      history,
+    });
   } catch (error) { return error instanceof Response ? error : handleApiError(error); }
 }
 

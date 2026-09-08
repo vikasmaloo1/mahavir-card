@@ -246,7 +246,7 @@ export function AccountDashboard() {
                           <FileText size={13} />
                           Invoice
                         </Link>
-                        {(item.status === "PENDING" || item.status === "CONFIRMED") ? (
+                        {item.status === "PENDING" ? (
                           <button
                             type="button"
                             disabled={cancellingId === item.id}
@@ -299,7 +299,16 @@ function Metric({ label, value, Icon }: { label: string; value: number; Icon: ty
 function Records<T>({ id, title, items, empty, action, href, itemHref, render }: { id?: string; title: string; items: T[]; empty: string; action: string; href: string; itemHref?: (item: T) => string; render: (item: T) => React.ReactNode }) { return <section id={id} className="scroll-mt-36 rounded-xl border border-[var(--mc-line)] bg-white p-5 sm:p-6 shadow-sm"><h2 className="font-bold text-[var(--mc-ink)]">{title}</h2><div className="mt-4 space-y-3">{items.length ? items.map((item, index) => itemHref ? <Link href={itemHref(item)} key={index} className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] pt-3 text-sm hover:text-[var(--mc-accent)] transition-colors">{render(item)}</Link> : <div key={index} className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] pt-3 text-sm">{render(item)}</div>) : <div className="border-t border-dashed border-[var(--mc-line)] pt-5 text-sm text-[var(--mc-muted)]"><p>{empty}</p><Link href={href} className="mt-3 inline-flex items-center gap-2 font-bold text-[var(--mc-accent)]">{action} <ArrowRight size={15} /></Link></div>}</div></section>; }
 function ProfileValue({ label, value }: { label: string; value: string }) { return <dl className="bg-white p-4"><dt className="text-xs font-bold uppercase text-[var(--mc-muted)]">{label}</dt><dd className="mt-1 break-words font-semibold text-[var(--mc-ink)]">{value}</dd></dl>; }
 function AccountSkeleton() { return <div className="animate-pulse py-8"><div className="h-8 w-56 rounded bg-[#dce4f0]" /><div className="mt-3 h-4 w-96 max-w-full rounded bg-[#e6ebf3]" /><div className="mt-8 grid gap-3 sm:grid-cols-3">{Array.from({ length: 3 }, (_, index) => <div key={index} className="h-28 rounded-xl border border-[var(--mc-line)] bg-white" />)}</div><div className="mt-5 grid gap-5 xl:grid-cols-2">{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-44 rounded-xl border border-[var(--mc-line)] bg-white" />)}</div></div>; }
-function date(value: string) { return new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }); }
+function date(value: string) {
+  return new Date(value).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
 function labelStatus(value: string) { return value.toLowerCase().split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" "); }
 
 function OrderStatusBadge({ status }: { status: string }) {

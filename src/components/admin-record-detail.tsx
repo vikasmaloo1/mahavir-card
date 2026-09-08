@@ -523,6 +523,7 @@ function OrderPaymentSection({
     0,
     Math.min(orderTotal, paidAmount > 0 ? paidAmount : orderTotal) - refundedAmount
   );
+  const paymentTransactions = rows(payment.transactions);
 
   return (
     <section className="border border-[#d7dce5] bg-white p-4 sm:p-6 shadow-xs">
@@ -594,6 +595,47 @@ function OrderPaymentSection({
           <p className="mt-1 text-base font-bold tabular-nums text-slate-700">{formattedAmount(refundedAmount)}</p>
         </div>
       </div>
+
+      {paymentTransactions.length ? (
+        <div className="mt-5 border-t border-[#e1e6ee] pt-4">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-[#607089] mb-2">
+            Payment Transaction History ({paymentTransactions.length})
+          </h3>
+          <div className="overflow-x-auto rounded border border-[#e1e6ee]">
+            <table className="min-w-full text-left text-xs">
+              <thead className="bg-slate-50 text-[#52647e] border-b border-[#e1e6ee]">
+                <tr>
+                  <th className="px-3 py-2 font-bold uppercase">Date & Time</th>
+                  <th className="px-3 py-2 font-bold uppercase">Method</th>
+                  <th className="px-3 py-2 font-bold uppercase">Reference</th>
+                  <th className="px-3 py-2 font-bold uppercase">Notes</th>
+                  <th className="px-3 py-2 font-bold uppercase text-right">Amount</th>
+                  <th className="px-3 py-2 font-bold uppercase text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#e8ecf2]">
+                {paymentTransactions.map((tx, idx) => {
+                  const raw = record(tx.rawData);
+                  return (
+                    <tr key={text(tx.id || idx)} className="hover:bg-slate-50/50">
+                      <td className="px-3 py-2 whitespace-nowrap text-slate-600">{formattedDate(tx.createdAt)}</td>
+                      <td className="px-3 py-2 font-semibold text-slate-800">{text(raw.method || payment.method)}</td>
+                      <td className="px-3 py-2 font-mono text-slate-600">{text(raw.reference || tx.transactionId)}</td>
+                      <td className="px-3 py-2 text-slate-600 max-w-xs truncate" title={text(raw.notes)}>{text(raw.notes)}</td>
+                      <td className="px-3 py-2 font-bold text-emerald-800 tabular-nums text-right">+{formattedAmount(tx.amount)}</td>
+                      <td className="px-3 py-2 text-right">
+                        <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                          {text(tx.status || "SUCCESS")}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
 
       {showRecordModal ? (
         <RecordPaymentModal

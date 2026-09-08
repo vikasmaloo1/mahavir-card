@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, Download, FileText, Package, RefreshCw, ShoppingBag, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, Check, CreditCard, Download, FileText, Package, RefreshCw, ShoppingBag, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { formatInr } from "@/lib/formatting";
@@ -13,7 +13,31 @@ type Item = { id: string; description: string; jobName: string | null; quantity:
 type Document = { id: string; documentType: string; originalFilename: string; status: string };
 type Artwork = { id: string; fileName: string; fileSize: number; status: string; notes: string | null };
 type History = { id: string; status: string; notes: string | null; createdAt: string };
-type OrderPayload = { order: { id: string; orderNumber: string; status: string; subtotal: string; tax: string; total: string; deliveryPrice: string; deliveryMethod: string | null; deliveryState: string | null; createdAt: string }; items: Item[]; payment: { method: string; status: string; amount: string } | null; artworks: Artwork[]; documents: Document[]; history: History[] };
+type PaymentTransaction = {
+  id: string;
+  transactionId: string | null;
+  status: string;
+  amount: string;
+  rawData?: Record<string, unknown>;
+  createdAt: string;
+};
+type PaymentInfo = {
+  method: string;
+  status: string;
+  amount: string;
+  paidAmount?: string;
+  refundedAmount?: string;
+  transactions?: PaymentTransaction[];
+};
+type OrderPayload = {
+  order: { id: string; orderNumber: string; status: string; subtotal: string; tax: string; total: string; deliveryPrice: string; deliveryMethod: string | null; deliveryState: string | null; createdAt: string };
+  items: Item[];
+  payment: PaymentInfo | null;
+  paymentTransactions?: PaymentTransaction[];
+  artworks: Artwork[];
+  documents: Document[];
+  history: History[];
+};
 type QuotePayload = { quote: { id: string; quoteNumber: string; status: string; subtotal: string; discountAmount: string; tax: string; total: string; validUntil: string | null; notes: string | null; customerMessage: string | null; createdAt: string }; items: Item[]; artworks: Artwork[]; documents: Document[]; order: { id: string; orderNumber: string; status: string } | null };
 
 export function CustomerRecordDetail({ kind, id, upiVpa }: { kind: "order" | "quote"; id: string; upiVpa?: string }) {
@@ -114,6 +138,10 @@ export function CustomerRecordDetail({ kind, id, upiVpa }: { kind: "order" | "qu
   const number = kind === "order" ? (primary as OrderPayload["order"]).orderNumber : (primary as QuotePayload["quote"]).quoteNumber;
   const quote = kind === "quote" ? data as QuotePayload : null;
   const order = kind === "order" ? data as OrderPayload : null;
+  const orderTotal = order ? Number(order.order.total || 0) : 0;
+  const paidAmount = order?.payment ? Number(order.payment.paidAmount || 0) : 0;
+  const outstanding = Math.max(0, orderTotal - paidAmount);
+  const paymentTransactions = (order?.paymentTransactions || order?.payment?.transactions || []) as PaymentTransaction[];
 
   return <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:py-12">
     <Link href="/account" className="inline-flex items-center gap-2 text-sm font-bold text-[var(--mc-accent)]"><ArrowLeft size={16} />Back to account</Link>
@@ -125,7 +153,7 @@ export function CustomerRecordDetail({ kind, id, upiVpa }: { kind: "order" | "qu
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <Status value={primary.status} />
-        {order && (order.order.status === "PENDING" || order.order.status === "CONFIRMED") ? (
+        {order && order.order.status === "PENDING" ? (
           <button
             type="button"
             disabled={cancelling}
@@ -155,8 +183,130 @@ export function CustomerRecordDetail({ kind, id, upiVpa }: { kind: "order" | "qu
     {quote?.quote.status === "SENT_TO_CUSTOMER" && !isPastValidUntil(quote.quote.validUntil) ? <section className="mt-6 border border-[#b8ccf5] bg-[#f5f8ff] p-5"><h2 className="font-bold">Your quotation is ready</h2><p className="mt-2 text-sm text-[var(--mc-muted)]">Review the line items and total before approving or requesting changes.</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" disabled={saving} onClick={() => void decide("APPROVE")} className="inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"><Check size={16} />Approve quote</button><button type="button" disabled={saving} onClick={() => void decide("REJECT")} className="inline-flex items-center gap-2 rounded-full border border-[#c9d2df] bg-white px-4 py-2.5 text-sm font-bold disabled:opacity-50"><X size={16} />Request changes</button></div></section> : null}
     {quote && (quote.quote.status === "EXPIRED" || quote.quote.status === "CUSTOMER_REJECTED" || (quote.quote.status === "SENT_TO_CUSTOMER" && isPastValidUntil(quote.quote.validUntil))) ? <section className="mt-6 border border-[var(--mc-line)] bg-white p-5"><h2 className="font-bold">{quote.quote.status === "CUSTOMER_REJECTED" ? "Changes were requested on this quote" : "This quotation is no longer active"}</h2><p className="mt-2 text-sm text-[var(--mc-muted)]">{quote.quote.status === "CUSTOMER_REJECTED" ? "Mahavir Card will follow up, or you can start a fresh request below." : "Its validity period has passed. Request a new quote for the same or updated specifications."}</p><Link href="/quote" className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors">Request a new quote</Link></section> : null}
     {order && order.order.status !== "CANCELLED" ? <OrderProgressTracker status={order.order.status} /> : null}
-    <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]"><div className="space-y-6"><Section title="Items" icon={<Package size={18} />}>{data.items.map((item) => <div key={item.id} className="grid gap-2 border-t border-[var(--mc-line)] py-4 text-sm sm:grid-cols-[minmax(0,1fr)_auto]"><div><strong>{item.jobName || item.description}</strong>{item.jobName ? <p className="mt-1 text-[var(--mc-muted)]">{item.description}</p> : null}<p className="mt-1 text-xs text-[var(--mc-muted)]">Quantity {item.quantity.toLocaleString("en-IN")}</p>{order && item.productId ? (savedJobIds.has(item.id) ? <p className="mt-1.5 text-xs font-bold text-emerald-700">Saved as job</p> : <button type="button" disabled={savingJobId === item.id} onClick={() => void saveAsJob(item)} className="mt-1.5 text-xs font-bold text-[var(--mc-accent)] hover:underline disabled:opacity-60">{savingJobId === item.id ? "Saving..." : "Save as job"}</button>) : null}</div><strong>{formatInr(item.totalPrice)}</strong></div>)}</Section><Section title="Artwork" icon={<FileText size={18} />}>{data.artworks.length ? data.artworks.map((artwork) => <div key={artwork.id} className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] py-4 text-sm"><span className="min-w-0"><strong className="block truncate">{artwork.fileName}</strong><small className="text-[var(--mc-muted)]">{fileSize(artwork.fileSize)}{artwork.notes ? ` · ${artwork.notes}` : ""}</small></span><span className="flex shrink-0 items-center gap-2"><Status value={artwork.status} small /><a href={`/api/artworks/${artwork.id}/download`} className="inline-flex items-center gap-1 text-xs font-bold text-[var(--mc-accent)] hover:underline"><Download size={14} />Download</a></span></div>) : <Empty text="No artwork linked yet." />}</Section><Section title="Documents" icon={<Download size={18} />} id="documents">{data.documents.length ? data.documents.map((document) => <a key={document.id} href={document.documentType === "INVOICE" ? `/api/invoices/${document.id}/download` : `/api/quotes/${id}/document/download`} className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] py-4 text-sm font-bold text-[var(--mc-accent)]"><span>{document.originalFilename}</span><Download size={16} /></a>) : <Empty text="No documents available yet." />}</Section></div>
-      <aside className="h-fit border border-[var(--mc-line)] bg-white p-5 lg:sticky lg:top-32"><h2 className="font-bold">Summary</h2><Money label="Price before GST" value={primary.subtotal} /><Money label="GST" value={primary.tax} /><Money label="Delivery" value={order?.order.deliveryPrice ?? "0"} /><Money label="Total" value={primary.total} strong />{order?.payment ? <div className="mt-5 border-t border-[var(--mc-line)] pt-4 text-sm"><p className="text-xs font-bold uppercase text-[var(--mc-muted)]">Payment</p><p className="mt-2 font-semibold">{label(order.payment.method)} · {label(order.payment.status)}</p></div> : order && Number(order.order.total) > 0 && upiVpa ? <OrderPaymentAction orderId={order.order.id} orderNumber={order.order.orderNumber} amount={order.order.total} upiVpa={upiVpa} onPaid={() => void load()} /> : null}{quote?.order ? <Link href={`/account/orders/${quote.order.id}`} className="mt-5 flex items-center gap-2 border-t border-[var(--mc-line)] pt-4 text-sm font-bold text-[var(--mc-accent)]">Order {quote.order.orderNumber}</Link> : null}</aside>
+    <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="space-y-6">
+        <Section title="Items" icon={<Package size={18} />}>
+          {data.items.map((item) => <div key={item.id} className="grid gap-2 border-t border-[var(--mc-line)] py-4 text-sm sm:grid-cols-[minmax(0,1fr)_auto]"><div><strong>{item.jobName || item.description}</strong>{item.jobName ? <p className="mt-1 text-[var(--mc-muted)]">{item.description}</p> : null}<p className="mt-1 text-xs text-[var(--mc-muted)]">Quantity {item.quantity.toLocaleString("en-IN")}</p>{order && item.productId ? (savedJobIds.has(item.id) ? <p className="mt-1.5 text-xs font-bold text-emerald-700">Saved as job</p> : <button type="button" disabled={savingJobId === item.id} onClick={() => void saveAsJob(item)} className="mt-1.5 text-xs font-bold text-[var(--mc-accent)] hover:underline disabled:opacity-60">{savingJobId === item.id ? "Saving..." : "Save as job"}</button>) : null}</div><strong>{formatInr(item.totalPrice)}</strong></div>)}
+        </Section>
+
+        {order ? (
+          <Section title="Payment & History" icon={<CreditCard size={18} />}>
+            <div className="border-t border-[var(--mc-line)] pt-4 space-y-4">
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="rounded-lg bg-slate-50 border border-slate-200 p-2.5">
+                  <span className="text-[11px] font-bold uppercase text-[var(--mc-muted)]">Order Total</span>
+                  <p className="mt-1 font-bold text-sm tabular-nums text-[var(--mc-ink)]">{formatInr(orderTotal)}</p>
+                </div>
+                <div className="rounded-lg bg-emerald-50/70 border border-emerald-200 p-2.5">
+                  <span className="text-[11px] font-bold uppercase text-emerald-800">Total Paid</span>
+                  <p className="mt-1 font-bold text-sm tabular-nums text-emerald-800">{formatInr(paidAmount)}</p>
+                </div>
+                <div className={`rounded-lg border p-2.5 ${outstanding > 0.001 ? "bg-red-50/70 border-red-200" : "bg-slate-50 border-slate-200"}`}>
+                  <span className={`text-[11px] font-bold uppercase ${outstanding > 0.001 ? "text-red-700" : "text-slate-600"}`}>
+                    Outstanding
+                  </span>
+                  <p className={`mt-1 font-bold text-sm tabular-nums ${outstanding > 0.001 ? "text-red-700" : "text-slate-700"}`}>
+                    {formatInr(outstanding)}
+                  </p>
+                </div>
+              </div>
+
+              {outstanding > 0.001 ? (
+                <div className="flex items-start gap-2.5 rounded-lg border border-amber-300 bg-amber-50/80 p-3 text-xs text-amber-900">
+                  <AlertCircle size={16} className="text-amber-700 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="block font-bold">Pending Payment: {formatInr(outstanding)}</strong>
+                    <p className="mt-0.5 text-amber-800">
+                      You have an outstanding balance of <strong>{formatInr(outstanding)}</strong> pending to pay on this order.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              <div>
+                <h3 className="text-xs font-bold uppercase text-[var(--mc-muted)] mb-2">Recorded Payments</h3>
+                {paymentTransactions.length ? (
+                  <div className="divide-y divide-[var(--mc-line)] border border-[var(--mc-line)] rounded-lg bg-white overflow-hidden text-xs">
+                    {paymentTransactions.map((tx, idx) => {
+                      const raw = (tx.rawData || {}) as Record<string, unknown>;
+                      return (
+                        <div key={tx.id || idx} className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-slate-50/60 transition-colors">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-slate-800">{String(raw.method || order.payment?.method || "Payment")}</span>
+                              {raw.reference ? (
+                                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-700 border border-slate-200">
+                                  Ref: {String(raw.reference)}
+                                </span>
+                              ) : null}
+                            </div>
+                            {raw.notes ? <p className="mt-1 text-slate-600 italic">&ldquo;{String(raw.notes)}&rdquo;</p> : null}
+                            <small className="mt-1 block text-slate-500">{date(tx.createdAt)}</small>
+                          </div>
+                          <div className="shrink-0 sm:text-right">
+                            <strong className="font-bold text-sm text-emerald-800 tabular-nums">+{formatInr(tx.amount)}</strong>
+                            <span className="block text-[10px] uppercase font-bold text-emerald-700">{tx.status || "Received"}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-[var(--mc-muted)] italic">
+                    {order.payment?.status === "PAID"
+                      ? `Payment of ${formatInr(orderTotal)} completed via ${label(order.payment.method)}.`
+                      : "No payments recorded yet for this order."}
+                  </p>
+                )}
+              </div>
+            </div>
+          </Section>
+        ) : null}
+
+        <Section title="Artwork" icon={<FileText size={18} />}>
+          {data.artworks.length ? data.artworks.map((artwork) => <div key={artwork.id} className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] py-4 text-sm"><span className="min-w-0"><strong className="block truncate">{artwork.fileName}</strong><small className="text-[var(--mc-muted)]">{fileSize(artwork.fileSize)}{artwork.notes ? ` · ${artwork.notes}` : ""}</small></span><span className="flex shrink-0 items-center gap-2"><Status value={artwork.status} small /><a href={`/api/artworks/${artwork.id}/download`} className="inline-flex items-center gap-1 text-xs font-bold text-[var(--mc-accent)] hover:underline"><Download size={14} />Download</a></span></div>) : <Empty text="No artwork linked yet." />}
+        </Section>
+        <Section title="Documents" icon={<Download size={18} />} id="documents">
+          {data.documents.length ? data.documents.map((document) => <a key={document.id} href={document.documentType === "INVOICE" ? `/api/invoices/${document.id}/download` : `/api/quotes/${id}/document/download`} className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] py-4 text-sm font-bold text-[var(--mc-accent)]"><span>{document.originalFilename}</span><Download size={16} /></a>) : <Empty text="No documents available yet." />}
+        </Section>
+      </div>
+
+      <aside className="h-fit border border-[var(--mc-line)] bg-white p-5 lg:sticky lg:top-32">
+        <h2 className="font-bold">Summary</h2>
+        <Money label="Price before GST" value={primary.subtotal} />
+        <Money label="GST" value={primary.tax} />
+        <Money label="Delivery" value={order?.order.deliveryPrice ?? "0"} />
+        <Money label="Total" value={primary.total} strong />
+
+        {order ? (
+          <div className="mt-4 space-y-2 border-t border-[var(--mc-line)] pt-3 text-sm">
+            <div className="flex justify-between text-xs">
+              <span className="font-semibold text-emerald-800">Total Paid:</span>
+              <strong className="text-emerald-800 tabular-nums">{formatInr(paidAmount)}</strong>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className={`font-semibold ${outstanding > 0.001 ? "text-red-700" : "text-slate-600"}`}>
+                Outstanding:
+              </span>
+              <strong className={`tabular-nums ${outstanding > 0.001 ? "text-red-700" : "text-slate-700"}`}>
+                {formatInr(outstanding)}
+              </strong>
+            </div>
+          </div>
+        ) : null}
+
+        {order?.payment ? (
+          <div className="mt-4 border-t border-[var(--mc-line)] pt-3 text-sm">
+            <p className="text-xs font-bold uppercase text-[var(--mc-muted)]">Payment</p>
+            <p className="mt-1 font-semibold text-slate-800">
+              {label(order.payment.method)} · <span className={order.payment.status === "PAID" ? "text-emerald-700" : order.payment.status === "PARTIALLY_PAID" ? "text-amber-700" : "text-slate-700"}>{label(order.payment.status)}</span>
+            </p>
+          </div>
+        ) : order && Number(order.order.total) > 0 && upiVpa ? (
+          <OrderPaymentAction orderId={order.order.id} orderNumber={order.order.orderNumber} amount={order.order.total} upiVpa={upiVpa} onPaid={() => void load()} />
+        ) : null}
+        {quote?.order ? <Link href={`/account/orders/${quote.order.id}`} className="mt-5 flex items-center gap-2 border-t border-[var(--mc-line)] pt-4 text-sm font-bold text-[var(--mc-accent)]">Order {quote.order.orderNumber}</Link> : null}
+      </aside>
     </div>
     {order ? <Section title="Order status history" icon={<RefreshCw size={18} />} className="mt-6">{order.history.length ? order.history.map((event) => <div key={event.id} className="grid gap-1 border-t border-[var(--mc-line)] py-4 text-sm sm:grid-cols-[11rem_minmax(0,1fr)_auto]"><strong>{label(event.status)}</strong><span className="text-[var(--mc-muted)]">{event.notes || "Status updated"}</span><time className="text-xs text-[var(--mc-muted)]">{date(event.createdAt)}</time></div>) : <Empty text="Current status is shown above. New updates will appear here." />}</Section> : null}
   </main>;

@@ -44,7 +44,7 @@ export function fieldError(error: unknown, field: string) {
 
 export function formattedDate(value: unknown) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T/.test(value)) return "-";
-  return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(value));
+  return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
 export function formattedAmount(value: unknown) {

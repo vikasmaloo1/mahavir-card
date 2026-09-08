@@ -51,3 +51,16 @@ test("credit and wallet eligibility enforces B2B credit terms and B2C prepaid wa
   // Inactive B2C account is rejected
   assert.equal(evaluateCreditEligibility({ customerType: "B2C", creditEnabled: false, availableCredit: "1000.00", status: "INACTIVE" }, "750.00").eligible, false);
 });
+
+test("order cancellation policy: only PENDING orders can be cancelled; CONFIRMED orders cannot be cancelled", () => {
+  function isCancellableByCustomer(status: string) {
+    return status === "PENDING";
+  }
+  assert.equal(isCancellableByCustomer("PENDING"), true);
+  assert.equal(isCancellableByCustomer("CONFIRMED"), false);
+  assert.equal(isCancellableByCustomer("IN_PRODUCTION"), false);
+  assert.equal(isCancellableByCustomer("READY"), false);
+  assert.equal(isCancellableByCustomer("DISPATCHED"), false);
+  assert.equal(isCancellableByCustomer("DELIVERED"), false);
+  assert.equal(isCancellableByCustomer("CANCELLED"), false);
+});

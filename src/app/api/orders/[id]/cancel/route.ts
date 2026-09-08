@@ -31,10 +31,10 @@ export async function POST(request: Request, ctx: RouteContext<"/api/orders/[id]
       return jsonError("This order is already cancelled", 409);
     }
 
-    // Only allow cancellation while PENDING or CONFIRMED (before IN_PRODUCTION)
-    if (order.status !== "PENDING" && order.status !== "CONFIRMED") {
+    // Once an order is confirmed, it cannot be cancelled by customer (cancellation only allowed in PENDING)
+    if (order.status !== "PENDING") {
       return jsonError(
-        "Orders that have entered production or are already dispatched cannot be cancelled online. Please contact support.",
+        "Once an order is confirmed, it cannot be cancelled online. Please contact support.",
         400,
       );
     }

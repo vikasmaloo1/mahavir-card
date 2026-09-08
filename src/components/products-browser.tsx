@@ -891,7 +891,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                     {orderHistory.slice((orderHistoryPage - 1) * 10, orderHistoryPage * 10).map((order) => (
                       <tr key={order.id} className="border-b border-[var(--mc-line)] last:border-b-0 hover:bg-[var(--mc-surface)] transition-colors">
                         <td className="px-4 py-2.5"><Link href={`/account/orders/${order.id}`} className="font-bold text-[var(--mc-accent)] hover:underline">{order.orderNumber}</Link></td>
-                        <td className="px-4 py-2.5 text-[var(--mc-muted)]">{new Date(order.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                        <td className="px-4 py-2.5 text-[var(--mc-muted)]">{new Date(order.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })}</td>
                         <td className="px-4 py-2.5 text-[var(--mc-muted)]">{order.status.replaceAll("_", " ")}</td>
                         <td className="px-4 py-2.5 text-right font-bold text-[var(--mc-ink)]">{formatInr(order.total)}</td>
                       </tr>
