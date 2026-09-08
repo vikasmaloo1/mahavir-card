@@ -70,10 +70,64 @@ type SearchMeta = {
   extractedRequirement?: Record<string, unknown>;
 };
 
-type OrderHistoryEntry = { id: string; orderNumber: string; status: string; total: string; createdAt: string; paymentStatus: string | null };
+type OrderHistoryItem = {
+  id: string;
+  description: string;
+  jobName: string | null;
+  quantity: number;
+  totalPrice: string;
+  configuration: unknown;
+};
+
+type OrderHistoryEntry = {
+  id: string;
+  orderNumber: string;
+  status: string;
+  total: string;
+  notes?: string | null;
+  createdAt: string;
+  paymentStatus: string | null;
+  items?: OrderHistoryItem[];
+};
 
 type MiniCartArtworkFile = { slotKey: string; id: string; fileName: string | null; artworkSlotId: string | null };
 type MiniCartItem = { id: string; productId: string; quantity: number; calculatedAmount: string | null; name: string; slug: string; pricingRuleId: string | null; artworkFiles: MiniCartArtworkFile[] };
+
+function formatOrderDate(dateStr: string | Date) {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = months[d.getMonth()];
+  const day = d.getDate();
+  const year = d.getFullYear();
+  let hours = d.getHours();
+  const minutes = d.getMinutes().toString().padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  return `${month} ${day} ${year} ${hours}:${minutes}${ampm}`;
+}
+
+function formatOrderStatus(status: string) {
+  switch (status.toUpperCase()) {
+    case "PENDING":
+      return "Under Process";
+    case "CONFIRMED":
+      return "Confirmed";
+    case "IN_PRODUCTION":
+      return "In Production";
+    case "READY":
+      return "Ready";
+    case "DISPATCHED":
+      return "Dispatched";
+    case "DELIVERED":
+      return "Delivered";
+    case "CANCELLED":
+      return "Cancelled";
+    default:
+      return status.replaceAll("_", " ");
+  }
+}
 
 export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLoggedIn = false }: { initialFilters: ProductFilters; isB2B: boolean; walletBalance: string | null; isLoggedIn?: boolean }) {
   const router = useRouter();
@@ -83,6 +137,8 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
   const [quickError, setQuickError] = useState<Record<string, string>>({});
   const [orderHistory, setOrderHistory] = useState<OrderHistoryEntry[]>([]);
   const [orderHistoryPage, setOrderHistoryPage] = useState(1);
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
+  const [customerCompanyName, setCustomerCompanyName] = useState<string | null>(null);
   const [cartProductIds, setCartProductIds] = useState<Set<string>>(new Set());
   const [miniCartItems, setMiniCartItems] = useState<MiniCartItem[]>([]);
   const [miniCartBusyId, setMiniCartBusyId] = useState<string | null>(null);
@@ -214,13 +270,45 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
     fetch("/api/account/summary", { cache: "no-store" })
       .then((response) => response.json())
       .then((payload) => {
-        if (active && payload?.success) setOrderHistory(payload.data.orders ?? []);
+        if (active && payload?.success) {
+          setOrderHistory(payload.data.orders ?? []);
+          if (payload.data.customer?.companyName) {
+            setCustomerCompanyName(payload.data.customer.companyName);
+          }
+        }
       })
       .catch(() => undefined);
     return () => {
       active = false;
     };
   }, []);
+
+  async function cancelRecentOrder(orderId: string, orderNumber: string) {
+    if (!window.confirm(`Are you sure you want to cancel Order #${orderNumber}? Any wallet balance will be refunded.`)) {
+      return;
+    }
+    setCancellingOrderId(orderId);
+    try {
+      const res = await fetch(`/api/orders/${orderId}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "Cancelled by customer from recent orders" }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showToast.error(data.message || "Failed to cancel order");
+        return;
+      }
+      showToast.success(`Order #${orderNumber} cancelled successfully`);
+      setOrderHistory((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: "CANCELLED" } : o))
+      );
+    } catch {
+      showToast.error("Network error cancelling order");
+    } finally {
+      setCancellingOrderId(null);
+    }
+  }
 
   const refreshCartProductIds = useCallback(() => {
     fetch("/api/cart?kind=PURCHASE", { cache: "no-store" })
@@ -874,55 +962,145 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
         ) : null}
 
         {orderHistory.length ? (
-          <section className="mt-8 border-t border-[var(--mc-line)] pt-6">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-[var(--mc-muted)]">Your orders</h2>
-            <div className="mt-3 rounded-xl border border-[var(--mc-line)] bg-[var(--mc-paper)] overflow-hidden">
+          <section className="mt-12 border-t-2 border-slate-200 pt-8 pb-4">
+            <h2 className="text-xl md:text-2xl font-black text-[#1e429f] tracking-wide text-center uppercase mb-5">
+              RECENT ORDERS
+            </h2>
+            <div className="rounded-lg border border-slate-300 bg-white overflow-hidden shadow-sm">
               <HorizontalScrollContainer>
-                <table className="w-full text-left text-sm">
+                <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-[var(--mc-line)] text-xs font-bold uppercase text-[var(--mc-muted)]">
-                      <th className="px-4 py-2.5">Order</th>
-                      <th className="px-4 py-2.5">Date</th>
-                      <th className="px-4 py-2.5">Status</th>
-                      <th className="px-4 py-2.5 text-right">Total</th>
+                    <tr className="bg-[#0a0a0a] text-white text-xs font-bold uppercase tracking-wider">
+                      <th className="px-3 py-3 text-center border-r border-slate-800 whitespace-nowrap">ORDER NO.</th>
+                      <th className="px-3 py-3 text-center border-r border-slate-800 whitespace-nowrap">DATE</th>
+                      <th className="px-3 py-3 border-r border-slate-800 whitespace-nowrap">ORDER NAME</th>
+                      <th className="px-3 py-3 border-r border-slate-800 min-w-[220px]">ORDER DETAIL</th>
+                      <th className="px-3 py-3 text-center border-r border-slate-800 whitespace-nowrap">CURRENT STATUS</th>
+                      <th className="px-3 py-3 text-center border-r border-slate-800 w-12 whitespace-nowrap">TRACK</th>
+                      <th className="px-3 py-3 text-center whitespace-nowrap">ACTIONS</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {orderHistory.slice((orderHistoryPage - 1) * 10, orderHistoryPage * 10).map((order) => (
-                      <tr key={order.id} className="border-b border-[var(--mc-line)] last:border-b-0 hover:bg-[var(--mc-surface)] transition-colors">
-                        <td className="px-4 py-2.5"><Link href={`/account/orders/${order.id}`} className="font-bold text-[var(--mc-accent)] hover:underline">{order.orderNumber}</Link></td>
-                        <td className="px-4 py-2.5 text-[var(--mc-muted)]">{new Date(order.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })}</td>
-                        <td className="px-4 py-2.5 text-[var(--mc-muted)]">{order.status.replaceAll("_", " ")}</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-[var(--mc-ink)]">{formatInr(order.total)}</td>
-                      </tr>
-                    ))}
+                  <tbody className="divide-y divide-slate-200 text-slate-800">
+                    {orderHistory.slice(0, 10).map((order) => {
+                      const orderName =
+                        order.items?.find((it) => it.jobName?.trim())?.jobName ||
+                        order.notes?.trim() ||
+                        customerCompanyName ||
+                        `Order #${order.orderNumber}`;
+
+                      const isPending = order.status === "PENDING";
+                      const isCancelled = order.status === "CANCELLED";
+
+                      return (
+                        <tr key={order.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="px-3 py-3 text-center font-medium border-r border-slate-200 whitespace-nowrap">
+                            <Link
+                              href={`/account/orders/${order.id}`}
+                              className="text-blue-600 hover:text-blue-800 hover:underline font-bold"
+                            >
+                              {order.orderNumber}
+                            </Link>
+                          </td>
+                          <td className="px-3 py-3 text-center text-slate-600 border-r border-slate-200 whitespace-nowrap">
+                            {formatOrderDate(order.createdAt)}
+                          </td>
+                          <td className="px-3 py-3 font-semibold uppercase text-slate-900 border-r border-slate-200 whitespace-nowrap">
+                            {orderName}
+                          </td>
+                          <td className="px-3 py-3 border-r border-slate-200">
+                            {order.items && order.items.length > 0 ? (
+                              <div className="flex flex-col gap-1.5">
+                                {order.items.map((item) => (
+                                  <div
+                                    key={item.id}
+                                    className="inline-flex flex-wrap items-center gap-1.5 rounded bg-slate-100/90 border border-slate-200/80 px-2 py-1 text-slate-700"
+                                  >
+                                    <span className="font-semibold text-slate-900 line-clamp-1">{item.description}</span>
+                                    <span className="inline-flex items-center rounded bg-white px-1.5 py-0.5 border border-slate-300 text-[10px] font-bold text-slate-800">
+                                      Qty: {item.quantity}
+                                    </span>
+                                    {item.jobName ? (
+                                      <span className="text-[10px] text-slate-500 italic">({item.jobName})</span>
+                                    ) : null}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 italic">Standard Order</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-3 text-center border-r border-slate-200 whitespace-nowrap font-medium">
+                            <span
+                              className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                                isCancelled
+                                  ? "text-rose-700 bg-rose-50"
+                                  : isPending
+                                  ? "text-amber-700 bg-amber-50"
+                                  : order.status === "DELIVERED"
+                                  ? "text-emerald-700 bg-emerald-50"
+                                  : "text-blue-700 bg-blue-50"
+                              }`}
+                            >
+                              {formatOrderStatus(order.status)}
+                            </span>
+                          </td>
+                          <td className="px-2 py-3 text-center border-r border-slate-200 whitespace-nowrap">
+                            <div className="flex items-center justify-center">
+                              <span
+                                className={`inline-flex items-center justify-center h-6 w-6 rounded-full text-white shadow-xs ${
+                                  isCancelled
+                                    ? "bg-rose-500"
+                                    : isPending
+                                    ? "bg-amber-500"
+                                    : "bg-[#16a34a]"
+                                }`}
+                                title={formatOrderStatus(order.status)}
+                              >
+                                {isCancelled ? (
+                                  <X size={13} strokeWidth={2.5} />
+                                ) : isPending ? (
+                                  <RefreshCw size={12} className="animate-spin-slow" />
+                                ) : (
+                                  <Check size={13} strokeWidth={2.5} />
+                                )}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-center whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {isPending && (
+                                <button
+                                  type="button"
+                                  onClick={() => cancelRecentOrder(order.id, order.orderNumber)}
+                                  disabled={cancellingOrderId === order.id}
+                                  className="rounded bg-rose-600 px-2.5 py-1 text-xs font-bold text-white shadow-sm hover:bg-rose-700 transition-colors disabled:opacity-50"
+                                >
+                                  {cancellingOrderId === order.id ? "..." : "Cancel"}
+                                </button>
+                              )}
+                              <Link
+                                href={`/account/orders/${order.id}`}
+                                className="rounded bg-[#16a34a] px-3 py-1 text-xs font-bold text-white shadow-sm hover:bg-green-700 transition-colors"
+                              >
+                                Details
+                              </Link>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </HorizontalScrollContainer>
             </div>
-            {orderHistory.length > 10 ? (
-              <nav aria-label="Order history pages" className="mt-3 flex items-center justify-between">
-                <button
-                  type="button"
-                  disabled={orderHistoryPage <= 1}
-                  onClick={() => setOrderHistoryPage((current) => Math.max(1, current - 1))}
-                  className="rounded-full border border-[var(--mc-line)] bg-white px-4 py-2 text-xs font-bold text-[var(--mc-accent)] disabled:cursor-not-allowed disabled:opacity-40 hover:bg-[var(--mc-surface)] transition-colors"
-                >
-                  Previous
-                </button>
-                <p className="text-xs font-semibold text-[var(--mc-muted)]">
-                  Page {orderHistoryPage} of {Math.ceil(orderHistory.length / 10)}
-                </p>
-                <button
-                  type="button"
-                  disabled={orderHistoryPage >= Math.ceil(orderHistory.length / 10)}
-                  onClick={() => setOrderHistoryPage((current) => Math.min(Math.ceil(orderHistory.length / 10), current + 1))}
-                  className="rounded-full bg-[var(--mc-accent)] px-4 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 hover:bg-[var(--mc-accent-dark)] transition-colors"
-                >
-                  Next
-                </button>
-              </nav>
-            ) : null}
+            <div className="mt-4 flex justify-center">
+              <Link
+                href="/account"
+                className="inline-flex items-center justify-center rounded bg-[#0098ca] px-6 py-2 text-xs font-bold uppercase tracking-wider text-white shadow hover:bg-[#0082ad] transition-colors"
+              >
+                Show More...
+              </Link>
+            </div>
           </section>
         ) : null}
       </div>
