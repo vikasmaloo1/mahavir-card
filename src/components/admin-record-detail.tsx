@@ -474,6 +474,28 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function Message({ tone, children }: { tone: "success" | "error"; children: React.ReactNode }) { return <p className={`mt-5 flex gap-2 border p-3 text-sm font-semibold ${tone === "success" ? "border-[#bbdfc9] bg-[#f3fbf5] text-[#1e6b3a]" : "border-[#efc4be] bg-[#fff6f4] text-[#a9362c]"}`}><CircleAlert size={17} />{children}</p>; }
 function display(field: string, input: unknown) {
   const f = field.toLowerCase();
+  if (f === "status" && input) {
+    const raw = String(input);
+    const label = ORDER_STATUS_LABELS[raw] || raw.replaceAll("_", " ");
+    const isCancelled = raw === "CANCELLED";
+    const isSuccess = ["DELIVERED", "PAID", "APPROVED", "CONFIRMED"].includes(raw);
+    const isPending = ["PENDING", "NEW", "REVIEWING"].includes(raw);
+    return (
+      <span
+        className={`inline-block px-2.5 py-0.5 rounded text-xs font-bold ${
+          isCancelled
+            ? "bg-red-50 text-red-700 border border-red-200"
+            : isSuccess
+            ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+            : isPending
+            ? "bg-amber-50 text-amber-800 border border-amber-200"
+            : "bg-blue-50 text-blue-700 border border-blue-200"
+        }`}
+      >
+        {label}
+      </span>
+    );
+  }
   if (["availablecredit", "walletbalance", "creditlimit"].includes(f)) {
     const num = Number(input ?? 0);
     if (num < -0.001) {
@@ -489,7 +511,9 @@ function display(field: string, input: unknown) {
   if (f.includes("price") || ["subtotal", "tax", "total", "amount", "paidamount", "refundedamount", "discountamount"].includes(f)) {
     return formattedAmount(input);
   }
-  if (f.includes("at") && input) return formattedDate(input);
+  if ((f.endsWith("at") || ["createdat", "updatedat", "validuntil", "codcollectedat"].includes(f)) && input) {
+    return formattedDate(input);
+  }
   if (typeof input === "object" && input !== null) return JSON.stringify(input);
   if (typeof input === "boolean") return input ? "Yes" : "No";
   return text(input);
