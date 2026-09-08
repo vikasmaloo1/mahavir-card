@@ -34,6 +34,7 @@ export function AdminInvoiceManagerModal({
   const [invoiceDate, setInvoiceDate] = useState("");
   const [challanNumber, setChallanNumber] = useState("");
   const [challanDate, setChallanDate] = useState("");
+  const [orderNumber, setOrderNumber] = useState("");
   const [orderDate, setOrderDate] = useState("");
   const [terms, setTerms] = useState("Immediate");
   const [sizeMode, setSizeMode] = useState<InvoiceSizeMode>("AUTO");
@@ -72,6 +73,7 @@ export function AdminInvoiceManagerModal({
       setInvoiceDate(res.invoiceDate);
       setChallanNumber(res.challanNumber);
       setChallanDate(res.challanDate);
+      setOrderNumber(res.orderNumber || "");
       setOrderDate(res.orderDate);
       setTerms(res.terms);
       setSizeMode(res.sizeMode || "AUTO");
@@ -130,6 +132,7 @@ export function AdminInvoiceManagerModal({
 
     return {
       ...invoice,
+      orderNumber: orderNumber || invoice.orderNumber,
       invoiceNumber,
       invoiceDate,
       challanNumber,
@@ -170,6 +173,7 @@ export function AdminInvoiceManagerModal({
     invoice,
     items,
     sizeMode,
+    orderNumber,
     invoiceNumber,
     invoiceDate,
     challanNumber,
@@ -206,6 +210,7 @@ export function AdminInvoiceManagerModal({
         method: "POST",
         body: JSON.stringify({
           overrides: {
+            orderNumber,
             invoiceNumber,
             invoiceDate,
             challanNumber,
@@ -464,12 +469,22 @@ export function AdminInvoiceManagerModal({
                     />
                   </div>
                   <div>
+                    <label className="block font-semibold text-gray-700">Order No. (Short)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 50 or F6014071"
+                      value={orderNumber}
+                      onChange={(e) => setOrderNumber(e.target.value)}
+                      className="mt-1 w-full rounded border border-[#c9d2df] px-2 py-1.5"
+                    />
+                  </div>
+                  <div>
                     <label className="block font-semibold text-gray-700">Order Date</label>
                     <input
                       type="text"
                       value={orderDate}
                       onChange={(e) => setOrderDate(e.target.value)}
-                      className="mt-1 w-full rounded border border-[#c9d2df] px-2 py-1.5 font-mono"
+                      className="mt-1 w-full rounded border border-[#c9d2df] px-2 py-1.5"
                     />
                   </div>
                   <div>

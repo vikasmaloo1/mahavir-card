@@ -1,4 +1,4 @@
-﻿import { numberToIndianWords } from "./number-to-words";
+import { numberToIndianWords } from "./number-to-words";
 import type { InvoiceData, InvoiceLineItem, InvoiceSizeMode } from "./invoice-types";
 
 function formatDateIn(date: Date | string | null | undefined): string {
@@ -25,6 +25,22 @@ export function defaultHsnForDescription(desc: string): string {
   return "4911"; // Printed materials / trade advertising / visiting cards
 }
 
+export function shortenOrderNumber(raw: string | undefined | null): string {
+  if (!raw) return "";
+  const s = String(raw).trim();
+  // Strip prefixes like MHC-O-2026-, MHC-2026-, MHC-O-, MHC-
+  const stripped = s
+    .replace(/^MHC-[A-Z]-\d{4}-/i, "")
+    .replace(/^MHC-\d{4}-/i, "")
+    .replace(/^MHC-[A-Z]-/i, "")
+    .replace(/^MHC-/i, "");
+  // If still longer than 10 characters (e.g. UUID), take the last 8 chars
+  if (stripped.length > 10) {
+    return stripped.slice(-8);
+  }
+  return stripped;
+}
+
 export function buildInvoiceData(
   order: any,
   customer: any,
@@ -35,8 +51,9 @@ export function buildInvoiceData(
   const createdDate = order.createdAt ? new Date(order.createdAt) : new Date();
   const formattedOrderDate = formatDateIn(createdDate);
 
-  // Derive default invoice number: clean readable sequence (or extract last 4 digits)
-  const defaultInvNum = overrides?.invoiceNumber || (order.orderNumber ? order.orderNumber.replace(/^MHC-O-\d+-/, "") : "50");
+  const shortOrderNum = shortenOrderNumber(order?.orderNumber);
+  // Default invoice/challan number: clean readable sequence or short order number
+  const defaultInvNum = overrides?.invoiceNumber || shortOrderNum || "50";
 
   const lineItems: InvoiceLineItem[] = (overrides?.customItems || items || []).map((item, index) => {
     const qty = Number(item.quantity || 1);
@@ -88,7 +105,7 @@ export function buildInvoiceData(
 
   return {
     orderId: String(order.id),
-    orderNumber: String(order.orderNumber),
+    orderNumber: String(overrides?.orderNumber || shortOrderNum || order.orderNumber || ""),
     invoiceNumber: String(overrides?.invoiceNumber || defaultInvNum),
     invoiceDate: overrides?.invoiceDate || formattedOrderDate,
     challanNumber: String(overrides?.challanNumber || defaultInvNum),

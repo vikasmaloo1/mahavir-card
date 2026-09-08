@@ -1,8 +1,16 @@
-﻿import assert from "node:assert/strict";
+import assert from "node:assert/strict";
 import test from "node:test";
 
 import { numberToIndianWords } from "../src/lib/number-to-words";
-import { determinePageSize, buildInvoiceData, defaultHsnForDescription } from "../src/lib/invoice-helper";
+import { determinePageSize, buildInvoiceData, defaultHsnForDescription, shortenOrderNumber } from "../src/lib/invoice-helper";
+
+test("shortenOrderNumber strips excessive prefixes to keep order numbers clean and short", () => {
+  assert.equal(shortenOrderNumber("MHC-O-2026-F6014071"), "F6014071");
+  assert.equal(shortenOrderNumber("MHC-O-2026-50"), "50");
+  assert.equal(shortenOrderNumber("MHC-2026-00123"), "00123");
+  assert.equal(shortenOrderNumber("50"), "50");
+  assert.equal(shortenOrderNumber(""), "");
+});
 
 test("numberToIndianWords formats diverse amounts into standard Indian currency words", () => {
   assert.equal(numberToIndianWords(3009), "Three Thousand Nine Only.");
