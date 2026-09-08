@@ -48,6 +48,14 @@ body {
   line-height: 1.5;
 }
 
+.font-mono,
+code,
+kbd,
+samp,
+pre {
+  font-family: "RupeeGlyphFallback", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
 ::selection { background: #cfe0ff; color: var(--mc-ink); }
 
 /* Use these for new storefront components so the theme stays centralized. */

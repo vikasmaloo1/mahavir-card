@@ -210,7 +210,7 @@ export function PaymentBankDetails({
               <span className="block text-[11px] font-bold uppercase tracking-wider text-emerald-800">
                 Exact Order Amount
               </span>
-              <span className="block text-xl font-black text-emerald-950 font-mono">
+              <span className="block text-xl font-black text-emerald-950 tabular-nums">
                 ₹{formattedAmount}
               </span>
             </div>
@@ -286,7 +286,7 @@ export function PaymentBankDetails({
             {hasValidAmount ? (
               <div className="flex items-center justify-between py-1.5 bg-emerald-50/70 px-2.5 rounded -mx-1 mb-1">
                 <dt className="text-emerald-800 font-bold">Payable Amount</dt>
-                <dd className="font-mono font-black text-emerald-950 text-right text-sm">
+                <dd className="font-black text-emerald-950 text-right text-sm tabular-nums">
                   ₹{formattedAmount}
                 </dd>
               </div>
