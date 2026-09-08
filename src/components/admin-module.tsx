@@ -5,6 +5,7 @@ import { Check, ChevronLeft, ChevronRight, CircleAlert, Download, Pencil, Plus, 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { adminRequest, asItems, formattedAmount, formattedDate } from "@/lib/admin-client";
+import { formatInrExact } from "@/lib/formatting";
 import { useAutoRefresh } from "@/lib/use-auto-refresh";
 
 type Row = Record<string, unknown>;
@@ -147,7 +148,103 @@ const columns: Record<ModuleKey, { label: string; value: (row: Row) => string; r
     { label: "Created", value: (r) => formattedDate(r.createdAt) },
   ],
   quotes: [{ label: "Quote", value: (r) => text(r.quoteNumber) }, { label: "Customer", value: (r) => text(r.contactName) }, { label: "Status", value: (r) => text(r.status) }, { label: "Total", value: (r) => formattedAmount(r.total) }],
-  customers: [{ label: "Customer", value: (r) => text(r.contactName) }, { label: "Company", value: (r) => text(r.companyName) }, { label: "Email", value: (r) => text(r.email) }, { label: "Status", value: (r) => text(r.status) }],
+  customers: [
+    {
+      label: "Customer / Company",
+      value: (r) => `${text(r.contactName)} ${text(r.companyName)}`,
+      render: (r) => (
+        <div>
+          <span className="font-bold text-[#162237] block">{text(r.contactName)}</span>
+          {r.companyName ? <span className="text-xs text-[#607089] block">{text(r.companyName)}</span> : null}
+        </div>
+      ),
+    },
+    {
+      label: "Type",
+      value: (r) => text(r.customerType),
+      render: (r) => {
+        const type = text(r.customerType) || "B2C";
+        return (
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
+              type === "B2B"
+                ? "bg-blue-50 text-blue-700 border border-blue-200"
+                : "bg-slate-100 text-slate-700 border border-slate-200"
+            }`}
+          >
+            {type}
+          </span>
+        );
+      },
+    },
+    {
+      label: "Phone & Email",
+      value: (r) => `${text(r.phone)} ${text(r.email)}`,
+      render: (r) => (
+        <div className="text-xs">
+          <span className="font-mono text-[#162237] block">{text(r.phone)}</span>
+          <span className="text-[#607089] truncate max-w-[170px] block">{text(r.email)}</span>
+        </div>
+      ),
+    },
+    {
+      label: "Balance",
+      value: (r) => formatInrExact(r.availableCredit as string | number),
+      render: (r) => {
+        const num = Number(r.availableCredit ?? 0);
+        if (num < -0.001) {
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-red-50 border border-red-200 text-xs font-bold text-red-700 font-mono">
+              <CircleAlert size={12} />
+              {formatInrExact(num)}
+            </span>
+          );
+        }
+        if (num > 0.001) {
+          return (
+            <span className="font-mono font-bold text-emerald-700 text-xs">
+              {formatInrExact(num)}
+            </span>
+          );
+        }
+        return <span className="font-mono text-slate-500 text-xs font-semibold">₹0.00</span>;
+      },
+    },
+    {
+      label: "Credit",
+      value: (r) => (r.creditEnabled ? "Enabled" : "Disabled"),
+      render: (r) => (
+        <span className={`text-xs font-semibold ${r.creditEnabled ? "text-emerald-700" : "text-slate-400"}`}>
+          {r.creditEnabled ? "Enabled" : "Disabled"}
+        </span>
+      ),
+    },
+    {
+      label: "Status",
+      value: (r) => text(r.status),
+      render: (r) => (
+        <span
+          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+            r.status === "ACTIVE"
+              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+              : "bg-slate-100 text-slate-600 border border-slate-200"
+          }`}
+        >
+          {text(r.status)}
+        </span>
+      ),
+    },
+    {
+      label: "State",
+      value: (r) => `${text(r.state)} ${text(r.city)}`,
+      render: (r) => (
+        <span className="text-xs text-slate-700">
+          {text(r.stateCode || r.state)}
+          {r.city ? `, ${text(r.city)}` : ""}
+        </span>
+      ),
+    },
+  ],
   inquiries: [{ label: "Contact", value: (r) => text(r.contactName) }, { label: "Subject", value: (r) => text(r.subject) }, { label: "Source", value: (r) => text(r.source) }, { label: "Email", value: (r) => text(r.email) }, { label: "Status", value: (r) => text(r.status) }, { label: "Received", value: (r) => formattedDate(r.createdAt) }],
   payments: [{ label: "Order", value: (r) => text(r.orderNumber) }, { label: "Customer", value: (r) => text(r.customerEmail) }, { label: "Type", value: (r) => text(r.customerType) }, { label: "Method", value: (r) => text(nested(r, "payment.method")) }, { label: "Amount", value: (r) => formattedAmount(nested(r, "payment.amount")) }, { label: "Status", value: (r) => text(nested(r, "payment.status")) }],
   artworks: [{ label: "File", value: (r) => text(r.fileName) }, { label: "Type", value: (r) => text(r.extension) }, { label: "Status", value: (r) => text(r.status) }, { label: "Uploaded", value: (r) => formattedDate(r.createdAt) }],
@@ -263,6 +360,7 @@ export function AdminModule({ section }: { section: ModuleKey }) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [customerTypeFilter, setCustomerTypeFilter] = useState("");
+  const [balanceFilter, setBalanceFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -304,9 +402,15 @@ export function AdminModule({ section }: { section: ModuleKey }) {
       const matchesQuery = !term || columns[section].some((column) => column.value(item).toLowerCase().includes(term));
       const itemStatus = text(section === "payments" ? nested(item, "payment.status") : section === "admins" ? nested(item, "admin.status") : item.status);
       const matchesCustomerType = !customerTypeFilter || text(item.customerType) === customerTypeFilter;
-      return matchesQuery && (!statusFilter || itemStatus === statusFilter) && matchesCustomerType;
+      const balanceNum = Number(item.availableCredit ?? 0);
+      const matchesBalance =
+        !balanceFilter ||
+        (balanceFilter === "NEGATIVE" && balanceNum < -0.001) ||
+        (balanceFilter === "ZERO" && Math.abs(balanceNum) <= 0.001) ||
+        (balanceFilter === "POSITIVE" && balanceNum > 0.001);
+      return matchesQuery && (!statusFilter || itemStatus === statusFilter) && matchesCustomerType && matchesBalance;
     });
-  }, [items, query, section, statusFilter, customerTypeFilter]);
+  }, [items, query, section, statusFilter, customerTypeFilter, balanceFilter]);
   const statuses = useMemo(() => [...new Set(items.map((item) => text(section === "payments" ? nested(item, "payment.status") : section === "admins" ? nested(item, "admin.status") : item.status)).filter((item) => item !== "-"))].sort(), [items, section]);
 
   async function save(data: Record<string, unknown>) {
@@ -374,7 +478,33 @@ export function AdminModule({ section }: { section: ModuleKey }) {
 
     {(creating || editing) ? <section className="mt-6 border border-[#c9d2df] bg-white p-4 shadow-sm sm:p-6"><div className="mb-5 flex items-center justify-between gap-4 border-b border-[#e4e8ef] pb-4"><div><h2 className="font-bold text-[#162237]">{editing ? `Edit ${singular(config.title)}` : config.createLabel}</h2><p className="mt-1 text-sm text-[#607089]">Changes are saved to the live admin API.</p></div><button type="button" onClick={() => { setCreating(false); setEditing(null); setError(""); }} className="p-2 text-[#607089] hover:text-[#162237]" aria-label="Close form"><X size={18} /></button></div><ModuleForm section={section} item={editing} products={products} saving={saving} onSubmit={save} onCancel={() => { setCreating(false); setEditing(null); }} /></section> : null}
 
-    <div className={`mt-6 grid gap-2 ${section === "orders" || section === "payments" ? "sm:grid-cols-[minmax(0,1fr)_10rem_13rem]" : "sm:grid-cols-[minmax(0,1fr)_13rem]"}`}><div className="flex items-center gap-3 border border-[#cfd7e3] bg-white px-3"><Search size={17} className="shrink-0 text-[#607089]" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Search ${config.title.toLowerCase()}`} className="min-w-0 flex-1 bg-transparent py-3 text-sm text-[#162237] outline-none" /></div>{section === "orders" || section === "payments" ? <select value={customerTypeFilter} onChange={(event) => setCustomerTypeFilter(event.target.value)} className="border border-[#cfd7e3] bg-white px-3 py-3 text-sm font-semibold text-[#263753]"><option value="">B2B & B2C</option><option value="B2B">B2B only</option><option value="B2C">B2C only</option></select> : null}{statuses.length ? <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="border border-[#cfd7e3] bg-white px-3 py-3 text-sm font-semibold text-[#263753]"><option value="">All statuses</option>{statuses.map((status) => <option key={status}>{status}</option>)}</select> : null}</div>
+    <div className={`mt-6 grid gap-2 ${section === "orders" || section === "payments" ? "sm:grid-cols-[minmax(0,1fr)_10rem_13rem]" : section === "customers" ? "sm:grid-cols-[minmax(0,1fr)_9rem_12rem_10rem]" : "sm:grid-cols-[minmax(0,1fr)_13rem]"}`}>
+      <div className="flex items-center gap-3 border border-[#cfd7e3] bg-white px-3">
+        <Search size={17} className="shrink-0 text-[#607089]" />
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Search ${config.title.toLowerCase()}`} className="min-w-0 flex-1 bg-transparent py-3 text-sm text-[#162237] outline-none" />
+      </div>
+      {section === "orders" || section === "payments" || section === "customers" ? (
+        <select value={customerTypeFilter} onChange={(event) => setCustomerTypeFilter(event.target.value)} className="border border-[#cfd7e3] bg-white px-3 py-3 text-sm font-semibold text-[#263753]">
+          <option value="">B2B & B2C</option>
+          <option value="B2B">B2B only</option>
+          <option value="B2C">B2C only</option>
+        </select>
+      ) : null}
+      {section === "customers" ? (
+        <select value={balanceFilter} onChange={(event) => setBalanceFilter(event.target.value)} className="border border-[#cfd7e3] bg-white px-3 py-3 text-sm font-semibold text-[#263753]">
+          <option value="">All balances</option>
+          <option value="NEGATIVE">Negative (Outstanding)</option>
+          <option value="ZERO">Zero (₹0.00)</option>
+          <option value="POSITIVE">Positive</option>
+        </select>
+      ) : null}
+      {statuses.length ? (
+        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="border border-[#cfd7e3] bg-white px-3 py-3 text-sm font-semibold text-[#263753]">
+          <option value="">All statuses</option>
+          {statuses.map((status) => <option key={status}>{status}</option>)}
+        </select>
+      ) : null}
+    </div>
     {loading ? <div className="mt-6 border border-[#d7dce5] bg-white p-6 text-sm text-[#607089]">Loading {config.title.toLowerCase()}...</div> : null}
     {!loading && !visible.length ? <div className="mt-6 border border-dashed border-[#c9d2df] bg-white p-8 text-center"><p className="font-bold text-[#162237]">No {config.title.toLowerCase()} found.</p><p className="mt-2 text-sm text-[#607089]">Use the new-record control when this module supports creation.</p></div> : null}
     {!loading && visible.length ? <ResourceTable section={section} items={visible} saving={saving} onEdit={(item) => { setEditing(item); setCreating(false); setError(""); }} onDelete={remove} onConvert={convertInquiry} onRemind={remindQuote} /> : null}

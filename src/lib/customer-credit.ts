@@ -16,6 +16,6 @@ export function evaluateCreditEligibility(customer: CreditCustomer, orderTotal: 
   if (customer.status !== "ACTIVE") return { eligible: false, availableCredit, reason: "INACTIVE", message: "This customer account is not active." };
   if (!customer.creditEnabled) return { eligible: false, availableCredit, reason: "DISABLED", message: "Credit ordering is not enabled for this account." };
   if (!Number.isFinite(total) || total <= 0) return { eligible: false, availableCredit, reason: "INVALID_TOTAL", message: "The order total is invalid." };
-  if (!Number.isFinite(availableCredit) || availableCredit < total) return { eligible: false, availableCredit, reason: "INSUFFICIENT", message: "Available credit is lower than the order total." };
+  // B2B customers can place orders even at ₹0 or insufficient balance; balance is allowed to go negative
   return { eligible: true, availableCredit };
 }

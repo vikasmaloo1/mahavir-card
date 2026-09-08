@@ -343,6 +343,8 @@ export const checkoutSchema = z.object({
     country: z.string().trim().min(2).max(80).default("India"),
   }),
   paymentMethod: z.enum(["RAZORPAY", "COD", "CREDIT", "UPI_QR"]),
+  proofImageUrl: z.string().trim().nullable().optional(),
+  utr: z.string().trim().max(50).nullable().optional(),
   items: z.array(z.object({
     productId: z.string().uuid(),
     quantity: z.number().int().positive().max(1_000_000),

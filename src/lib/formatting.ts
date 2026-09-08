@@ -6,6 +6,14 @@ export function formatInr(value: NumericValue) {
   return `\u20b9${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(safeAmount)}`;
 }
 
+export function formatInrExact(value: NumericValue) {
+  const amount = Number(value ?? 0);
+  if (!Number.isFinite(amount)) return "\u20b90.00";
+  const sign = amount < 0 ? "-" : "";
+  const abs = Math.abs(amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${sign}\u20b9${abs}`;
+}
+
 export function formatDimension(value: NumericValue) {
   if (value === null || value === undefined || value === "") return null;
   const dimension = Number(value);

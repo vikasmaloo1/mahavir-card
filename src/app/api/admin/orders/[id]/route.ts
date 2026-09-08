@@ -38,27 +38,6 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/orde
       if (!existing) return { error: "NOT_FOUND" as const };
       if (input.status && !canTransition("order", existing.status, input.status)) return { error: "INVALID_TRANSITION" as const, currentStatus: existing.status };
 
-      if (input.status === "CANCELLED" && existing.status !== "CANCELLED") {
-        const [payment] = await tx.select().from(payments).where(eq(payments.orderId, id)).limit(1);
-        if (payment && payment.customerId && (payment.status === "PAID" || (payment.method === "CREDIT" && payment.status === "CREDIT_APPROVED"))) {
-          const [releasedPayment] = await tx.update(payments).set({ status: "REFUNDED", updatedAt: new Date() }).where(eq(payments.id, payment.id)).returning({ id: payments.id });
-          if (releasedPayment) {
-            const restoredBalance = sql`${customers.availableCredit} + ${payment.amount}`;
-            const [creditCustomer] = await tx.update(customers).set({ availableCredit: restoredBalance, walletBalance: restoredBalance, updatedAt: new Date() }).where(eq(customers.id, payment.customerId)).returning({ availableCredit: customers.availableCredit });
-            if (creditCustomer) await tx.insert(walletTransactions).values({
-              customerId: payment.customerId,
-              transactionType: payment.method === "CREDIT" ? "CREDIT_RELEASE" : "REFUND",
-              status: "APPROVED",
-              amount: payment.amount,
-              balanceAfter: creditCustomer.availableCredit,
-              reference: existing.orderNumber,
-              notes: `Refund credited to wallet for cancelled order ${existing.orderNumber}`,
-              createdBy: session.user.id,
-            });
-          }
-        }
-      }
-
       const statusChanged = Boolean(input.status && input.status !== existing.status);
       const [order] = await tx.update(orders).set({ ...input, updatedAt: new Date() }).where(eq(orders.id, id)).returning();
       if (order && statusChanged) await tx.insert(orderStatusEvents).values({ orderId: id, status: input.status!, notes: input.notes ?? null, changedBy: session.user.id });

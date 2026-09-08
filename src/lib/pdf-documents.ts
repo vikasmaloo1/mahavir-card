@@ -54,7 +54,7 @@ async function createPdf(title: string, documentNumber: string, lines: PdfLine[]
 
 async function settingsLines() {
   const [settings] = await db.select().from(businessSettings).where(eq(businessSettings.id, "primary")).limit(1);
-  return settings ? [settings.businessName, [settings.addressLine1, settings.addressLine2, settings.city, settings.state, settings.postalCode].filter(Boolean).join(", "), [settings.phone, settings.email].filter(Boolean).join(" | ")].filter(Boolean).map((text) => ({ text: safeText(text), size: 9 })) : [];
+  return settings ? [settings.businessName, [settings.addressLine1, settings.addressLine2, settings.city, settings.state, settings.postalCode].filter(Boolean).join(", "), [settings.phone, settings.email].filter(Boolean).join(" | "), `GSTIN: ${settings.gstNumber || "24AIUPJ2271L1ZV"}`].filter(Boolean).map((text) => ({ text: safeText(text), size: 9 })) : [];
 }
 
 async function supersedeOlder(document: typeof storedDocuments.$inferSelect) {

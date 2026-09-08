@@ -40,53 +40,6 @@ export async function POST(request: Request, ctx: RouteContext<"/api/orders/[id]
     }
 
     const result = await db.transaction(async (tx) => {
-      const [payment] = await tx
-        .select()
-        .from(payments)
-        .where(eq(payments.orderId, id))
-        .limit(1);
-
-      let refundProcessed = false;
-      let refundedAmount = "0.00";
-
-      // If payment was completed or credit reserved, refund back to wallet
-      const isPaid =
-        payment &&
-        (payment.status === "PAID" ||
-          (payment.method === "CREDIT" && payment.status === "CREDIT_APPROVED"));
-
-      if (isPaid && payment.customerId) {
-        refundedAmount = payment.amount;
-        refundProcessed = true;
-
-        await tx
-          .update(payments)
-          .set({ status: "REFUNDED", updatedAt: new Date() })
-          .where(eq(payments.id, payment.id));
-
-        const restoredBalance = sql`${customers.availableCredit} + ${payment.amount}`;
-        const [creditCustomer] = await tx
-          .update(customers)
-          .set({
-            availableCredit: restoredBalance,
-            walletBalance: restoredBalance,
-            updatedAt: new Date(),
-          })
-          .where(eq(customers.id, customer.id))
-          .returning({ availableCredit: customers.availableCredit });
-
-        await tx.insert(walletTransactions).values({
-          customerId: customer.id,
-          transactionType: payment.method === "CREDIT" ? "CREDIT_RELEASE" : "REFUND",
-          status: "APPROVED",
-          amount: payment.amount,
-          balanceAfter: creditCustomer?.availableCredit ?? null,
-          reference: order.orderNumber,
-          notes: `Refund credited to wallet for cancelled order ${order.orderNumber}`,
-          createdBy: session.user.id,
-        });
-      }
-
       const [cancelledOrder] = await tx
         .update(orders)
         .set({ status: "CANCELLED", updatedAt: new Date() })
@@ -96,13 +49,11 @@ export async function POST(request: Request, ctx: RouteContext<"/api/orders/[id]
       await tx.insert(orderStatusEvents).values({
         orderId: id,
         status: "CANCELLED",
-        notes: refundProcessed
-          ? `Cancelled by customer. Refund of ₹${refundedAmount} credited to wallet.`
-          : "Cancelled by customer.",
+        notes: "Cancelled by customer.",
         changedBy: session.user.id,
       });
 
-      return { cancelledOrder, refundProcessed, refundedAmount };
+      return { cancelledOrder };
     });
 
     if (result.cancelledOrder) {
@@ -116,20 +67,14 @@ export async function POST(request: Request, ctx: RouteContext<"/api/orders/[id]
           customerName: customer.contactName,
           orderNumber: result.cancelledOrder.orderNumber,
           status: "CANCELLED",
-          nextAction: result.refundProcessed
-            ? `₹${result.refundedAmount} has been refunded to your wallet balance.`
-            : undefined,
         },
       });
     }
 
     return jsonOk({
       order: result.cancelledOrder,
-      refunded: result.refundProcessed,
-      refundAmount: result.refundedAmount,
-      message: result.refundProcessed
-        ? `Order cancelled successfully. ₹${result.refundedAmount} has been credited back to your wallet.`
-        : "Order cancelled successfully.",
+      refunded: false,
+      message: "Order cancelled successfully.",
     });
   } catch (error) {
     return error instanceof Response ? error : handleApiError(error);

@@ -18,11 +18,11 @@ export async function POST(request: Request) {
       body: new Uint8Array(await file.arrayBuffer()),
       contentType: file.type,
       contentLength: file.size,
-      visibility: "PUBLIC",
+      visibility: "PRIVATE",
       metadata: { resource: "payment-proof", userId: session.user.id, filename: file.name },
     });
 
-    const imageUrl = `/api/storage/${newKey}`;
+    const imageUrl = `/api/payments/proof?key=${encodeURIComponent(newKey)}`;
     return jsonOk({ imageUrl, storageKey: newKey, originalFilename: file.name, fileSize: file.size }, 201);
   } catch (error) {
     if (newKey) await storage.deleteObject(newKey).catch(() => undefined);

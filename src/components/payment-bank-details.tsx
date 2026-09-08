@@ -48,6 +48,7 @@ export function PaymentBankDetails({
   onClearProof,
   amount,
   orderNumber,
+  mandatoryProof,
 }: {
   customerType?: string;
   onProofUploaded?: (url: string) => void;
@@ -55,6 +56,7 @@ export function PaymentBankDetails({
   onClearProof?: () => void;
   amount?: string;
   orderNumber?: string;
+  mandatoryProof?: boolean;
 }) {
   const [config, setConfig] = useState<{ b2c: BankConfig; b2b: BankConfig }>({
     b2c: DEFAULT_B2C,
@@ -342,6 +344,20 @@ export function PaymentBankDetails({
               </dd>
             </div>
             <div className="flex items-center justify-between py-1.5">
+              <dt className="text-slate-500 font-medium">GSTIN</dt>
+              <dd className="flex items-center gap-1.5 font-mono font-bold text-slate-900 text-right">
+                <span>24AIUPJ2271L1ZV</span>
+                <button
+                  type="button"
+                  onClick={() => copy("24AIUPJ2271L1ZV", "gstin")}
+                  title="Copy GSTIN"
+                  className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                >
+                  {copiedKey === "gstin" ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                </button>
+              </dd>
+            </div>
+            <div className="flex items-center justify-between py-1.5">
               <dt className="text-slate-500 font-medium">UPI ID</dt>
               <dd className="flex items-center gap-1.5 font-mono font-bold text-[var(--mc-accent)] text-right">
                 <span className="break-all">{activeBank.upiId}</span>
@@ -360,14 +376,16 @@ export function PaymentBankDetails({
       </div>
 
       {/* Payment Screenshot / Proof Upload Section */}
-      <div className="rounded-xl border border-dashed border-slate-300 bg-white p-3.5 sm:p-4">
+      <div className={`rounded-xl border border-dashed bg-white p-3.5 sm:p-4 ${mandatoryProof && !proofImageUrl ? "border-amber-400 bg-amber-50/20" : "border-slate-300"}`}>
         <div className="flex items-start justify-between gap-2">
           <div>
             <span className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-              Payment Screenshot / Receipt Proof
+              Payment Screenshot / Receipt Proof {mandatoryProof ? <span className="text-red-500">*</span> : null}
             </span>
             <p className="mt-0.5 text-xs text-slate-500">
-              Upload a screenshot showing the transaction ID or UTR clearly for fast verification.
+              {mandatoryProof
+                ? "Payment screenshot is mandatory. Upload a screenshot showing the transaction ID or UTR clearly to place your order."
+                : "Upload a screenshot showing the transaction ID or UTR clearly for fast verification."}
             </p>
           </div>
         </div>
@@ -416,7 +434,7 @@ export function PaymentBankDetails({
           </div>
         ) : (
           <div className="mt-2.5">
-            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors">
+            <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-lg border px-3.5 py-2.5 text-xs font-bold transition-colors ${mandatoryProof ? "border-amber-400 bg-amber-50 text-amber-900 hover:bg-amber-100" : "border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100"}`}>
               {uploading ? (
                 <>
                   <Loader2 size={15} className="animate-spin text-[var(--mc-accent)]" />
@@ -425,7 +443,7 @@ export function PaymentBankDetails({
               ) : (
                 <>
                   <Upload size={15} className="text-[var(--mc-accent)]" />
-                  <span>Upload screenshot photo (optional)</span>
+                  <span>{mandatoryProof ? "Upload payment screenshot (required)" : "Upload screenshot photo (optional)"}</span>
                 </>
               )}
               <input

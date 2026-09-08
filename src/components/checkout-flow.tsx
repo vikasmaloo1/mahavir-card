@@ -26,9 +26,6 @@ export function CheckoutFlow({ upiVpa }: { upiVpa: string }) {
   const [method, setMethod] = useState<"RAZORPAY" | "COD" | "CREDIT" | "UPI_QR">("COD");
   const [utr, setUtr] = useState("");
   const [proofImageUrl, setProofImageUrl] = useState<string | null>(null);
-  const [utrSubmitting, setUtrSubmitting] = useState(false);
-  const [utrSubmitted, setUtrSubmitted] = useState(false);
-  const [utrError, setUtrError] = useState("");
   const [customer, setCustomer] = useState({ contactName: "", companyName: "", phone: "" });
   const [accountCustomer, setAccountCustomer] = useState<AccountCustomer | null>(null);
   const [address, setAddress] = useState({ line1: "", line2: "", city: "", state: "Gujarat", stateCode: "GJ", postalCode: "", country: "India" });
@@ -69,7 +66,7 @@ export function CheckoutFlow({ upiVpa }: { upiVpa: string }) {
             setAddress({ line1: saved.line1 ?? "", line2: saved.line2 ?? "", city: saved.city ?? "", state: indiaStateName(stateCode) ?? "Gujarat", stateCode, postalCode: saved.postalCode ?? "", country: saved.country ?? "India" });
             setHasSavedAddress(true);
           }
-          if (profile.customer?.customerType === "B2B" && profile.customer.creditEnabled && profile.customer.status === "ACTIVE" && Number(profile.customer.availableCredit) >= Number(cartPayload.data.summary.total)) setMethod("CREDIT");
+          if (profile.customer?.customerType === "B2B" && profile.customer.creditEnabled && profile.customer.status === "ACTIVE") setMethod("CREDIT");
         }
       }
     }).catch((caught) => { if (active) setError(caught instanceof Error ? caught.message : "Could not load checkout"); }).finally(() => { if (active) setLoading(false); });
@@ -95,15 +92,38 @@ export function CheckoutFlow({ upiVpa }: { upiVpa: string }) {
   }, [address.stateCode, address.city, loading]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setError(""); setSubmitting(true);
+    event.preventDefault(); setError("");
+    if (method === "UPI_QR" && !proofImageUrl) {
+      setError("Please upload your payment screenshot before placing the order.");
+      return;
+    }
+    setSubmitting(true);
     try {
-      const response = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customer, address, paymentMethod: method }) });
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customer,
+          address,
+          paymentMethod: method,
+          proofImageUrl: method === "UPI_QR" ? proofImageUrl : undefined,
+          utr: method === "UPI_QR" ? utr.trim() || undefined : undefined,
+        }),
+      });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "We could not create this order.");
       const created = payload.data as Result;
       if (method !== "RAZORPAY" || !created.razorpay) { setResult(created); return; }
       const callback = await openRazorpay(created);
-      const verification = await fetch("/api/payments/razorpay/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ razorpayOrderId: callback.razorpay_order_id, razorpayPaymentId: callback.razorpay_payment_id, razorpaySignature: callback.razorpay_signature }) });
+      const verification = await fetch("/api/payments/razorpay/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          razorpayOrderId: callback.razorpay_order_id,
+          razorpayPaymentId: callback.razorpay_payment_id,
+          razorpaySignature: callback.razorpay_signature,
+        }),
+      });
       const verified = await verification.json().catch(() => null);
       if (!verification.ok || !verified?.success) throw new Error(verified?.error?.message ?? "Payment could not be verified. Check your order status before retrying.");
       setResult({ ...created, payment: verified.data.payment, razorpay: null });
@@ -131,67 +151,41 @@ export function CheckoutFlow({ upiVpa }: { upiVpa: string }) {
     });
   }
 
-  async function submitUtr(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!result) return;
-    setUtrSubmitting(true); setUtrError("");
-    try {
-      const response = await fetch("/api/payments/upi/submit-reference", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          orderId: result.order.id,
-          utr: utr.trim() || undefined,
-          proofImageUrl: proofImageUrl || null,
-        }),
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "Could not save your payment reference");
-      setUtrSubmitted(true);
-    } catch (caught) {
-      setUtrError(caught instanceof Error ? caught.message : "Could not save your payment reference");
-    } finally {
-      setUtrSubmitting(false);
-    }
-  }
-
   if (loading) return <CheckoutSkeleton />;
 
-  if (result && result.payment.method === "UPI_QR" && !utrSubmitted) {
+  if (result) {
     return (
-      <div className="mx-auto max-w-xl py-10 sm:py-14 text-center">
-        <p className="text-xs font-bold uppercase text-[var(--mc-accent)]">Order #{result.order.orderNumber} placed</p>
-        <h2 className="mt-2 text-2xl font-bold text-[var(--mc-ink)]">Pay {formatInr(result.payment.amount)} via UPI / Bank Transfer</h2>
-        <p className="mt-2 text-sm leading-6 text-[var(--mc-muted)]">Scan the QR code with any UPI app or transfer directly to our Bank of Baroda account. After payment, enter your 12-digit UTR/reference number and attach your payment screenshot for immediate verification.</p>
-        
-        <div className="mt-6 text-left">
-          <PaymentBankDetails
-            customerType={accountCustomer?.customerType || "B2C"}
-            amount={result.payment.amount}
-            orderNumber={result.order.orderNumber}
-            proofImageUrl={proofImageUrl}
-            onProofUploaded={setProofImageUrl}
-            onClearProof={() => setProofImageUrl(null)}
-          />
+      <div className="mx-auto max-w-xl py-20 text-center">
+        <CheckCircle2 className="mx-auto text-[var(--mc-accent)]" size={48} />
+        <h2 className="mt-6 text-2xl font-bold text-[var(--mc-ink)]">
+          Order {result.order.orderNumber} created!
+        </h2>
+        <p className="mt-3 text-sm leading-6 text-[var(--mc-muted)]">
+          {result.payment.method === "CREDIT"
+            ? `The order is confirmed against your wallet balance. Remaining balance: ${formatInr(result.availableCredit)}.`
+            : result.payment.method === "COD"
+            ? "Cash on delivery is recorded and pending collection."
+            : result.payment.method === "UPI_QR"
+            ? "Payment screenshot submitted. Verification pending — our team will verify the payment and begin processing your order."
+            : "Online payment verified. Your order is confirmed."}
+        </p>
+        <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+          <Link
+            href={`/account/orders/${result.order.id}`}
+            className="inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-6 py-3 text-sm font-bold text-white shadow-sm hover:bg-[var(--mc-accent-dark)] transition-colors"
+          >
+            View order details <ArrowRight size={16} />
+          </Link>
+          <Link
+            href="/products"
+            className="inline-flex items-center gap-2 rounded-full border border-[var(--mc-line)] bg-white px-6 py-3 text-sm font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors"
+          >
+            Place another order
+          </Link>
         </div>
-
-        <form onSubmit={submitUtr} className="mt-5 text-left rounded-xl border border-[var(--mc-line)] bg-white p-4 sm:p-5 shadow-xs">
-          <label className="block">
-            <span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">
-              12-Digit UPI Transaction Reference (UTR) <span className="font-normal text-[var(--mc-muted)]">(optional)</span>
-            </span>
-            <input value={utr} onChange={(event) => setUtr(event.target.value)} placeholder="e.g. 423456789012" className="w-full rounded-lg border border-[var(--mc-line)] bg-white px-3.5 py-3 text-[15px] outline-none focus:border-[var(--mc-accent)] transition-colors font-mono" />
-          </label>
-          <p className="mt-1.5 text-xs text-[var(--mc-muted)]">Find the 12-digit UTR or Transaction ID in your payment receipt screen.</p>
-          {utrError ? <p className="mt-3 rounded-lg border border-[#efb7b7] bg-[#fff4f4] p-3 text-sm text-[#9b2525]">{utrError}</p> : null}
-          <button disabled={utrSubmitting} className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-[var(--mc-accent)] px-5 py-3.5 text-sm font-bold text-white shadow-sm hover:bg-[var(--mc-accent-dark)] transition-colors disabled:cursor-not-allowed disabled:opacity-60">{utrSubmitting ? "Submitting payment details..." : "I’ve Paid — Submit Reference & Proof"}</button>
-        </form>
-        <Link href={`/account/orders/${result.order.id}`} className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[var(--mc-muted)] hover:text-[var(--mc-accent)] transition-colors">View order status <ArrowRight size={15} /></Link>
       </div>
     );
   }
-
-  if (result) return <div className="mx-auto max-w-xl py-20 text-center"><CheckCircle2 className="mx-auto text-[var(--mc-accent)]" size={48} /><h2 className="mt-6 text-2xl font-bold text-[var(--mc-ink)]">Order {result.order.orderNumber} created!</h2><p className="mt-3 text-sm leading-6 text-[var(--mc-muted)]">{result.payment.method === "CREDIT" ? `The order is confirmed against your wallet balance. Remaining balance: ${formatInr(result.availableCredit)}.` : result.payment.method === "COD" ? "Cash on delivery is recorded and pending collection." : result.payment.method === "UPI_QR" ? "Your payment reference has been submitted. We'll confirm it shortly and update your order status." : "Online payment verified. Your order is confirmed."}</p><div className="mt-7 flex flex-wrap items-center justify-center gap-3"><Link href={`/account/orders/${result.order.id}`} className="inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-6 py-3 text-sm font-bold text-white shadow-sm hover:bg-[var(--mc-accent-dark)] transition-colors">View order details <ArrowRight size={16} /></Link><Link href="/products" className="inline-flex items-center gap-2 rounded-full border border-[var(--mc-line)] bg-white px-6 py-3 text-sm font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors">Place another order</Link></div></div>;
 
   const fieldClass = "w-full rounded-lg border border-[var(--mc-line)] bg-white px-3.5 py-3 text-[15px] outline-none focus:border-[var(--mc-accent)] transition-colors";
   return <form onSubmit={submit} className="py-6 sm:py-8"><div className="border-b border-[var(--mc-line)] pb-5"><p className="text-xs font-bold uppercase text-[var(--mc-accent)]">Checkout</p><h1 className="mt-2 text-3xl font-bold text-[var(--mc-ink)]">Confirm your order</h1><p className="mt-2 text-sm text-[var(--mc-muted)]">The server recalculates every product, add-on, and delivery charge before creating the order.</p></div>
@@ -206,11 +200,40 @@ export function CheckoutFlow({ upiVpa }: { upiVpa: string }) {
         {hasSavedAddress && !editingAddress ? (
           <div className="mt-3 text-sm text-[var(--mc-muted)]"><p className="font-bold text-[var(--mc-ink)]">{address.line1}</p>{address.line2 ? <p>{address.line2}</p> : null}<p>{address.city}, {address.state} {address.postalCode}</p><p>{address.country}</p></div>
         ) : (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="block sm:col-span-2"><span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">Address line 1</span><input required name="address-line1" autoComplete="address-line1" value={address.line1} onChange={(event) => setAddress({ ...address, line1: event.target.value })} className={fieldClass} /></label><label className="block sm:col-span-2"><span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">Address line 2 <span className="font-normal text-[var(--mc-muted)]">(optional)</span></span><input name="address-line2" autoComplete="address-line2" value={address.line2} onChange={(event) => setAddress({ ...address, line2: event.target.value })} className={fieldClass} /></label><label><span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">City</span><input required list="checkout-city-options" name="address-level2" autoComplete="address-level2" value={address.city} onChange={(event) => setAddress({ ...address, city: event.target.value })} className={fieldClass} /><datalist id="checkout-city-options">{citiesForState(address.stateCode).map((city) => <option key={city} value={city} />)}</datalist></label><label><span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">State</span><select required name="address-level1" autoComplete="address-level1" value={address.stateCode} onChange={(event) => setAddress({ ...address, stateCode: event.target.value, state: indiaStateName(event.target.value) ?? "" })} className={fieldClass}>{commerceStates.map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select></label><label><span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">Postal code</span><input required inputMode="numeric" maxLength={6} name="postal-code" autoComplete="postal-code" value={address.postalCode} onChange={(event) => setAddress({ ...address, postalCode: event.target.value })} className={fieldClass} /></label><label><span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">Country</span><input required name="country-name" autoComplete="country-name" value={address.country} onChange={(event) => setAddress({ ...address, country: event.target.value })} className={fieldClass} /></label></div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="block sm:col-span-2"><span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">{address.line1}</span><input required name="address-line1" autoComplete="address-line1" value={address.line1} onChange={(event) => setAddress({ ...address, line1: event.target.value })} className={fieldClass} /></label><label className="block sm:col-span-2"><span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">Address line 2 <span className="font-normal text-[var(--mc-muted)]">(optional)</span></span><input name="address-line2" autoComplete="address-line2" value={address.line2} onChange={(event) => setAddress({ ...address, line2: event.target.value })} className={fieldClass} /></label><label><span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">City</span><input required list="checkout-city-options" name="address-level2" autoComplete="address-level2" value={address.city} onChange={(event) => setAddress({ ...address, city: event.target.value })} className={fieldClass} /><datalist id="checkout-city-options">{citiesForState(address.stateCode).map((city) => <option key={city} value={city} />)}</datalist></label><label><span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">State</span><select required name="address-level1" autoComplete="address-level1" value={address.stateCode} onChange={(event) => setAddress({ ...address, stateCode: event.target.value, state: indiaStateName(event.target.value) ?? "" })} className={fieldClass}>{commerceStates.map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select></label><label><span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">Postal code</span><input required inputMode="numeric" maxLength={6} name="postal-code" autoComplete="postal-code" value={address.postalCode} onChange={(event) => setAddress({ ...address, postalCode: event.target.value })} className={fieldClass} /></label><label><span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">Country</span><input required name="country-name" autoComplete="country-name" value={address.country} onChange={(event) => setAddress({ ...address, country: event.target.value })} className={fieldClass} /></label></div>
         )}
       </section>
-      <section className="rounded-xl border border-[var(--mc-line)] bg-white p-5 sm:p-6 shadow-sm"><div className="flex items-center gap-2"><CreditCard size={19} className="text-[var(--mc-accent)]" /><h2 className="font-bold text-lg text-[var(--mc-ink)]">Payment method</h2></div><div className="mt-4 grid gap-3 sm:grid-cols-2">{accountCustomer?.customerType === "B2B" ? (accountCustomer.creditEnabled ? <button type="button" disabled={accountCustomer.status !== "ACTIVE" || Number(accountCustomer.availableCredit) < Number(cart.summary.total)} onClick={() => setMethod("CREDIT")} className={`rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${method === "CREDIT" ? "border-[var(--mc-accent)] bg-[var(--mc-accent-soft)] ring-1 ring-[var(--mc-accent)]" : "border-[var(--mc-line)] hover:bg-[var(--mc-surface)]"}`}><strong className="block text-[var(--mc-ink)]">Wallet balance</strong><span className="mt-1 block text-sm text-[var(--mc-muted)]">Available {formatInr(accountCustomer.availableCredit)} · {accountCustomer.paymentTermsDays} day terms</span></button> : <div className="rounded-xl border border-dashed border-[var(--mc-line)] bg-[var(--mc-surface)] p-4 text-left"><strong className="block text-[var(--mc-muted)]">Wallet balance</strong><span className="mt-1 block text-sm text-[var(--mc-muted)]">Not enabled on your account yet. <Link href="/account/wallet" className="font-bold text-[var(--mc-accent)] underline">Request a top-up</Link> or contact Mahavir Card.</span></div>) : null}<button type="button" onClick={() => setMethod("COD")} className={`rounded-xl border p-4 text-left transition-colors ${method === "COD" ? "border-[var(--mc-accent)] bg-[var(--mc-accent-soft)] ring-1 ring-[var(--mc-accent)]" : "border-[var(--mc-line)] hover:bg-[var(--mc-surface)]"}`}><strong className="block text-[var(--mc-ink)]">Cash on delivery</strong><span className="mt-1 block text-sm text-[var(--mc-muted)]">Pay when the order is delivered.</span></button><button type="button" onClick={() => setMethod("UPI_QR")} className={`rounded-xl border p-4 text-left transition-colors ${method === "UPI_QR" ? "border-[var(--mc-accent)] bg-[var(--mc-accent-soft)] ring-1 ring-[var(--mc-accent)]" : "border-[var(--mc-line)] hover:bg-[var(--mc-surface)]"}`}><strong className="block text-[var(--mc-ink)]">UPI QR</strong><span className="mt-1 block text-sm text-[var(--mc-muted)]">Scan and pay with GPay, PhonePe or any UPI app.</span></button>{razorpayEnabled ? <button type="button" onClick={() => setMethod("RAZORPAY")} className={`rounded-xl border p-4 text-left transition-colors ${method === "RAZORPAY" ? "border-[var(--mc-accent)] bg-[var(--mc-accent-soft)] ring-1 ring-[var(--mc-accent)]" : "border-[var(--mc-line)] hover:bg-[var(--mc-surface)]"}`}><strong className="block text-[var(--mc-ink)]">Razorpay</strong><span className="mt-1 block text-sm text-[var(--mc-muted)]">Pay securely online with Cards, UPI or NetBanking.</span></button> : null}</div></section>{error ? <p role="alert" className="rounded-xl border border-[#efb7b7] bg-[#fff4f4] p-3 text-sm text-[#9b2525]">{error}{authRequired ? <Link href={`/login?next=${encodeURIComponent("/checkout")}`} className="ml-2 font-bold underline">Sign in</Link> : null}</p> : null}</div>
-      <aside className="h-fit rounded-xl border border-[var(--mc-line)] bg-white p-5 xl:sticky xl:top-[116px] shadow-sm"><p className="text-xs font-bold uppercase text-[var(--mc-muted)]">Order summary</p>{cart.items.length ? <div className="mt-4 space-y-3">{cart.items.map((item) => <div key={item.id} className="border-t border-[var(--mc-line)] pt-3"><div className="flex justify-between gap-3"><div><p className="font-bold text-[var(--mc-ink)]">{item.product.name}</p><p className="mt-1 text-xs text-[var(--mc-muted)]">Qty {item.quantity.toLocaleString("en-IN")} · {item.pricingSnapshot.applicableRule ?? "Configured"}</p>{item.pricingSnapshot.addons?.length ? <p className="mt-1 text-xs text-[#2457b8]">{item.pricingSnapshot.addons.map((a) => `${a.name} (${formatInr(a.price)})`).join(", ")}</p> : null}</div><strong className="text-[var(--mc-ink)]">{formatInr(item.calculatedAmount)}</strong></div></div>)}{cart.summary.hasTaxBreakdown ? <div className="space-y-2 border-t border-[var(--mc-line)] pt-3 text-sm text-[var(--mc-muted)]"><p className="flex justify-between"><span>Base products</span><strong className="text-[var(--mc-ink)]">{formatInr(cart.summary.productSubtotal)}</strong></p>{Number(cart.summary.addonSubtotal) > 0 ? <p className="flex justify-between"><span>Add-ons / extras</span><strong className="text-[var(--mc-ink)]">{formatInr(cart.summary.addonSubtotal)}</strong></p> : null}{Number(cart.summary.deliverySubtotal) > 0 ? <p className="flex justify-between"><span>Courier</span><strong className="text-[var(--mc-ink)]">{formatInr(cart.summary.deliverySubtotal)}</strong></p> : null}{Number(cart.summary.surchargeSubtotal) > 0 ? <p className="flex justify-between"><span>Other charges</span><strong className="text-[var(--mc-ink)]">{formatInr(cart.summary.surchargeSubtotal)}</strong></p> : null}<p className="flex justify-between border-t border-[var(--mc-line)] pt-2"><span>Taxable subtotal</span><strong className="text-[var(--mc-ink)]">{formatInr(cart.summary.priceBeforeTax)}</strong></p>{Number(cart.summary.cgst) > 0 ? <p className="flex justify-between"><span>CGST 9%</span><strong className="text-[var(--mc-ink)]">{formatInr(cart.summary.cgst)}</strong></p> : null}{Number(cart.summary.sgst) > 0 ? <p className="flex justify-between"><span>SGST 9%</span><strong className="text-[var(--mc-ink)]">{formatInr(cart.summary.sgst)}</strong></p> : null}{Number(cart.summary.igst) > 0 ? <p className="flex justify-between"><span>IGST 18%</span><strong className="text-[var(--mc-ink)]">{formatInr(cart.summary.igst)}</strong></p> : null}{cart.summary.roundOff && Math.abs(Number(cart.summary.roundOff)) > 0.001 ? <p className="flex justify-between text-xs text-slate-500"><span>Round off (paisa adjustment)</span><strong className={Number(cart.summary.roundOff) < 0 ? "text-emerald-700 font-bold" : "text-slate-700 font-bold"}>{formatRoundOff(cart.summary.roundOff)}</strong></p> : null}</div> : null}<div className="flex justify-between border-t border-[var(--mc-line)] pt-4 text-lg font-bold"><span>Grand total</span><span className="text-[var(--mc-accent-dark)]">{formatInr(cart.summary.total)}</span></div></div> : <p className="mt-4 text-sm text-[var(--mc-muted)]">Your basket is empty. <Link href="/products" className="font-bold text-[var(--mc-accent)]">Browse products</Link></p>}<button disabled={!cart.items.length || cart.summary.hasUnavailableItems || loading || submitting} className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[var(--mc-accent)] px-5 py-4 text-sm font-bold text-white shadow-sm hover:bg-[var(--mc-accent-dark)] transition-colors disabled:cursor-not-allowed disabled:opacity-50">{submitting ? "Creating order..." : method === "CREDIT" ? "Pay from wallet balance" : method === "COD" ? "Place COD order" : method === "UPI_QR" ? "Place order — show UPI QR" : "Pay with Razorpay"}<ArrowRight size={16} /></button></aside>
+      <section className="rounded-xl border border-[var(--mc-line)] bg-white p-5 sm:p-6 shadow-sm"><div className="flex items-center gap-2"><CreditCard size={19} className="text-[var(--mc-accent)]" /><h2 className="font-bold text-lg text-[var(--mc-ink)]">Payment method</h2></div><div className="mt-4 grid gap-3 sm:grid-cols-2">{accountCustomer?.customerType === "B2B" ? (accountCustomer.creditEnabled ? <button type="button" disabled={accountCustomer.status !== "ACTIVE"} onClick={() => setMethod("CREDIT")} className={`rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${method === "CREDIT" ? "border-[var(--mc-accent)] bg-[var(--mc-accent-soft)] ring-1 ring-[var(--mc-accent)]" : "border-[var(--mc-line)] hover:bg-[var(--mc-surface)]"}`}><strong className="block text-[var(--mc-ink)]">Wallet balance</strong><span className="mt-1 block text-sm text-[var(--mc-muted)]">Available {formatInr(accountCustomer.availableCredit)} · {accountCustomer.paymentTermsDays} day terms</span></button> : <div className="rounded-xl border border-dashed border-[var(--mc-line)] bg-[var(--mc-surface)] p-4 text-left"><strong className="block text-[var(--mc-muted)]">Wallet balance</strong><span className="mt-1 block text-sm text-[var(--mc-muted)]">Not enabled on your account yet. <Link href="/account/wallet" className="font-bold text-[var(--mc-accent)] underline">Request a top-up</Link> or contact Mahavir Card.</span></div>) : null}<button type="button" onClick={() => setMethod("COD")} className={`rounded-xl border p-4 text-left transition-colors ${method === "COD" ? "border-[var(--mc-accent)] bg-[var(--mc-accent-soft)] ring-1 ring-[var(--mc-accent)]" : "border-[var(--mc-line)] hover:bg-[var(--mc-surface)]"}`}><strong className="block text-[var(--mc-ink)]">Cash on delivery</strong><span className="mt-1 block text-sm text-[var(--mc-muted)]">Pay when the order is delivered.</span></button><button type="button" onClick={() => setMethod("UPI_QR")} className={`rounded-xl border p-4 text-left transition-colors ${method === "UPI_QR" ? "border-[var(--mc-accent)] bg-[var(--mc-accent-soft)] ring-1 ring-[var(--mc-accent)]" : "border-[var(--mc-line)] hover:bg-[var(--mc-surface)]"}`}><strong className="block text-[var(--mc-ink)]">UPI QR / Bank Transfer</strong><span className="mt-1 block text-sm text-[var(--mc-muted)]">Scan QR or transfer to bank, then attach screenshot proof.</span></button>{razorpayEnabled ? <button type="button" onClick={() => setMethod("RAZORPAY")} className={`rounded-xl border p-4 text-left transition-colors ${method === "RAZORPAY" ? "border-[var(--mc-accent)] bg-[var(--mc-accent-soft)] ring-1 ring-[var(--mc-accent)]" : "border-[var(--mc-line)] hover:bg-[var(--mc-surface)]"}`}><strong className="block text-[var(--mc-ink)]">Razorpay</strong><span className="mt-1 block text-sm text-[var(--mc-muted)]">Pay securely online with Cards, UPI or NetBanking.</span></button> : null}</div>
+      {method === "UPI_QR" ? (
+        <div className="mt-5 space-y-4 border-t border-[var(--mc-line)] pt-5">
+          <PaymentBankDetails
+            customerType={accountCustomer?.customerType || "B2C"}
+            amount={cart.summary.total}
+            mandatoryProof={true}
+            proofImageUrl={proofImageUrl}
+            onProofUploaded={setProofImageUrl}
+            onClearProof={() => setProofImageUrl(null)}
+          />
+          <div className="rounded-xl border border-[var(--mc-line)] bg-white p-4 shadow-xs">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[var(--mc-ink)]">
+                12-Digit UPI Transaction Reference (UTR) <span className="font-normal text-[var(--mc-muted)]">(optional)</span>
+              </span>
+              <input
+                value={utr}
+                onChange={(event) => setUtr(event.target.value)}
+                placeholder="e.g. 423456789012"
+                className="w-full rounded-lg border border-[var(--mc-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--mc-accent)] transition-colors font-mono"
+              />
+            </label>
+            <p className="mt-1 text-[11px] text-[var(--mc-muted)]">
+              Entering your 12-digit UTR helps us verify and process your order faster.
+            </p>
+          </div>
+        </div>
+      ) : null}
+      </section>{error ? <p role="alert" className="rounded-xl border border-[#efb7b7] bg-[#fff4f4] p-3 text-sm text-[#9b2525]">{error}{authRequired ? <Link href={`/login?next=${encodeURIComponent("/checkout")}`} className="ml-2 font-bold underline">Sign in</Link> : null}</p> : null}</div>
+      <aside className="h-fit rounded-xl border border-[var(--mc-line)] bg-white p-5 xl:sticky xl:top-[116px] shadow-sm"><p className="text-xs font-bold uppercase text-[var(--mc-muted)]">Order summary</p>{cart.items.length ? <div className="mt-4 space-y-3">{cart.items.map((item) => <div key={item.id} className="border-t border-[var(--mc-line)] pt-3"><div className="flex justify-between gap-3"><div><p className="font-bold text-[var(--mc-ink)]">{item.product.name}</p><p className="mt-1 text-xs text-[var(--mc-muted)]">Qty {item.quantity.toLocaleString("en-IN")} · {item.pricingSnapshot.applicableRule ?? "Configured"}</p>{item.pricingSnapshot.addons?.length ? <p className="mt-1 text-xs text-[#2457b8]">{item.pricingSnapshot.addons.map((a) => `${a.name} (${formatInr(a.price)})`).join(", ")}</p> : null}</div><strong className="text-[var(--mc-ink)]">{formatInr(item.calculatedAmount)}</strong></div></div>)}{cart.summary.hasTaxBreakdown ? <div className="space-y-2 border-t border-[var(--mc-line)] pt-3 text-sm text-[var(--mc-muted)]"><p className="flex justify-between"><span>Base products</span><strong className="text-[var(--mc-ink)]">{formatInr(cart.summary.productSubtotal)}</strong></p>{Number(cart.summary.addonSubtotal) > 0 ? <p className="flex justify-between"><span>Add-ons / extras</span><strong className="text-[var(--mc-ink)]">{formatInr(cart.summary.addonSubtotal)}</strong></p> : null}{Number(cart.summary.deliverySubtotal) > 0 ? <p className="flex justify-between"><span>Courier</span><strong className="text-[var(--mc-ink)]">{formatInr(cart.summary.deliverySubtotal)}</strong></p> : null}{Number(cart.summary.surchargeSubtotal) > 0 ? <p className="flex justify-between"><span>Other charges</span><strong className="text-[var(--mc-ink)]">{formatInr(cart.summary.surchargeSubtotal)}</strong></p> : null}<p className="flex justify-between border-t border-[var(--mc-line)] pt-2"><span>Taxable subtotal</span><strong className="text-[var(--mc-ink)]">{formatInr(cart.summary.priceBeforeTax)}</strong></p>{Number(cart.summary.cgst) > 0 ? <p className="flex justify-between"><span>CGST 9%</span><strong className="text-[var(--mc-ink)]">{formatInr(cart.summary.cgst)}</strong></p> : null}{Number(cart.summary.sgst) > 0 ? <p className="flex justify-between"><span>SGST 9%</span><strong className="text-[var(--mc-ink)]">{formatInr(cart.summary.sgst)}</strong></p> : null}{Number(cart.summary.igst) > 0 ? <p className="flex justify-between"><span>IGST 18%</span><strong className="text-[var(--mc-ink)]">{formatInr(cart.summary.igst)}</strong></p> : null}{cart.summary.roundOff && Math.abs(Number(cart.summary.roundOff)) > 0.001 ? <p className="flex justify-between text-xs text-slate-500"><span>Round off (paisa adjustment)</span><strong className={Number(cart.summary.roundOff) < 0 ? "text-emerald-700 font-bold" : "text-slate-700 font-bold"}>{formatRoundOff(cart.summary.roundOff)}</strong></p> : null}</div> : null}<div className="flex justify-between border-t border-[var(--mc-line)] pt-4 text-lg font-bold"><span>Grand total</span><span className="text-[var(--mc-accent-dark)]">{formatInr(cart.summary.total)}</span></div></div> : <p className="mt-4 text-sm text-[var(--mc-muted)]">Your basket is empty. <Link href="/products" className="font-bold text-[var(--mc-accent)]">Browse products</Link></p>}<button disabled={!cart.items.length || cart.summary.hasUnavailableItems || loading || submitting || (method === "UPI_QR" && !proofImageUrl)} className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-[var(--mc-accent)] px-5 py-4 text-sm font-bold text-white shadow-sm hover:bg-[var(--mc-accent-dark)] transition-colors disabled:cursor-not-allowed disabled:opacity-50">{submitting ? "Creating order..." : method === "CREDIT" ? "Pay from wallet balance" : method === "COD" ? "Place COD order" : method === "UPI_QR" ? (!proofImageUrl ? "Upload screenshot to place order" : "Submit Order with Payment Proof") : "Pay with Razorpay"}<ArrowRight size={16} /></button></aside>
     </div></form>;
 }
 

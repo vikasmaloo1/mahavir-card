@@ -49,5 +49,11 @@ export function formattedDate(value: unknown) {
 
 export function formattedAmount(value: unknown) {
   const amount = Number(value);
-  return Number.isFinite(amount) ? `Rs ${amount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "-";
+  if (!Number.isFinite(amount)) return "-";
+  const sign = amount < 0 ? "-" : "";
+  const abs = Math.abs(amount).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${sign}\u20b9${abs}`;
 }

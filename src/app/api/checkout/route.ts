@@ -35,6 +35,12 @@ export async function POST(request: Request) {
       }
     }
 
+    if (input.paymentMethod === "UPI_QR") {
+      if (!input.proofImageUrl || !input.proofImageUrl.trim()) {
+        return jsonError("Please upload your payment screenshot to continue.", 422);
+      }
+    }
+
     const deliverySelections = basket.items.map((item) => selectionsFromConfiguration(item.configuration).delivery).filter(Boolean);
     const deliveryMethods = [...new Set(deliverySelections.map((delivery) => delivery!.method))];
     const deliveryStates = [...new Set(deliverySelections.map((delivery) => delivery!.stateCode).filter((stateCode): stateCode is string => Boolean(stateCode && stateCode !== "*")))];
@@ -49,27 +55,36 @@ export async function POST(request: Request) {
 
     const result = await db.transaction(async (tx) => {
       const [existingCustomer] = await tx.select().from(customers).where(eq(customers.userId, session.user.id)).limit(1);
-      const customerValues = { ...input.customer, email: session.user.email, city: input.address.city, state: input.address.state, stateCode: input.address.stateCode, updatedAt: new Date() };
+      const customerValues = {
+        ...input.customer,
+        email: session.user.email,
+        city: input.address.city,
+        state: input.address.state,
+        stateCode: input.address.stateCode,
+        ...(existingCustomer ? {} : { creditEnabled: true }),
+        updatedAt: new Date(),
+      };
       let customer = existingCustomer
         ? (await tx.update(customers).set(customerValues).where(eq(customers.id, existingCustomer.id)).returning())[0]
         : (await tx.insert(customers).values({ ...customerValues, userId: session.user.id }).returning())[0];
       if (!customer) return null;
 
+      let balanceBefore: string | null = null;
       if (input.paymentMethod === "CREDIT") {
         const eligibility = evaluateCreditEligibility(customer, total);
         if (!eligibility.eligible) throw new CreditCheckoutError(eligibility.message);
+        balanceBefore = customer.availableCredit;
         const [reserved] = await tx.update(customers).set({
           availableCredit: sql`${customers.availableCredit} - ${total}`,
-          walletBalance: sql`${customers.availableCredit} - ${total}`,
+          walletBalance: sql`${customers.walletBalance} - ${total}`,
           updatedAt: new Date(),
         }).where(and(
           eq(customers.id, customer.id),
           eq(customers.customerType, "B2B"),
           eq(customers.creditEnabled, true),
           eq(customers.status, "ACTIVE"),
-          gte(customers.availableCredit, total),
         )).returning({ availableCredit: customers.availableCredit });
-        if (!reserved) throw new CreditCheckoutError("Available credit changed. Refresh checkout and try again.");
+        if (!reserved) throw new CreditCheckoutError("Account status changed. Refresh checkout and try again.");
         customer = { ...customer, availableCredit: reserved.availableCredit };
       }
 
@@ -110,7 +125,12 @@ export async function POST(request: Request) {
       }).returning();
       if (!order) return null;
 
-      await tx.insert(orderStatusEvents).values({ orderId: order.id, status: order.status, notes: "Order placed by customer", changedBy: session.user.id });
+      const orderEventNote = input.paymentMethod === "UPI_QR"
+        ? "Order placed with UPI QR proof submitted (awaiting verification)"
+        : input.paymentMethod === "CREDIT"
+        ? "Order placed using wallet credit balance"
+        : "Order placed by customer";
+      await tx.insert(orderStatusEvents).values({ orderId: order.id, status: order.status, notes: orderEventNote, changedBy: session.user.id });
 
       await tx.insert(orderItems).values(basket.items.map((item) => {
         const lineTotal = Number(item.calculatedAmount ?? 0);
@@ -144,13 +164,26 @@ export async function POST(request: Request) {
       }
 
       const intent = createPaymentIntent(input.paymentMethod, total);
-      const [payment] = await tx.insert(payments).values({ orderId: order.id, customerId: customer.id, method: input.paymentMethod, amount: total, status: intent.status, provider: intent.provider, providerOrderId: razorpayOrder?.id ?? null }).returning();
+      const [payment] = await tx.insert(payments).values({
+        orderId: order.id,
+        customerId: customer.id,
+        method: input.paymentMethod,
+        amount: total,
+        paidAmount: "0.00",
+        refundedAmount: "0.00",
+        status: intent.status,
+        provider: intent.provider,
+        providerOrderId: razorpayOrder?.id ?? null,
+        providerPaymentId: input.utr?.trim() || null,
+        proofImageUrl: input.paymentMethod === "UPI_QR" ? input.proofImageUrl : null,
+      }).returning();
       if (input.paymentMethod === "CREDIT") {
         await tx.insert(walletTransactions).values({
           customerId: customer.id,
           transactionType: "CREDIT_ORDER",
           status: "APPROVED",
           amount: total,
+          balanceBefore,
           balanceAfter: customer.availableCredit,
           reference: order.orderNumber,
           notes: `Credit reserved for order ${order.orderNumber}`,
