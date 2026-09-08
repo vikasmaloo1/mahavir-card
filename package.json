@@ -31,7 +31,8 @@
     "test:payments": "node --conditions=react-server --import tsx --test tests/payment-security.test.ts",
     "test:phase3": "node --conditions=react-server --import tsx --test tests/phase3-conversion.test.ts",
     "test:phase4": "node --import tsx --test tests/phase4-notifications.test.ts",
-    "test:phase5": "node --conditions=react-server --import tsx --test tests/phase5-followup.test.ts"
+    "test:phase5": "node --conditions=react-server --import tsx --test tests/phase5-followup.test.ts",
+    "test:financial-qa": "node --env-file=.env.local --conditions=react-server --import tsx --test tests/live-financial-qa.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1118.0",

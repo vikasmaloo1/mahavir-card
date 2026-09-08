@@ -29,9 +29,11 @@ test("checkout accepts a direct customer-credit order", () => {
   assert.equal(parsed.paymentMethod, "CREDIT");
 });
 
-test("credit eligibility requires an active B2B account with enough enabled credit", () => {
+test("credit eligibility requires an active B2B account with credit enabled (allows zero/insufficient balance)", () => {
   assert.deepEqual(evaluateCreditEligibility({ customerType: "B2B", creditEnabled: true, availableCredit: "1000.00", status: "ACTIVE" }, "750.00"), { eligible: true, availableCredit: 1000 });
   assert.equal(evaluateCreditEligibility({ customerType: "B2C", creditEnabled: true, availableCredit: "1000.00", status: "ACTIVE" }, "750.00").eligible, false);
-  assert.equal(evaluateCreditEligibility({ customerType: "B2B", creditEnabled: true, availableCredit: "700.00", status: "ACTIVE" }, "750.00").eligible, false);
+  // B2B with credit enabled allows ordering even with balance less than order total (balance goes negative)
+  assert.equal(evaluateCreditEligibility({ customerType: "B2B", creditEnabled: true, availableCredit: "700.00", status: "ACTIVE" }, "750.00").eligible, true);
   assert.equal(evaluateCreditEligibility({ customerType: "B2B", creditEnabled: false, availableCredit: "1000.00", status: "ACTIVE" }, "750.00").eligible, false);
+  assert.equal(evaluateCreditEligibility({ customerType: "B2B", creditEnabled: true, availableCredit: "0.00", status: "INACTIVE" }, "750.00").eligible, false);
 });

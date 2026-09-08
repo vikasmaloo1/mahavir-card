@@ -15,12 +15,6 @@ export type BankConfig = {
   qrImageUrl: string;
 };
 
-type PaymentConfigResponse = {
-  razorpayEnabled: boolean;
-  b2c: BankConfig;
-  b2b: BankConfig;
-};
-
 const DEFAULT_B2C: BankConfig = {
   beneficiary: "MAHAVIR CARD",
   bankName: "BANK OF BARODA",
@@ -101,13 +95,7 @@ export function PaymentBankDetails({
     };
   }, [customerType]);
 
-  useEffect(() => {
-    if (customerType) {
-      setResolvedCustomerType(customerType === "B2B" ? "B2B" : "B2C");
-    }
-  }, [customerType]);
-
-  const isB2B = resolvedCustomerType === "B2B";
+  const isB2B = (customerType || resolvedCustomerType) === "B2B";
   const activeBank = isB2B ? config.b2b : config.b2c;
 
   const numAmount = amount ? parseFloat(amount.replace(/[^0-9.]/g, "")) : 0;
