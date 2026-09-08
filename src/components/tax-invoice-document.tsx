@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
+import QRCode from "qrcode";
 import { MapPin, Phone, Mail } from "lucide-react";
 
 import type { InvoiceData } from "@/lib/invoice-types";
@@ -10,6 +11,63 @@ import { shortenOrderNumber } from "@/lib/invoice-helper";
 function formatNum(val: number | string | undefined | null): string {
   const n = Number(val || 0);
   return n.toFixed(2);
+}
+
+// Rainbow honeycomb corner graphic (pointy-top hexagon tessellation), matching the printed bill book.
+const HEX_COLORS = ["#4a2a8a", "#5b2a86", "#7a2a96", "#a4288b", "#cc2773", "#e42e56", "#f04230", "#f9851c", "#fbb118", "#fdd835", "#8bc34a", "#26c6da", "#00acc1", "#3949ab"];
+
+function hexPoints(cx: number, cy: number, r: number) {
+  const pts: string[] = [];
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 180) * (60 * i - 90);
+    pts.push(`${(cx + r * Math.cos(angle)).toFixed(1)},${(cy + r * Math.sin(angle)).toFixed(1)}`);
+  }
+  return pts.join(" ");
+}
+
+function buildHexGrid(cols: number, rows: number, r: number) {
+  const hSpacing = r * Math.sqrt(3);
+  const vSpacing = r * 1.5;
+  const hexes: { cx: number; cy: number; color: string }[] = [];
+  for (let row = 0; row < rows; row++) {
+    const offset = row % 2 === 1 ? hSpacing / 2 : 0;
+    for (let col = 0; col < cols; col++) {
+      hexes.push({
+        cx: offset + col * hSpacing + r,
+        cy: row * vSpacing + r,
+        color: HEX_COLORS[(row * 3 + col) % HEX_COLORS.length],
+      });
+    }
+  }
+  return { hexes, width: cols * hSpacing + hSpacing, height: rows * vSpacing + r };
+}
+
+function HexCorner({ flip = false }: { flip?: boolean }) {
+  const r = 15;
+  const { hexes, width, height } = buildHexGrid(7, 5, r);
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className={`w-full h-full ${flip ? "rotate-180" : ""}`}
+      preserveAspectRatio="xMinYMin slice"
+    >
+      {hexes.map((h, i) => (
+        <polygon key={i} points={hexPoints(h.cx, h.cy, r * 0.97)} fill={h.color} />
+      ))}
+    </svg>
+  );
+}
+
+// Italic display wordmark with drop-cap initials, matching the brand logotype on the printed bill book.
+function Wordmark() {
+  return (
+    <h1 className="italic leading-none text-black whitespace-nowrap" style={{ fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif" }}>
+      <span className="text-[1.35em] font-extrabold align-baseline">M</span>
+      <span className="text-[0.92em] font-bold align-baseline">ahavir</span>
+      <span className="text-[1.35em] font-extrabold align-baseline"> C</span>
+      <span className="text-[0.92em] font-bold align-baseline">ard</span>
+    </h1>
+  );
 }
 
 export function TaxInvoiceDocument({
@@ -21,6 +79,17 @@ export function TaxInvoiceDocument({
 }) {
   const isA5 = data.resolvedPageSize === "A5";
   const displayOrderNo = shortenOrderNumber(data.orderNumber);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!data.bank.upiId) { setQrDataUrl(null); return; }
+    const uri = `upi://pay?${new URLSearchParams({ pa: data.bank.upiId, pn: data.bank.beneficiaryName || "Mahavir Card", am: String(data.grandTotal), cu: "INR", tn: `Invoice ${data.invoiceNumber}`.slice(0, 50) })}`;
+    QRCode.toDataURL(uri, { width: 160, margin: 0 })
+      .then((url) => { if (active) setQrDataUrl(url); })
+      .catch(() => { if (active) setQrDataUrl(null); });
+    return () => { active = false; };
+  }, [data.bank.upiId, data.bank.beneficiaryName, data.grandTotal, data.invoiceNumber]);
 
   return (
     <div
@@ -36,6 +105,7 @@ export function TaxInvoiceDocument({
         printColorAdjust: "exact",
       }}
     >
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700;1,800&display=swap" />
       <style>{`
         @media print {
           @page {
@@ -71,36 +141,12 @@ export function TaxInvoiceDocument({
         }
       `}</style>
 
-      {/* Top Colorful Faceted Geometric Ribbon (Top-Left) */}
-      <div className="absolute top-0 left-0 w-[42%] h-[15mm] overflow-hidden pointer-events-none">
-        <svg
-          viewBox="0 0 320 85"
-          className="w-full h-full object-cover"
-          preserveAspectRatio="none"
-        >
-          {/* Deep Purples & Violets */}
-          <polygon points="0,0 80,0 45,85 0,85" fill="#2d1754" />
-          <polygon points="0,0 45,85 0,85" fill="#3c1b6b" />
-          <polygon points="80,0 130,0 95,50 45,85" fill="#582687" />
-          <polygon points="130,0 175,0 140,45 95,50" fill="#7a2a96" />
-          {/* Magentas & Pinks */}
-          <polygon points="175,0 215,0 185,40 140,45" fill="#a4288b" />
-          <polygon points="215,0 250,0 220,35 185,40" fill="#cc2773" />
-          <polygon points="140,45 185,40 170,75 110,85" fill="#e42e56" />
-          {/* Reds & Oranges */}
-          <polygon points="250,0 280,0 255,30 220,35" fill="#f04230" />
-          <polygon points="185,40 220,35 210,65 170,75" fill="#f65e25" />
-          <polygon points="280,0 305,0 285,25 255,30" fill="#f9851c" />
-          {/* Yellows & Cyans */}
-          <polygon points="220,35 255,30 250,55 210,65" fill="#fbb118" />
-          <polygon points="305,0 320,0 305,20 285,25" fill="#fdd835" />
-          <polygon points="210,65 250,55 235,80 170,75" fill="#26c6da" />
-          <polygon points="250,55 285,25 270,70 235,80" fill="#00acc1" />
-          <polygon points="170,75 235,80 200,85 110,85" fill="#8bc34a" />
-        </svg>
+      {/* Top-Left Rainbow Honeycomb Corner */}
+      <div className="absolute top-0 left-0 w-[38%] h-[16mm] overflow-hidden pointer-events-none">
+        <HexCorner />
       </div>
 
-      {/* Brand Header: Logo Emblem + MAHAVIR CARD */}
+      {/* Brand Header: Logo Emblem + Mahavir Card */}
       <header className="relative pt-0.5 px-0.5">
         <div className="flex justify-end items-center mb-1">
           <div className="flex items-center gap-2">
@@ -114,12 +160,7 @@ export function TaxInvoiceDocument({
               />
             </div>
             <div>
-              <h1
-                className="text-[22px] font-black uppercase text-black leading-none tracking-wide"
-                style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-              >
-                MAHAVIR CARD
-              </h1>
+              <Wordmark />
               <p className="text-[9.5px] text-gray-700 tracking-normal leading-tight mt-0.5 font-sans font-medium">
                 all kind printing solution
               </p>
@@ -398,14 +439,11 @@ export function TaxInvoiceDocument({
             <span className="text-[7px] font-bold uppercase tracking-wider text-black mb-0.5">
               MAHAVIR CARD
             </span>
-            <div className="w-[18mm] h-[18mm] relative">
-              <Image
-                src="/images/qr/b2c-qr.jpg"
-                alt="UPI QR Code"
-                width={72}
-                height={72}
-                className="w-full h-full object-contain"
-              />
+            <div className="w-[18mm] h-[18mm] relative bg-white">
+              {qrDataUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- client-generated data URL, not an optimizable asset
+                <img src={qrDataUrl} alt="UPI payment QR code" className="w-full h-full object-contain" />
+              ) : null}
             </div>
           </div>
         </div>
@@ -448,27 +486,9 @@ export function TaxInvoiceDocument({
           </div>
         </div>
 
-        {/* Bottom-Right Colorful Faceted Geometric Ribbon */}
-        <div className="absolute bottom-0 right-0 w-[38%] h-[14mm] overflow-hidden pointer-events-none">
-          <svg
-            viewBox="0 0 300 80"
-            className="w-full h-full object-cover"
-            preserveAspectRatio="none"
-          >
-            <polygon points="300,80 220,80 255,0 300,0" fill="#2d1754" />
-            <polygon points="220,80 170,80 205,30 255,0" fill="#582687" />
-            <polygon points="170,80 125,80 160,35 205,30" fill="#7a2a96" />
-            <polygon points="125,80 85,80 115,40 160,35" fill="#a4288b" />
-            <polygon points="85,80 50,80 80,45 115,40" fill="#cc2773" />
-            <polygon points="160,35 115,40 130,5 190,0" fill="#e42e56" />
-            <polygon points="50,80 20,80 45,50 80,45" fill="#f04230" />
-            <polygon points="115,40 80,45 90,15 130,5" fill="#f65e25" />
-            <polygon points="20,80 0,80 15,55 45,50" fill="#f9851c" />
-            <polygon points="80,45 45,50 50,25 90,15" fill="#fbb118" />
-            <polygon points="90,15 50,25 65,0 130,5" fill="#26c6da" />
-            <polygon points="50,25 15,55 30,10 65,0" fill="#00acc1" />
-            <polygon points="45,50 15,55 0,80 0,60" fill="#8bc34a" />
-          </svg>
+        {/* Bottom-Right Rainbow Honeycomb Corner */}
+        <div className="absolute bottom-0 right-0 w-[35%] h-[15mm] overflow-hidden pointer-events-none">
+          <HexCorner flip />
         </div>
       </footer>
     </div>
