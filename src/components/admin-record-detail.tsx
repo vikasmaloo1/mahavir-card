@@ -685,7 +685,7 @@ function AddBalanceModal({
             <X size={18} />
           </button>
         </div>
-        <form onSubmit={submit} className="mt-4 space-y-4 text-sm">
+        <form onSubmit={submit} noValidate className="mt-4 space-y-4 text-sm">
           <div className="rounded-lg bg-slate-50 border p-3">
             <span className="text-xs font-bold uppercase text-[#607089]">Current Balance</span>
             <p className="mt-0.5 font-mono text-base font-bold text-[#162237]">
@@ -697,11 +697,27 @@ function AddBalanceModal({
             <input
               required
               type="number"
-              step="0.01"
-              min="0.01"
+              step="100"
+              min="1"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="e.g. 5000.00"
+              onChange={(e) => {
+                const val = e.target.value.replace(/[^0-9]/g, "");
+                setAmount(val);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  const current = parseInt(amount, 10) || 0;
+                  setAmount(String(current + 100));
+                } else if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  const current = parseInt(amount, 10) || 0;
+                  setAmount(String(Math.max(1, current - 100)));
+                } else if (e.key === "." || e.key === "e" || e.key === "E" || e.key === "+" || e.key === "-") {
+                  e.preventDefault();
+                }
+              }}
+              placeholder="e.g. 5000"
               className="mt-1 w-full rounded border border-[#c9d2df] p-2.5 outline-none focus:border-[#2457b8]"
             />
           </label>
@@ -822,7 +838,7 @@ function AdjustBalanceModal({
             <X size={18} />
           </button>
         </div>
-        <form onSubmit={submit} className="mt-4 space-y-4 text-sm">
+        <form onSubmit={submit} noValidate className="mt-4 space-y-4 text-sm">
           <div className="rounded-lg bg-slate-50 border p-3">
             <span className="text-xs font-bold uppercase text-[#607089]">Current Balance</span>
             <p className="mt-0.5 font-mono text-base font-bold text-[#162237]">
@@ -853,11 +869,27 @@ function AdjustBalanceModal({
             <input
               required
               type="number"
-              step="0.01"
-              min="0.01"
+              step="100"
+              min="1"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="e.g. 1000.00"
+              onChange={(e) => {
+                const val = e.target.value.replace(/[^0-9]/g, "");
+                setAmount(val);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  const current = parseInt(amount, 10) || 0;
+                  setAmount(String(current + 100));
+                } else if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  const current = parseInt(amount, 10) || 0;
+                  setAmount(String(Math.max(1, current - 100)));
+                } else if (e.key === "." || e.key === "e" || e.key === "E" || e.key === "+" || e.key === "-") {
+                  e.preventDefault();
+                }
+              }}
+              placeholder="e.g. 1000"
               className="mt-1 w-full rounded border border-[#c9d2df] p-2.5 outline-none focus:border-[#2457b8]"
             />
           </label>

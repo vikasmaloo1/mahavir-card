@@ -269,7 +269,7 @@ export function HeaderWalletButton({
               ) : null}
 
               {/* FORM */}
-              <form onSubmit={handleSubmit} className="mt-3.5 space-y-3.5">
+              <form onSubmit={handleSubmit} noValidate className="mt-3.5 space-y-3.5">
                 <div>
                   <label className="block text-xs font-bold text-[var(--mc-ink)] mb-1">
                     Top-up Amount (₹)
@@ -282,9 +282,25 @@ export function HeaderWalletButton({
                       required
                       type="number"
                       min="1"
-                      step="1"
+                      step="100"
                       value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, "");
+                        setAmount(val);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          const current = parseInt(amount, 10) || 0;
+                          setAmount(String(current + 100));
+                        } else if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          const current = parseInt(amount, 10) || 0;
+                          setAmount(String(Math.max(1, current - 100)));
+                        } else if (e.key === "." || e.key === "e" || e.key === "E" || e.key === "+" || e.key === "-") {
+                          e.preventDefault();
+                        }
+                      }}
                       placeholder="Enter amount (₹)"
                       className="w-full rounded-xl border border-[var(--mc-line)] bg-white pl-7 pr-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-[var(--mc-accent)] transition-colors"
                     />

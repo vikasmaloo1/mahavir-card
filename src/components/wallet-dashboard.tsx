@@ -232,7 +232,7 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
           )}
 
           <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-            <form onSubmit={submit} className="h-fit rounded-xl border border-[var(--mc-line)] bg-white p-5 sm:p-6 shadow-sm space-y-4">
+            <form onSubmit={submit} noValidate className="h-fit rounded-xl border border-[var(--mc-line)] bg-white p-5 sm:p-6 shadow-sm space-y-4">
               <div className="flex items-center gap-2">
                 <CreditCard size={18} className="text-[var(--mc-accent)]" />
                 <h2 className="font-bold text-lg text-[var(--mc-ink)]">Add balance via UPI / Bank Transfer</h2>
@@ -245,11 +245,27 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
                 <span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">Top-up Amount (₹) <span className="font-normal text-[var(--mc-muted)]">— minimum ₹500</span></span>
                 <input
                   required
-                  min="500"
-                  step="0.01"
+                  min="100"
+                  step="100"
                   type="number"
                   value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
+                  onChange={(event) => {
+                    const val = event.target.value.replace(/[^0-9]/g, "");
+                    setAmount(val);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      const current = parseInt(amount, 10) || 0;
+                      setAmount(String(current ? current + 100 : 500));
+                    } else if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      const current = parseInt(amount, 10) || 0;
+                      setAmount(String(Math.max(100, current - 100)));
+                    } else if (e.key === "." || e.key === "e" || e.key === "E" || e.key === "+" || e.key === "-") {
+                      e.preventDefault();
+                    }
+                  }}
                   placeholder="Enter amount (₹)"
                   className="w-full rounded-lg border border-[var(--mc-line)] px-3.5 py-3 outline-none focus:border-[var(--mc-accent)] transition-colors font-semibold"
                 />
