@@ -141,8 +141,10 @@ function QuoteItem({ quoteId, item, saving, mutate }: { quoteId: string; item?: 
 function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; mutate: AdminMutate }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const balance = Number(customer.availableCredit ?? 0);
+  const hasLogin = Boolean(customer.userId);
 
   return (
     <div className="mt-6 space-y-6">
@@ -165,6 +167,19 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {!hasLogin ? (
+              <button
+                type="button"
+                onClick={() => setShowLoginModal(true)}
+                className="inline-flex items-center gap-1.5 rounded border border-[#2457b8] bg-blue-50 px-3.5 py-2 text-xs font-bold text-[#2457b8] hover:bg-blue-100 transition-colors shadow-xs"
+              >
+                <Plus size={14} /> Create Storefront Login
+              </button>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200">
+                <Check size={13} className="text-emerald-600" /> Storefront Account Linked
+              </span>
+            )}
             <button
               type="button"
               onClick={() => setShowAddModal(true)}
@@ -181,6 +196,24 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
             </button>
           </div>
         </div>
+
+        {!hasLogin ? (
+          <div className="mt-4 rounded border border-blue-200 bg-blue-50/70 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold text-[#2457b8]">Offline Customer (No Storefront Account)</p>
+              <p className="text-xs text-[#516483] mt-0.5">
+                This customer was registered offline. They can place orders through the admin desk, but cannot log in to mahavircard.in yet.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowLoginModal(true)}
+              className="inline-flex items-center justify-center gap-1.5 rounded bg-[#2457b8] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#1a4497] shrink-0 shadow-xs"
+            >
+              Provision Login Credentials
+            </button>
+          </div>
+        ) : null}
 
         {/* Financial Highlights */}
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -324,6 +357,20 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
           onSuccess={() => {
             setShowAdjustModal(false);
             void mutate(`/api/admin/customers/${customer.id}`, {}, "Balance adjusted successfully.");
+          }}
+        />
+      ) : null}
+
+      {/* Create Login Modal */}
+      {showLoginModal ? (
+        <CreateCustomerLoginModal
+          customerId={String(customer.id)}
+          customerName={text(customer.contactName || customer.companyName)}
+          initialEmail={String(customer.email || "")}
+          onClose={() => setShowLoginModal(false)}
+          onSuccess={() => {
+            setShowLoginModal(false);
+            void mutate(`/api/admin/customers/${customer.id}`, {}, "Storefront login created successfully.");
           }}
         />
       ) : null}
@@ -1000,6 +1047,119 @@ function AdjustBalanceModal({
               className="rounded bg-[#2457b8] px-5 py-2 font-bold text-white hover:bg-[#1a4497] disabled:opacity-50"
             >
               {submitting ? "Adjusting..." : "Apply Adjustment"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function CreateCustomerLoginModal({
+  customerId,
+  customerName,
+  initialEmail,
+  onClose,
+  onSuccess,
+}: {
+  customerId: string;
+  customerName: string;
+  initialEmail: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const isPlaceholder = !initialEmail || initialEmail.includes("@offline.local");
+  const [email, setEmail] = useState(isPlaceholder ? "" : initialEmail);
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setError("");
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !trimmedEmail.includes("@")) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    if (!password || password.length < 8) {
+      setError("Password must be at least 8 characters long");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await adminRequest(`/api/admin/customers/${customerId}/create-login`, {
+        method: "POST",
+        body: JSON.stringify({ email: trimmedEmail, password }),
+      });
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create customer login account");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+        <div className="flex items-center justify-between border-b pb-3">
+          <h3 className="text-lg font-bold text-[#162237]">Provision Storefront Login</h3>
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X size={18} />
+          </button>
+        </div>
+
+        <p className="mt-3 text-xs text-[#607089]">
+          Create storefront login credentials for <strong>{customerName}</strong>. Once created, the customer can sign in at <em>mahavircard.in</em> to view orders, check balance, and browse products.
+        </p>
+
+        <form onSubmit={submit} className="mt-4 space-y-4 text-xs">
+          <label className="block">
+            <span className="font-semibold text-slate-700">Email Address (Login Username) *</span>
+            <input
+              required
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="e.g. customer@example.com"
+              className="mt-1 w-full rounded border border-[#c9d2df] p-2.5 outline-none focus:border-[#2457b8]"
+            />
+          </label>
+
+          <label className="block">
+            <span className="font-semibold text-slate-700">Initial Password *</span>
+            <input
+              required
+              type="password"
+              minLength={8}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Minimum 8 characters"
+              className="mt-1 w-full rounded border border-[#c9d2df] p-2.5 outline-none focus:border-[#2457b8]"
+            />
+            <span className="mt-1 block text-[11px] text-[#607089]">Customer can change this password after login.</span>
+          </label>
+
+          {error ? <p className="text-xs font-semibold text-red-600">{error}</p> : null}
+
+          <div className="mt-5 flex justify-end gap-2 pt-2 border-t">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded border border-[#c9d2df] px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded bg-[#2457b8] px-5 py-2 font-bold text-white hover:bg-[#1a4497] disabled:opacity-50"
+            >
+              {submitting ? "Creating..." : "Create Account"}
             </button>
           </div>
         </form>

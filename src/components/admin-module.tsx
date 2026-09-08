@@ -18,9 +18,9 @@ const moduleCopy: Record<ModuleKey, { title: string; description: string; endpoi
   addons: { title: "Add-ons", description: "Maintain the optional finishing and service add-ons used by products.", endpoint: "/api/admin/addons", createLabel: "New add-on" },
   pricing: { title: "Pricing", description: "Maintain server-side pricing rules. Product editors provide the same rules in context.", endpoint: "/api/admin/pricing", createLabel: "New pricing rule" },
   delivery: { title: "Delivery", description: "Set product-specific pickup, local delivery, and state-based courier charges.", endpoint: "/api/admin/delivery", createLabel: "New delivery rule" },
-  orders: { title: "Orders", description: "Move real production orders through the fulfilment workflow.", endpoint: "/api/admin/orders" },
+  orders: { title: "Orders", description: "Move real production orders through the fulfilment workflow.", endpoint: "/api/admin/orders", createLabel: "New offline order" },
   quotes: { title: "Quotes", description: "Create and manage quotations before they become orders.", endpoint: "/api/admin/quotes", createLabel: "New quote" },
-  customers: { title: "Customers", description: "Maintain customer contact and account information.", endpoint: "/api/admin/customers" },
+  customers: { title: "Customers", description: "Maintain customer contact and account information.", endpoint: "/api/admin/customers", createLabel: "New customer" },
   inquiries: { title: "Inquiries", description: "Qualify incoming print requirements and convert them to quotations.", endpoint: "/api/admin/inquiries" },
   payments: { title: "Payments", description: "Record manual payments and update COD or payment-provider records.", endpoint: "/api/admin/payments", createLabel: "Record payment" },
   artworks: { title: "Artwork", description: "Review uploaded CorelDRAW artwork and communicate approval decisions.", endpoint: "/api/admin/artworks" },
@@ -358,6 +358,7 @@ export function AdminModule({ section }: { section: ModuleKey }) {
   const config = moduleCopy[section];
   const [items, setItems] = useState<Row[]>([]);
   const [products, setProducts] = useState<Row[]>([]);
+  const [customersList, setCustomersList] = useState<Row[]>([]);
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -381,6 +382,14 @@ export function AdminModule({ section }: { section: ModuleKey }) {
       if (["pricing", "delivery"].includes(section)) {
         const productsResult = await adminRequest<Row[] | { items?: Row[] }>("/api/admin/products?limit=100");
         setProducts(asItems(productsResult));
+      }
+      if (section === "orders") {
+        const [custResult, prodsResult] = await Promise.all([
+          adminRequest<Row[] | { items?: Row[] }>("/api/admin/customers?limit=100"),
+          adminRequest<Row[] | { items?: Row[] }>("/api/admin/products?limit=100"),
+        ]);
+        setCustomersList(asItems(custResult));
+        setProducts(asItems(prodsResult));
       }
     } catch (caught) {
       setError(message(caught));
@@ -478,7 +487,43 @@ export function AdminModule({ section }: { section: ModuleKey }) {
     {notice ? <Notice tone="success" onDismiss={() => setNotice("")}>{notice}</Notice> : null}
     {error ? <Notice tone="error" onDismiss={() => setError("")}>{error}</Notice> : null}
 
-    {(creating || editing) ? <section className="mt-6 border border-[#c9d2df] bg-white p-4 shadow-sm sm:p-6"><div className="mb-5 flex items-center justify-between gap-4 border-b border-[#e4e8ef] pb-4"><div><h2 className="font-bold text-[#162237]">{editing ? `Edit ${singular(config.title)}` : config.createLabel}</h2><p className="mt-1 text-sm text-[#607089]">Changes are saved to the live admin API.</p></div><button type="button" onClick={() => { setCreating(false); setEditing(null); setError(""); }} className="p-2 text-[#607089] hover:text-[#162237]" aria-label="Close form"><X size={18} /></button></div><ModuleForm section={section} item={editing} products={products} saving={saving} onSubmit={save} onCancel={() => { setCreating(false); setEditing(null); }} /></section> : null}
+    {(creating || editing) ? (
+      <section className="mt-6 border border-[#c9d2df] bg-white p-4 shadow-sm sm:p-6">
+        <div className="mb-5 flex items-center justify-between gap-4 border-b border-[#e4e8ef] pb-4">
+          <div>
+            <h2 className="font-bold text-[#162237]">{editing ? `Edit ${singular(config.title)}` : config.createLabel}</h2>
+            <p className="mt-1 text-sm text-[#607089]">Changes are saved to the live admin API.</p>
+          </div>
+          <button type="button" onClick={() => { setCreating(false); setEditing(null); setError(""); }} className="p-2 text-[#607089] hover:text-[#162237]" aria-label="Close form">
+            <X size={18} />
+          </button>
+        </div>
+        {creating && section === "orders" ? (
+          <AdminOrderCreateForm
+            products={products}
+            customers={customersList}
+            saving={saving}
+            onSubmit={async (orderData) => {
+              setSaving(true);
+              setError("");
+              try {
+                await adminRequest("/api/admin/orders", { method: "POST", body: JSON.stringify(orderData) });
+                setNotice("Offline order placed successfully with payment history logs.");
+                setCreating(false);
+                await load(page);
+              } catch (caught) {
+                setError(message(caught));
+              } finally {
+                setSaving(false);
+              }
+            }}
+            onCancel={() => { setCreating(false); setEditing(null); }}
+          />
+        ) : (
+          <ModuleForm section={section} item={editing} products={products} saving={saving} onSubmit={save} onCancel={() => { setCreating(false); setEditing(null); }} />
+        )}
+      </section>
+    ) : null}
 
     <div className={`mt-6 grid gap-2 ${section === "orders" || section === "payments" ? "sm:grid-cols-[minmax(0,1fr)_10rem_13rem]" : section === "customers" ? "sm:grid-cols-[minmax(0,1fr)_9rem_12rem_10rem]" : "sm:grid-cols-[minmax(0,1fr)_13rem]"}`}>
       <div className="flex items-center gap-3 border border-[#cfd7e3] bg-white px-3">
@@ -578,6 +623,634 @@ function Actions({ section, item, saving, actionLabel, onEdit, onDelete, onConve
   return <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => onEdit(item)} className="border border-[#c9d2df] p-1.5 text-[#24324a]" aria-label="Edit"><Pencil size={15} /></button><button type="button" onClick={() => onDelete(item)} disabled={saving} className="border border-[#efc4be] p-1.5 text-[#b13a2f]" aria-label={actionLabel}><Trash2 size={15} /></button></div>;
 }
 
+interface OrderLineItemState {
+  productId: string;
+  description: string;
+  jobName: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+function AdminOrderCreateForm({
+  products,
+  customers,
+  saving,
+  onSubmit,
+  onCancel,
+}: {
+  products: Row[];
+  customers: Row[];
+  saving: boolean;
+  onSubmit: (payload: Record<string, unknown>) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [deliveryMethod, setDeliveryMethod] = useState<"PICKUP" | "COURIER">("PICKUP");
+  const [deliveryState, setDeliveryState] = useState("GJ");
+  const [deliveryPrice, setDeliveryPrice] = useState("0.00");
+  const [orderStatus, setOrderStatus] = useState("CONFIRMED");
+  const [notes, setNotes] = useState("");
+  const [formError, setFormError] = useState("");
+
+  const [items, setItems] = useState<OrderLineItemState[]>([
+    { productId: "", description: "", jobName: "", quantity: 1000, unitPrice: 0 },
+  ]);
+
+  const [recordPayment, setRecordPayment] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "BANK_TRANSFER" | "CHEQUE" | "UPI" | "CREDIT">("CASH");
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentReference, setPaymentReference] = useState("");
+  const [paymentNotes, setPaymentNotes] = useState("");
+
+  const filteredCustomers = useMemo(() => {
+    const q = customerSearch.trim().toLowerCase();
+    if (!q) return customers.slice(0, 50);
+    return customers
+      .filter((c) => {
+        const name = String(c.contactName || "").toLowerCase();
+        const comp = String(c.companyName || "").toLowerCase();
+        const phone = String(c.phone || "");
+        return name.includes(q) || comp.includes(q) || phone.includes(q);
+      })
+      .slice(0, 50);
+  }, [customers, customerSearch]);
+
+  const selectedCustomer = useMemo(() => {
+    return customers.find((c) => String(c.id) === selectedCustomerId);
+  }, [customers, selectedCustomerId]);
+
+  const subtotal = useMemo(() => {
+    return items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0);
+  }, [items]);
+
+  const deliveryCharge = deliveryMethod === "COURIER" ? Math.max(0, Number(deliveryPrice) || 0) : 0;
+  const isIntraState = deliveryMethod === "PICKUP" || deliveryState === "GJ";
+  const taxRate = 18;
+  const taxAmount = Number(((subtotal * taxRate) / 100).toFixed(2));
+  const cgstAmount = isIntraState ? Number((taxAmount / 2).toFixed(2)) : 0;
+  const sgstAmount = isIntraState ? Number((taxAmount - cgstAmount).toFixed(2)) : 0;
+  const igstAmount = !isIntraState ? taxAmount : 0;
+  const grandTotal = Number((subtotal + taxAmount + deliveryCharge).toFixed(2));
+
+  useEffect(() => {
+    if (recordPayment && (!paymentAmount || paymentAmount === "0" || Number(paymentAmount) <= 0)) {
+      setPaymentAmount(grandTotal.toFixed(2));
+    }
+  }, [grandTotal, recordPayment]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const enteredPaid = Math.max(0, Number(paymentAmount) || 0);
+  const remainingDue = Math.max(0, Number((grandTotal - enteredPaid).toFixed(2)));
+
+  function handleProductSelect(index: number, prodId: string) {
+    const prod = products.find((p) => String(p.id) === prodId);
+    setItems((curr) => {
+      const next = [...curr];
+      if (prod) {
+        next[index] = {
+          ...next[index],
+          productId: prodId,
+          description: String(prod.name || ""),
+        };
+      } else {
+        next[index] = {
+          ...next[index],
+          productId: "",
+        };
+      }
+      return next;
+    });
+  }
+
+  function updateItem(index: number, patch: Partial<OrderLineItemState>) {
+    setItems((curr) => {
+      const next = [...curr];
+      next[index] = { ...next[index], ...patch };
+      return next;
+    });
+  }
+
+  function addItem() {
+    setItems((curr) => [...curr, { productId: "", description: "", jobName: "", quantity: 1000, unitPrice: 0 }]);
+  }
+
+  function removeItem(index: number) {
+    if (items.length <= 1) return;
+    setItems((curr) => curr.filter((_, i) => i !== index));
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setFormError("");
+
+    if (!selectedCustomerId) {
+      setFormError("Please select a customer for this order.");
+      return;
+    }
+
+    if (!items.length || items.some((i) => !i.description.trim() || Number(i.quantity) <= 0)) {
+      setFormError("Each line item must have a description and quantity greater than 0.");
+      return;
+    }
+
+    const payload = {
+      customerId: selectedCustomerId,
+      items: items.map((item) => ({
+        productId: item.productId || null,
+        description: item.description.trim(),
+        jobName: item.jobName.trim() || undefined,
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unitPrice).toFixed(2),
+        configuration: {},
+      })),
+      deliveryMethod,
+      deliveryState: deliveryMethod === "COURIER" ? deliveryState : undefined,
+      deliveryPrice: deliveryCharge.toFixed(2),
+      status: orderStatus,
+      notes: notes.trim() || undefined,
+      initialPayment: recordPayment
+        ? {
+            recorded: true,
+            amount: enteredPaid,
+            method: paymentMethod,
+            reference: paymentReference.trim() || undefined,
+            notes: paymentNotes.trim() || undefined,
+          }
+        : undefined,
+    };
+
+    try {
+      await onSubmit(payload);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Failed to create order.");
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Customer Selection */}
+      <div className="rounded-lg border border-[#c9d2df] bg-slate-50/50 p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#e1e6ee] pb-3">
+          <div>
+            <h3 className="text-sm font-bold text-[#162237]">1. Select Customer</h3>
+            <p className="text-xs text-[#607089]">Choose the offline or walk-in customer placing this job.</p>
+          </div>
+          <div className="w-full sm:w-64">
+            <input
+              type="text"
+              placeholder="Search customer by name, company, phone..."
+              value={customerSearch}
+              onChange={(e) => setCustomerSearch(e.target.value)}
+              className="w-full rounded border border-[#c9d2df] bg-white px-2.5 py-1.5 text-xs focus:border-[#2457b8] focus:outline-none"
+            />
+          </div>
+        </div>
+
+        <div className="mt-3">
+          <select
+            required
+            value={selectedCustomerId}
+            onChange={(e) => setSelectedCustomerId(e.target.value)}
+            className="w-full rounded border border-[#c9d2df] bg-white px-3 py-2 text-sm font-medium focus:border-[#2457b8] focus:outline-none"
+          >
+            <option value="">-- Choose Customer ({filteredCustomers.length} available) --</option>
+            {filteredCustomers.map((c) => (
+              <option key={String(c.id)} value={String(c.id)}>
+                {String(c.contactName)} {c.companyName ? `(${String(c.companyName)})` : ""} {c.phone ? `· ${String(c.phone)}` : ""} · [{String(c.customerType || "B2C")}] · Bal: ₹{Number(c.availableCredit || 0).toFixed(2)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {selectedCustomer ? (
+          <div className="mt-3 flex flex-wrap items-center gap-4 rounded border border-blue-200 bg-blue-50/60 p-2.5 text-xs text-[#162237]">
+            <span>
+              Customer: <strong>{String(selectedCustomer.contactName)}</strong>
+            </span>
+            {selectedCustomer.companyName ? (
+              <span>
+                Company: <strong>{String(selectedCustomer.companyName)}</strong>
+              </span>
+            ) : null}
+            {selectedCustomer.phone ? (
+              <span>
+                Phone: <strong className="font-mono">{String(selectedCustomer.phone)}</strong>
+              </span>
+            ) : null}
+            <span className="rounded bg-white px-2 py-0.5 font-bold border border-blue-200">
+              Type: {String(selectedCustomer.customerType || "B2C")}
+            </span>
+            <span className="rounded bg-white px-2 py-0.5 font-bold border border-blue-200">
+              Available Balance: ₹{Number(selectedCustomer.availableCredit || 0).toFixed(2)}
+            </span>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Line Items */}
+      <div className="rounded-lg border border-[#c9d2df] bg-white p-4">
+        <div className="flex items-center justify-between border-b border-[#e1e6ee] pb-3">
+          <div>
+            <h3 className="text-sm font-bold text-[#162237]">2. Order Line Items</h3>
+            <p className="text-xs text-[#607089]">Add the printed products, job names, quantities, and agreed prices.</p>
+          </div>
+          <button
+            type="button"
+            onClick={addItem}
+            className="inline-flex items-center gap-1 rounded bg-[#2457b8] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#1a4497]"
+          >
+            <Plus size={14} /> Add Item
+          </button>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {items.map((item, index) => {
+            const lineTotal = (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
+            return (
+              <div
+                key={index}
+                className="grid gap-3 rounded-lg border border-[#e1e6ee] bg-slate-50/40 p-3 lg:grid-cols-[12rem_minmax(10rem,1fr)_10rem_7rem_7rem_8rem_auto] items-end"
+              >
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#607089]">
+                    Catalog Product
+                  </label>
+                  <select
+                    value={item.productId}
+                    onChange={(e) => handleProductSelect(index, e.target.value)}
+                    className="mt-1 w-full rounded border border-[#c9d2df] bg-white px-2.5 py-2 text-xs focus:border-[#2457b8] focus:outline-none"
+                  >
+                    <option value="">Custom / Offline Job</option>
+                    {products.map((p) => (
+                      <option key={String(p.id)} value={String(p.id)}>
+                        {String(p.name)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#607089]">
+                    Item Description *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Visiting Cards Matte 350 GSM"
+                    value={item.description}
+                    onChange={(e) => updateItem(index, { description: e.target.value })}
+                    className="mt-1 w-full rounded border border-[#c9d2df] bg-white px-2.5 py-2 text-xs focus:border-[#2457b8] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#607089]">
+                    Job / File Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Front Shop Board"
+                    value={item.jobName}
+                    onChange={(e) => updateItem(index, { jobName: e.target.value })}
+                    className="mt-1 w-full rounded border border-[#c9d2df] bg-white px-2.5 py-2 text-xs focus:border-[#2457b8] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#607089]">
+                    Quantity *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={item.quantity}
+                    onChange={(e) => updateItem(index, { quantity: Math.max(1, Number(e.target.value)) })}
+                    className="mt-1 w-full rounded border border-[#c9d2df] bg-white px-2.5 py-2 text-xs font-mono focus:border-[#2457b8] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#607089]">
+                    Unit Price (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    value={item.unitPrice}
+                    onChange={(e) => updateItem(index, { unitPrice: Math.max(0, Number(e.target.value)) })}
+                    className="mt-1 w-full rounded border border-[#c9d2df] bg-white px-2.5 py-2 text-xs font-mono focus:border-[#2457b8] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <span className="block text-[11px] font-bold uppercase tracking-wider text-[#607089]">
+                    Line Total
+                  </span>
+                  <div className="mt-1 rounded bg-white border border-[#e1e6ee] px-2.5 py-2 text-xs font-bold tabular-nums text-slate-800">
+                    {formatInrExact(lineTotal)}
+                  </div>
+                </div>
+
+                <div>
+                  <button
+                    type="button"
+                    disabled={items.length <= 1}
+                    onClick={() => removeItem(index)}
+                    className="rounded border border-red-200 p-2 text-red-600 hover:bg-red-50 disabled:opacity-30"
+                    title="Remove item"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Fulfillment, Status & Taxes */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Delivery & Status Details */}
+        <div className="rounded-lg border border-[#c9d2df] bg-white p-4 space-y-4">
+          <h3 className="text-sm font-bold text-[#162237] border-b border-[#e1e6ee] pb-2">
+            3. Fulfillment & Order State
+          </h3>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#607089]">
+                Delivery Method
+              </label>
+              <select
+                value={deliveryMethod}
+                onChange={(e) => setDeliveryMethod(e.target.value as "PICKUP" | "COURIER")}
+                className="mt-1 w-full rounded border border-[#c9d2df] bg-white px-3 py-2 text-sm focus:border-[#2457b8] focus:outline-none"
+              >
+                <option value="PICKUP">Storefront Self-Pickup</option>
+                <option value="COURIER">Courier / Door Delivery</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#607089]">
+                Order Status
+              </label>
+              <select
+                value={orderStatus}
+                onChange={(e) => setOrderStatus(e.target.value)}
+                className="mt-1 w-full rounded border border-[#c9d2df] bg-white px-3 py-2 text-sm focus:border-[#2457b8] focus:outline-none"
+              >
+                <option value="PENDING">PENDING</option>
+                <option value="CONFIRMED">CONFIRMED (Production Queue)</option>
+                <option value="IN_PRODUCTION">IN_PRODUCTION</option>
+                <option value="READY">READY FOR PICKUP</option>
+                <option value="DISPATCHED">DISPATCHED</option>
+                <option value="DELIVERED">DELIVERED</option>
+              </select>
+            </div>
+
+            {deliveryMethod === "COURIER" ? (
+              <>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#607089]">
+                    Destination State
+                  </label>
+                  <select
+                    value={deliveryState}
+                    onChange={(e) => setDeliveryState(e.target.value)}
+                    className="mt-1 w-full rounded border border-[#c9d2df] bg-white px-3 py-2 text-sm focus:border-[#2457b8] focus:outline-none"
+                  >
+                    <option value="GJ">Gujarat (Intra-State CGST+SGST)</option>
+                    <option value="RJ">Rajasthan (Inter-State IGST)</option>
+                    <option value="MH">Maharashtra (Inter-State IGST)</option>
+                    <option value="MP">Madhya Pradesh (Inter-State IGST)</option>
+                    <option value="OTHER">Other State (Inter-State IGST)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#607089]">
+                    Courier Charge (₹)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    value={deliveryPrice}
+                    onChange={(e) => setDeliveryPrice(e.target.value)}
+                    className="mt-1 w-full rounded border border-[#c9d2df] bg-white px-3 py-2 text-sm font-mono focus:border-[#2457b8] focus:outline-none"
+                  />
+                </div>
+              </>
+            ) : null}
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#607089]">
+              Internal Notes / Printing Remarks
+            </label>
+            <textarea
+              rows={2}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g. Offline order walk-in, urgent delivery required by Saturday"
+              className="mt-1 w-full rounded border border-[#c9d2df] bg-white p-2.5 text-xs focus:border-[#2457b8] focus:outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Bill Breakdown Summary */}
+        <div className="rounded-lg border border-[#c9d2df] bg-slate-50/70 p-4">
+          <h3 className="text-sm font-bold text-[#162237] border-b border-[#e1e6ee] pb-2">
+            Tax & Total Invoice Calculation
+          </h3>
+
+          <div className="mt-3 space-y-2 text-xs">
+            <div className="flex justify-between py-1 text-slate-600">
+              <span>Item Subtotal:</span>
+              <span className="font-mono font-bold text-slate-800">{formatInrExact(subtotal)}</span>
+            </div>
+
+            {deliveryCharge > 0 ? (
+              <div className="flex justify-between py-1 text-slate-600">
+                <span>Courier / Delivery:</span>
+                <span className="font-mono font-bold text-slate-800">{formatInrExact(deliveryCharge)}</span>
+              </div>
+            ) : null}
+
+            {isIntraState ? (
+              <>
+                <div className="flex justify-between py-0.5 text-slate-600">
+                  <span>CGST (9%):</span>
+                  <span className="font-mono text-slate-800">{formatInrExact(cgstAmount)}</span>
+                </div>
+                <div className="flex justify-between py-0.5 text-slate-600">
+                  <span>SGST (9%):</span>
+                  <span className="font-mono text-slate-800">{formatInrExact(sgstAmount)}</span>
+                </div>
+              </>
+            ) : (
+              <div className="flex justify-between py-1 text-slate-600">
+                <span>IGST (18%):</span>
+                <span className="font-mono text-slate-800">{formatInrExact(igstAmount)}</span>
+              </div>
+            )}
+
+            <div className="border-t border-[#c9d2df] pt-2 flex justify-between items-baseline">
+              <span className="text-sm font-bold text-[#162237]">Invoice Grand Total:</span>
+              <span className="text-xl font-bold text-[#162237] tabular-nums">
+                {formatInrExact(grandTotal)}
+              </span>
+            </div>
+          </div>
+
+          <p className="mt-3 text-[11px] text-[#607089]">
+            {isIntraState
+              ? "Tax Jurisdiction: Gujarat Intra-State (9% CGST + 9% SGST applied)."
+              : "Tax Jurisdiction: Inter-State Out-of-Gujarat (18% IGST applied)."}
+          </p>
+        </div>
+      </div>
+
+      {/* Immediate Payment Collection Logging */}
+      <div className="rounded-lg border border-[#c9d2df] bg-white p-4">
+        <div className="flex items-center justify-between border-b border-[#e1e6ee] pb-3">
+          <label className="flex items-center gap-2 text-sm font-bold text-[#162237] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={recordPayment}
+              onChange={(e) => setRecordPayment(e.target.checked)}
+              className="size-4 accent-[#2457b8]"
+            />
+            Record Payment Now (Offline Walk-In Collection)
+          </label>
+
+          {recordPayment ? (
+            <span
+              className={`rounded px-2.5 py-0.5 text-xs font-bold ${
+                enteredPaid >= grandTotal - 0.001
+                  ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                  : enteredPaid > 0
+                  ? "bg-amber-50 text-amber-800 border border-amber-200"
+                  : "bg-slate-100 text-slate-700"
+              }`}
+            >
+              {enteredPaid >= grandTotal - 0.001
+                ? "Full Payment (PAID)"
+                : enteredPaid > 0
+                ? `Partial Payment (Pending ${formatInrExact(remainingDue)})`
+                : "Pending Payment"}
+            </span>
+          ) : null}
+        </div>
+
+        {recordPayment ? (
+          <div className="mt-4 space-y-4">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#607089]">
+                  Payment Method
+                </label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value as any)}
+                  className="mt-1 w-full rounded border border-[#c9d2df] bg-white px-3 py-2 text-sm focus:border-[#2457b8] focus:outline-none"
+                >
+                  <option value="CASH">CASH (Physical Handover)</option>
+                  <option value="UPI">UPI / QR Code Scan</option>
+                  <option value="BANK_TRANSFER">Bank Transfer (NEFT/IMPS/RTGS)</option>
+                  <option value="CHEQUE">Cheque</option>
+                  <option value="CREDIT">Customer Credit / Ledger</option>
+                </select>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#607089]">
+                    Amount Received (₹)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentAmount(grandTotal.toFixed(2))}
+                    className="text-[11px] font-bold text-[#2457b8] hover:underline"
+                  >
+                    Full Amount
+                  </button>
+                </div>
+                <input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  className="mt-1 w-full rounded border border-[#c9d2df] bg-white px-3 py-2 text-sm font-mono font-bold focus:border-[#2457b8] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#607089]">
+                  Reference / UTR / Cheque #
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. UTR123456 / Chq #00123 / Cash Slip"
+                  value={paymentReference}
+                  onChange={(e) => setPaymentReference(e.target.value)}
+                  className="mt-1 w-full rounded border border-[#c9d2df] bg-white px-3 py-2 text-sm focus:border-[#2457b8] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#607089]">
+                Payment Remarks / Receipt Notes
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Received advance cash at shop counter"
+                value={paymentNotes}
+                onChange={(e) => setPaymentNotes(e.target.value)}
+                className="mt-1 w-full rounded border border-[#c9d2df] bg-white px-3 py-2 text-xs focus:border-[#2457b8] focus:outline-none"
+              />
+            </div>
+
+            <p className="text-[11px] text-[#607089]">
+              Payments recorded here are permanently logged in the customer&apos;s payment history ledger with exact timestamps and administrator IDs.
+            </p>
+          </div>
+        ) : null}
+      </div>
+
+      {formError ? (
+        <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {formError}
+        </div>
+      ) : null}
+
+      {/* Buttons */}
+      <div className="flex flex-wrap justify-end gap-2 border-t border-[#e4e8ef] pt-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded border border-[#c9d2df] bg-white px-4 py-2.5 text-sm font-bold text-[#24324a] hover:bg-slate-50"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={saving}
+          className="inline-flex items-center gap-2 rounded bg-[#2457b8] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#1a4497] disabled:opacity-60 shadow-xs"
+        >
+          <Check size={16} />
+          {saving ? "Creating Order..." : "Create Order & Issue Bill"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function ModuleForm({ section, item, products, saving, onSubmit, onCancel }: { section: ModuleKey; item: Row | null; products: Row[]; saving: boolean; onSubmit: (data: Record<string, unknown>) => Promise<void>; onCancel: () => void }) {
   const value = (key: string) => asString(section === "payments" ? nested(item ?? {}, `payment.${key}`) : section === "admins" ? nested(item ?? {}, key === "status" ? "admin.status" : `user.${key}`) : item?.[key]);
   const [form, setForm] = useState<Record<string, string>>(() => ({
@@ -585,7 +1258,7 @@ function ModuleForm({ section, item, products, saving, onSubmit, onCancel }: { s
   }));
   const [formError, setFormError] = useState("");
   const toggleValue = (key: string, fallback: boolean) => asBoolean(item?.[key], fallback);
-  const [toggles, setToggles] = useState<Record<string, boolean>>({ isActive: toggleValue("isActive", true), isImportant: toggleValue("isImportant", false), taxInclusive: toggleValue("taxInclusive", false), isDefault: toggleValue("isDefault", false), pricesTaxInclusive: toggleValue("pricesTaxInclusive", false) });
+  const [toggles, setToggles] = useState<Record<string, boolean>>({ isActive: toggleValue("isActive", true), isImportant: toggleValue("isImportant", false), taxInclusive: toggleValue("taxInclusive", false), isDefault: toggleValue("isDefault", false), pricesTaxInclusive: toggleValue("pricesTaxInclusive", false), createLogin: false });
   const update = (key: string) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setForm((current) => ({ ...current, [key]: event.target.value }));
   async function submit(event: FormEvent) {
     event.preventDefault(); setFormError("");
@@ -673,7 +1346,84 @@ function ModuleFields({ section, form, toggles, products, update, setForm, setTo
   if (section === "delivery") return <div className="grid gap-4 sm:grid-cols-2"><label className="block text-sm font-semibold text-[#263753]"><span>Product</span><select required value={form.productId} onChange={update("productId")} className="mt-1.5 w-full border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-normal"><option value="">Select product</option>{products.map((product) => <option key={text(product.id)} value={text(product.id)}>{text(product.name)}</option>)}</select></label>{select("Method", "deliveryMethod", ["PICKUP", "COURIER"])}<label className="block text-sm font-semibold text-[#263753]"><span>State</span><select required value={form.stateCode} onChange={update("stateCode")} className="mt-1.5 w-full border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-normal"><option value="*">All / Pickup (*)</option><option value="GJ">Gujarat (GJ)</option><option value="RJ">Rajasthan (RJ)</option></select></label>{field("Charge (₹, GST extra)", "price", { required: true, placeholder: "0.00" })}<div className="flex items-end gap-5 pb-2">{toggle("taxInclusive", "Charge already includes GST")}{toggle("isActive", "Active")}</div></div>;
   if (section === "quotes") return <div className="grid gap-4 sm:grid-cols-2">{field("Contact name", "contactName", { required: true })}{field("Email", "email", { type: "email", required: true })}{field("Phone", "phone")}{field("Company", "companyName")}{field("Item description", "itemDescription", { required: !editing })}{field("Quantity", "quantity", { type: "number", required: !editing })}{field("Unit price", "unitPrice", { required: !editing })}{select("Status", "status", ["NEW", "REVIEWING", "QUOTE_CREATED", "SENT_TO_CUSTOMER", "CUSTOMER_APPROVED", "CUSTOMER_REJECTED", "EXPIRED", "CONVERTED_TO_ORDER", "CANCELLED"])}<div className="sm:col-span-2">{area("Notes", "notes")}</div></div>;
   if (section === "orders") return <div className="grid gap-4 sm:grid-cols-2">{select("Status", "status", ["PENDING", "CONFIRMED", "ARTWORK_APPROVED", "IN_PRODUCTION", "READY", "DISPATCHED", "DELIVERED", "CANCELLED"])}<div className="sm:col-span-2">{area("Internal notes", "notes")}</div></div>;
-  if (section === "customers") return <div className="grid gap-4 sm:grid-cols-2">{field("Contact name", "contactName", { required: true })}{field("Company", "companyName", { required: true })}{field("Phone", "phone")}{field("GST number", "gstNumber")}{select("Customer type", "customerType", ["B2B", "B2C"])}{field("City", "city")}<label className="block text-sm font-semibold text-[#263753]"><span>State</span><select value={form.stateCode || "GJ"} onChange={(event) => { update("stateCode")(event); }} className="mt-1.5 w-full border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-normal"><option value="GJ">Gujarat (GJ)</option><option value="RJ">Rajasthan (RJ)</option></select></label>{field("Credit limit", "creditLimit")}{field("Available balance", "availableCredit")}{field("Payment terms (days)", "paymentTermsDays", { type: "number" })}{select("Credit enabled", "creditEnabled", ["false", "true"])}{select("Status", "status", ["ACTIVE", "INACTIVE"])}<p className="self-end text-xs leading-5 text-[#607089]">Email and customer type are controlled account details. Available balance is the single balance used by checkout and top-ups.</p></div>;
+  if (section === "customers") {
+    return (
+      <div className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          {field("Contact name", "contactName", { required: true, placeholder: "e.g. Rajesh Shah" })}
+          {field("Company name", "companyName", { required: true, placeholder: "e.g. Shah Printing Press" })}
+          {field("Phone (10-digit mobile)", "phone", { placeholder: "e.g. 9876543210" })}
+          {field("Email address", "email", { type: "email", placeholder: "e.g. customer@example.com", required: toggles.createLogin })}
+          {field("GST number (optional)", "gstNumber", { placeholder: "e.g. 24AAAAA0000A1Z5" })}
+          {select("Customer type", "customerType", ["B2B", "B2C"])}
+          {field("City", "city", { placeholder: "e.g. Ahmedabad" })}
+          <label className="block text-sm font-semibold text-[#263753]">
+            <span>State</span>
+            <select
+              value={form.stateCode || "GJ"}
+              onChange={(event) => update("stateCode")(event)}
+              className="mt-1.5 w-full border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-normal"
+            >
+              <option value="GJ">Gujarat (GJ)</option>
+              <option value="RJ">Rajasthan (RJ)</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="rounded-lg border border-[#e1e6ee] bg-[#f8fafc] p-4">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-[#2457b8] mb-3">Credit & Balance Settings</h4>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {field(!editing ? "Opening balance (₹)" : "Available balance (₹)", "availableCredit", { placeholder: "0.00" })}
+            {field("Credit limit (₹)", "creditLimit", { placeholder: "0.00" })}
+            {field("Payment terms (days)", "paymentTermsDays", { type: "number", placeholder: "0" })}
+            {select("Credit enabled", "creditEnabled", ["false", "true"])}
+            {editing ? select("Account status", "status", ["ACTIVE", "INACTIVE"]) : null}
+          </div>
+        </div>
+
+        {!editing ? (
+          <div className="rounded-lg border border-[#c9d2df] bg-white p-4 space-y-3">
+            <label className="flex items-center gap-2 text-sm font-bold text-[#162237] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(toggles.createLogin)}
+                onChange={(e) => setToggles((cur) => ({ ...cur, createLogin: e.target.checked }))}
+                className="size-4 accent-[#2457b8]"
+              />
+              Create storefront login account for this customer
+            </label>
+            <p className="text-xs text-[#607089]">
+              Enable this if you want the customer to be able to sign in to the storefront website (mahavircard.in) with their email and password.
+            </p>
+
+            {toggles.createLogin ? (
+              <div className="pt-2 border-t border-[#e8ecf2] grid gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <p className="text-xs font-semibold text-[#2457b8]">
+                    Note: Email entered above will be their username.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-[#263753]">
+                    <span>Initial Password</span>
+                    <input
+                      type="password"
+                      required={Boolean(toggles.createLogin)}
+                      minLength={8}
+                      value={form.password || ""}
+                      onChange={update("password")}
+                      placeholder="Minimum 8 characters"
+                      className="mt-1.5 w-full border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#2457b8]"
+                    />
+                  </label>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
   if (section === "inquiries") return <div className="grid gap-4">{select("Status", "status", ["NEW", "CONTACTED", "QUALIFIED", "QUOTATION_REQUESTED", "CONVERTED", "CLOSED", "LOST"])}{area("Inquiry message", "message", true)}{area("Internal notes", "internalNotes")}</div>;
   if (section === "payments") return <div className="grid gap-4 sm:grid-cols-2">{!editing ? <>{field("Order ID", "orderId", { required: true })}{field("Amount", "amount", { required: true, placeholder: "0.00" })}{select("Method", "method", ["MANUAL", "RAZORPAY", "COD", "CREDIT", "UPI_QR"])}{select("Status", "status", ["PAID", "PENDING", "FAILED", "REFUNDED", "COD_PENDING", "COD_COLLECTED", "CREDIT_APPROVED"])}</> : <>{field("Amount", "amount", { required: true })}{select("Method", "method", ["MANUAL", "RAZORPAY", "COD", "CREDIT", "UPI_QR"])}{select("Status", "status", ["PAID", "PENDING", "FAILED", "REFUNDED", "COD_PENDING", "COD_COLLECTED", "CREDIT_APPROVED"])}{field("Provider", "provider")}</>}{field("Provider order ID", "providerOrderId")}{field("Provider payment ID", "providerPaymentId")}</div>;
   if (section === "artworks") return <div className="grid gap-4 sm:grid-cols-2">{select("Review status", "status", ["PENDING_REVIEW", "APPROVED", "CHANGES_REQUIRED", "REJECTED"])}<div className="sm:col-span-2">{area("Review notes", "notes")}</div><p className="text-xs leading-5 text-[#607089] sm:col-span-2">The stored object is immutable from this form. Use the protected download action to review the private CDR file.</p></div>;
@@ -713,7 +1463,7 @@ function buildPayload(section: ModuleKey, form: Record<string, string>, toggles:
   if (section === "delivery") return { productId: form.productId, deliveryMethod: form.deliveryMethod, stateCode: form.stateCode, price: form.price, taxInclusive: toggles.taxInclusive, isActive: toggles.isActive, sortOrder: 0 };
   if (section === "quotes") return editing ? { status: form.status, notes: empty(form.notes) } : { contactName: form.contactName, email: form.email, phone: empty(form.phone), companyName: empty(form.companyName), notes: empty(form.notes), items: [{ description: form.itemDescription, quantity: number(form.quantity), unitPrice: form.unitPrice, configuration: {} }] };
   if (section === "orders") return { status: form.status, notes: empty(form.notes) };
-  if (section === "customers") return { contactName: form.contactName, companyName: form.companyName, phone: empty(form.phone), gstNumber: empty(form.gstNumber), customerType: form.customerType || "B2C", city: empty(form.city), state: form.stateCode === "RJ" ? "Rajasthan" : "Gujarat", stateCode: form.stateCode || "GJ", creditEnabled: form.creditEnabled === "true", creditLimit: form.creditLimit || "0", availableCredit: form.availableCredit || "0", paymentTermsDays: number(form.paymentTermsDays || "0"), status: form.status };
+  if (section === "customers") return { contactName: form.contactName, companyName: form.companyName, phone: empty(form.phone), email: empty(form.email), gstNumber: empty(form.gstNumber), customerType: form.customerType || "B2C", city: empty(form.city), state: form.stateCode === "RJ" ? "Rajasthan" : "Gujarat", stateCode: form.stateCode || "GJ", creditEnabled: form.creditEnabled === "true", creditLimit: form.creditLimit || "0", availableCredit: form.availableCredit || "0", paymentTermsDays: number(form.paymentTermsDays || "0"), status: form.status, createLogin: toggles.createLogin ?? false, password: form.password };
   if (section === "inquiries") return { status: form.status, message: form.message, internalNotes: empty(form.internalNotes) };
   if (section === "payments") return { ...(editing ? {} : { orderId: form.orderId }), method: form.method, amount: form.amount, status: form.status, provider: empty(form.provider), providerOrderId: empty(form.providerOrderId), providerPaymentId: empty(form.providerPaymentId) };
   if (section === "artworks") return { status: form.status, notes: empty(form.notes) };
