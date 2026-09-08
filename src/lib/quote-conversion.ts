@@ -38,7 +38,7 @@ export async function convertQuoteToOrder(quoteId: string): Promise<QuoteConvers
       orderNumber: `MHC-O-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
       quoteId: quote.id,
       customerId: quote.customerId,
-      status: "CONFIRMED",
+      status: "PENDING",
       subtotal: quote.subtotal,
       taxableSubtotal: quote.taxableSubtotal,
       tax: quote.tax,

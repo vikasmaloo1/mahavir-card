@@ -103,7 +103,7 @@ export async function POST(request: Request) {
       const [order] = await tx.insert(orders).values({
         orderNumber,
         customerId: customer.id,
-        status: input.paymentMethod === "CREDIT" ? "CONFIRMED" : "PENDING",
+        status: "PENDING",
         subtotal: basket.summary.priceBeforeTax,
         taxableSubtotal: basket.summary.priceBeforeTax,
         tax: basket.summary.tax,
