@@ -4,6 +4,7 @@ import { CheckCircle2, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { citiesForState, commerceStates, indiaStateName } from "@/lib/india-states";
+import { showToast } from "@/components/toast-provider";
 
 type ProfilePayload = {
   user: { name: string; email: string; phoneNumber?: string | null };
@@ -80,9 +81,12 @@ export function CustomerProfileForm() {
       if (!response.ok || !payload.success) throw new Error(payload.error?.message ?? "Profile could not be saved.");
       setData((current) => current ? { ...current, customer: { ...current.customer!, ...form, state: indiaStateName(form.stateCode), gstNumber: form.gstNumber || null }, profileComplete: payload.data.profileComplete } : current);
       setMessage("Profile saved successfully.");
+      showToast.success("Profile saved successfully!", "Your customer details and delivery address have been updated.");
       setTimeout(() => setMessage(""), 4000);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Profile could not be saved.");
+      const msg = caught instanceof Error ? caught.message : "Profile could not be saved.";
+      setError(msg);
+      showToast.error("Save failed", msg);
     } finally {
       setSaving(false);
     }

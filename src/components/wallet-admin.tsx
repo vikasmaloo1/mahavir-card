@@ -4,6 +4,8 @@ import { Check, RefreshCw, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { adminRequest, asItems, formattedAmount, formattedDate } from "@/lib/admin-client";
+import { HorizontalScrollContainer } from "@/components/horizontal-scroll-container";
+import { showToast } from "@/components/toast-provider";
 
 type WalletRow = {
   transaction: { id: string; status: string; amount: string; balanceAfter: string | null; reference: string | null; notes: string | null; createdAt: string };
@@ -28,15 +30,78 @@ export function WalletAdmin() {
     const notes = window.prompt(decision === "APPROVED" ? "Optional approval note" : "Reason for rejection");
     if (notes === null) return;
     setSaving(id); setError("");
-    try { await adminRequest(`/api/admin/wallet/${id}`, { method: "PATCH", body: JSON.stringify({ decision, notes: notes || null }) }); await load(); }
-    catch (caught) { setError(caught instanceof Error ? caught.message : "The request could not be reviewed"); }
-    finally { setSaving(""); }
+    try {
+      await adminRequest(`/api/admin/wallet/${id}`, { method: "PATCH", body: JSON.stringify({ decision, notes: notes || null }) });
+      showToast.success(`Request ${decision === "APPROVED" ? "Approved" : "Rejected"}`, `The top-up request has been ${decision.toLowerCase()}.`);
+      await load();
+    } catch (caught) {
+      const msg = caught instanceof Error ? caught.message : "The request could not be reviewed";
+      setError(msg);
+      showToast.error("Action failed", msg);
+    } finally {
+      setSaving("");
+    }
   }
 
   return <div>
     <header className="flex flex-col justify-between gap-4 border-b border-[#d7dce5] pb-6 sm:flex-row sm:items-end"><div><p className="text-xs font-bold uppercase text-[#2457b8]">Customer accounts</p><h1 className="mt-2 text-2xl font-bold sm:text-3xl">Balance requests</h1><p className="mt-2 text-sm text-[#607089]">Approved top-ups update the same available balance used at checkout.</p></div><button type="button" onClick={() => void load()} disabled={loading} className="inline-flex items-center justify-center gap-2 border border-[#c9d2df] bg-white px-4 py-2.5 text-sm font-bold"><RefreshCw size={16} className={loading ? "animate-spin" : ""} />Refresh</button></header>
     <div className="mt-5 flex flex-wrap gap-2">{["PENDING", "APPROVED", "REJECTED", ""].map((status) => <button key={status || "ALL"} type="button" onClick={() => setFilter(status)} className={`border px-3 py-2 text-sm font-semibold ${filter === status ? "border-[#2457b8] bg-[#eaf1ff] text-[#1f51ad]" : "border-[#c9d2df] bg-white text-[#52647e]"}`}>{status || "ALL"}</button>)}</div>
     {error ? <p role="alert" className="mt-5 border border-[#efc4be] bg-[#fff6f4] p-3 text-sm font-semibold text-[#a9362c]">{error}</p> : null}
-    <section className="mt-5 overflow-x-auto border border-[#d7dce5] bg-white"><table className="w-full min-w-[820px] text-left text-sm"><thead className="bg-[#eef3fb] text-xs uppercase text-[#52647e]"><tr><th className="px-4 py-3">Customer</th><th className="px-4 py-3">Request</th><th className="px-4 py-3">Available balance</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Actions</th></tr></thead><tbody className="divide-y divide-[#e4e8ef]">{rows.map(({ transaction, customer }) => <tr key={transaction.id}><td className="px-4 py-4"><strong className="block">{customer.contactName}</strong><span className="text-xs text-[#607089]">{customer.companyName} · {customer.email}</span></td><td className="px-4 py-4"><strong>{formattedAmount(transaction.amount)}</strong><span className="mt-1 block text-xs text-[#607089]">{transaction.reference} · {formattedDate(transaction.createdAt)}</span></td><td className="px-4 py-4 font-semibold">{formattedAmount(transaction.balanceAfter ?? customer.availableCredit)}</td><td className="px-4 py-4"><span className="font-semibold">{transaction.status}</span>{transaction.notes ? <span className="mt-1 block max-w-xs text-xs text-[#607089]">{transaction.notes}</span> : null}</td><td className="px-4 py-4"><div className="flex justify-end gap-2">{transaction.status === "PENDING" ? <><button type="button" disabled={saving === transaction.id} onClick={() => void decide(transaction.id, "APPROVED")} className="inline-flex items-center gap-1.5 bg-[#2457b8] px-3 py-2 font-bold text-white disabled:opacity-50"><Check size={15} />Approve</button><button type="button" disabled={saving === transaction.id} onClick={() => void decide(transaction.id, "REJECTED")} className="inline-flex items-center gap-1.5 border border-[#efc4be] px-3 py-2 font-bold text-[#a9362c] disabled:opacity-50"><X size={15} />Reject</button></> : <span className="text-xs text-[#607089]">Reviewed</span>}</div></td></tr>)}{!loading && !rows.length ? <tr><td colSpan={5} className="px-4 py-10 text-center text-[#607089]">No balance requests in this view.</td></tr> : null}</tbody></table>{loading ? <p className="p-6 text-sm text-[#607089]">Loading balance requests...</p> : null}</section>
+    <div className="mt-5">
+      <HorizontalScrollContainer>
+        <div className="border border-[#d7dce5] bg-white">
+          <table className="w-full min-w-[820px] text-left text-sm">
+            <thead className="bg-[#eef3fb] text-xs uppercase text-[#52647e]">
+              <tr>
+                <th className="px-4 py-3">Customer</th>
+                <th className="px-4 py-3">Request</th>
+                <th className="px-4 py-3">Available balance</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#e4e8ef]">
+              {rows.map(({ transaction, customer }) => (
+                <tr key={transaction.id} className="hover:bg-[#fafbfe] transition-colors">
+                  <td className="px-4 py-4">
+                    <strong className="block">{customer.contactName}</strong>
+                    <span className="text-xs text-[#607089]">{customer.companyName} · {customer.email}</span>
+                  </td>
+                  <td className="px-4 py-4">
+                    <strong>{formattedAmount(transaction.amount)}</strong>
+                    <span className="mt-1 block text-xs text-[#607089]">{transaction.reference} · {formattedDate(transaction.createdAt)}</span>
+                  </td>
+                  <td className="px-4 py-4 font-semibold">{formattedAmount(transaction.balanceAfter ?? customer.availableCredit)}</td>
+                  <td className="px-4 py-4">
+                    <span className="font-semibold">{transaction.status}</span>
+                    {transaction.notes ? <span className="mt-1 block max-w-xs text-xs text-[#607089]">{transaction.notes}</span> : null}
+                  </td>
+                  <td className="px-4 py-4">
+                    <div className="flex justify-end gap-2">
+                      {transaction.status === "PENDING" ? (
+                        <>
+                          <button type="button" disabled={saving === transaction.id} onClick={() => void decide(transaction.id, "APPROVED")} className="inline-flex items-center gap-1.5 bg-[#2457b8] px-3 py-2 font-bold text-white disabled:opacity-50">
+                            <Check size={15} />Approve
+                          </button>
+                          <button type="button" disabled={saving === transaction.id} onClick={() => void decide(transaction.id, "REJECTED")} className="inline-flex items-center gap-1.5 border border-[#efc4be] px-3 py-2 font-bold text-[#a9362c] disabled:opacity-50">
+                            <X size={15} />Reject
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-xs text-[#607089]">Reviewed</span>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!loading && !rows.length ? (
+                <tr><td colSpan={5} className="px-4 py-10 text-center text-[#607089]">No balance requests in this view.</td></tr>
+              ) : null}
+            </tbody>
+          </table>
+          {loading ? <p className="p-6 text-sm text-[#607089]">Loading balance requests...</p> : null}
+        </div>
+      </HorizontalScrollContainer>
+    </div>
   </div>;
 }

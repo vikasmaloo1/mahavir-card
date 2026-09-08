@@ -13,6 +13,7 @@ import { commerceStates } from "@/lib/india-states";
 import { isSpecialQuantityProduct, normalizeProductQuantity, stepProductQuantity } from "@/lib/quantity-helper";
 import { RequirementQuoteModal, type RequirementContext } from "@/components/requirement-quote-modal";
 import { cachedFetchJson } from "@/lib/client-fetch-cache";
+import { showToast } from "@/components/toast-provider";
 
 type PricingRule = { id: string; name: string; conditions: Record<string, unknown>; priceFormula: Record<string, unknown> };
 type Addon = { addonId: string; pricingRuleId: string | null; name: string; description: string | null; price: string; isDefault: boolean };
@@ -60,6 +61,8 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
   const [status, setStatus] = useState<"idle" | "quote" | "cart">("idle");
   const [basketError, setBasketError] = useState("");
   const [basketSignInRequired, setBasketSignInRequired] = useState(false);
+  const [justAdded, setJustAdded] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
   // undefined = the profile lookup hasn't settled yet; null = settled, no saved state on file.
   const [profileStateCode, setProfileStateCode] = useState<string | null | undefined>(undefined);
   // Prefilled from a "Use this template" link (see design-templates-gallery.tsx) — a
@@ -212,18 +215,48 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
     return { ...values, pricingRuleId: selectedRuleId, addonIds, ...(delivery ? { delivery } : {}), ...(Object.keys(artworkIds).length ? { artworkIds } : {}), ...(artworkIds.MAIN ? { artworkId: artworkIds.MAIN } : {}) };
   }
   async function add(kind: "PURCHASE" | "QUOTE", checkout = false) {
-    const payloadBody = { productId: product.id, quantity, jobName: jobName || undefined, configuration: configuration() };
-    const editing = Boolean(editItemId);
-    const response = await fetch(editing ? `/api/cart/items/${editItemId}` : "/api/cart/items", { method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editing ? payloadBody : { ...payloadBody, kind }) });
-    const payload = await response.json();
-    if (!response.ok) {
-      setBasketSignInRequired(response.status === 401);
-      setBasketError(response.status === 401 ? "Your session has expired. Sign in to save this item." : payload.error?.message ?? "Could not save this item.");
-      return;
+    setIsAdding(true);
+    try {
+      const payloadBody = { productId: product.id, quantity, jobName: jobName || undefined, configuration: configuration() };
+      const editing = Boolean(editItemId);
+      const response = await fetch(editing ? `/api/cart/items/${editItemId}` : "/api/cart/items", { method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editing ? payloadBody : { ...payloadBody, kind }) });
+      const payload = await response.json();
+      if (!response.ok) {
+        setBasketSignInRequired(response.status === 401);
+        const errMsg = response.status === 401 ? "Your session has expired. Sign in to save this item." : payload.error?.message ?? "Could not save this item.";
+        setBasketError(errMsg);
+        showToast.error("Could not add to basket", errMsg);
+        return;
+      }
+      setStatus(kind === "QUOTE" ? "quote" : "cart");
+      if (editing) {
+        showToast.success("Basket item updated!", `${product.name} configuration saved.`);
+        router.push(kind === "QUOTE" ? "/quote" : "/cart");
+        return;
+      }
+      if (checkout) {
+        router.push("/checkout");
+        return;
+      }
+      setJustAdded(true);
+      setTimeout(() => setJustAdded(false), 2500);
+      showToast.success(
+        kind === "QUOTE" ? "Added to quote request!" : "Added to basket successfully!",
+        `${product.name} (${Number(quantity).toLocaleString("en-IN")} pcs) added to your ${kind === "QUOTE" ? "quote request" : "basket"}.`,
+        {
+          action: {
+            label: kind === "QUOTE" ? "View quotes →" : "View basket →",
+            href: kind === "QUOTE" ? "/quote" : "/cart",
+          },
+        }
+      );
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : "Failed to add item.";
+      setBasketError(errMsg);
+      showToast.error("Error", errMsg);
+    } finally {
+      setIsAdding(false);
     }
-    setStatus(kind === "QUOTE" ? "quote" : "cart");
-    if (editing) { router.push(kind === "QUOTE" ? "/quote" : "/cart"); return; }
-    if (checkout) router.push("/checkout");
   }
 
   return (
@@ -481,8 +514,31 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
             <button type="button" onClick={() => void add(editKind)} disabled={editKind === "PURCHASE" && !directReady} className="flex w-full items-center justify-center gap-2 rounded-full bg-[#2457b8] px-4 py-2.5 sm:py-3 text-sm font-bold text-white shadow-sm hover:bg-[#1a4494] transition-colors disabled:cursor-not-allowed disabled:bg-[#9bb6e8]"><Check size={15} />Update {editKind === "QUOTE" ? "quote" : "purchase"} basket</button>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 pt-1">
-              <button type="button" onClick={() => void add("PURCHASE", true)} disabled={!directReady} className="flex items-center justify-center gap-1.5 rounded-full bg-[#2457b8] px-4 py-2.5 sm:py-3 text-sm font-bold text-white shadow-sm hover:bg-[#1a4494] transition-colors disabled:cursor-not-allowed disabled:bg-[#9bb6e8]">Buy now <ArrowRight size={15} /></button>
-              <button type="button" onClick={() => void add("PURCHASE")} disabled={!directReady} className="flex items-center justify-center gap-1.5 rounded-full border border-[#2457b8] bg-white px-4 py-2.5 sm:py-3 text-sm font-bold text-[#2457b8] hover:bg-[#f0f4fc] transition-colors disabled:cursor-not-allowed disabled:text-[#9bb6e8] disabled:border-[#d0dbeb]"><ShoppingBag size={15} />Add to basket</button>
+              <button type="button" onClick={() => void add("PURCHASE", true)} disabled={!directReady || isAdding} className="flex items-center justify-center gap-1.5 rounded-full bg-[#2457b8] px-4 py-2.5 sm:py-3 text-sm font-bold text-white shadow-sm hover:bg-[#1a4494] transition-colors disabled:cursor-not-allowed disabled:bg-[#9bb6e8]">Buy now <ArrowRight size={15} /></button>
+              <button
+                type="button"
+                onClick={() => void add("PURCHASE")}
+                disabled={!directReady || isAdding}
+                className={`flex items-center justify-center gap-1.5 rounded-full border px-4 py-2.5 sm:py-3 text-sm font-bold transition-all disabled:cursor-not-allowed ${
+                  justAdded
+                    ? "border-emerald-600 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-500/20"
+                    : "border-[#2457b8] bg-white text-[#2457b8] hover:bg-[#f0f4fc] disabled:text-[#9bb6e8] disabled:border-[#d0dbeb]"
+                }`}
+              >
+                {justAdded ? (
+                  <>
+                    <Check size={16} className="text-emerald-600" />
+                    <span>Added to basket!</span>
+                  </>
+                ) : isAdding ? (
+                  <span>Adding...</span>
+                ) : (
+                  <>
+                    <ShoppingBag size={15} />
+                    <span>Add to basket</span>
+                  </>
+                )}
+              </button>
             </div>
           )}
           {status === "cart" ? <a href="/cart" className="block text-center text-xs sm:text-sm font-bold text-[#2457b8] hover:underline">View purchase basket &rarr;</a> : null}
@@ -554,7 +610,7 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
                 <button
                   type="button"
                   onClick={() => void add("PURCHASE", true)}
-                  disabled={!directReady}
+                  disabled={!directReady || isAdding}
                   className="flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-[#9bb6e8]"
                 >
                   Buy now <ArrowRight size={15} />
@@ -562,11 +618,15 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
                 <button
                   type="button"
                   onClick={() => void add("PURCHASE")}
-                  disabled={!directReady}
-                  className="grid size-10 place-items-center rounded-full border border-[var(--mc-accent)] bg-white text-[var(--mc-accent)] disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={!directReady || isAdding}
+                  className={`grid size-10 place-items-center rounded-full border transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
+                    justAdded
+                      ? "border-emerald-600 bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500/30"
+                      : "border-[var(--mc-accent)] bg-white text-[var(--mc-accent)]"
+                  }`}
                   aria-label="Add to basket"
                 >
-                  <ShoppingBag size={16} />
+                  {justAdded ? <Check size={18} className="text-emerald-700" /> : <ShoppingBag size={16} />}
                 </button>
               </div>
             </div>

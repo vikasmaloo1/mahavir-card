@@ -58,7 +58,7 @@ export function CustomerRecordDetail({ kind, id, upiVpa }: { kind: "order" | "qu
   }
 
   async function cancelOrder() {
-    const confirmed = window.confirm("Are you sure you want to cancel this order? Any payment made will be immediately refunded to your wallet.");
+    const confirmed = window.confirm("Are you sure you want to cancel this order? If payment was made, any wallet refund/credit will be reviewed and processed by our team.");
     if (!confirmed) return;
     setCancelling(true);
     setCancelError("");

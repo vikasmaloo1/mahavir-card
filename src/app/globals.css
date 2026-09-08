@@ -386,3 +386,35 @@ textarea:focus-visible {
     transform: none !important;
   }
 }
+
+/* Enhanced visible horizontal scrollers for data tables and listings */
+.overflow-x-auto,
+.mc-horizontal-scroller {
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #f1f5f9;
+  -webkit-overflow-scrolling: touch;
+}
+
+.overflow-x-auto::-webkit-scrollbar,
+.mc-horizontal-scroller::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track,
+.mc-horizontal-scroller::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb,
+.mc-horizontal-scroller::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover,
+.mc-horizontal-scroller::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+

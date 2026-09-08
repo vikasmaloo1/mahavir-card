@@ -10,6 +10,7 @@ import { BackButton } from "@/components/back-button";
 import { cachedFetchJson } from "@/lib/client-fetch-cache";
 import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import { RequirementQuoteModal, type RequirementContext } from "@/components/requirement-quote-modal";
+import { showToast } from "@/components/toast-provider";
 
 type QuoteBasketItem = {
   id: string;
@@ -182,10 +183,13 @@ export function QuoteFlow() {
         throw new Error(payload?.error?.message ?? "Could not add product to quote");
       }
       setAddedAnimationId(product.id);
+      showToast.success("Added to quote request!", `${product.name} was added to your quote request.`);
       setTimeout(() => setAddedAnimationId(null), 1800);
       await loadBasket();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not add product to quote");
+      const msg = err instanceof Error ? err.message : "Could not add product to quote";
+      setError(msg);
+      showToast.error("Error", msg);
     } finally {
       setBusyId("");
     }
@@ -204,8 +208,14 @@ export function QuoteFlow() {
         body: JSON.stringify({ quantity: nextQty }),
       });
       const payload = await response.json().catch(() => null);
-      if (!response.ok) setError(payload?.error?.message ?? "Could not update this quote item");
-      else await loadBasket();
+      if (!response.ok) {
+        const msg = payload?.error?.message ?? "Could not update this quote item";
+        setError(msg);
+        showToast.error("Update failed", msg);
+      } else {
+        showToast.success("Quantity updated", `Updated to ${nextQty.toLocaleString("en-IN")}.`);
+        await loadBasket();
+      }
     } catch {
       setError("Failed to update quantity");
     } finally {
@@ -216,8 +226,12 @@ export function QuoteFlow() {
   async function removeBasketItem(id: string) {
     setBusyId(id);
     const response = await fetch(`/api/cart/items/${id}`, { method: "DELETE" });
-    if (response.ok) await loadBasket();
-    else setError("Could not remove this item");
+    if (response.ok) {
+      showToast.info("Item removed", "Item removed from quote request.");
+      await loadBasket();
+    } else {
+      setError("Could not remove this item");
+    }
     setBusyId("");
   }
 

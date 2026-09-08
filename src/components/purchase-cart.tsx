@@ -9,6 +9,7 @@ import { ProductImage } from "@/components/product-image";
 import { formatInr, formatRoundOff } from "@/lib/formatting";
 import { stepProductQuantity } from "@/lib/quantity-helper";
 import { useAutoRefresh } from "@/lib/use-auto-refresh";
+import { showToast } from "@/components/toast-provider";
 
 type Item = {
   id: string;
@@ -59,22 +60,40 @@ export function PurchaseCart() {
     setBusyId(item.id); setError("");
     const response = await fetch(`/api/cart/items/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quantity: nextQty }) });
     const payload = await response.json().catch(() => null);
-    if (!response.ok) setError(payload?.error?.message ?? "Could not update this item");
-    else await load();
+    if (!response.ok) {
+      const msg = payload?.error?.message ?? "Could not update this item";
+      setError(msg);
+      showToast.error("Update failed", msg);
+    } else {
+      showToast.success("Quantity updated", `${item.product.name} quantity changed to ${nextQty.toLocaleString("en-IN")}.`);
+      await load();
+    }
     setBusyId("");
   }
 
   async function remove(id: string) {
     setBusyId(id);
     const response = await fetch(`/api/cart/items/${id}`, { method: "DELETE" });
-    if (response.ok) await load(); else setError("Could not remove this item");
+    if (response.ok) {
+      showToast.info("Item removed", "The item was removed from your basket.");
+      await load();
+    } else {
+      setError("Could not remove this item");
+      showToast.error("Error", "Could not remove this item.");
+    }
     setBusyId("");
   }
 
   async function clear() {
     setBusyId("all");
     const response = await fetch("/api/cart?kind=PURCHASE", { method: "DELETE" });
-    if (response.ok) await load(); else setError("Could not clear your basket");
+    if (response.ok) {
+      showToast.info("Basket cleared", "All items have been removed from your basket.");
+      await load();
+    } else {
+      setError("Could not clear your basket");
+      showToast.error("Error", "Could not clear your basket.");
+    }
     setBusyId("");
   }
 

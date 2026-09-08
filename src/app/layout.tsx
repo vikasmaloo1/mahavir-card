@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { GuidedAssistant } from "@/components/guided-assistant";
+import { ToastContainer } from "@/components/toast-provider";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://mahavircard.in"),
@@ -74,6 +75,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         {children}
         <GuidedAssistant />
+        <ToastContainer />
       </body>
     </html>
   );

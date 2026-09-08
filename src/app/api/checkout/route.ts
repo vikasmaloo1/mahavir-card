@@ -74,17 +74,33 @@ export async function POST(request: Request) {
         const eligibility = evaluateCreditEligibility(customer, total);
         if (!eligibility.eligible) throw new CreditCheckoutError(eligibility.message);
         balanceBefore = customer.availableCredit;
+
+        const whereCondition = customer.customerType === "B2C"
+          ? and(
+              eq(customers.id, customer.id),
+              eq(customers.customerType, "B2C"),
+              eq(customers.status, "ACTIVE"),
+              sql`CAST(${customers.availableCredit} AS NUMERIC) >= ${total}`,
+            )
+          : and(
+              eq(customers.id, customer.id),
+              eq(customers.customerType, "B2B"),
+              eq(customers.creditEnabled, true),
+              eq(customers.status, "ACTIVE"),
+            );
+
         const [reserved] = await tx.update(customers).set({
           availableCredit: sql`${customers.availableCredit} - ${total}`,
           walletBalance: sql`${customers.walletBalance} - ${total}`,
           updatedAt: new Date(),
-        }).where(and(
-          eq(customers.id, customer.id),
-          eq(customers.customerType, "B2B"),
-          eq(customers.creditEnabled, true),
-          eq(customers.status, "ACTIVE"),
-        )).returning({ availableCredit: customers.availableCredit });
-        if (!reserved) throw new CreditCheckoutError("Account status changed. Refresh checkout and try again.");
+        }).where(whereCondition).returning({ availableCredit: customers.availableCredit });
+        if (!reserved) {
+          throw new CreditCheckoutError(
+            customer.customerType === "B2C"
+              ? "Insufficient wallet balance to place this order. Please top up your wallet or select another payment method."
+              : "Account status changed. Refresh checkout and try again."
+          );
+        }
         customer = { ...customer, availableCredit: reserved.availableCredit };
       }
 
@@ -128,7 +144,7 @@ export async function POST(request: Request) {
       const orderEventNote = input.paymentMethod === "UPI_QR"
         ? "Order placed with UPI QR proof submitted (awaiting verification)"
         : input.paymentMethod === "CREDIT"
-        ? "Order placed using wallet credit balance"
+        ? (customer.customerType === "B2C" ? "Order placed using wallet balance" : "Order placed using wallet credit balance")
         : "Order placed by customer";
       await tx.insert(orderStatusEvents).values({ orderId: order.id, status: order.status, notes: orderEventNote, changedBy: session.user.id });
 
@@ -180,13 +196,15 @@ export async function POST(request: Request) {
       if (input.paymentMethod === "CREDIT") {
         await tx.insert(walletTransactions).values({
           customerId: customer.id,
-          transactionType: "CREDIT_ORDER",
+          transactionType: customer.customerType === "B2C" ? "WALLET_ORDER" : "CREDIT_ORDER",
           status: "APPROVED",
           amount: total,
           balanceBefore,
           balanceAfter: customer.availableCredit,
           reference: order.orderNumber,
-          notes: `Credit reserved for order ${order.orderNumber}`,
+          notes: customer.customerType === "B2C"
+            ? `Wallet payment for order ${order.orderNumber}`
+            : `Credit reserved for order ${order.orderNumber}`,
           createdBy: session.user.id,
         });
       }

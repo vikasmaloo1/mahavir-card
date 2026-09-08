@@ -6,6 +6,7 @@ import { Check, ChevronLeft, ImagePlus, Plus, RefreshCw, Trash2, UploadCloud } f
 import { FormEvent, useEffect, useState } from "react";
 
 import { adminRequest, asItems } from "@/lib/admin-client";
+import { HorizontalScrollContainer } from "@/components/horizontal-scroll-container";
 
 type Row = Record<string, unknown>;
 
@@ -41,7 +42,7 @@ export function DesignTemplateList() {
     {error ? <p role="alert" className="mt-5 border border-[#efc4be] bg-[#fff6f4] p-3 text-sm font-semibold text-[#a9362c]">{error}</p> : null}
     {loading ? <div className="mt-6 border border-[#d7dce5] bg-white p-6 text-sm text-[#607089]">Loading templates...</div> : null}
     {!loading && !items.length ? <div className="mt-6 border border-dashed border-[#c9d2df] bg-white p-8 text-center"><p className="font-bold">No templates yet.</p><p className="mt-2 text-sm text-[#607089]">Add a licensed template to make it available on the customer-facing gallery.</p></div> : null}
-    {!loading && items.length ? <div className="mt-6 overflow-x-auto border border-[#d7dce5] bg-white"><table className="min-w-full text-left text-sm"><thead className="border-b border-[#d7dce5] bg-[#f7f9fc]"><tr>{["Template", "License source", "Active", "Actions"].map((label) => <th key={label} className="px-4 py-3 text-xs font-bold uppercase tracking-[0.1em] text-[#52647e]">{label}</th>)}</tr></thead><tbody>{items.map((item) => <tr key={text(item.id)} className="border-b border-[#e8ecf2] last:border-0"><td className="px-4 py-3"><p className="font-bold text-[#162237]">{text(item.title)}</p></td><td className="px-4 py-3 text-[#52647e]">{text(item.licenseSource)}</td><td className="px-4 py-3">{bool(item.isActive) ? <span className="font-semibold text-[#1c7a3a]">Active</span> : <span className="font-semibold text-[#8a99ad]">Hidden</span>}</td><td className="px-4 py-3"><Link href={`/admin/templates/${text(item.id)}`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold text-[#2457b8]">Manage</Link></td></tr>)}</tbody></table></div> : null}
+    {!loading && items.length ? <div className="mt-6 border border-[#d7dce5] bg-white"><HorizontalScrollContainer><table className="min-w-full text-left text-sm"><thead className="border-b border-[#d7dce5] bg-[#f7f9fc]"><tr>{["Template", "License source", "Active", "Actions"].map((label) => <th key={label} className="px-4 py-3 text-xs font-bold uppercase tracking-[0.1em] text-[#52647e]">{label}</th>)}</tr></thead><tbody>{items.map((item) => <tr key={text(item.id)} className="border-b border-[#e8ecf2] last:border-0"><td className="px-4 py-3"><p className="font-bold text-[#162237]">{text(item.title)}</p></td><td className="px-4 py-3 text-[#52647e]">{text(item.licenseSource)}</td><td className="px-4 py-3">{bool(item.isActive) ? <span className="font-semibold text-[#1c7a3a]">Active</span> : <span className="font-semibold text-[#8a99ad]">Hidden</span>}</td><td className="px-4 py-3"><Link href={`/admin/templates/${text(item.id)}`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold text-[#2457b8]">Manage</Link></td></tr>)}</tbody></table></HorizontalScrollContainer></div> : null}
   </div>;
 }
 

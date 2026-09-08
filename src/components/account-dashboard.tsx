@@ -8,6 +8,8 @@ import { useCallback, useEffect, useState } from "react";
 import { formatInr } from "@/lib/formatting";
 import { cachedFetchJson } from "@/lib/client-fetch-cache";
 import { useAutoRefresh } from "@/lib/use-auto-refresh";
+import { HorizontalScrollContainer } from "@/components/horizontal-scroll-container";
+import { showToast } from "@/components/toast-provider";
 
 type SavedJob = { id: string; name: string; productId: string; productName: string; productSlug: string; quantity: number };
 
@@ -89,25 +91,31 @@ export function AccountDashboard() {
       const response = await fetch(`/api/orders/${orderId}/reorder`, { method: "POST" });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "This order could not be reordered");
+      showToast.success("Reordered successfully!", "Items added to your basket.");
       router.push("/cart");
     } catch (caught) {
-      setReorderError(caught instanceof Error ? caught.message : "This order could not be reordered");
+      const msg = caught instanceof Error ? caught.message : "This order could not be reordered";
+      setReorderError(msg);
+      showToast.error("Reorder failed", msg);
       setReorderingId(null);
     }
   }
 
   async function cancelOrder(orderId: string, orderNumber: string) {
-    if (!window.confirm(`Are you sure you want to cancel order ${orderNumber}? If already paid, the full amount will be credited back to your wallet balance.`)) return;
+    if (!window.confirm(`Are you sure you want to cancel order ${orderNumber}? If payment was made, any wallet refund/credit will be reviewed and processed by our team.`)) return;
     setCancellingId(orderId);
     setReorderError("");
     try {
       const response = await fetch(`/api/orders/${orderId}/cancel`, { method: "POST" });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "This order could not be cancelled");
-      window.alert(payload.data?.message || "Order cancelled successfully. If paid, refund was credited to your wallet.");
+      showToast.info("Order cancelled", payload.data?.message || "Order cancelled successfully. Our team will review and credit your wallet if applicable.");
+      window.alert(payload.data?.message || "Order cancelled successfully. Our team will review and credit your wallet if applicable.");
       await load();
     } catch (caught) {
-      setReorderError(caught instanceof Error ? caught.message : "This order could not be cancelled");
+      const msg = caught instanceof Error ? caught.message : "This order could not be cancelled";
+      setReorderError(msg);
+      showToast.error("Cancellation failed", msg);
     } finally {
       setCancellingId(null);
     }
@@ -197,63 +205,71 @@ export function AccountDashboard() {
         <section id="orders" className="scroll-mt-36 rounded-xl border border-[var(--mc-line)] bg-white p-5 sm:p-6 shadow-sm">
           <h2 className="font-bold text-[var(--mc-ink)]">Orders</h2>
           {data.orders.length ? (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {ORDER_BUCKETS.map((bucket) => {
-                const count = bucket.statuses ? data.orders.filter((order) => bucket.statuses!.includes(order.status)).length : data.orders.length;
-                if (bucket.id !== "ALL" && !count) return null;
-                return (
-                  <button
-                    key={bucket.id}
-                    type="button"
-                    onClick={() => setOrderFilter(bucket.id)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${orderFilter === bucket.id ? "bg-[var(--mc-ink)] text-white" : "border border-[var(--mc-line)] bg-white text-[var(--mc-muted)] hover:text-[var(--mc-ink)]"}`}
-                  >
-                    {bucket.label} ({count})
-                  </button>
-                );
-              })}
-            </div>
+            <HorizontalScrollContainer showHint={false} scrollStep={240} className="mt-3">
+              <div className="flex items-center gap-1.5 pb-1">
+                {ORDER_BUCKETS.map((bucket) => {
+                  const count = bucket.statuses ? data.orders.filter((order) => bucket.statuses!.includes(order.status)).length : data.orders.length;
+                  if (bucket.id !== "ALL" && !count) return null;
+                  return (
+                    <button
+                      key={bucket.id}
+                      type="button"
+                      onClick={() => setOrderFilter(bucket.id)}
+                      className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${orderFilter === bucket.id ? "bg-[var(--mc-ink)] text-white" : "border border-[var(--mc-line)] bg-white text-[var(--mc-muted)] hover:text-[var(--mc-ink)]"}`}
+                    >
+                      {bucket.label} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            </HorizontalScrollContainer>
           ) : null}
           {reorderError ? <p className="mt-3 rounded-lg border border-[#efb7b7] bg-[#fff4f4] p-3 text-xs font-semibold text-[#9b2525]">{reorderError}</p> : null}
           <div className="mt-4 space-y-3">
             {(() => {
               const activeBucket = ORDER_BUCKETS.find((bucket) => bucket.id === orderFilter);
               const filteredOrders = activeBucket?.statuses ? data.orders.filter((order) => activeBucket.statuses!.includes(order.status)) : data.orders;
-              return filteredOrders.length ? filteredOrders.map((item) => (
-              <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--mc-line)] pt-3 text-sm">
-                <Link href={`/account/orders/${item.id}`} className="min-w-0 flex-1 hover:text-[var(--mc-accent)] transition-colors">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <strong>{item.orderNumber}</strong>
-                    <OrderStatusBadge status={item.status} />
+              return filteredOrders.length ? (
+                <HorizontalScrollContainer showHint={false} scrollStep={300}>
+                  <div className="min-w-[560px] sm:min-w-0 space-y-3">
+                    {filteredOrders.map((item) => (
+                      <div key={item.id} className="flex flex-nowrap items-center justify-between gap-3 border-t border-[var(--mc-line)] pt-3 text-sm">
+                        <Link href={`/account/orders/${item.id}`} className="min-w-0 flex-1 hover:text-[var(--mc-accent)] transition-colors">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <strong>{item.orderNumber}</strong>
+                            <OrderStatusBadge status={item.status} />
+                          </div>
+                          <small className="mt-1 block text-[var(--mc-muted)]">{date(item.createdAt)}</small>
+                        </Link>
+                        <strong className="shrink-0">{formatInr(item.total)}</strong>
+                        <Link href={`/account/orders/${item.id}#documents`} className="hidden shrink-0 items-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors sm:inline-flex">
+                          <FileText size={13} />
+                          Invoice
+                        </Link>
+                        {(item.status === "PENDING" || item.status === "CONFIRMED") ? (
+                          <button
+                            type="button"
+                            disabled={cancellingId === item.id}
+                            onClick={() => void cancelOrder(item.id, item.orderNumber)}
+                            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-red-200 bg-red-50/70 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
+                          >
+                            {cancellingId === item.id ? "Cancelling..." : "Cancel"}
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          disabled={reorderingId === item.id}
+                          onClick={() => void reorder(item.id)}
+                          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-accent)] hover:bg-[var(--mc-surface)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <ShoppingBag size={13} />
+                          {reorderingId === item.id ? "Adding..." : "Reorder"}
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                  <small className="mt-1 block text-[var(--mc-muted)]">{date(item.createdAt)}</small>
-                </Link>
-                <strong className="shrink-0">{formatInr(item.total)}</strong>
-                <Link href={`/account/orders/${item.id}#documents`} className="hidden shrink-0 items-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors sm:inline-flex">
-                  <FileText size={13} />
-                  Invoice
-                </Link>
-                {(item.status === "PENDING" || item.status === "CONFIRMED") ? (
-                  <button
-                    type="button"
-                    disabled={cancellingId === item.id}
-                    onClick={() => void cancelOrder(item.id, item.orderNumber)}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-red-200 bg-red-50/70 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
-                  >
-                    {cancellingId === item.id ? "Cancelling..." : "Cancel"}
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  disabled={reorderingId === item.id}
-                  onClick={() => void reorder(item.id)}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-accent)] hover:bg-[var(--mc-surface)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <ShoppingBag size={13} />
-                  {reorderingId === item.id ? "Adding..." : "Reorder"}
-                </button>
-              </div>
-            )) : data.orders.length ? (
+                </HorizontalScrollContainer>
+              ) : data.orders.length ? (
                 <p className="border-t border-dashed border-[var(--mc-line)] pt-5 text-sm text-[var(--mc-muted)]">No orders match this filter.</p>
               ) : (
                 <div className="border-t border-dashed border-[var(--mc-line)] pt-5 text-sm text-[var(--mc-muted)]">

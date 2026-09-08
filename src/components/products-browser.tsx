@@ -11,6 +11,8 @@ import { productFiltersToSearchParams, productListingHref, readProductFilters, t
 import { RequirementQuoteModal, type RequirementContext } from "@/components/requirement-quote-modal";
 import { normalizeProductQuantity, stepProductQuantity } from "@/lib/quantity-helper";
 import { ArtworkUploader, type ArtworkRequirement, type UploadedArtwork } from "@/components/artwork-uploader";
+import { showToast } from "@/components/toast-provider";
+import { HorizontalScrollContainer } from "@/components/horizontal-scroll-container";
 
 type ProductDetail = {
   pricingRules: Array<{ id: string; name: string; conditions: Record<string, unknown> }>;
@@ -423,6 +425,11 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
 
       if (checkout) { router.push("/checkout"); return; }
       setQuickAddedId(item.id);
+      showToast.success(
+        "Added to basket successfully!",
+        `${item.name} added to your basket.`,
+        { action: { label: "View basket →", href: "/cart" } }
+      );
       refreshCartProductIds();
       window.setTimeout(() => setQuickAddedId((current) => (current === item.id ? null : current)), 2500);
     } catch (caught) {
@@ -869,27 +876,29 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
         {orderHistory.length ? (
           <section className="mt-8 border-t border-[var(--mc-line)] pt-6">
             <h2 className="text-sm font-bold uppercase tracking-wide text-[var(--mc-muted)]">Your orders</h2>
-            <div className="mt-3 overflow-x-auto rounded-xl border border-[var(--mc-line)] bg-[var(--mc-paper)]">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--mc-line)] text-xs font-bold uppercase text-[var(--mc-muted)]">
-                    <th className="px-4 py-2.5">Order</th>
-                    <th className="px-4 py-2.5">Date</th>
-                    <th className="px-4 py-2.5">Status</th>
-                    <th className="px-4 py-2.5 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orderHistory.slice((orderHistoryPage - 1) * 10, orderHistoryPage * 10).map((order) => (
-                    <tr key={order.id} className="border-b border-[var(--mc-line)] last:border-b-0 hover:bg-[var(--mc-surface)] transition-colors">
-                      <td className="px-4 py-2.5"><Link href={`/account/orders/${order.id}`} className="font-bold text-[var(--mc-accent)] hover:underline">{order.orderNumber}</Link></td>
-                      <td className="px-4 py-2.5 text-[var(--mc-muted)]">{new Date(order.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                      <td className="px-4 py-2.5 text-[var(--mc-muted)]">{order.status.replaceAll("_", " ")}</td>
-                      <td className="px-4 py-2.5 text-right font-bold text-[var(--mc-ink)]">{formatInr(order.total)}</td>
+            <div className="mt-3 rounded-xl border border-[var(--mc-line)] bg-[var(--mc-paper)] overflow-hidden">
+              <HorizontalScrollContainer>
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--mc-line)] text-xs font-bold uppercase text-[var(--mc-muted)]">
+                      <th className="px-4 py-2.5">Order</th>
+                      <th className="px-4 py-2.5">Date</th>
+                      <th className="px-4 py-2.5">Status</th>
+                      <th className="px-4 py-2.5 text-right">Total</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {orderHistory.slice((orderHistoryPage - 1) * 10, orderHistoryPage * 10).map((order) => (
+                      <tr key={order.id} className="border-b border-[var(--mc-line)] last:border-b-0 hover:bg-[var(--mc-surface)] transition-colors">
+                        <td className="px-4 py-2.5"><Link href={`/account/orders/${order.id}`} className="font-bold text-[var(--mc-accent)] hover:underline">{order.orderNumber}</Link></td>
+                        <td className="px-4 py-2.5 text-[var(--mc-muted)]">{new Date(order.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                        <td className="px-4 py-2.5 text-[var(--mc-muted)]">{order.status.replaceAll("_", " ")}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-[var(--mc-ink)]">{formatInr(order.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </HorizontalScrollContainer>
             </div>
             {orderHistory.length > 10 ? (
               <nav aria-label="Order history pages" className="mt-3 flex items-center justify-between">
@@ -1296,6 +1305,11 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "Could not add this product to your basket");
       if (checkout) { router.push("/checkout"); return; }
+      showToast.success(
+        "Added to basket successfully!",
+        `${item.name} (${quantity.toLocaleString("en-IN")} pcs) added to your basket.`,
+        { action: { label: "View basket →", href: "/cart" } }
+      );
       onAdded();
     } catch (caught) {
       setSubmitError(caught instanceof Error ? caught.message : "Could not add this product to your basket");

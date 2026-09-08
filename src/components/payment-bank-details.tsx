@@ -4,6 +4,7 @@ import { Check, Copy, Loader2, QrCode, Upload, X } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
+import { showToast } from "@/components/toast-provider";
 
 export type BankConfig = {
   beneficiary: string;
@@ -148,6 +149,7 @@ export function PaymentBankDetails({
     if (!navigator.clipboard) return;
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
+    showToast.info("Copied to clipboard", text);
     setTimeout(() => setCopiedKey(null), 2000);
   }
 
@@ -156,12 +158,16 @@ export function PaymentBankDetails({
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setUploadError("Please upload an image file (PNG, JPG, JPEG, WEBP).");
+      const err = "Please upload an image file (PNG, JPG, JPEG, WEBP).";
+      setUploadError(err);
+      showToast.error("Invalid file", err);
       return;
     }
 
     if (file.size > 15 * 1024 * 1024) {
-      setUploadError("Screenshot file must be smaller than 15MB.");
+      const err = "Screenshot file must be smaller than 15MB.";
+      setUploadError(err);
+      showToast.error("File too large", err);
       return;
     }
 
@@ -183,8 +189,11 @@ export function PaymentBankDetails({
       }
 
       onProofUploaded?.(payload.data.imageUrl);
+      showToast.success("Proof uploaded", "Payment screenshot attached successfully.");
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : "Failed to upload screenshot.");
+      const msg = err instanceof Error ? err.message : "Failed to upload screenshot.";
+      setUploadError(msg);
+      showToast.error("Upload failed", msg);
     } finally {
       setUploading(false);
     }

@@ -29,11 +29,25 @@ test("checkout accepts a direct customer-credit order", () => {
   assert.equal(parsed.paymentMethod, "CREDIT");
 });
 
-test("credit eligibility requires an active B2B account with credit enabled (allows zero/insufficient balance)", () => {
+test("credit and wallet eligibility enforces B2B credit terms and B2C prepaid wallet terms", () => {
+  // B2B with credit enabled allows ordering with sufficient balance
   assert.deepEqual(evaluateCreditEligibility({ customerType: "B2B", creditEnabled: true, availableCredit: "1000.00", status: "ACTIVE" }, "750.00"), { eligible: true, availableCredit: 1000 });
-  assert.equal(evaluateCreditEligibility({ customerType: "B2C", creditEnabled: true, availableCredit: "1000.00", status: "ACTIVE" }, "750.00").eligible, false);
-  // B2B with credit enabled allows ordering even with balance less than order total (balance goes negative)
+  // B2B with credit enabled allows ordering even when balance is less than order total (negative balance permitted)
   assert.equal(evaluateCreditEligibility({ customerType: "B2B", creditEnabled: true, availableCredit: "700.00", status: "ACTIVE" }, "750.00").eligible, true);
+  // B2B with credit disabled is rejected
   assert.equal(evaluateCreditEligibility({ customerType: "B2B", creditEnabled: false, availableCredit: "1000.00", status: "ACTIVE" }, "750.00").eligible, false);
-  assert.equal(evaluateCreditEligibility({ customerType: "B2B", creditEnabled: true, availableCredit: "0.00", status: "INACTIVE" }, "750.00").eligible, false);
+  // Inactive B2B account is rejected
+  assert.equal(evaluateCreditEligibility({ customerType: "B2B", creditEnabled: true, availableCredit: "1000.00", status: "INACTIVE" }, "750.00").eligible, false);
+
+  // B2C allows wallet usage when available balance covers order total (prepaid)
+  assert.deepEqual(evaluateCreditEligibility({ customerType: "B2C", creditEnabled: false, availableCredit: "1000.00", status: "ACTIVE" }, "750.00"), { eligible: true, availableCredit: 1000 });
+  // B2C strictly prevents negative balance (no credit allowed)
+  const insufficientB2C = evaluateCreditEligibility({ customerType: "B2C", creditEnabled: false, availableCredit: "500.00", status: "ACTIVE" }, "750.00");
+  assert.equal(insufficientB2C.eligible, false);
+  assert.equal(insufficientB2C.reason, "INSUFFICIENT");
+  const zeroBalanceB2C = evaluateCreditEligibility({ customerType: "B2C", creditEnabled: true, availableCredit: "0.00", status: "ACTIVE" }, "750.00");
+  assert.equal(zeroBalanceB2C.eligible, false);
+  assert.equal(zeroBalanceB2C.reason, "INSUFFICIENT");
+  // Inactive B2C account is rejected
+  assert.equal(evaluateCreditEligibility({ customerType: "B2C", creditEnabled: false, availableCredit: "1000.00", status: "INACTIVE" }, "750.00").eligible, false);
 });

@@ -7,6 +7,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { adminRequest, formattedAmount, formattedDate } from "@/lib/admin-client";
 import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import { mapItemsWithArtworks } from "@/lib/order-artwork-mapping";
+import { HorizontalScrollContainer } from "@/components/horizontal-scroll-container";
 
 type Row = Record<string, unknown>;
 export type DetailSection = "orders" | "quotes" | "customers" | "inquiries" | "payments" | "artworks";
@@ -252,7 +253,7 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
           </span>
         </div>
         {rows(data.walletTransactions).length ? (
-          <div className="mt-4 overflow-x-auto">
+          <HorizontalScrollContainer className="mt-4">
             <table className="min-w-full text-left text-xs">
               <thead className="border-b border-[#e1e6ee] bg-[#f8fafc] text-[#52647e]">
                 <tr>
@@ -289,7 +290,7 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
                 ))}
               </tbody>
             </table>
-          </div>
+          </HorizontalScrollContainer>
         ) : (
           <p className="mt-4 text-sm text-[#607089]">No ledger activity recorded yet.</p>
         )}

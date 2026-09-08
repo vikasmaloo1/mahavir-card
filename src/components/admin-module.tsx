@@ -7,6 +7,8 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { adminRequest, asItems, formattedAmount, formattedDate } from "@/lib/admin-client";
 import { formatInrExact } from "@/lib/formatting";
 import { useAutoRefresh } from "@/lib/use-auto-refresh";
+import { HorizontalScrollContainer } from "@/components/horizontal-scroll-container";
+import { showToast } from "@/components/toast-provider";
 
 type Row = Record<string, unknown>;
 type ModuleKey = "categories" | "addons" | "pricing" | "delivery" | "orders" | "quotes" | "customers" | "inquiries" | "payments" | "artworks" | "notices" | "admins" | "banners" | "terms";
@@ -308,7 +310,7 @@ function AdminOrderStatusSelect({ orderId, initialStatus }: { orderId: string; i
     if (nextStatus === status) return;
 
     if (nextStatus === "CANCELLED") {
-      const confirm = window.confirm("Are you sure you want to cancel this order? Any payment made will be refunded to the customer's wallet.");
+      const confirm = window.confirm("Are you sure you want to cancel this order? Note: Balance will not be automatically refunded. If approved, you can credit the balance manually using the Credit to Balance button in order details.");
       if (!confirm) return;
     }
 
@@ -514,7 +516,57 @@ export function AdminModule({ section }: { section: ModuleKey }) {
 
 function ResourceTable({ section, items, saving, onEdit, onDelete, onConvert, onRemind }: { section: ModuleKey; items: Row[]; saving: boolean; onEdit: (item: Row) => void; onDelete: (item: Row) => void; onConvert: (item: Row) => void; onRemind: (item: Row) => void }) {
   const actionLabel = section === "categories" || section === "delivery" ? "Remove" : section === "customers" || section === "orders" || section === "quotes" || section === "inquiries" || section === "artworks" || section === "payments" ? "Update" : "Deactivate";
-  return <><div className="mt-6 space-y-3 md:hidden">{items.map((item) => <article key={rowId(section, item)} className="border border-[#d7dce5] bg-white p-4"><div className="space-y-2">{columns[section].map((column) => <div key={column.label} className="flex justify-between gap-5"><span className="text-xs font-bold uppercase tracking-[0.08em] text-[#607089]">{column.label}</span><span className="text-right text-sm font-medium text-[#162237]">{column.render ? column.render(item) : column.value(item)}</span></div>)}</div><Actions section={section} item={item} saving={saving} actionLabel={actionLabel} onEdit={onEdit} onDelete={onDelete} onConvert={onConvert} onRemind={onRemind} /></article>)}</div><div className="mt-6 hidden overflow-x-auto border border-[#d7dce5] bg-white md:block"><table className="min-w-full text-left text-sm"><thead className="border-b border-[#d7dce5] bg-[#f7f9fc]"><tr>{columns[section].map((column) => <th key={column.label} className="whitespace-nowrap px-4 py-3 text-xs font-bold uppercase tracking-[0.1em] text-[#52647e]">{column.label}</th>)}<th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.1em] text-[#52647e]">Actions</th></tr></thead><tbody>{items.map((item) => <tr key={rowId(section, item)} className="border-b border-[#e8ecf2] last:border-0">{columns[section].map((column) => <td key={column.label} className="max-w-60 px-4 py-3 align-top text-[#263753]">{column.render ? column.render(item) : column.value(item)}</td>)}<td className="px-4 py-3"><Actions section={section} item={item} saving={saving} actionLabel={actionLabel} onEdit={onEdit} onDelete={onDelete} onConvert={onConvert} onRemind={onRemind} /></td></tr>)}</tbody></table></div></>;
+  return (
+    <>
+      <div className="mt-6 space-y-3 md:hidden">
+        {items.map((item) => (
+          <article key={rowId(section, item)} className="border border-[#d7dce5] bg-white p-4">
+            <div className="space-y-2">
+              {columns[section].map((column) => (
+                <div key={column.label} className="flex justify-between gap-5">
+                  <span className="text-xs font-bold uppercase tracking-[0.08em] text-[#607089]">{column.label}</span>
+                  <span className="text-right text-sm font-medium text-[#162237]">{column.render ? column.render(item) : column.value(item)}</span>
+                </div>
+              ))}
+            </div>
+            <Actions section={section} item={item} saving={saving} actionLabel={actionLabel} onEdit={onEdit} onDelete={onDelete} onConvert={onConvert} onRemind={onRemind} />
+          </article>
+        ))}
+      </div>
+      <div className="mt-6 hidden md:block">
+        <HorizontalScrollContainer>
+          <div className="border border-[#d7dce5] bg-white">
+            <table className="min-w-full text-left text-sm">
+              <thead className="border-b border-[#d7dce5] bg-[#f7f9fc]">
+                <tr>
+                  {columns[section].map((column) => (
+                    <th key={column.label} className="whitespace-nowrap px-4 py-3 text-xs font-bold uppercase tracking-[0.1em] text-[#52647e]">
+                      {column.label}
+                    </th>
+                  ))}
+                  <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.1em] text-[#52647e]">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={rowId(section, item)} className="border-b border-[#e8ecf2] last:border-0 hover:bg-[#fafbfe] transition-colors">
+                    {columns[section].map((column) => (
+                      <td key={column.label} className="max-w-60 px-4 py-3 align-top text-[#263753]">
+                        {column.render ? column.render(item) : column.value(item)}
+                      </td>
+                    ))}
+                    <td className="px-4 py-3">
+                      <Actions section={section} item={item} saving={saving} actionLabel={actionLabel} onEdit={onEdit} onDelete={onDelete} onConvert={onConvert} onRemind={onRemind} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </HorizontalScrollContainer>
+      </div>
+    </>
+  );
 }
 
 function Actions({ section, item, saving, actionLabel, onEdit, onDelete, onConvert, onRemind }: { section: ModuleKey; item: Row; saving: boolean; actionLabel: string; onEdit: (item: Row) => void; onDelete: (item: Row) => void; onConvert: (item: Row) => void; onRemind: (item: Row) => void }) {
