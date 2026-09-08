@@ -196,7 +196,7 @@ const columns: Record<ModuleKey, { label: string; value: (row: Row) => string; r
         const num = Number(r.availableCredit ?? 0);
         if (num < -0.001) {
           return (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-red-50 border border-red-200 text-xs font-bold text-red-700 font-mono">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-red-50 border border-red-200 text-xs font-bold text-red-700 tabular-nums">
               <CircleAlert size={12} />
               {formatInrExact(num)}
             </span>
@@ -204,12 +204,12 @@ const columns: Record<ModuleKey, { label: string; value: (row: Row) => string; r
         }
         if (num > 0.001) {
           return (
-            <span className="font-mono font-bold text-emerald-700 text-xs">
+            <span className="font-bold text-emerald-700 text-xs tabular-nums">
               {formatInrExact(num)}
             </span>
           );
         }
-        return <span className="font-mono text-slate-500 text-xs font-semibold">₹0.00</span>;
+        return <span className="text-slate-500 text-xs font-semibold tabular-nums">₹0.00</span>;
       },
     },
     {

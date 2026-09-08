@@ -188,15 +188,15 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
             <p className="text-[11px] font-bold uppercase tracking-wider text-[#607089]">Current Balance</p>
             <div className="mt-1">
               {balance < -0.001 ? (
-                <span className="inline-flex items-center gap-1 font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded text-base font-mono">
+                <span className="inline-flex items-center gap-1 font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded text-base tabular-nums">
                   <CircleAlert size={16} /> {formattedAmount(balance)}
                 </span>
               ) : balance > 0.001 ? (
-                <span className="font-mono text-base font-bold text-emerald-700">
+                <span className="text-base font-bold text-emerald-700 tabular-nums">
                   {formattedAmount(balance)}
                 </span>
               ) : (
-                <span className="font-mono text-base font-semibold text-slate-600">₹0.00</span>
+                <span className="text-base font-semibold text-slate-600 tabular-nums">₹0.00</span>
               )}
             </div>
             <p className="mt-1 text-[11px] text-[#607089]">
@@ -275,13 +275,13 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
                         {text(tx.transactionType)}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap font-mono font-bold">
+                    <td className="px-3 py-2.5 whitespace-nowrap font-bold tabular-nums">
                       {formattedAmount(tx.amount)}
                     </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap font-mono text-slate-500">
+                    <td className="px-3 py-2.5 whitespace-nowrap text-slate-500 tabular-nums">
                       {tx.balanceBefore !== null && tx.balanceBefore !== undefined ? formattedAmount(tx.balanceBefore) : "-"}
                     </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap font-mono font-bold text-slate-800">
+                    <td className="px-3 py-2.5 whitespace-nowrap font-bold text-slate-800 tabular-nums">
                       {tx.balanceAfter !== null && tx.balanceAfter !== undefined ? formattedAmount(tx.balanceAfter) : "-"}
                     </td>
                     <td className="px-3 py-2.5 font-mono text-slate-600">{text(tx.reference)}</td>
@@ -478,13 +478,13 @@ function display(field: string, input: unknown) {
     const num = Number(input ?? 0);
     if (num < -0.001) {
       return (
-        <span className="inline-flex items-center gap-1 font-bold text-red-600 font-mono">
+        <span className="inline-flex items-center gap-1 font-bold text-red-600 tabular-nums">
           <CircleAlert size={14} />
           {formattedAmount(num)}
         </span>
       );
     }
-    return <span className="font-mono">{formattedAmount(num)}</span>;
+    return <span className="tabular-nums font-semibold">{formattedAmount(num)}</span>;
   }
   if (f.includes("price") || ["subtotal", "tax", "total", "amount", "paidamount", "refundedamount", "discountamount"].includes(f)) {
     return formattedAmount(input);
@@ -579,19 +579,19 @@ function OrderPaymentSection({
       <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 text-xs">
         <div className="rounded border border-[#e1e6ee] bg-slate-50/70 p-3">
           <span className="font-bold uppercase tracking-wider text-[#607089]">Order Total</span>
-          <p className="mt-1 font-mono text-base font-bold text-slate-900">{formattedAmount(orderTotal)}</p>
+          <p className="mt-1 text-base font-bold tabular-nums text-slate-900">{formattedAmount(orderTotal)}</p>
         </div>
         <div className="rounded border border-[#e1e6ee] bg-slate-50/70 p-3">
           <span className="font-bold uppercase tracking-wider text-emerald-700">Total Paid</span>
-          <p className="mt-1 font-mono text-base font-bold text-emerald-900">{formattedAmount(paidAmount)}</p>
+          <p className="mt-1 text-base font-bold tabular-nums text-emerald-900">{formattedAmount(paidAmount)}</p>
         </div>
         <div className="rounded border border-[#e1e6ee] bg-slate-50/70 p-3">
           <span className="font-bold uppercase tracking-wider text-red-600">Outstanding</span>
-          <p className="mt-1 font-mono text-base font-bold text-red-700">{formattedAmount(outstanding)}</p>
+          <p className="mt-1 text-base font-bold tabular-nums text-red-700">{formattedAmount(outstanding)}</p>
         </div>
         <div className="rounded border border-[#e1e6ee] bg-slate-50/70 p-3">
           <span className="font-bold uppercase tracking-wider text-slate-600">Refunded / Credited</span>
-          <p className="mt-1 font-mono text-base font-bold text-slate-700">{formattedAmount(refundedAmount)}</p>
+          <p className="mt-1 text-base font-bold tabular-nums text-slate-700">{formattedAmount(refundedAmount)}</p>
         </div>
       </div>
 
@@ -689,7 +689,7 @@ function AddBalanceModal({
         <form onSubmit={submit} noValidate className="mt-4 space-y-4 text-sm">
           <div className="rounded-lg bg-slate-50 border p-3">
             <span className="text-xs font-bold uppercase text-[#607089]">Current Balance</span>
-            <p className="mt-0.5 font-mono text-base font-bold text-[#162237]">
+            <p className="mt-0.5 text-base font-bold tabular-nums text-[#162237]">
               {formattedAmount(currentBalance)}
             </p>
           </div>
@@ -842,7 +842,7 @@ function AdjustBalanceModal({
         <form onSubmit={submit} noValidate className="mt-4 space-y-4 text-sm">
           <div className="rounded-lg bg-slate-50 border p-3">
             <span className="text-xs font-bold uppercase text-[#607089]">Current Balance</span>
-            <p className="mt-0.5 font-mono text-base font-bold text-[#162237]">
+            <p className="mt-0.5 text-base font-bold tabular-nums text-[#162237]">
               {formattedAmount(currentBalance)}
             </p>
           </div>
@@ -1012,15 +1012,15 @@ function RecordPaymentModal({
           <div className="grid grid-cols-3 gap-2 rounded-lg bg-slate-50 border p-2.5 text-center text-xs">
             <div>
               <span className="text-[#607089] block uppercase text-[10px]">Total</span>
-              <span className="font-mono font-bold text-[#162237]">{formattedAmount(orderTotal)}</span>
+              <span className="font-bold tabular-nums text-[#162237]">{formattedAmount(orderTotal)}</span>
             </div>
             <div>
               <span className="text-emerald-700 block uppercase text-[10px]">Paid</span>
-              <span className="font-mono font-bold text-emerald-800">{formattedAmount(currentPaid)}</span>
+              <span className="font-bold tabular-nums text-emerald-800">{formattedAmount(currentPaid)}</span>
             </div>
             <div>
               <span className="text-red-600 block uppercase text-[10px]">Outstanding</span>
-              <span className="font-mono font-bold text-red-700">{formattedAmount(outstanding)}</span>
+              <span className="font-bold tabular-nums text-red-700">{formattedAmount(outstanding)}</span>
             </div>
           </div>
           <label className="block">
@@ -1168,7 +1168,7 @@ function CreditBalanceModal({
           <div className="rounded-lg bg-slate-50 border p-3 text-xs space-y-1">
             <p><strong>Customer:</strong> {customerName}</p>
             <p><strong>Order Number:</strong> #{orderNumber}</p>
-            <p><strong>Eligible Credit:</strong> <span className="font-mono font-bold text-emerald-800">{formattedAmount(maxCreditable)}</span></p>
+            <p><strong>Eligible Credit:</strong> <span className="font-bold tabular-nums text-emerald-800">{formattedAmount(maxCreditable)}</span></p>
           </div>
           <label className="block">
             <span className="font-semibold text-slate-700">Amount to Credit to Wallet (₹) *</span>

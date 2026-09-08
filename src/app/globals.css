@@ -32,6 +32,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", "Segoe UI", system-ui, sans-serif;
 }
 
 @font-face {
@@ -43,7 +44,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: "RupeeGlyphFallback", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   font-size: 16px;
   line-height: 1.5;
 }
@@ -53,12 +54,16 @@ code,
 kbd,
 samp,
 pre {
-  font-family: "RupeeGlyphFallback", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", "Segoe UI", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
 ::selection { background: #cfe0ff; color: var(--mc-ink); }
-
-/* Use these for new storefront components so the theme stays centralized. */
 .mc-page { background: var(--mc-surface); color: var(--mc-ink); }
 .mc-paper { background: var(--mc-paper); }
 .mc-ink { color: var(--mc-ink); }
