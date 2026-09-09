@@ -709,7 +709,7 @@ export function AdminInvoiceManagerModal({
               }`}
             >
               <div id="tax-invoice-print-area">
-                <TaxInvoiceDocument data={liveInvoiceData} />
+                <TaxInvoiceDocument data={liveInvoiceData} variant="admin" />
               </div>
             </div>
           </div>
