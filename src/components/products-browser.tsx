@@ -783,7 +783,13 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                           </p>
                         ) : null}
                       </div>
-                      <div className="text-[15px] font-bold leading-snug text-[var(--mc-ink)]">{item.priceLabel}</div>
+                      {isLoggedIn && item.priceState !== "LOGIN" && item.priceLabel !== "Login to view price" ? (
+                        <div className="text-[15px] font-bold leading-snug text-[var(--mc-ink)]">{item.priceLabel}</div>
+                      ) : (
+                        <Link href="/login" className="text-xs font-bold text-[var(--mc-accent)] hover:underline">
+                          Login to view price &rarr;
+                        </Link>
+                      )}
                       <div className="flex flex-col items-start gap-1">
                         {rowActions}
                         {rowError ? <p className="text-[11px] font-semibold text-[#a53025]">{rowError}</p> : null}
@@ -845,16 +851,24 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                   {/* Price */}
                   <div>
                     <p className="text-xs font-bold uppercase text-[var(--mc-muted)] xl:hidden">Price</p>
-                    <p className="mt-1 text-[17px] font-bold leading-snug text-[var(--mc-ink)] xl:mt-0">
-                      {item.priceLabel}
-                    </p>
-                    {item.taxInclusive ? (
-                      <p className="mt-0.5 text-xs text-[var(--mc-muted)]">GST included</p>
-                    ) : item.priceState === "STARTING" ? (
-                      <p className="mt-0.5 text-xs font-medium text-[var(--mc-muted)]">
-                        GST charged additionally as applicable
-                      </p>
-                    ) : null}
+                    {isLoggedIn && item.priceState !== "LOGIN" && item.priceLabel !== "Login to view price" ? (
+                      <>
+                        <p className="mt-1 text-[17px] font-bold leading-snug text-[var(--mc-ink)] xl:mt-0">
+                          {item.priceLabel}
+                        </p>
+                        {item.taxInclusive ? (
+                          <p className="mt-0.5 text-xs text-[var(--mc-muted)]">GST included</p>
+                        ) : item.priceState === "STARTING" ? (
+                          <p className="mt-0.5 text-xs font-medium text-[var(--mc-muted)]">
+                            GST charged additionally as applicable
+                          </p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <Link href="/login" className="mt-1 block text-xs font-bold text-[var(--mc-accent)] hover:underline xl:mt-0">
+                        Login to view price &rarr;
+                      </Link>
+                    )}
                   </div>
 
                   {/* Actions & State Fallback */}

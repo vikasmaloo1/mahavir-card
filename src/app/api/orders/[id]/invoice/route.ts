@@ -1,4 +1,4 @@
-﻿import { eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { handleApiError, jsonError, jsonOk } from "@/lib/api";
 import { db } from "@/lib/db/server";
@@ -18,6 +18,11 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
       order.customerId ? db.select().from(customers).where(eq(customers.id, order.customerId)).limit(1) : Promise.resolve([]),
     ]);
     const customer = customerRows[0] || null;
+
+    // Invoicing is only available for B2C orders
+    if (customer && customer.customerType !== "B2C") {
+      return jsonError("Tax invoice is only available for B2C orders", 403);
+    }
 
     // Verify customer ownership if not ADMIN
     const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPERADMIN";

@@ -1,4 +1,4 @@
-﻿import { eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { handleApiError, jsonError, jsonOk } from "@/lib/api";
 import { db } from "@/lib/db/server";
@@ -25,6 +25,10 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
 
     const customer = customerRows[0] || null;
     const settings = settingsRows[0] || null;
+
+    if (customer && customer.customerType !== "B2C") {
+      return jsonError("Tax invoice is only available for B2C orders", 400);
+    }
 
     const invoiceData = buildInvoiceData(order, customer, items, settings);
     return jsonOk(invoiceData);
@@ -53,6 +57,10 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
 
     const customer = customerRows[0] || null;
     const settings = settingsRows[0] || null;
+
+    if (customer && customer.customerType !== "B2C") {
+      return jsonError("Tax invoice is only available for B2C orders", 400);
+    }
 
     const invoiceData = buildInvoiceData(order, customer, items, settings, overrides);
 

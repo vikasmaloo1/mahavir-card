@@ -31,6 +31,7 @@ type PaymentInfo = {
 };
 type OrderPayload = {
   order: { id: string; orderNumber: string; status: string; subtotal: string; tax: string; total: string; deliveryPrice: string; deliveryMethod: string | null; deliveryState: string | null; createdAt: string };
+  customer?: { id: string; customerType: string } | null;
   items: Item[];
   payment: PaymentInfo | null;
   paymentTransactions?: PaymentTransaction[];
@@ -153,7 +154,7 @@ export function CustomerRecordDetail({ kind, id, upiVpa }: { kind: "order" | "qu
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <Status value={primary.status} />
-        {order ? (
+        {order && order.customer?.customerType === "B2C" ? (
           <Link
             href={`/account/orders/${order.order.id}/invoice`}
             target="_blank"
@@ -278,7 +279,7 @@ export function CustomerRecordDetail({ kind, id, upiVpa }: { kind: "order" | "qu
           {data.artworks.length ? data.artworks.map((artwork) => <div key={artwork.id} className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] py-4 text-sm"><span className="min-w-0"><strong className="block truncate">{artwork.fileName}</strong><small className="text-[var(--mc-muted)]">{fileSize(artwork.fileSize)}{artwork.notes ? ` · ${artwork.notes}` : ""}</small></span><span className="flex shrink-0 items-center gap-2"><Status value={artwork.status} small /><a href={`/api/artworks/${artwork.id}/download`} className="inline-flex items-center gap-1 text-xs font-bold text-[var(--mc-accent)] hover:underline"><Download size={14} />Download</a></span></div>) : <Empty text="No artwork linked yet." />}
         </Section>
         <Section title="Documents" icon={<Download size={18} />} id="documents">
-          {order ? (
+          {order && order.customer?.customerType === "B2C" ? (
             <div className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] py-4 text-sm font-bold">
               <div className="flex items-center gap-2 text-slate-800">
                 <FileText size={16} className="text-emerald-700 shrink-0" />
@@ -298,7 +299,7 @@ export function CustomerRecordDetail({ kind, id, upiVpa }: { kind: "order" | "qu
               </Link>
             </div>
           ) : null}
-          {data.documents.length ? data.documents.map((document) => <a key={document.id} href={document.documentType === "INVOICE" ? `/api/invoices/${document.id}/download` : `/api/quotes/${id}/document/download`} className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] py-4 text-sm font-bold text-[var(--mc-accent)]"><span>{document.originalFilename}</span><Download size={16} /></a>) : (!order ? <Empty text="No documents available yet." /> : null)}
+          {data.documents.length ? data.documents.map((document) => <a key={document.id} href={document.documentType === "INVOICE" ? `/api/invoices/${document.id}/download` : `/api/quotes/${id}/document/download`} className="flex items-center justify-between gap-3 border-t border-[var(--mc-line)] py-4 text-sm font-bold text-[var(--mc-accent)]"><span>{document.originalFilename}</span><Download size={16} /></a>) : (!order || order.customer?.customerType !== "B2C" ? <Empty text="No documents available yet." /> : null)}
         </Section>
       </div>
 
@@ -323,17 +324,19 @@ export function CustomerRecordDetail({ kind, id, upiVpa }: { kind: "order" | "qu
                 {formatInr(outstanding)}
               </strong>
             </div>
-            <div className="pt-2">
-              <Link
-                href={`/account/orders/${order.order.id}/invoice`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex w-full items-center justify-center gap-2 rounded-full border border-emerald-600 bg-emerald-50 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-sm"
-              >
-                <Printer size={14} />
-                Print GST Tax Invoice
-              </Link>
-            </div>
+            {order.customer?.customerType === "B2C" ? (
+              <div className="pt-2">
+                <Link
+                  href={`/account/orders/${order.order.id}/invoice`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex w-full items-center justify-center gap-2 rounded-full border border-emerald-600 bg-emerald-50 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-sm"
+                >
+                  <Printer size={14} />
+                  Print GST Tax Invoice
+                </Link>
+              </div>
+            ) : null}
           </div>
         ) : null}
 

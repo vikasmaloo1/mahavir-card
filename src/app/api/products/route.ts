@@ -186,10 +186,12 @@ export async function GET(request: Request) {
         ])
       : [[], [], [], [], [], []];
 
-    const startingPrices = deriveStartingPriceMap(
-      pageData.map(({ product }) => product),
-      rules
-    );
+    const startingPrices = authenticated
+      ? deriveStartingPriceMap(
+          pageData.map(({ product }) => product),
+          rules
+        )
+      : new Map();
     const productAddonsMap = new Set(addonRows.map((row) => row.productId));
     const productionTimeMap = new Map<string, string>();
     for (const rule of rules) {
@@ -227,6 +229,16 @@ export async function GET(request: Request) {
       const productDelivRules = deliveryRows.filter((d) => d.productId === product.id);
       const stateAvailability = evaluateStateAvailability(product, productDelivRules, customerState);
 
+      const unauthenticatedPrice = {
+        startingPrice: null,
+        startingQuantity: null,
+        currency: "INR",
+        priceLabel: "Login to view price",
+        priceState: "LOGIN" as const,
+        taxInclusive: null,
+      };
+      const priceInfo = authenticated ? (startingPrices.get(product.id) ?? unauthenticatedPrice) : unauthenticatedPrice;
+
       return {
         ...product,
         imageUrl: primaryImageMap.get(product.id) || product.imageUrl || null,
@@ -234,7 +246,8 @@ export async function GET(request: Request) {
         listingSpecification: conciseProductSpecification(product.name, product.shortDescription, categoryData?.name ?? null),
         productSize: typeof configuration?.size === "string" && configuration.size.trim() ? configuration.size.trim() : null,
         productionTime: product.productionTime || productionTimeMap.get(product.id) || null,
-        ...startingPrices.get(product.id),
+        ...priceInfo,
+        isLoggedIn: authenticated,
         hasAddons: productAddonsMap.has(product.id),
         hasArtworkRequirement: Boolean(requirement),
         artworkSummary,

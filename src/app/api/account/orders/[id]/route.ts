@@ -11,7 +11,15 @@ export async function GET(request: Request, ctx: RouteContext<"/api/account/orde
   try {
     const session = await requireUser(request);
     const { id } = await ctx.params;
-    const [owned] = await db.select({ order: orders }).from(orders).innerJoin(customers, eq(orders.customerId, customers.id)).where(and(eq(orders.id, id), eq(customers.userId, session.user.id))).limit(1);
+    const [owned] = await db
+      .select({
+        order: orders,
+        customer: { id: customers.id, customerType: customers.customerType },
+      })
+      .from(orders)
+      .innerJoin(customers, eq(orders.customerId, customers.id))
+      .where(and(eq(orders.id, id), eq(customers.userId, session.user.id)))
+      .limit(1);
     if (!owned) return jsonError("Order not found", 404);
     const [items, paymentRows, artworkRows, documents, history] = await Promise.all([
       db.select().from(orderItems).where(eq(orderItems.orderId, id)),
@@ -49,6 +57,7 @@ export async function GET(request: Request, ctx: RouteContext<"/api/account/orde
     const { mappedItems } = mapItemsWithArtworks(items, artworkRows);
     return jsonOk({
       order: owned.order,
+      customer: owned.customer,
       items: mappedItems,
       payment: activePayment ? { ...activePayment, transactions } : null,
       paymentTransactions: transactions,

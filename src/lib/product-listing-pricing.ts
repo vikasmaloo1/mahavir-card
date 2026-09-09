@@ -23,7 +23,7 @@ export type StartingPrice = {
   startingQuantity: number | null;
   currency: "INR";
   priceLabel: string;
-  priceState: "STARTING" | "CUSTOM_QUOTE" | "CONTACT";
+  priceState: "STARTING" | "CUSTOM_QUOTE" | "CONTACT" | "LOGIN";
   taxInclusive: boolean | null;
 };
 

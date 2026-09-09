@@ -39,8 +39,16 @@ export function ProductCard({ product }: { product: CatalogProduct & { priceLabe
         <div className="mt-4 flex items-end justify-between border-t border-slate-100 pt-3">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Starting price</p>
-            <p className="mt-0.5 text-base font-bold text-slate-900">{product.priceLabel}</p>
-            <p className="text-[10px] text-slate-400">Exclusive of GST</p>
+            {product.isLoggedIn !== false && product.priceLabel !== "Login to view price" ? (
+              <>
+                <p className="mt-0.5 text-base font-bold text-slate-900">{product.priceLabel}</p>
+                <p className="text-[10px] text-slate-400">Exclusive of GST</p>
+              </>
+            ) : (
+              <Link href="/login" className="mt-1 block text-xs font-bold text-[#1e3a5f] hover:underline">
+                Login to view price &rarr;
+              </Link>
+            )}
           </div>
           <span className="text-xs font-semibold text-slate-600">{product.turnaround}</span>
         </div>

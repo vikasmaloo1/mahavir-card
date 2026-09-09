@@ -99,7 +99,7 @@ function DetailBody({ section, id, data, primary, saving, mutate, onOpenInvoice 
         ) : null}
         {section === "inquiries" ? <InquiryRelations data={data} id={id} saving={saving} mutate={mutate} /> : null}
       </div>
-      <RecordActions section={section} id={id} row={primary} saving={saving} mutate={mutate} onOpenInvoice={onOpenInvoice} />
+      <RecordActions section={section} id={id} row={primary} saving={saving} mutate={mutate} onOpenInvoice={onOpenInvoice} customerType={text(record(data.customer).customerType)} />
       {section === "orders" ? (
         <div className="xl:col-span-2 grid gap-6 lg:grid-cols-2">
           <FieldGrid title="Customer" row={record(data.customer)} fields={["contactName", "companyName", "email", "phone", "customerType", "state"]} />
@@ -126,7 +126,7 @@ function OrderOverview({ data, primary }: { data: Row; primary: Row }) {
   return <section className="border border-[#d7dce5] bg-white p-4 sm:p-6"><h2 className="font-bold">Overview</h2><div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{cells.map(([label, val]) => <div key={label}><p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#607089]">{label}</p><p className="mt-1 break-words text-sm font-semibold text-[#263753]">{val}</p></div>)}</div></section>;
 }
 
-function RecordActions({ section, id, row, saving, mutate, onOpenInvoice }: { section: DetailSection; id: string; row: Row; saving: boolean; mutate: AdminMutate; onOpenInvoice?: () => void }) {
+function RecordActions({ section, id, row, saving, mutate, onOpenInvoice, customerType }: { section: DetailSection; id: string; row: Row; saving: boolean; mutate: AdminMutate; onOpenInvoice?: () => void; customerType?: string }) {
   const [status, setStatus] = useState(value(row.status));
   const [notes, setNotes] = useState(value(section === "inquiries" ? row.internalNotes : row.notes));
   const [amount, setAmount] = useState(value(row.amount));
@@ -174,7 +174,7 @@ function RecordActions({ section, id, row, saving, mutate, onOpenInvoice }: { se
       >
         <Check size={16} />Save changes
       </button>
-      {section === "orders" ? (
+      {section === "orders" && customerType === "B2C" ? (
         <div className="mt-4 border-t border-[#e1e6ee] pt-4 space-y-2">
           <p className="text-xs font-bold uppercase tracking-wider text-[#607089]">Tax Invoice & GST</p>
           <button

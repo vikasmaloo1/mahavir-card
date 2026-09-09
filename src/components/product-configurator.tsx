@@ -379,17 +379,22 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
             {!product.customerType ? (
               <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3.5 text-xs text-blue-950">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-bold text-sm text-[#1e3a5f]">Starting Rate</span>
-                  <strong className="text-base text-slate-950 font-bold">{product.priceLabel}</strong>
+                  <span className="font-bold text-sm text-[#1e3a5f]">Pricing</span>
+                  <Link
+                    href={`/login?next=${encodeURIComponent(typeof window !== "undefined" ? window.location.pathname + window.location.search : `/catalog/${product.slug}`)}`}
+                    className="font-bold text-[#1e3a5f] hover:underline"
+                  >
+                    Login to view price &rarr;
+                  </Link>
                 </div>
                 <p className="mt-1.5 text-slate-600 leading-relaxed">
-                  Sign in to calculate your exact order amount with your delivery location, quantity, and GST (or unlock B2B wholesale rates).
+                  Sign in or create an account to view prices, calculate totals with GST &amp; delivery, and order.
                 </p>
                 <Link
                   href={`/login?next=${encodeURIComponent(typeof window !== "undefined" ? window.location.pathname + window.location.search : `/catalog/${product.slug}`)}`}
                   className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#1e3a5f] px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#152a45] transition-colors"
                 >
-                  Sign in to Order &amp; Upload Artwork &rarr;
+                  Sign in to View Pricing &rarr;
                 </Link>
               </div>
             ) : (
@@ -584,14 +589,19 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
         {!product.customerType ? (
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--mc-muted)]">Starting from</p>
-              <p className="text-base font-bold text-[var(--mc-ink)]">{product.priceLabel}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--mc-muted)]">Pricing</p>
+              <Link
+                href={`/login?next=${encodeURIComponent(typeof window !== "undefined" ? window.location.pathname + window.location.search : `/catalog/${product.slug}`)}`}
+                className="text-xs font-bold text-[var(--mc-accent)] hover:underline"
+              >
+                Login to view price &rarr;
+              </Link>
             </div>
             <Link
               href={`/login?next=${encodeURIComponent(typeof window !== "undefined" ? window.location.pathname + window.location.search : `/catalog/${product.slug}`)}`}
               className="inline-flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[var(--mc-accent-dark)] transition-colors"
             >
-              Sign in to Order <ArrowRight size={15} />
+              Sign in to View <ArrowRight size={15} />
             </Link>
           </div>
         ) : (

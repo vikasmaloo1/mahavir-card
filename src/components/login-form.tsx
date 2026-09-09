@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, LockKeyhole, Mail, Smartphone, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, LockKeyhole, Mail, PhoneCall, Smartphone, UserRound } from "lucide-react";
 import { FormEvent, useState } from "react";
 
 import { isValidIndianPhoneNumber, normalizePhoneNumber } from "@/lib/phone";
@@ -270,6 +270,22 @@ export function LoginForm() {
                 >
                   <Smartphone size={15} /> Mobile Sign In
                 </button>
+              </div>
+            )}
+
+            {isSignup && (
+              <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/80 p-3.5 text-xs text-blue-950 flex items-start gap-2.5">
+                <PhoneCall size={18} className="text-[#1e3a5f] shrink-0 mt-0.5" />
+                <div>
+                  <strong className="block font-bold text-[#1e3a5f]">Need help signing up?</strong>
+                  <p className="mt-0.5 text-slate-700 leading-relaxed">
+                    Not sure how to sign up or need help creating your account? Call or WhatsApp us directly at{" "}
+                    <a href="tel:+919426371150" className="font-bold underline text-[#1e3a5f] hover:text-[#152a45]">
+                      +91 94263 71150
+                    </a>{" "}
+                    and our team will assist you immediately.
+                  </p>
+                </div>
               </div>
             )}
 
