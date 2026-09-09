@@ -14,8 +14,7 @@ function formatDateIn(date: Date | string | null | undefined): string {
 
 export function determinePageSize(itemCount: number, mode: InvoiceSizeMode = "AUTO"): "A5" | "A4" {
   if (mode === "HALF") return "A5";
-  if (mode === "A4") return "A4";
-  return itemCount <= 4 ? "A5" : "A4";
+  return "A4";
 }
 
 export function defaultHsnForDescription(desc: string): string {

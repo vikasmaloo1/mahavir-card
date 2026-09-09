@@ -19,13 +19,19 @@ export default async function CustomerInvoicePage({
   }
 
   const [orderCustomer] = await db
-    .select({ customerType: customers.customerType })
+    .select({ customerType: customers.customerType, status: orders.status })
     .from(orders)
     .innerJoin(customers, eq(orders.customerId, customers.id))
     .where(eq(orders.id, id))
     .limit(1);
 
-  if (orderCustomer && orderCustomer.customerType !== "B2C") {
+  if (!orderCustomer || orderCustomer.customerType !== "B2C") {
+    redirect(`/account/orders/${id}`);
+  }
+
+  // Only allow invoice view once order is dispatched or delivered
+  const allowedStatuses = new Set(["DISPATCHED", "DELIVERED"]);
+  if (!allowedStatuses.has(orderCustomer.status)) {
     redirect(`/account/orders/${id}`);
   }
 

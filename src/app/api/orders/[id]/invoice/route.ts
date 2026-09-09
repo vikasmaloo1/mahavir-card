@@ -31,6 +31,14 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
       return jsonError("Forbidden", 403);
     }
 
+    // For customers, invoice is only available after order is dispatched or delivered
+    if (!isAdmin) {
+      const isDispatchedOrDelivered = order.status === "DISPATCHED" || order.status === "DELIVERED";
+      if (!isDispatchedOrDelivered) {
+        return jsonError("Tax invoice will be available once your order is dispatched.", 403);
+      }
+    }
+
     const [items, settingsRows] = await Promise.all([
       db.select().from(orderItems).where(eq(orderItems.orderId, id)),
       db.select().from(businessSettings).where(eq(businessSettings.id, "primary")).limit(1),

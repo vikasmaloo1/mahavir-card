@@ -121,39 +121,57 @@ export function TaxInvoiceDocument({
       {/* Middle Printable Document Body */}
       <div className="flex-1 flex flex-col justify-start">
         {/* Brand Header: Logo Emblem + Mahavir Card (skipped on letter pad: already pre-printed) */}
-        <header className="relative pt-0.5 px-0.5">
+        <header className="relative pt-1 px-1">
           {!isLetterPad ? (
-            <div className="flex justify-end items-center mb-1">
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 relative shrink-0 rounded-full overflow-hidden">
+            <div className="flex justify-between items-center pb-2 mb-1.5 border-b-2 border-black">
+              {/* Left: Logo Emblem + Big Bold Mahavir Card & all printing solution */}
+              <div className="flex items-center gap-3.5">
+                <div className="w-16 h-16 relative shrink-0 rounded-full overflow-hidden border border-black shadow-xs">
                   <Image
                     src="/images/mahavir-card-logo.jpeg"
                     alt="Mahavir Card Emblem"
-                    width={80}
-                    height={80}
-                    className="w-full h-full object-cover scale-110"
+                    width={130}
+                    height={130}
+                    className="w-full h-full object-cover scale-105"
+                    priority
                   />
                 </div>
-                <div>
-                  <Wordmark />
-                  <p className="text-[9.5px] text-gray-700 tracking-normal leading-tight mt-0.5 font-sans font-medium">
-                    all kind printing solution
+                <div className="flex flex-col justify-center">
+                  <h1
+                    className="text-3xl font-black text-black tracking-tight leading-none uppercase"
+                    style={{ fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif" }}
+                  >
+                    MAHAVIR CARD
+                  </h1>
+                  <p className="text-sm font-extrabold text-black tracking-wider uppercase mt-1 leading-none">
+                    all printing solution
                   </p>
                 </div>
               </div>
-            </div>
-          ) : null}
 
-          {/* GSTIN & TAX INVOICE Header Row */}
-          <div className="flex justify-between items-baseline pt-1 pb-0.5 px-0.5 font-bold">
-            <div className="text-[1.05em] tracking-wide text-black">
-              <span>GSTIN : </span>
-              <span className="font-extrabold">{data.sellerGstin}</span>
+              {/* Right: TAX INVOICE & GSTIN */}
+              <div className="text-right flex flex-col items-end justify-center pr-1">
+                <div className="text-2xl font-black tracking-widest uppercase text-black leading-none">
+                  TAX INVOICE
+                </div>
+                <div className="text-xs font-bold tracking-wide text-black mt-1.5">
+                  <span>GSTIN : </span>
+                  <span className="font-extrabold text-sm">{data.sellerGstin}</span>
+                </div>
+              </div>
             </div>
-            <div className="text-[1.18em] tracking-wider uppercase text-black font-black pr-3">
-              TAX INVOICE
+          ) : (
+            /* GSTIN & TAX INVOICE Header Row (when on pre-printed letter pad) */
+            <div className="flex justify-between items-baseline pt-1 pb-0.5 px-0.5 font-bold">
+              <div className="text-[1.05em] tracking-wide text-black">
+                <span>GSTIN : </span>
+                <span className="font-extrabold">{data.sellerGstin}</span>
+              </div>
+              <div className="text-[1.18em] tracking-wider uppercase text-black font-black pr-3">
+                TAX INVOICE
+              </div>
             </div>
-          </div>
+          )}
         </header>
 
         {/* 2-Column Metadata Box */}
@@ -309,8 +327,8 @@ export function TaxInvoiceDocument({
                     ? `${Math.max(6, 38 - data.items.length * 7)}mm`
                     : `${Math.max(10, 48 - data.items.length * 8)}mm`
                   : isLetterPad
-                    ? `${Math.max(16, 75 - data.items.length * 12)}mm`
-                    : `${Math.max(22, 92 - data.items.length * 14)}mm`,
+                    ? `${Math.max(20, 85 - data.items.length * 10)}mm`
+                    : `${Math.max(25, 105 - data.items.length * 10)}mm`,
               }}
             >
               <td className="border-r border-black" />

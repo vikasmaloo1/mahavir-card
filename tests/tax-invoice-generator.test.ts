@@ -45,15 +45,15 @@ test("numberToIndianWords formats diverse amounts into standard Indian currency 
   assert.equal(numberToIndianWords(0), "Zero Only.");
 });
 
-test("determinePageSize automatically picks A5 for <= 4 items and A4 for > 4 items", () => {
-  // AUTO mode:
-  assert.equal(determinePageSize(1, "AUTO"), "A5");
-  assert.equal(determinePageSize(4, "AUTO"), "A5");
-  assert.equal(determinePageSize(5, "AUTO"), "A4");
+test("determinePageSize defaults to full page A4 and supports HALF (A5) override", () => {
+  // AUTO mode defaults to full page A4
+  assert.equal(determinePageSize(1, "AUTO"), "A4");
+  assert.equal(determinePageSize(4, "AUTO"), "A4");
   assert.equal(determinePageSize(10, "AUTO"), "A4");
 
   // Explicit overrides:
   assert.equal(determinePageSize(10, "HALF"), "A5");
+  assert.equal(determinePageSize(1, "HALF"), "A5");
   assert.equal(determinePageSize(1, "A4"), "A4");
 });
 
@@ -111,5 +111,5 @@ test("buildInvoiceData calculates intra-state taxes, round-off, and grand total 
   // 2550 + 229.5 + 229.5 = 3009.00
   assert.equal(invoice.grandTotal, 3009.00);
   assert.equal(invoice.amountInWords, "Three Thousand Nine Only.");
-  assert.equal(invoice.resolvedPageSize, "A5"); // 1 item -> A5 (Half page)
+  assert.equal(invoice.resolvedPageSize, "A4"); // Defaults to full page A4
 });
