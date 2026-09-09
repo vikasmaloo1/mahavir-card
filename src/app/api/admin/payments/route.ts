@@ -9,7 +9,10 @@ import { adminPaymentSchema } from "@/lib/validation";
 export async function GET(request: Request) {
   try {
     await requireRole(request, ["ADMIN"]);
-    const customerType = new URL(request.url).searchParams.get("customerType");
+    const url = new URL(request.url);
+    const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));
+    const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit") ?? 20)));
+    const customerType = url.searchParams.get("customerType");
     const conditions = customerType === "B2B" || customerType === "B2C" ? [eq(customers.customerType, customerType)] : [];
     const data = await db
       .select({ payment: payments, orderNumber: orders.orderNumber, customerEmail: customers.email, customerType: customers.customerType })
@@ -17,8 +20,10 @@ export async function GET(request: Request) {
       .innerJoin(orders, eq(payments.orderId, orders.id))
       .leftJoin(customers, eq(payments.customerId, customers.id))
       .where(conditions.length ? and(...conditions) : undefined)
-      .orderBy(desc(payments.createdAt));
-    return jsonOk(data);
+      .orderBy(desc(payments.createdAt))
+      .limit(limit)
+      .offset((page - 1) * limit);
+    return jsonOk({ items: data, page, limit });
   } catch (error) { return error instanceof Response ? error : handleApiError(error); }
 }
 

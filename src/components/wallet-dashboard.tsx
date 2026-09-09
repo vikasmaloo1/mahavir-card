@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { AlertCircle, ArrowRight, CheckCircle2, Clock, CreditCard, WalletCards, X } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import { AlertCircle, ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, Clock, CreditCard, WalletCards, X } from "lucide-react";
+import { useEffect, useState, useRef, useMemo } from "react";
 
 import { formatInr } from "@/lib/formatting";
 import { UpiQrCode } from "@/components/upi-qr-code";
@@ -39,7 +39,41 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [signedOut, setSignedOut] = useState(false);
+  const [activityPage, setActivityPage] = useState(1);
+  const ACTIVITY_PAGE_SIZE = 8;
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const sortedTransactions = useMemo(() => {
+    if (!data?.transactions) return [];
+    return [...data.transactions].sort((a, b) => {
+      const timeA = new Date(a.createdAt).getTime();
+      const timeB = new Date(b.createdAt).getTime();
+      return timeB - timeA;
+    });
+  }, [data?.transactions]);
+
+  const totalActivityPages = Math.max(1, Math.ceil(sortedTransactions.length / ACTIVITY_PAGE_SIZE));
+  const paginatedTransactions = useMemo(() => {
+    const start = (activityPage - 1) * ACTIVITY_PAGE_SIZE;
+    return sortedTransactions.slice(start, start + ACTIVITY_PAGE_SIZE);
+  }, [sortedTransactions, activityPage]);
+
+  function formatDateTime(dateString: string) {
+    try {
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return dateString;
+      return d.toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      });
+    } catch {
+      return dateString;
+    }
+  }
 
   async function load() {
     const response = await fetch(`/api/account/wallet/top-up?_t=${Date.now()}`, { cache: "no-store" });
@@ -335,27 +369,90 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
             </form>
 
             <section className="rounded-xl border border-[var(--mc-line)] bg-white shadow-sm overflow-hidden">
-              <h2 className="border-b border-[var(--mc-line)] p-5 font-bold text-lg text-[var(--mc-ink)]">
-                Balance activity
-              </h2>
-              {data.transactions.length ? (
-                data.transactions.map((transaction) => (
-                  <div
-                    key={transaction.id}
-                    className="flex items-center justify-between gap-4 border-b border-[var(--mc-line)] px-5 py-4 last:border-0 hover:bg-[var(--mc-surface)] transition-colors"
-                  >
-                    <div>
-                      <p className="font-semibold text-[var(--mc-ink)]">
-                        {transaction.transactionType.replaceAll("_", " ")}
-                      </p>
-                      <p className="mt-1 text-xs text-[var(--mc-muted)]">
-                        {transaction.reference || "Account adjustment"} · {transaction.status}
-                      </p>
-                      {transaction.notes ? <p className="mt-0.5 text-xs text-[var(--mc-muted)]">{transaction.notes}</p> : null}
-                    </div>
-                    <strong className="text-[var(--mc-accent-dark)]">{formatInr(transaction.amount)}</strong>
+              <div className="flex items-center justify-between border-b border-[var(--mc-line)] p-5">
+                <h2 className="font-bold text-lg text-[var(--mc-ink)]">
+                  Balance activity
+                </h2>
+                {sortedTransactions.length > 0 ? (
+                  <span className="text-xs font-semibold text-[var(--mc-muted)]">
+                    Showing {paginatedTransactions.length} of {sortedTransactions.length}
+                  </span>
+                ) : null}
+              </div>
+              {sortedTransactions.length ? (
+                <>
+                  <div className="divide-y divide-[var(--mc-line)]">
+                    {paginatedTransactions.map((transaction) => (
+                      <div
+                        key={transaction.id}
+                        className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-[var(--mc-surface)] transition-colors"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-semibold text-sm text-[var(--mc-ink)]">
+                              {transaction.transactionType.replaceAll("_", " ")}
+                            </p>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                                transaction.status === "COMPLETED"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : transaction.status === "PENDING"
+                                  ? "bg-amber-100 text-amber-800"
+                                  : "bg-neutral-100 text-neutral-700"
+                              }`}
+                            >
+                              {transaction.status}
+                            </span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--mc-muted)]">
+                            <span className="inline-flex items-center gap-1 font-medium text-[var(--mc-ink)]">
+                              <Clock size={12} className="text-[var(--mc-muted)]" />
+                              {formatDateTime(transaction.createdAt)}
+                            </span>
+                            {transaction.reference ? (
+                              <>
+                                <span>·</span>
+                                <span className="font-mono">{transaction.reference}</span>
+                              </>
+                            ) : null}
+                          </div>
+                          {transaction.notes ? (
+                            <p className="mt-1 text-xs text-[var(--mc-muted)]">{transaction.notes}</p>
+                          ) : null}
+                        </div>
+                        <strong className="shrink-0 text-base font-bold text-[var(--mc-accent-dark)]">
+                          {formatInr(transaction.amount)}
+                        </strong>
+                      </div>
+                    ))}
                   </div>
-                ))
+
+                  {totalActivityPages > 1 ? (
+                    <div className="flex items-center justify-between border-t border-[var(--mc-line)] bg-slate-50/50 px-5 py-3">
+                      <span className="text-xs text-[var(--mc-muted)]">
+                        Page {activityPage} of {totalActivityPages}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          disabled={activityPage <= 1}
+                          onClick={() => setActivityPage((prev) => Math.max(1, prev - 1))}
+                          className="inline-flex items-center gap-1 rounded-lg border border-[var(--mc-line)] bg-white px-2.5 py-1 text-xs font-semibold text-[var(--mc-ink)] hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white"
+                        >
+                          <ChevronLeft size={14} /> Prev
+                        </button>
+                        <button
+                          type="button"
+                          disabled={activityPage >= totalActivityPages}
+                          onClick={() => setActivityPage((prev) => Math.min(totalActivityPages, prev + 1))}
+                          className="inline-flex items-center gap-1 rounded-lg border border-[var(--mc-line)] bg-white px-2.5 py-1 text-xs font-semibold text-[var(--mc-ink)] hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white"
+                        >
+                          Next <ChevronRight size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </>
               ) : (
                 <p className="p-5 text-sm text-[var(--mc-muted)]">No balance activity yet.</p>
               )}

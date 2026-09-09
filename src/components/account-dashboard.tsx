@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Bell, Bookmark, FileQuestion, FileText, MapPin, Package, Palette, RefreshCw, ShoppingBag } from "lucide-react";
+import { ArrowRight, Bell, Bookmark, ChevronLeft, ChevronRight, FileQuestion, FileText, MapPin, Package, Palette, RefreshCw, ShoppingBag } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { formatInr } from "@/lib/formatting";
@@ -43,6 +43,8 @@ export function AccountDashboard() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [reorderError, setReorderError] = useState("");
   const [orderFilter, setOrderFilter] = useState<OrderBucket>("ALL");
+  const [orderPage, setOrderPage] = useState(1);
+  const ORDERS_PAGE_SIZE = 8;
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const [savedJobActionId, setSavedJobActionId] = useState<string | null>(null);
   const [savedJobError, setSavedJobError] = useState("");
@@ -215,7 +217,10 @@ export function AccountDashboard() {
                     <button
                       key={bucket.id}
                       type="button"
-                      onClick={() => setOrderFilter(bucket.id)}
+                      onClick={() => {
+                        setOrderPage(1);
+                        setOrderFilter(bucket.id);
+                      }}
                       className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${orderFilter === bucket.id ? "bg-[var(--mc-ink)] text-white" : "border border-[var(--mc-line)] bg-white text-[var(--mc-muted)] hover:text-[var(--mc-ink)]"}`}
                     >
                       {bucket.label} ({count})
@@ -230,48 +235,79 @@ export function AccountDashboard() {
             {(() => {
               const activeBucket = ORDER_BUCKETS.find((bucket) => bucket.id === orderFilter);
               const filteredOrders = activeBucket?.statuses ? data.orders.filter((order) => activeBucket.statuses!.includes(order.status)) : data.orders;
+              const totalOrderPages = Math.max(1, Math.ceil(filteredOrders.length / ORDERS_PAGE_SIZE));
+              const paginatedOrders = filteredOrders.slice((orderPage - 1) * ORDERS_PAGE_SIZE, orderPage * ORDERS_PAGE_SIZE);
+
               return filteredOrders.length ? (
-                <HorizontalScrollContainer showHint={false} scrollStep={300}>
-                  <div className="min-w-[560px] sm:min-w-0 space-y-3">
-                    {filteredOrders.map((item) => (
-                      <div key={item.id} className="flex flex-nowrap items-center justify-between gap-3 border-t border-[var(--mc-line)] pt-3 text-sm">
-                        <Link href={`/account/orders/${item.id}`} className="min-w-0 flex-1 hover:text-[var(--mc-accent)] transition-colors">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <strong>{item.orderNumber}</strong>
-                            <OrderStatusBadge status={item.status} />
-                          </div>
-                          <small className="mt-1 block text-[var(--mc-muted)]">{date(item.createdAt)}</small>
-                        </Link>
-                        <strong className="shrink-0">{formatInr(item.total)}</strong>
-                        {data?.customer?.customerType === "B2C" ? (
-                          <Link href={`/account/orders/${item.id}#documents`} className="hidden shrink-0 items-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors sm:inline-flex">
-                            <FileText size={13} />
-                            Invoice
+                <>
+                  <HorizontalScrollContainer showHint={false} scrollStep={300}>
+                    <div className="min-w-[560px] sm:min-w-0 space-y-3">
+                      {paginatedOrders.map((item) => (
+                        <div key={item.id} className="flex flex-nowrap items-center justify-between gap-3 border-t border-[var(--mc-line)] pt-3 text-sm">
+                          <Link href={`/account/orders/${item.id}`} className="min-w-0 flex-1 hover:text-[var(--mc-accent)] transition-colors">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <strong>{item.orderNumber}</strong>
+                              <OrderStatusBadge status={item.status} />
+                            </div>
+                            <small className="mt-1 block text-[var(--mc-muted)]">{date(item.createdAt)}</small>
                           </Link>
-                        ) : null}
-                        {item.status === "PENDING" ? (
+                          <strong className="shrink-0">{formatInr(item.total)}</strong>
+                          {data?.customer?.customerType === "B2C" && ["DISPATCHED", "DELIVERED"].includes(item.status) ? (
+                            <Link href={`/account/orders/${item.id}#documents`} className="hidden shrink-0 items-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors sm:inline-flex">
+                              <FileText size={13} />
+                              Invoice
+                            </Link>
+                          ) : null}
+                          {item.status === "PENDING" ? (
+                            <button
+                              type="button"
+                              disabled={cancellingId === item.id}
+                              onClick={() => void cancelOrder(item.id, item.orderNumber)}
+                              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-red-200 bg-red-50/70 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
+                            >
+                              {cancellingId === item.id ? "Cancelling..." : "Cancel"}
+                            </button>
+                          ) : null}
                           <button
                             type="button"
-                            disabled={cancellingId === item.id}
-                            onClick={() => void cancelOrder(item.id, item.orderNumber)}
-                            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-red-200 bg-red-50/70 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
+                            disabled={reorderingId === item.id}
+                            onClick={() => void reorder(item.id)}
+                            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-accent)] hover:bg-[var(--mc-surface)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            {cancellingId === item.id ? "Cancelling..." : "Cancel"}
+                            <ShoppingBag size={13} />
+                            {reorderingId === item.id ? "Adding..." : "Reorder"}
                           </button>
-                        ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  </HorizontalScrollContainer>
+
+                  {totalOrderPages > 1 ? (
+                    <div className="mt-4 flex items-center justify-between border-t border-[var(--mc-line)] pt-3 text-xs">
+                      <span className="text-[var(--mc-muted)] font-medium">
+                        Page {orderPage} of {totalOrderPages}
+                      </span>
+                      <div className="flex items-center gap-1.5">
                         <button
                           type="button"
-                          disabled={reorderingId === item.id}
-                          onClick={() => void reorder(item.id)}
-                          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-accent)] hover:bg-[var(--mc-surface)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={orderPage <= 1}
+                          onClick={() => setOrderPage((p) => Math.max(1, p - 1))}
+                          className="inline-flex items-center gap-1 rounded-lg border border-[var(--mc-line)] bg-white px-2.5 py-1 font-semibold text-[var(--mc-ink)] hover:bg-slate-100 disabled:opacity-40"
                         >
-                          <ShoppingBag size={13} />
-                          {reorderingId === item.id ? "Adding..." : "Reorder"}
+                          <ChevronLeft size={14} /> Prev
+                        </button>
+                        <button
+                          type="button"
+                          disabled={orderPage >= totalOrderPages}
+                          onClick={() => setOrderPage((p) => Math.min(totalOrderPages, p + 1))}
+                          className="inline-flex items-center gap-1 rounded-lg border border-[var(--mc-line)] bg-white px-2.5 py-1 font-semibold text-[var(--mc-ink)] hover:bg-slate-100 disabled:opacity-40"
+                        >
+                          Next <ChevronRight size={14} />
                         </button>
                       </div>
-                    ))}
-                  </div>
-                </HorizontalScrollContainer>
+                    </div>
+                  ) : null}
+                </>
               ) : data.orders.length ? (
                 <p className="border-t border-dashed border-[var(--mc-line)] pt-5 text-sm text-[var(--mc-muted)]">No orders match this filter.</p>
               ) : (

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Check, CircleAlert, Download, FileText, Plus, Printer, RefreshCw, Trash2, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, CircleAlert, Download, FileText, MessageSquare, Plus, Printer, RefreshCw, Send, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { adminRequest, formattedAmount, formattedDate } from "@/lib/admin-client";
@@ -9,6 +10,24 @@ import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import { mapItemsWithArtworks } from "@/lib/order-artwork-mapping";
 import { HorizontalScrollContainer } from "@/components/horizontal-scroll-container";
 import { AdminInvoiceManagerModal } from "@/components/admin-invoice-manager-modal";
+
+function formatDateTime(dateString: unknown) {
+  if (!dateString) return "-";
+  try {
+    const d = new Date(String(dateString));
+    if (isNaN(d.getTime())) return String(dateString);
+    return d.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  } catch {
+    return String(dateString);
+  }
+}
 
 type Row = Record<string, unknown>;
 export type DetailSection = "orders" | "quotes" | "customers" | "inquiries" | "payments" | "artworks";
@@ -211,8 +230,204 @@ function RecordActions({ section, id, row, saving, mutate, onOpenInvoice, custom
 
 type AdminMutate = (path: string, options: RequestInit, message: string) => Promise<void>;
 function QuoteDetail({ id, data, quote, saving, mutate }: { id: string; data: Row; quote: Row; saving: boolean; mutate: AdminMutate }) {
-  const [status, setStatus] = useState(value(quote.status)); const [discount, setDiscount] = useState(value(quote.discountAmount) || "0"); const [tax, setTax] = useState(value(quote.tax) || "0"); const [validUntil, setValidUntil] = useState(value(quote.validUntil).slice(0, 10)); const [notes, setNotes] = useState(value(quote.notes)); const [internalNotes, setInternalNotes] = useState(value(quote.internalNotes)); const [customerMessage, setCustomerMessage] = useState(value(quote.customerMessage));
-  return <div className="mt-6 space-y-6"><div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]"><FieldGrid row={quote} fields={["quoteNumber", "contactName", "companyName", "email", "phone", "status", "createdAt"]} /><aside className="border border-[#d7dce5] bg-white p-5"><h2 className="font-bold">Quotation totals</h2><dl className="mt-4 space-y-2 text-sm"><Amount label="Subtotal" value={quote.subtotal} /><Amount label="Discount" value={quote.discountAmount} /><Amount label="Tax" value={quote.tax} /><Amount label="Total" value={quote.total} strong /></dl></aside></div><section className="border border-[#d7dce5] bg-white p-4 sm:p-6"><h2 className="font-bold">Line items</h2><div className="mt-4 space-y-3">{rows(data.items).map((item) => <QuoteItem key={text(item.id)} quoteId={id} item={item} saving={saving} mutate={mutate} />)}<QuoteItem quoteId={id} saving={saving} mutate={mutate} /></div></section><form onSubmit={(event) => { event.preventDefault(); void mutate(`/api/admin/quotes/${id}`, { method: "PATCH", body: JSON.stringify({ status, discountAmount: discount, tax, validUntil: validUntil || null, notes, internalNotes: internalNotes || null, customerMessage: customerMessage || null }) }, "Quotation updated and totals recalculated."); }} className="border border-[#d7dce5] bg-white p-4 sm:p-6"><h2 className="font-bold">Quotation controls</h2><div className="mt-4 grid gap-4 sm:grid-cols-2"><Field label="Status"><select value={status} onChange={(event) => setStatus(event.target.value)} className="control">{statusOptions.quotes?.map((item) => <option key={item}>{item}</option>)}</select></Field><Field label="Valid until"><input type="date" value={validUntil} onChange={(event) => setValidUntil(event.target.value)} className="control" /></Field><Field label="Discount amount"><input value={discount} onChange={(event) => setDiscount(event.target.value)} className="control" /></Field><Field label="Tax amount"><input value={tax} onChange={(event) => setTax(event.target.value)} className="control" /></Field><Field label="Customer notes"><textarea rows={4} value={notes} onChange={(event) => setNotes(event.target.value)} className="control" /></Field><Field label="Internal notes"><textarea rows={4} value={internalNotes} onChange={(event) => setInternalNotes(event.target.value)} className="control" /></Field><div className="sm:col-span-2"><Field label="Message to customer"><textarea rows={3} value={customerMessage} onChange={(event) => setCustomerMessage(event.target.value)} className="control" /></Field></div></div><div className="mt-5 flex flex-wrap justify-end gap-2"><button disabled={saving} className="bg-[#2457b8] px-4 py-2.5 text-sm font-bold text-white">Save quotation</button>{quote.status === "CUSTOMER_APPROVED" ? <button type="button" disabled={saving} onClick={() => { if (window.confirm("Convert this approved quote into an order?")) void mutate(`/api/admin/quotes/${id}/convert-to-order`, { method: "POST" }, "Order created from quote."); }} className="border border-[#2457b8] px-4 py-2.5 text-sm font-bold text-[#2457b8]">Convert to order</button> : null}</div></form><Rows title="Artwork and documents" items={[...rows(data.artworks), ...rows(data.documents)]} fields={["fileName", "originalFilename", "status", "documentType", "fileSize"]} /></div>;
+  const [status, setStatus] = useState(value(quote.status));
+  const [discount, setDiscount] = useState(value(quote.discountAmount) || "0");
+  const [tax, setTax] = useState(value(quote.tax) || "0");
+  const [validUntil, setValidUntil] = useState(value(quote.validUntil).slice(0, 10));
+  const [notes, setNotes] = useState(value(quote.notes));
+  const [internalNotes, setInternalNotes] = useState(value(quote.internalNotes));
+  const [customerMessage, setCustomerMessage] = useState(value(quote.customerMessage));
+
+  const phone = value(quote.phone).replace(/[^0-9]/g, "");
+  const cleanPhone = phone.startsWith("91") && phone.length === 12 ? phone : phone.length === 10 ? `91${phone}` : phone;
+  const email = value(quote.email);
+  const quoteNumber = value(quote.quoteNumber);
+  const total = formattedAmount(quote.total);
+
+  const waText = encodeURIComponent(
+    `Hello ${value(quote.contactName) || "Customer"},\n\nWe have prepared your quotation *${quoteNumber}* for ${total}.\n\n` +
+    (customerMessage ? `*Message from Mahavir Card:*\n${customerMessage}\n\n` : "") +
+    `You can review, approve, or request changes on your account at mahavircard.in/account/quotes/${id}`
+  );
+  const mailSubject = encodeURIComponent(`Quotation ${quoteNumber} from Mahavir Card - ${total}`);
+  const mailBody = encodeURIComponent(
+    `Dear ${value(quote.contactName) || "Customer"},\n\n` +
+    `Please find your official quotation ${quoteNumber} for ${total}.\n\n` +
+    (customerMessage ? `Message from our team:\n${customerMessage}\n\n` : "") +
+    `You can view and approve your quotation here: https://mahavircard.in/account/quotes/${id}\n\n` +
+    `Best regards,\nMahavir Card`
+  );
+
+  async function sendToCustomer() {
+    setStatus("SENT_TO_CUSTOMER");
+    await mutate(
+      `/api/admin/quotes/${id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({
+          status: "SENT_TO_CUSTOMER",
+          discountAmount: discount,
+          tax,
+          validUntil: validUntil || null,
+          notes,
+          internalNotes: internalNotes || null,
+          customerMessage: customerMessage || null,
+        }),
+      },
+      "Quotation sent to customer with status 'SENT_TO_CUSTOMER'."
+    );
+  }
+
+  return (
+    <div className="mt-6 space-y-6">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <FieldGrid row={quote} fields={["quoteNumber", "contactName", "companyName", "email", "phone", "status", "createdAt"]} />
+        <aside className="border border-[#d7dce5] bg-white p-5">
+          <h2 className="font-bold">Quotation totals</h2>
+          <dl className="mt-4 space-y-2 text-sm">
+            <Amount label="Subtotal" value={quote.subtotal} />
+            <Amount label="Discount" value={quote.discountAmount} />
+            <Amount label="Tax" value={quote.tax} />
+            <Amount label="Total" value={quote.total} strong />
+          </dl>
+          <div className="mt-5 border-t border-[#d7dce5] pt-4 space-y-2">
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void sendToCustomer()}
+              className="flex w-full items-center justify-center gap-2 rounded bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-800 transition-colors shadow-xs disabled:opacity-60"
+            >
+              <Send size={14} /> Send Quotation to Customer
+            </button>
+            {cleanPhone ? (
+              <a
+                href={`https://wa.me/${cleanPhone}?text=${waText}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center gap-2 rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors"
+              >
+                <MessageSquare size={14} /> Share via WhatsApp
+              </a>
+            ) : null}
+            {email ? (
+              <a
+                href={`mailto:${email}?subject=${mailSubject}&body=${mailBody}`}
+                className="flex w-full items-center justify-center gap-2 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800 hover:bg-blue-100 transition-colors"
+              >
+                <Send size={14} /> Send via Email
+              </a>
+            ) : null}
+          </div>
+        </aside>
+      </div>
+
+      <section className="border border-[#d7dce5] bg-white p-4 sm:p-6">
+        <h2 className="font-bold">Line items</h2>
+        <div className="mt-4 space-y-3">
+          {rows(data.items).map((item) => (
+            <QuoteItem key={text(item.id)} quoteId={id} item={item} saving={saving} mutate={mutate} />
+          ))}
+          <QuoteItem quoteId={id} saving={saving} mutate={mutate} />
+        </div>
+      </section>
+
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void mutate(
+            `/api/admin/quotes/${id}`,
+            {
+              method: "PATCH",
+              body: JSON.stringify({
+                status,
+                discountAmount: discount,
+                tax,
+                validUntil: validUntil || null,
+                notes,
+                internalNotes: internalNotes || null,
+                customerMessage: customerMessage || null,
+              }),
+            },
+            "Quotation updated and totals recalculated."
+          );
+        }}
+        className="border border-[#d7dce5] bg-white p-4 sm:p-6"
+      >
+        <div className="flex items-center justify-between border-b border-[#e1e6ee] pb-4">
+          <h2 className="font-bold">Quotation controls & Customer Reply</h2>
+          <span className="text-xs text-[#607089]">
+            Current status: <strong>{status}</strong>
+          </span>
+        </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Field label="Status">
+            <select value={status} onChange={(event) => setStatus(event.target.value)} className="control">
+              {statusOptions.quotes?.map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Valid until">
+            <input type="date" value={validUntil} onChange={(event) => setValidUntil(event.target.value)} className="control" />
+          </Field>
+          <Field label="Discount amount">
+            <input value={discount} onChange={(event) => setDiscount(event.target.value)} className="control" />
+          </Field>
+          <Field label="Tax amount">
+            <input value={tax} onChange={(event) => setTax(event.target.value)} className="control" />
+          </Field>
+          <Field label="Customer notes (Specs / Description)">
+            <textarea rows={4} value={notes} onChange={(event) => setNotes(event.target.value)} className="control" />
+          </Field>
+          <Field label="Internal notes">
+            <textarea rows={4} value={internalNotes} onChange={(event) => setInternalNotes(event.target.value)} className="control" />
+          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Message / Reply to customer (displayed prominently on customer's quote review page)">
+              <textarea
+                rows={3}
+                placeholder="e.g. As per your requirement, we have calculated custom rates for 1,000 cards with matte lamination. Validity: 7 days."
+                value={customerMessage}
+                onChange={(event) => setCustomerMessage(event.target.value)}
+                className="control border-blue-300 focus:border-blue-600"
+              />
+            </Field>
+          </div>
+        </div>
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => void sendToCustomer()}
+            className="inline-flex items-center gap-1.5 rounded bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-60"
+          >
+            <Send size={15} /> Send Quotation & Reply
+          </button>
+          <button disabled={saving} className="bg-[#2457b8] px-4 py-2.5 text-sm font-bold text-white rounded hover:bg-[#1c4594]">
+            Save quotation
+          </button>
+          {quote.status === "CUSTOMER_APPROVED" ? (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => {
+                if (window.confirm("Convert this approved quote into an order?"))
+                  void mutate(`/api/admin/quotes/${id}/convert-to-order`, { method: "POST" }, "Order created from quote.");
+              }}
+              className="border border-[#2457b8] px-4 py-2.5 text-sm font-bold text-[#2457b8] rounded hover:bg-blue-50"
+            >
+              Convert to order
+            </button>
+          ) : null}
+        </div>
+      </form>
+      <Rows
+        title="Artwork and documents"
+        items={[...rows(data.artworks), ...rows(data.documents)]}
+        fields={["fileName", "originalFilename", "status", "documentType", "fileSize"]}
+      />
+    </div>
+  );
 }
 
 function QuoteItem({ quoteId, item, saving, mutate }: { quoteId: string; item?: Row; saving: boolean; mutate: AdminMutate }) { const [description, setDescription] = useState(value(item?.description)); const [quantity, setQuantity] = useState(value(item?.quantity) || "1"); const [unitPrice, setUnitPrice] = useState(value(item?.unitPrice) || "0"); const [configuration, setConfiguration] = useState(JSON.stringify(item?.configuration ?? {}, null, 2)); const submit = (event: FormEvent) => { event.preventDefault(); let parsed: unknown; try { parsed = JSON.parse(configuration || "{}"); } catch { window.alert("Configuration must be valid JSON."); return; } const path = item ? `/api/admin/quotes/${quoteId}/items/${text(item.id)}` : `/api/admin/quotes/${quoteId}/items`; void mutate(path, { method: item ? "PATCH" : "POST", body: JSON.stringify({ description, quantity: Number(quantity), unitPrice, configuration: parsed }) }, item ? "Quote item updated." : "Quote item added."); }; return <form onSubmit={submit} className="grid gap-3 border border-[#e1e6ee] p-3 lg:grid-cols-[minmax(12rem,2fr)_7rem_8rem_minmax(12rem,1fr)_auto]"><input required value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Description" className="control" /><input required type="number" min="1" value={quantity} onChange={(event) => setQuantity(event.target.value)} className="control" /><input required value={unitPrice} onChange={(event) => setUnitPrice(event.target.value)} className="control" /><textarea rows={2} value={configuration} onChange={(event) => setConfiguration(event.target.value)} className="control font-mono text-xs" /><div className="flex items-center justify-end gap-2"><button disabled={saving} className="border border-[#c9d2df] p-2 text-[#2457b8]" aria-label={item ? "Save item" : "Add item"}>{item ? <Check size={16} /> : <Plus size={16} />}</button>{item ? <button type="button" disabled={saving} onClick={() => { if (window.confirm("Delete this quote item?")) void mutate(`/api/admin/quotes/${quoteId}/items/${text(item.id)}`, { method: "DELETE" }, "Quote item deleted."); }} className="border border-[#efc4be] p-2 text-[#b13a2f]" aria-label="Delete item"><Trash2 size={16} /></button> : null}</div></form>; }
@@ -221,6 +436,23 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const LEDGER_PAGE_SIZE = 10;
+
+  const rawTxList = rows(data.walletTransactions);
+  const sortedTxList = useMemo(() => {
+    return [...rawTxList].sort((a, b) => {
+      const timeA = new Date(String(a.createdAt || 0)).getTime();
+      const timeB = new Date(String(b.createdAt || 0)).getTime();
+      return timeB - timeA;
+    });
+  }, [rawTxList]);
+
+  const totalLedgerPages = Math.max(1, Math.ceil(sortedTxList.length / LEDGER_PAGE_SIZE));
+  const paginatedTxList = useMemo(() => {
+    const start = (ledgerPage - 1) * LEDGER_PAGE_SIZE;
+    return sortedTxList.slice(start, start + LEDGER_PAGE_SIZE);
+  }, [sortedTxList, ledgerPage, LEDGER_PAGE_SIZE]);
 
   const balance = Number(customer.availableCredit ?? 0);
   const hasLogin = Boolean(customer.userId);
@@ -361,48 +593,76 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
         <div className="flex items-center justify-between gap-4 border-b border-[#e1e6ee] pb-3">
           <h2 className="font-bold text-[#162237]">Balance & Credit Ledger</h2>
           <span className="text-xs font-semibold text-[#607089]">
-            {rows(data.walletTransactions).length} transactions
+            {sortedTxList.length} transactions
           </span>
         </div>
-        {rows(data.walletTransactions).length ? (
-          <HorizontalScrollContainer className="mt-4">
-            <table className="min-w-full text-left text-xs">
-              <thead className="border-b border-[#e1e6ee] bg-[#f8fafc] text-[#52647e]">
-                <tr>
-                  <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Date</th>
-                  <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Type</th>
-                  <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Amount</th>
-                  <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Before</th>
-                  <th className="px-3 py-2.5 font-bold uppercase tracking-wider">After</th>
-                  <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Reference</th>
-                  <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Notes</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#e8ecf2]">
-                {rows(data.walletTransactions).map((tx, idx) => (
-                  <tr key={text(tx.id || idx)} className="hover:bg-slate-50/50">
-                    <td className="px-3 py-2.5 whitespace-nowrap text-slate-600">{formattedDate(tx.createdAt)}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap font-bold">
-                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-800 border border-slate-200">
-                        {text(tx.transactionType)}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap font-bold tabular-nums">
-                      {formattedAmount(tx.amount)}
-                    </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap text-slate-500 tabular-nums">
-                      {tx.balanceBefore !== null && tx.balanceBefore !== undefined ? formattedAmount(tx.balanceBefore) : "-"}
-                    </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap font-bold text-slate-800 tabular-nums">
-                      {tx.balanceAfter !== null && tx.balanceAfter !== undefined ? formattedAmount(tx.balanceAfter) : "-"}
-                    </td>
-                    <td className="px-3 py-2.5 font-mono text-slate-600">{text(tx.reference)}</td>
-                    <td className="px-3 py-2.5 text-slate-700 max-w-xs truncate" title={text(tx.notes)}>{text(tx.notes)}</td>
+        {sortedTxList.length ? (
+          <>
+            <HorizontalScrollContainer className="mt-4">
+              <table className="min-w-full text-left text-xs">
+                <thead className="border-b border-[#e1e6ee] bg-[#f8fafc] text-[#52647e]">
+                  <tr>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Date & Time</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Type</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Amount</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Before</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">After</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Reference</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Notes</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </HorizontalScrollContainer>
+                </thead>
+                <tbody className="divide-y divide-[#e8ecf2]">
+                  {paginatedTxList.map((tx, idx) => (
+                    <tr key={text(tx.id || idx)} className="hover:bg-slate-50/50">
+                      <td className="px-3 py-2.5 whitespace-nowrap text-slate-600">{formatDateTime(tx.createdAt)}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap font-bold">
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-800 border border-slate-200">
+                          {text(tx.transactionType)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 whitespace-nowrap font-bold tabular-nums">
+                        {formattedAmount(tx.amount)}
+                      </td>
+                      <td className="px-3 py-2.5 whitespace-nowrap text-slate-500 tabular-nums">
+                        {tx.balanceBefore !== null && tx.balanceBefore !== undefined ? formattedAmount(tx.balanceBefore) : "-"}
+                      </td>
+                      <td className="px-3 py-2.5 whitespace-nowrap font-bold text-slate-800 tabular-nums">
+                        {tx.balanceAfter !== null && tx.balanceAfter !== undefined ? formattedAmount(tx.balanceAfter) : "-"}
+                      </td>
+                      <td className="px-3 py-2.5 font-mono text-slate-600">{text(tx.reference)}</td>
+                      <td className="px-3 py-2.5 text-slate-700 max-w-xs truncate" title={text(tx.notes)}>{text(tx.notes)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </HorizontalScrollContainer>
+
+            {totalLedgerPages > 1 ? (
+              <div className="mt-4 flex items-center justify-between border-t border-[#e1e6ee] pt-3 text-xs">
+                <span className="text-[#607089] font-medium">
+                  Page {ledgerPage} of {totalLedgerPages} · Showing {paginatedTxList.length} of {sortedTxList.length} transactions
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={ledgerPage <= 1}
+                    onClick={() => setLedgerPage((p) => Math.max(1, p - 1))}
+                    className="inline-flex items-center gap-1 rounded border border-[#c9d2df] bg-white px-2.5 py-1 font-semibold text-[#1e293b] hover:bg-slate-100 disabled:opacity-40"
+                  >
+                    <ChevronLeft size={14} /> Prev
+                  </button>
+                  <button
+                    type="button"
+                    disabled={ledgerPage >= totalLedgerPages}
+                    onClick={() => setLedgerPage((p) => Math.min(totalLedgerPages, p + 1))}
+                    className="inline-flex items-center gap-1 rounded border border-[#c9d2df] bg-white px-2.5 py-1 font-semibold text-[#1e293b] hover:bg-slate-100 disabled:opacity-40"
+                  >
+                    Next <ChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </>
         ) : (
           <p className="mt-4 text-sm text-[#607089]">No ledger activity recorded yet.</p>
         )}
@@ -456,7 +716,101 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
     </div>
   );
 }
-function InquiryRelations({ data, id, saving, mutate }: { data: Row; id: string; saving: boolean; mutate: AdminMutate }) { return <button type="button" disabled={saving || data.status === "CONVERTED"} onClick={() => { if (window.confirm("Create a quote from this inquiry?")) void mutate(`/api/admin/inquiries/${id}/convert-to-quote`, { method: "POST" }, "Draft quote created."); }} className="bg-[#2457b8] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">Create quote</button>; }
+function InquiryRelations({ data, id, saving, mutate }: { data: Row; id: string; saving: boolean; mutate: AdminMutate }) {
+  const router = useRouter();
+  const [converting, setConverting] = useState(false);
+  const inq = record(data.inquiry ?? data);
+  const phone = value(inq.phone || data.phone).replace(/[^0-9]/g, "");
+  const email = value(inq.email || data.email);
+  const contactName = value(inq.contactName || data.contactName);
+  const subject = value(inq.subject || data.subject);
+  const isConverted = data.status === "CONVERTED" || inq.status === "CONVERTED";
+
+  async function handleCreateQuote() {
+    if (!window.confirm("Convert this customer inquiry into an official quotation? You can specify custom prices, line items, and send your reply to the customer.")) return;
+    setConverting(true);
+    try {
+      const res = await adminRequest<Row>(`/api/admin/inquiries/${id}/convert-to-quote`, { method: "POST" });
+      const quoteId = value(res.id);
+      if (quoteId) {
+        router.push(`/admin/quotes/${quoteId}`);
+      } else {
+        await mutate(`/api/admin/inquiries/${id}`, {}, "Quotation draft created.");
+      }
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Could not create quotation from inquiry");
+    } finally {
+      setConverting(false);
+    }
+  }
+
+  const cleanPhone = phone.startsWith("91") && phone.length === 12 ? phone : phone.length === 10 ? `91${phone}` : phone;
+  const waText = encodeURIComponent(
+    `Hello ${contactName || "Customer"},\n\n` +
+    `Regarding your requirement "${subject || "Custom Print Requirement"}" sent to Mahavir Card, we are reviewing your specifications and preparing a quotation.`
+  );
+  const mailSubject = encodeURIComponent(`Quotation & Response: ${subject || "Print Requirement"}`);
+  const mailBody = encodeURIComponent(
+    `Dear ${contactName || "Customer"},\n\n` +
+    `Thank you for contacting Mahavir Card regarding:\n"${value(inq.message || data.message)}"\n\n` +
+    `We have received your requirement and are preparing an official quotation for you.\n\n` +
+    `Best regards,\nMahavir Card Team`
+  );
+
+  return (
+    <section className="border border-[#d7dce5] bg-white p-4 sm:p-6 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e1e6ee] pb-4">
+        <div>
+          <h2 className="text-base font-bold text-[#162237]">Customer Requirement & Quotation</h2>
+          <p className="mt-0.5 text-xs text-[#607089]">
+            Respond to the customer, create an official quotation, and send direct replies.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {!isConverted ? (
+            <button
+              type="button"
+              disabled={saving || converting}
+              onClick={() => void handleCreateQuote()}
+              className="inline-flex items-center gap-2 rounded bg-[#2457b8] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#1b4391] transition-colors disabled:opacity-50 shadow-xs"
+            >
+              <Plus size={15} />
+              {converting ? "Creating quotation..." : "Create Quotation & Reply"}
+            </button>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-xs font-bold text-emerald-800">
+              <Check size={14} /> Converted to Quotation
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold text-[#607089] mr-1">Direct Replies:</span>
+        {cleanPhone ? (
+          <a
+            href={`https://wa.me/${cleanPhone}?text=${waText}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-3.5 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors"
+          >
+            <MessageSquare size={13} className="text-emerald-700" />
+            Reply via WhatsApp ({cleanPhone})
+          </a>
+        ) : null}
+        {email ? (
+          <a
+            href={`mailto:${email}?subject=${mailSubject}&body=${mailBody}`}
+            className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3.5 py-1.5 text-xs font-bold text-blue-800 hover:bg-blue-100 transition-colors"
+          >
+            <Send size={13} className="text-blue-700" />
+            Reply via Email ({email})
+          </a>
+        ) : null}
+      </div>
+    </section>
+  );
+}
 function FieldGrid({ row, fields, title }: { row: Row; fields: string[]; title?: string }) {
   return (
     <section className="border border-[#d7dce5] bg-white p-4 sm:p-6">

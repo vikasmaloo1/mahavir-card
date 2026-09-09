@@ -371,11 +371,14 @@ export function AdminModule({ section }: { section: ModuleKey }) {
   const [editing, setEditing] = useState<Row | null>(null);
   const [creating, setCreating] = useState(false);
 
+  const isPaginated = ["orders", "quotes", "customers", "inquiries", "payments", "artworks"].includes(section);
+  const PAGE_LIMIT = 20;
+
   async function load(nextPage = page) {
     setLoading(true);
     setError("");
     try {
-      const suffix = ["orders", "quotes", "customers", "inquiries"].includes(section) ? `?page=${nextPage}&limit=100` : "";
+      const suffix = isPaginated ? `?page=${nextPage}&limit=${PAGE_LIMIT}` : "";
       const result = await adminRequest<Row[] | { items?: Row[] }>(`${config.endpoint}${suffix}`);
       setItems(asItems(result));
       setPage(nextPage);
@@ -555,7 +558,36 @@ export function AdminModule({ section }: { section: ModuleKey }) {
     {loading ? <div className="mt-6 border border-[#d7dce5] bg-white p-6 text-sm text-[#607089]">Loading {config.title.toLowerCase()}...</div> : null}
     {!loading && !visible.length ? <div className="mt-6 border border-dashed border-[#c9d2df] bg-white p-8 text-center"><p className="font-bold text-[#162237]">No {config.title.toLowerCase()} found.</p><p className="mt-2 text-sm text-[#607089]">Use the new-record control when this module supports creation.</p></div> : null}
     {!loading && visible.length ? <ResourceTable section={section} items={visible} saving={saving} onEdit={(item) => { setEditing(item); setCreating(false); setError(""); }} onDelete={remove} onConvert={convertInquiry} onRemind={remindQuote} /> : null}
-    {["orders", "quotes", "customers", "inquiries"].includes(section) ? <div className="mt-5 flex justify-end gap-2"><button type="button" disabled={page === 1 || loading} onClick={() => void load(page - 1)} className="inline-flex items-center gap-1 border border-[#c9d2df] bg-white px-3 py-2 text-sm font-semibold disabled:opacity-40"><ChevronLeft size={16} />Previous</button><button type="button" disabled={items.length < 100 || loading} onClick={() => void load(page + 1)} className="inline-flex items-center gap-1 border border-[#c9d2df] bg-white px-3 py-2 text-sm font-semibold disabled:opacity-40">Next<ChevronRight size={16} /></button></div> : null}
+    {isPaginated ? (
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#d7dce5] pt-4">
+        <div className="text-xs font-semibold text-[#607089]">
+          Page {page} · Showing {items.length} records ({PAGE_LIMIT} per page)
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={page === 1 || loading}
+            onClick={() => void load(page - 1)}
+            className="inline-flex items-center gap-1 border border-[#c9d2df] bg-white px-3 py-1.5 text-xs font-bold text-[#24324a] hover:bg-slate-50 disabled:opacity-40 transition-colors shadow-2xs"
+          >
+            <ChevronLeft size={15} />
+            Previous
+          </button>
+          <span className="rounded bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
+            {page}
+          </span>
+          <button
+            type="button"
+            disabled={items.length < PAGE_LIMIT || loading}
+            onClick={() => void load(page + 1)}
+            className="inline-flex items-center gap-1 border border-[#c9d2df] bg-white px-3 py-1.5 text-xs font-bold text-[#24324a] hover:bg-slate-50 disabled:opacity-40 transition-colors shadow-2xs"
+          >
+            Next
+            <ChevronRight size={15} />
+          </button>
+        </div>
+      </div>
+    ) : null}
   </div>;
 }
 

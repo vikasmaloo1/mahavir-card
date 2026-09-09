@@ -1,9 +1,9 @@
 "use client";
 
-import { Check, RefreshCw, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Check, ChevronLeft, ChevronRight, RefreshCw, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { adminRequest, asItems, formattedAmount, formattedDate } from "@/lib/admin-client";
+import { adminRequest, asItems, formattedAmount } from "@/lib/admin-client";
 import { HorizontalScrollContainer } from "@/components/horizontal-scroll-container";
 import { showToast } from "@/components/toast-provider";
 
@@ -12,14 +12,48 @@ type WalletRow = {
   customer: { id: string; contactName: string; companyName: string; email: string; availableCredit: string };
 };
 
+function formatDateTime(dateString: string) {
+  try {
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString;
+    return d.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  } catch {
+    return dateString;
+  }
+}
+
 export function WalletAdmin() {
   const [rows, setRows] = useState<WalletRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState("");
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("PENDING");
+  const [page, setPage] = useState(1);
+  const pageSize = 15;
+
+  const sortedRows = useMemo(() => {
+    return [...rows].sort((a, b) => {
+      const timeA = new Date(a.transaction.createdAt).getTime();
+      const timeB = new Date(b.transaction.createdAt).getTime();
+      return timeB - timeA;
+    });
+  }, [rows]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return sortedRows.slice(start, start + pageSize);
+  }, [sortedRows, page, pageSize]);
+
   const load = useCallback(async () => {
-    setLoading(true); setError("");
+    setLoading(true); setError(""); setPage(1);
     try { setRows(asItems(await adminRequest<WalletRow[] | { items: WalletRow[] }>(`/api/admin/wallet${filter ? `?status=${filter}` : ""}`))); }
     catch (caught) { setError(caught instanceof Error ? caught.message : "Could not load balance requests"); }
     finally { setLoading(false); }
@@ -61,7 +95,7 @@ export function WalletAdmin() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e4e8ef]">
-              {rows.map(({ transaction, customer }) => (
+              {paginatedRows.map(({ transaction, customer }) => (
                 <tr key={transaction.id} className="hover:bg-[#fafbfe] transition-colors">
                   <td className="px-4 py-4">
                     <strong className="block">{customer.contactName}</strong>
@@ -69,7 +103,7 @@ export function WalletAdmin() {
                   </td>
                   <td className="px-4 py-4">
                     <strong>{formattedAmount(transaction.amount)}</strong>
-                    <span className="mt-1 block text-xs text-[#607089]">{transaction.reference} · {formattedDate(transaction.createdAt)}</span>
+                    <span className="mt-1 block text-xs text-[#607089]">{transaction.reference ? `${transaction.reference} · ` : ""}{formatDateTime(transaction.createdAt)}</span>
                   </td>
                   <td className="px-4 py-4 font-semibold">{formattedAmount(transaction.balanceAfter ?? customer.availableCredit)}</td>
                   <td className="px-4 py-4">
@@ -100,6 +134,31 @@ export function WalletAdmin() {
             </tbody>
           </table>
           {loading ? <p className="p-6 text-sm text-[#607089]">Loading balance requests...</p> : null}
+          {totalPages > 1 ? (
+            <div className="flex items-center justify-between border-t border-[#d7dce5] bg-[#f8fafc] px-4 py-3">
+              <span className="text-xs font-medium text-[#607089]">
+                Page {page} of {totalPages} · Showing {paginatedRows.length} of {sortedRows.length} requests
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="inline-flex items-center gap-1 border border-[#c9d2df] bg-white px-2.5 py-1 text-xs font-semibold text-[#1e293b] hover:bg-slate-100 disabled:opacity-40"
+                >
+                  <ChevronLeft size={14} /> Prev
+                </button>
+                <button
+                  type="button"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  className="inline-flex items-center gap-1 border border-[#c9d2df] bg-white px-2.5 py-1 text-xs font-semibold text-[#1e293b] hover:bg-slate-100 disabled:opacity-40"
+                >
+                  Next <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </HorizontalScrollContainer>
     </div>

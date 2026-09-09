@@ -201,6 +201,37 @@ export function CustomerRecordDetail({ kind, id, upiVpa }: { kind: "order" | "qu
     {cancelError ? <ErrorMessage text={cancelError} /> : null}
     {reorderError ? <ErrorMessage text={reorderError} /> : null}
     {saveJobError ? <ErrorMessage text={saveJobError} /> : null}
+    {quote && (quote.quote.customerMessage || quote.quote.notes) ? (
+      <section className="mt-6 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/90 to-indigo-50/60 p-5 shadow-xs">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#2457b8] text-white shadow-xs">
+            <FileText size={18} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[#122b5c]">
+                Official Reply & Quotation from Mahavir Card
+              </h2>
+              {quote.quote.validUntil ? (
+                <span className="text-xs font-semibold text-blue-900 bg-blue-100/80 border border-blue-200 px-2.5 py-0.5 rounded">
+                  Valid Until: {new Date(quote.quote.validUntil).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                </span>
+              ) : null}
+            </div>
+            {quote.quote.customerMessage ? (
+              <div className="mt-2.5 rounded-lg bg-white/95 border border-blue-100 p-3.5 text-sm font-medium leading-relaxed text-slate-800 whitespace-pre-wrap shadow-2xs">
+                {quote.quote.customerMessage}
+              </div>
+            ) : null}
+            {quote.quote.notes && quote.quote.notes !== quote.quote.customerMessage ? (
+              <p className="mt-2 text-xs text-slate-600 italic">
+                Requirement notes: {quote.quote.notes}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </section>
+    ) : null}
     {quote?.quote.status === "SENT_TO_CUSTOMER" && !isPastValidUntil(quote.quote.validUntil) ? <section className="mt-6 border border-[#b8ccf5] bg-[#f5f8ff] p-5"><h2 className="font-bold">Your quotation is ready</h2><p className="mt-2 text-sm text-[var(--mc-muted)]">Review the line items and total before approving or requesting changes.</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" disabled={saving} onClick={() => void decide("APPROVE")} className="inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"><Check size={16} />Approve quote</button><button type="button" disabled={saving} onClick={() => void decide("REJECT")} className="inline-flex items-center gap-2 rounded-full border border-[#c9d2df] bg-white px-4 py-2.5 text-sm font-bold disabled:opacity-50"><X size={16} />Request changes</button></div></section> : null}
     {quote && (quote.quote.status === "EXPIRED" || quote.quote.status === "CUSTOMER_REJECTED" || (quote.quote.status === "SENT_TO_CUSTOMER" && isPastValidUntil(quote.quote.validUntil))) ? <section className="mt-6 border border-[var(--mc-line)] bg-white p-5"><h2 className="font-bold">{quote.quote.status === "CUSTOMER_REJECTED" ? "Changes were requested on this quote" : "This quotation is no longer active"}</h2><p className="mt-2 text-sm text-[var(--mc-muted)]">{quote.quote.status === "CUSTOMER_REJECTED" ? "Mahavir Card will follow up, or you can start a fresh request below." : "Its validity period has passed. Request a new quote for the same or updated specifications."}</p><Link href="/quote" className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-4 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors">Request a new quote</Link></section> : null}
     {order && order.order.status !== "CANCELLED" ? <OrderProgressTracker status={order.order.status} /> : null}
