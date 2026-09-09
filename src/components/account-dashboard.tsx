@@ -63,6 +63,7 @@ export function AccountDashboard() {
       const response = await fetch(`/api/account/saved-jobs/${jobId}/order-again`, { method: "POST" });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "This job could not be added to your basket");
+      showToast.success("Added to Basket", "Job items added to your basket. Review items and proceed to checkout.");
       router.push("/cart");
     } catch (caught) {
       setSavedJobError(caught instanceof Error ? caught.message : "This job could not be added to your basket");
@@ -91,12 +92,12 @@ export function AccountDashboard() {
       const response = await fetch(`/api/orders/${orderId}/reorder`, { method: "POST" });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "This order could not be reordered");
-      showToast.success("Reordered successfully!", "Items added to your basket.");
+      showToast.success("Added to Basket", "Items from this order have been added to your basket. Review items and proceed to checkout.");
       router.push("/cart");
     } catch (caught) {
       const msg = caught instanceof Error ? caught.message : "This order could not be reordered";
       setReorderError(msg);
-      showToast.error("Reorder failed", msg);
+      showToast.error("Could not add to basket", msg);
       setReorderingId(null);
     }
   }
@@ -242,10 +243,12 @@ export function AccountDashboard() {
                           <small className="mt-1 block text-[var(--mc-muted)]">{date(item.createdAt)}</small>
                         </Link>
                         <strong className="shrink-0">{formatInr(item.total)}</strong>
-                        <Link href={`/account/orders/${item.id}#documents`} className="hidden shrink-0 items-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors sm:inline-flex">
-                          <FileText size={13} />
-                          Invoice
-                        </Link>
+                        {data?.customer?.customerType === "B2C" ? (
+                          <Link href={`/account/orders/${item.id}#documents`} className="hidden shrink-0 items-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-3 py-1.5 text-xs font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors sm:inline-flex">
+                            <FileText size={13} />
+                            Invoice
+                          </Link>
+                        ) : null}
                         {item.status === "PENDING" ? (
                           <button
                             type="button"

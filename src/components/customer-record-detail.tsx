@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { formatInr } from "@/lib/formatting";
 import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import { OrderPaymentAction } from "@/components/order-payment-action";
+import { showToast } from "@/components/toast-provider";
 
 type Item = { id: string; description: string; jobName: string | null; quantity: number; unitPrice: string; totalPrice: string; productId?: string | null; configuration?: Record<string, unknown> };
 type Document = { id: string; documentType: string; originalFilename: string; status: string };
@@ -75,9 +76,12 @@ export function CustomerRecordDetail({ kind, id, upiVpa }: { kind: "order" | "qu
       const response = await fetch(`/api/orders/${id}/reorder`, { method: "POST" });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "This order could not be reordered");
+      showToast.success("Added to Basket", "Items from this order have been added to your basket. Review items and proceed to checkout.");
       router.push("/cart");
     } catch (caught) {
-      setReorderError(caught instanceof Error ? caught.message : "This order could not be reordered");
+      const msg = caught instanceof Error ? caught.message : "This order could not be reordered";
+      setReorderError(msg);
+      showToast.error("Could not add to basket", msg);
       setReordering(false);
     }
   }
