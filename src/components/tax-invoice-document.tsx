@@ -77,11 +77,11 @@ export function TaxInvoiceDocument({
           }
           html, body {
             width: ${isA5 ? "148mm" : "210mm"} !important;
-            height: ${isA5 ? "210mm" : "297mm"} !important;
-            max-height: ${isA5 ? "210mm" : "297mm"} !important;
+            height: auto !important;
+            min-height: ${isA5 ? "210mm" : "297mm"} !important;
             margin: 0 !important;
             padding: 0 !important;
-            overflow: hidden !important;
+            overflow: visible !important;
             background-color: #ffffff !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -95,8 +95,9 @@ export function TaxInvoiceDocument({
             margin: 0 !important;
             padding: ${isLetterPad ? `0 ${isA5 ? "6mm" : "8mm"}` : isA5 ? "6mm" : "8mm"} !important;
             width: 100% !important;
-            height: 100% !important;
-            max-height: 100% !important;
+            min-height: ${isA5 ? "210mm" : "297mm"} !important;
+            max-height: ${isA5 ? "210mm" : "297mm"} !important;
+            overflow: visible !important;
             page-break-after: avoid !important;
             page-break-inside: avoid !important;
             break-after: avoid !important;
@@ -157,9 +158,22 @@ export function TaxInvoiceDocument({
 
         {/* 2-Column Metadata Box */}
         <div className="border border-black grid grid-cols-[54%_46%] text-[0.92em]">
-          {/* Left Column: Customer Details (Buyer Only, no duplicate Mahavir Card address!) */}
+          {/* Left Column: Seller (Mahavir Card) & Customer Details */}
           <div className="flex flex-col justify-between border-r border-black p-1">
             <div>
+              {/* Mahavir Card Seller Details */}
+              <div className="mb-1 pb-1 border-b border-black leading-tight text-[0.92em]">
+                <p className="font-black uppercase text-[1.08em] tracking-wide text-black">Mahavir Card</p>
+                <p className="text-gray-800 text-[0.88em]">5, Akshar Purushottam Flat, Sarangpur, Dolatkhana, Ahmedabad - 380001.</p>
+                <p className="text-gray-800 text-[0.88em]">GSTIN : <strong className="text-black font-extrabold">{data.sellerGstin}</strong></p>
+                <div className="flex flex-wrap items-center gap-x-2 text-[0.86em] text-gray-800 font-medium">
+                  <span>www.mahavircard.in</span>
+                  <span>·</span>
+                  <span>mahavircard2011@gmail.com</span>
+                </div>
+              </div>
+
+              {/* Customer Details */}
               <div className="flex items-start gap-1">
                 <span className="font-bold shrink-0">M/s.</span>
                 <span className="font-bold shrink-0">:</span>
@@ -172,70 +186,58 @@ export function TaxInvoiceDocument({
                   {data.customer.companyName}
                 </p>
               ) : null}
-            <div className="pl-6 text-gray-900 leading-tight space-y-0.2 mt-0.5 text-[0.95em]">
-              {data.customer.addressLine1 ? <p>{data.customer.addressLine1}</p> : null}
-              {data.customer.addressLine2 ? <p>{data.customer.addressLine2}</p> : null}
-              {data.customer.phone ? (
-                <p className="font-medium">
-                  Mo, <span className="tabular-nums">{data.customer.phone}</span>
-                </p>
-              ) : null}
+              <div className="pl-6 text-gray-900 leading-tight space-y-0.2 mt-0.5 text-[0.95em]">
+                {data.customer.addressLine1 ? <p>{data.customer.addressLine1}</p> : null}
+                {data.customer.addressLine2 ? <p>{data.customer.addressLine2}</p> : null}
+                {data.customer.phone ? (
+                  <p className="font-medium">
+                    Mo, <span className="tabular-nums">{data.customer.phone}</span>
+                  </p>
+                ) : null}
+              </div>
             </div>
-          </div>
-          <div className="mt-1 pt-1 border-t border-black font-bold flex items-center gap-1">
-            <span>GSTIN No.: </span>
-            <span className="uppercase font-semibold tracking-wide">
-              {data.customer.gstin || "URP (UNREGISTERED)"}
-            </span>
-          </div>
-        </div>
-
-        {/* Right Column: Invoice / Challan / Order / Terms Grid */}
-        <div className="divide-y divide-black">
-          {/* Invoice No & Date */}
-          <div className="grid grid-cols-[56%_44%] divide-x divide-black p-1 items-center">
-            <div className="whitespace-nowrap overflow-hidden">
-              <span className="font-bold">INVOICE NO.: </span>
-              <span className="font-bold text-[1.02em] tabular-nums">{data.invoiceNumber}</span>
-            </div>
-            <div className="pl-1 whitespace-nowrap overflow-hidden">
-              <span className="font-bold">DT. </span>
-              <span className="tabular-nums">{data.invoiceDate}</span>
-            </div>
-          </div>
-
-          {/* Challan No & Date */}
-          <div className="grid grid-cols-[56%_44%] divide-x divide-black p-1 items-center">
-            <div className="whitespace-nowrap overflow-hidden">
-              <span className="font-bold">CHALLAN NO.: </span>
-              <span className="tabular-nums">{data.challanNumber}</span>
-            </div>
-            <div className="pl-1 whitespace-nowrap overflow-hidden">
-              <span className="font-bold">DT. </span>
-              <span className="tabular-nums">{data.challanDate}</span>
-            </div>
-          </div>
-
-          {/* Order No & Date */}
-          <div className="grid grid-cols-[56%_44%] divide-x divide-black p-1 items-center">
-            <div className="whitespace-nowrap overflow-hidden">
-              <span className="font-bold">ORDER NO.: </span>
-              <span className="font-bold text-[0.98em] tabular-nums">
-                {displayOrderNo}
+            <div className="mt-1 pt-1 border-t border-black font-bold flex items-center gap-1">
+              <span>GSTIN No.: </span>
+              <span className="uppercase font-semibold tracking-wide">
+                {data.customer.gstin || "URP (UNREGISTERED)"}
               </span>
             </div>
-            <div className="pl-1 whitespace-nowrap overflow-hidden">
-              <span className="font-bold">DT. </span>
-              <span className="tabular-nums">{data.orderDate}</span>
-            </div>
           </div>
 
-          {/* Terms */}
-          <div className="p-1 whitespace-nowrap overflow-hidden">
-            <span className="font-bold">TERMS: </span>
-            <span className="font-medium">{data.terms || "Immediate"}</span>
+          {/* Right Column: Invoice / Order / Terms Grid (Challan Removed) */}
+          <div className="divide-y divide-black">
+            {/* Invoice No & Date */}
+            <div className="grid grid-cols-[60%_40%] divide-x divide-black p-1 items-center">
+              <div className="whitespace-nowrap overflow-hidden">
+                <span className="font-bold">INVOICE NO.: </span>
+                <span className="font-bold text-[1.02em] tabular-nums">{data.invoiceNumber}</span>
+              </div>
+              <div className="pl-1 whitespace-nowrap overflow-hidden">
+                <span className="font-bold">DT. </span>
+                <span className="tabular-nums">{data.invoiceDate}</span>
+              </div>
+            </div>
+
+            {/* Order No & Date */}
+            <div className="grid grid-cols-[60%_40%] divide-x divide-black p-1 items-center">
+              <div className="whitespace-nowrap overflow-hidden">
+                <span className="font-bold">ORDER NO.: </span>
+                <span className="font-bold text-[0.98em] tabular-nums">
+                  {displayOrderNo}
+                </span>
+              </div>
+              <div className="pl-1 whitespace-nowrap overflow-hidden">
+                <span className="font-bold">DT. </span>
+                <span className="tabular-nums">{data.orderDate}</span>
+              </div>
+            </div>
+
+            {/* Terms */}
+            <div className="p-1 whitespace-nowrap overflow-hidden">
+              <span className="font-bold">TERMS: </span>
+              <span className="font-medium">{data.terms || "Immediate"}</span>
+            </div>
           </div>
-        </div>
       </div>
 
       {/* Itemized Table with Faded Watermark */}

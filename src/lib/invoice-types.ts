@@ -1,4 +1,4 @@
-﻿export interface InvoiceLineItem {
+export interface InvoiceLineItem {
   id?: string;
   description: string;
   hsnCode: string;
@@ -36,9 +36,11 @@ export interface InvoiceData {
   orderId: string;
   orderNumber: string;
   invoiceNumber: string;
+  invoiceYear?: string;
+  invoiceSequence?: number;
   invoiceDate: string; // DD-MM-YYYY
-  challanNumber: string;
-  challanDate: string; // DD-MM-YYYY
+  challanNumber?: string;
+  challanDate?: string; // DD-MM-YYYY
   orderDate: string; // DD-MM-YYYY
   terms: string;
 

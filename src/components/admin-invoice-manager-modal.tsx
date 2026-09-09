@@ -34,8 +34,6 @@ export function AdminInvoiceManagerModal({
   // Form states for live invoice management
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [invoiceDate, setInvoiceDate] = useState("");
-  const [challanNumber, setChallanNumber] = useState("");
-  const [challanDate, setChallanDate] = useState("");
   const [orderNumber, setOrderNumber] = useState("");
   const [orderDate, setOrderDate] = useState("");
   const [terms, setTerms] = useState("Immediate");
@@ -73,8 +71,6 @@ export function AdminInvoiceManagerModal({
 
       setInvoiceNumber(res.invoiceNumber);
       setInvoiceDate(res.invoiceDate);
-      setChallanNumber(res.challanNumber);
-      setChallanDate(res.challanDate);
       setOrderNumber(res.orderNumber || "");
       setOrderDate(res.orderDate);
       setTerms(res.terms);
@@ -137,8 +133,6 @@ export function AdminInvoiceManagerModal({
       orderNumber: orderNumber || invoice.orderNumber,
       invoiceNumber,
       invoiceDate,
-      challanNumber,
-      challanDate,
       orderDate,
       terms,
       sellerGstin,
@@ -178,8 +172,6 @@ export function AdminInvoiceManagerModal({
     orderNumber,
     invoiceNumber,
     invoiceDate,
-    challanNumber,
-    challanDate,
     orderDate,
     terms,
     taxScheme,
@@ -220,8 +212,6 @@ export function AdminInvoiceManagerModal({
             orderNumber,
             invoiceNumber,
             invoiceDate,
-            challanNumber,
-            challanDate,
             orderDate,
             terms,
             sizeMode,
@@ -445,13 +435,14 @@ export function AdminInvoiceManagerModal({
               {/* Invoice Numbers & Dates */}
               <div className="rounded-lg border border-[#c9d2df] bg-white p-3 space-y-3">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-[#2457b8]">
-                  Invoice & Challan Details
+                  Invoice & Order Details
                 </h4>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
                     <label className="block font-semibold text-gray-700">Invoice No. *</label>
                     <input
                       type="text"
+                      placeholder="e.g. MVC/26-27/00001"
                       value={invoiceNumber}
                       onChange={(e) => setInvoiceNumber(e.target.value)}
                       className="mt-1 w-full rounded border border-[#c9d2df] px-2 py-1.5 font-mono"
@@ -463,24 +454,6 @@ export function AdminInvoiceManagerModal({
                       type="text"
                       value={invoiceDate}
                       onChange={(e) => setInvoiceDate(e.target.value)}
-                      className="mt-1 w-full rounded border border-[#c9d2df] px-2 py-1.5 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-gray-700">Challan No.</label>
-                    <input
-                      type="text"
-                      value={challanNumber}
-                      onChange={(e) => setChallanNumber(e.target.value)}
-                      className="mt-1 w-full rounded border border-[#c9d2df] px-2 py-1.5 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-gray-700">Challan Date</label>
-                    <input
-                      type="text"
-                      value={challanDate}
-                      onChange={(e) => setChallanDate(e.target.value)}
                       className="mt-1 w-full rounded border border-[#c9d2df] px-2 py-1.5 font-mono"
                     />
                   </div>

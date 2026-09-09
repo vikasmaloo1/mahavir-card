@@ -19,6 +19,11 @@ export function printInvoiceDocument(
     return;
   }
 
+  const isA5 = options.pageSize === "A5";
+  const widthMm = isA5 ? "148mm" : "210mm";
+  const heightMm = isA5 ? "210mm" : "297mm";
+  const sizeRule = isA5 ? "148mm 210mm" : "210mm 297mm";
+
   // Remove existing print iframe if present
   const existingFrame = document.getElementById("invoice-print-frame");
   if (existingFrame) {
@@ -29,7 +34,7 @@ export function printInvoiceDocument(
   iframe.id = "invoice-print-frame";
   iframe.setAttribute(
     "style",
-    "position:fixed;top:-10000px;left:-10000px;width:0;height:0;border:0;opacity:0;pointer-events:none;"
+    `position:fixed;left:-9999px;top:-9999px;width:${widthMm};height:${heightMm};border:0;visibility:visible;`
   );
   document.body.appendChild(iframe);
 
@@ -38,9 +43,6 @@ export function printInvoiceDocument(
     window.print();
     return;
   }
-
-  const isA5 = options.pageSize === "A5";
-  const sizeRule = isA5 ? "148mm 210mm" : "210mm 297mm";
 
   // Collect existing styles and font links
   const styleTags = Array.from(document.querySelectorAll("style, link[rel='stylesheet']"))
@@ -60,20 +62,23 @@ export function printInvoiceDocument(
     html, body {
       margin: 0 !important;
       padding: 0 !important;
-      width: ${isA5 ? "148mm" : "210mm"} !important;
-      height: ${isA5 ? "210mm" : "297mm"} !important;
-      max-height: ${isA5 ? "210mm" : "297mm"} !important;
-      overflow: hidden !important;
+      width: ${widthMm} !important;
+      height: auto !important;
+      min-height: ${heightMm} !important;
+      overflow: visible !important;
       background: #ffffff !important;
     }
     .invoice-container {
       margin: 0 auto !important;
       border: none !important;
       box-shadow: none !important;
-      width: ${isA5 ? "148mm" : "210mm"} !important;
-      height: ${isA5 ? "210mm" : "297mm"} !important;
-      max-height: ${isA5 ? "210mm" : "297mm"} !important;
-      overflow: hidden !important;
+      width: ${widthMm} !important;
+      min-height: ${heightMm} !important;
+      max-height: ${heightMm} !important;
+      overflow: visible !important;
+      page-break-after: avoid !important;
+      page-break-inside: avoid !important;
+      break-after: avoid !important;
     }
     .print\\:hidden, .no-print {
       display: none !important;
@@ -84,10 +89,17 @@ export function printInvoiceDocument(
     .print\\:text-transparent {
       color: transparent !important;
     }
+    .print\\:opacity-0 {
+      opacity: 0 !important;
+    }
     @media print {
       @page {
         size: ${sizeRule};
         margin: 0mm;
+      }
+      html, body {
+        height: auto !important;
+        overflow: visible !important;
       }
       .no-print, .print\\:hidden {
         display: none !important;
@@ -98,6 +110,10 @@ export function printInvoiceDocument(
       .print\\:text-transparent {
         color: transparent !important;
       }
+      .print\\:opacity-0 {
+        opacity: 0 !important;
+      }
+    }
     }
   `;
 

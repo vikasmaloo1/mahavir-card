@@ -1,4 +1,5 @@
 import { numberToIndianWords } from "./number-to-words";
+import { getFinancialYear, formatInvoiceNumber } from "./invoice-sequence";
 import type { InvoiceData, InvoiceLineItem, InvoiceSizeMode } from "./invoice-types";
 
 function formatDateIn(date: Date | string | null | undefined): string {
@@ -52,8 +53,8 @@ export function buildInvoiceData(
   const formattedOrderDate = formatDateIn(createdDate);
 
   const shortOrderNum = shortenOrderNumber(order?.orderNumber);
-  // Default invoice/challan number: clean readable sequence or short order number
-  const defaultInvNum = overrides?.invoiceNumber || shortOrderNum || "50";
+  const financialYear = order?.invoiceYear || getFinancialYear(createdDate);
+  const defaultInvNum = order?.invoiceNumber || overrides?.invoiceNumber || formatInvoiceNumber(financialYear, order?.invoiceSequence || 1);
 
   const lineItems: InvoiceLineItem[] = (overrides?.customItems || items || []).map((item, index) => {
     const qty = Number(item.quantity || 1);
@@ -106,10 +107,10 @@ export function buildInvoiceData(
   return {
     orderId: String(order.id),
     orderNumber: String(overrides?.orderNumber || shortOrderNum || order.orderNumber || ""),
-    invoiceNumber: String(overrides?.invoiceNumber || defaultInvNum),
-    invoiceDate: overrides?.invoiceDate || formattedOrderDate,
-    challanNumber: String(overrides?.challanNumber || defaultInvNum),
-    challanDate: overrides?.challanDate || formattedOrderDate,
+    invoiceNumber: String(overrides?.invoiceNumber || order.invoiceNumber || defaultInvNum),
+    invoiceYear: financialYear,
+    invoiceSequence: order.invoiceSequence,
+    invoiceDate: overrides?.invoiceDate || (order.invoiceDate ? formatDateIn(order.invoiceDate) : formattedOrderDate),
     orderDate: overrides?.orderDate || formattedOrderDate,
     terms: overrides?.terms || "Immediate",
 

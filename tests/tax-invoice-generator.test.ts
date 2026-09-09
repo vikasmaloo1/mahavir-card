@@ -3,6 +3,30 @@ import test from "node:test";
 
 import { numberToIndianWords } from "../src/lib/number-to-words";
 import { determinePageSize, buildInvoiceData, defaultHsnForDescription, shortenOrderNumber } from "../src/lib/invoice-helper";
+import { getFinancialYear, formatInvoiceNumber, parseInvoiceNumber } from "../src/lib/invoice-sequence";
+
+test("getFinancialYear calculates Indian FY (April to March) properly", () => {
+  // June 2026 -> 26-27
+  assert.equal(getFinancialYear(new Date("2026-06-15T00:00:00Z")), "26-27");
+  // September 2026 -> 26-27
+  assert.equal(getFinancialYear(new Date("2026-09-09T00:00:00Z")), "26-27");
+  // January 2027 -> 26-27 (part of FY 2026-2027)
+  assert.equal(getFinancialYear(new Date("2027-01-20T00:00:00Z")), "26-27");
+  // March 31, 2027 -> 26-27
+  assert.equal(getFinancialYear(new Date("2027-03-31T15:00:00Z")), "26-27");
+  // April 1, 2027 -> 27-28
+  assert.equal(getFinancialYear(new Date("2027-04-01T12:00:00Z")), "27-28");
+});
+
+test("formatInvoiceNumber and parseInvoiceNumber handle MVC/26-27/00001 format correctly", () => {
+  assert.equal(formatInvoiceNumber("26-27", 1), "MVC/26-27/00001");
+  assert.equal(formatInvoiceNumber("26-27", 42), "MVC/26-27/00042");
+  assert.equal(formatInvoiceNumber("27-28", 105), "MVC/27-28/00105");
+
+  const parsed = parseInvoiceNumber("MVC/26-27/00042");
+  assert.equal(parsed.year, "26-27");
+  assert.equal(parsed.sequence, 42);
+});
 
 test("shortenOrderNumber strips excessive prefixes to keep order numbers clean and short", () => {
   assert.equal(shortenOrderNumber("MHC-O-2026-F6014071"), "F6014071");
@@ -70,7 +94,8 @@ test("buildInvoiceData calculates intra-state taxes, round-off, and grand total 
 
   const invoice = buildInvoiceData(mockOrder, mockCustomer, mockItems);
 
-  assert.equal(invoice.invoiceNumber, "00000050");
+  assert.equal(invoice.invoiceNumber, "MVC/26-27/00001");
+  assert.equal(invoice.invoiceYear, "26-27");
   assert.equal(invoice.customer.name, "SHREEJI MASALA GRUH UDHYOG BHANDAR");
   assert.equal(invoice.customer.phone, "9924403113");
   assert.equal(invoice.customer.gstin, "24DAFPS4570F1ZM");

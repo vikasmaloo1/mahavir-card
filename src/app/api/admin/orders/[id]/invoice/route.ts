@@ -4,6 +4,7 @@ import { handleApiError, jsonError, jsonOk } from "@/lib/api";
 import { db } from "@/lib/db/server";
 import { businessSettings, customers, orderItems, orders } from "@/lib/db/schema";
 import { buildInvoiceData } from "@/lib/invoice-helper";
+import { getOrAllocateInvoiceNumber } from "@/lib/invoice-sequence-server";
 import { generateInvoiceDocument } from "@/lib/pdf-documents";
 import { publicDocument } from "@/lib/document-storage";
 import { requireRole } from "@/lib/permissions";
@@ -30,7 +31,19 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
       return jsonError("Tax invoice is only available for B2C orders", 400);
     }
 
-    const invoiceData = buildInvoiceData(order, customer, items, settings);
+    const allocation = await getOrAllocateInvoiceNumber(order.id);
+    const invoiceData = buildInvoiceData(
+      {
+        ...order,
+        invoiceNumber: allocation.invoiceNumber,
+        invoiceYear: allocation.invoiceYear,
+        invoiceSequence: allocation.invoiceSequence,
+        invoiceDate: allocation.invoiceDate,
+      },
+      customer,
+      items,
+      settings
+    );
     return jsonOk(invoiceData);
   } catch (error) {
     if (error instanceof Response) return error;
@@ -62,7 +75,24 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       return jsonError("Tax invoice is only available for B2C orders", 400);
     }
 
-    const invoiceData = buildInvoiceData(order, customer, items, settings, overrides);
+    const allocation = await getOrAllocateInvoiceNumber(order.id, {
+      customNumber: overrides?.invoiceNumber,
+      customDate: overrides?.invoiceDate,
+    });
+
+    const invoiceData = buildInvoiceData(
+      {
+        ...order,
+        invoiceNumber: allocation.invoiceNumber,
+        invoiceYear: allocation.invoiceYear,
+        invoiceSequence: allocation.invoiceSequence,
+        invoiceDate: allocation.invoiceDate,
+      },
+      customer,
+      items,
+      settings,
+      { ...overrides, invoiceNumber: allocation.invoiceNumber }
+    );
 
     let doc = null;
     try {

@@ -141,8 +141,9 @@ export async function generateInvoiceDocument(orderId: string, createdBy?: strin
     { text: `Invoice total: ${amount(order.total)}`, bold: true, size: 13 },
     { text: "This invoice is generated from the recorded order and payment details." },
   ];
-  const bytes = await createPdf("INVOICE", order.orderNumber, lines);
-  const document = await storeGeneratedDocument({ documentType: "INVOICE", entityType: "ORDER", entityId: order.id, customerId: order.customerId, orderId: order.id, filename: `invoice-${order.orderNumber}.pdf`, bytes, createdBy });
+  const displayNum = order.invoiceNumber || order.orderNumber;
+  const bytes = await createPdf("INVOICE", displayNum, lines);
+  const document = await storeGeneratedDocument({ documentType: "INVOICE", entityType: "ORDER", entityId: order.id, customerId: order.customerId, orderId: order.id, filename: `invoice-${displayNum.replace(/[/\\?%*:|"<>]/g, "-")}.pdf`, bytes, createdBy });
   await supersedeOlder(document);
   return document;
 }
