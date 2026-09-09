@@ -40,7 +40,7 @@ export function CustomerOrderInvoiceView({ orderId }: { orderId: string }) {
 
   function handlePrint() {
     if (!invoice) return;
-    const pageSize = (invoice.resolvedPageSize || "A5") as "A5" | "A4";
+    const pageSize = (invoice.resolvedPageSize || "A4") as "A5" | "A4";
     printInvoiceDocument("customer-invoice-print-view", {
       pageSize,
       letterPadMode: false,

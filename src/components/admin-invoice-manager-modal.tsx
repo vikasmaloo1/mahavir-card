@@ -192,7 +192,7 @@ export function AdminInvoiceManagerModal({
 
   function handlePrint() {
     if (!liveInvoiceData) return;
-    const pageSize = (liveInvoiceData.resolvedPageSize || "A5") as "A5" | "A4";
+    const pageSize = (liveInvoiceData.resolvedPageSize || "A4") as "A5" | "A4";
     printInvoiceDocument("tax-invoice-print-area", {
       pageSize,
       letterPadMode,

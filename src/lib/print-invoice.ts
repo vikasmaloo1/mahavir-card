@@ -73,12 +73,16 @@ export function printInvoiceDocument(
       border: none !important;
       box-shadow: none !important;
       width: ${widthMm} !important;
+      height: ${heightMm} !important;
       min-height: ${heightMm} !important;
       max-height: ${heightMm} !important;
-      overflow: visible !important;
+      overflow: hidden !important;
       page-break-after: avoid !important;
       page-break-inside: avoid !important;
       break-after: avoid !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: space-between !important;
     }
     .print\\:hidden, .no-print {
       display: none !important;
@@ -98,8 +102,8 @@ export function printInvoiceDocument(
         margin: 0mm;
       }
       html, body {
-        height: auto !important;
-        overflow: visible !important;
+        height: ${heightMm} !important;
+        overflow: hidden !important;
       }
       .no-print, .print\\:hidden {
         display: none !important;
@@ -113,7 +117,6 @@ export function printInvoiceDocument(
       .print\\:opacity-0 {
         opacity: 0 !important;
       }
-    }
     }
   `;
 

@@ -58,8 +58,8 @@ export function TaxInvoiceDocument({
     <div
       className={`invoice-container relative mx-auto bg-white text-black font-sans leading-tight border border-gray-300 shadow-sm print:border-none print:shadow-none print:m-0 select-none flex flex-col justify-between ${
         isA5
-          ? `w-[148mm] max-w-[148mm] min-h-[210mm] max-h-[210mm] px-[6mm] ${isLetterPad ? "py-0" : "py-[4mm]"} text-[9px]`
-          : `w-[210mm] max-w-[210mm] min-h-[297mm] max-h-[297mm] px-[8mm] ${isLetterPad ? "py-0" : "py-[6mm]"} text-[11px]`
+          ? `w-[148mm] max-w-[148mm] h-[210mm] min-h-[210mm] max-h-[210mm] px-[6mm] ${isLetterPad ? "py-0" : "py-[4mm]"} text-[9px]`
+          : `w-[210mm] max-w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] px-[8mm] ${isLetterPad ? "py-0" : "py-[6mm]"} text-[11px]`
       } ${className}`}
       style={{
         boxSizing: "border-box",
@@ -77,11 +77,12 @@ export function TaxInvoiceDocument({
           }
           html, body {
             width: ${isA5 ? "148mm" : "210mm"} !important;
-            height: auto !important;
+            height: ${isA5 ? "210mm" : "297mm"} !important;
             min-height: ${isA5 ? "210mm" : "297mm"} !important;
+            max-height: ${isA5 ? "210mm" : "297mm"} !important;
             margin: 0 !important;
             padding: 0 !important;
-            overflow: visible !important;
+            overflow: hidden !important;
             background-color: #ffffff !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -93,14 +94,18 @@ export function TaxInvoiceDocument({
             border: none !important;
             box-shadow: none !important;
             margin: 0 !important;
-            padding: ${isLetterPad ? `0 ${isA5 ? "6mm" : "8mm"}` : isA5 ? "6mm" : "8mm"} !important;
+            padding: ${isLetterPad ? `0 ${isA5 ? "6mm" : "8mm"}` : isA5 ? "4mm 6mm" : "6mm 8mm"} !important;
             width: 100% !important;
+            height: ${isA5 ? "210mm" : "297mm"} !important;
             min-height: ${isA5 ? "210mm" : "297mm"} !important;
             max-height: ${isA5 ? "210mm" : "297mm"} !important;
-            overflow: visible !important;
+            overflow: hidden !important;
             page-break-after: avoid !important;
             page-break-inside: avoid !important;
             break-after: avoid !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
           }
         }
       `}</style>
@@ -119,9 +124,15 @@ export function TaxInvoiceDocument({
       ) : null}
 
       {/* Middle Printable Document Body */}
-      <div className="flex-1 flex flex-col justify-start">
+      <div
+        className="flex-1 flex flex-col justify-between overflow-hidden shrink-0"
+        style={{
+          minHeight: isA5 ? (isLetterPad ? "140mm" : "202mm") : (isLetterPad ? "227mm" : "285mm"),
+          height: isA5 ? (isLetterPad ? "140mm" : "auto") : (isLetterPad ? "227mm" : "auto"),
+        }}
+      >
         {/* Brand Header: Logo Emblem + Mahavir Card (skipped on letter pad: already pre-printed) */}
-        <header className="relative pt-1 px-1">
+        <header className="relative pt-0.5 px-1 shrink-0">
           {!isLetterPad ? (
             <div className="flex justify-between items-center pb-2 mb-1.5 border-b-2 border-black">
               {/* Left: Logo Emblem + Big Bold Mahavir Card & all printing solution */}
@@ -162,7 +173,7 @@ export function TaxInvoiceDocument({
             </div>
           ) : (
             /* GSTIN & TAX INVOICE Header Row (when on pre-printed letter pad) */
-            <div className="flex justify-between items-baseline pt-1 pb-0.5 px-0.5 font-bold">
+            <div className="flex justify-between items-baseline pt-0.5 pb-0.5 px-0.5 font-bold">
               <div className="text-[1.05em] tracking-wide text-black">
                 <span>GSTIN : </span>
                 <span className="font-extrabold">{data.sellerGstin}</span>
@@ -175,7 +186,7 @@ export function TaxInvoiceDocument({
         </header>
 
         {/* 2-Column Metadata Box */}
-        <div className="border border-black grid grid-cols-[54%_46%] text-[0.92em]">
+        <div className="border border-black grid grid-cols-[54%_46%] text-[0.92em] mb-0.5 shrink-0">
           {/* Left Column: Seller (Mahavir Card) & Customer Details */}
           <div className="flex flex-col justify-between border-r border-black p-1">
             <div>
@@ -256,136 +267,149 @@ export function TaxInvoiceDocument({
               <span className="font-medium">{data.terms || "Immediate"}</span>
             </div>
           </div>
-      </div>
-
-      {/* Itemized Table with Faded Watermark */}
-      <div className="relative mt-1 border border-black">
-        {/* Faded Watermark Emblem in Background */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.06] overflow-hidden">
-          <div className="w-[50mm] h-[50mm] relative rounded-full overflow-hidden">
-            <Image
-              src="/images/mahavir-card-logo.jpeg"
-              alt="Watermark"
-              width={200}
-              height={200}
-              className="w-full h-full object-cover"
-            />
-          </div>
         </div>
 
-        {/* Table Structure */}
-        <table className="w-full border-collapse relative z-10 text-left">
-          <thead>
-            <tr className="border-b border-black text-center font-bold text-[0.92em]">
-              <th className="py-1 px-1 border-r border-black w-[6%]">S.<br />No.</th>
-              <th className="py-1 px-2 border-r border-black w-[44%] text-center">DESCRIPTION</th>
-              <th className="py-1 px-1 border-r border-black w-[12%]">HSN<br />CODE</th>
-              <th className="py-1 px-1 border-r border-black w-[10%]">QTY.</th>
-              <th className="py-1 px-1 border-r border-black w-[10%]">RATE</th>
-              <th className="py-1 px-1 border-r border-black w-[7%]">PER</th>
-              <th className="py-1 px-1.5 w-[11%] text-right">
-                <div>AMOUNT</div>
-                <div className="text-[0.8em] font-normal flex justify-between px-1">
-                  <span>Rs.</span>
-                  <span>Ps.</span>
-                </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody style={{ minHeight: isA5 ? "52mm" : "100mm" }}>
-            {data.items.map((item, idx) => (
-              <tr key={item.id || idx} className="align-top font-normal text-[0.95em]">
-                <td className="py-1 px-1 border-r border-black text-center font-bold">
-                  {idx + 1}
-                </td>
-                <td className="py-1 px-2 border-r border-black font-bold uppercase tracking-tight">
-                  {item.description}
-                </td>
-                <td className="py-1 px-1 border-r border-black text-center tabular-nums">
-                  {item.hsnCode}
-                </td>
-                <td className="py-1 px-1 border-r border-black text-center tabular-nums font-semibold">
-                  {item.quantity}
-                </td>
-                <td className="py-1 px-1 border-r border-black text-right tabular-nums pr-1">
-                  {formatNum(item.rate)}
-                </td>
-                <td className="py-1 px-1 border-r border-black text-center uppercase font-semibold">
-                  {item.per}
-                </td>
-                <td className="py-1 px-1.5 text-right tabular-nums font-bold">
-                  {formatNum(item.amount)}
-                </td>
-              </tr>
-            ))}
+        {/* Itemized Table with Faded Watermark - Expanded to fill vertical space */}
+        <div className="relative my-0.5 border border-black flex-1 flex flex-col justify-between min-h-0 overflow-hidden">
+          {/* Faded Watermark Emblem in Background */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.06] overflow-hidden">
+            <div className="w-[50mm] h-[50mm] relative rounded-full overflow-hidden">
+              <Image
+                src="/images/mahavir-card-logo.jpeg"
+                alt="Watermark"
+                width={200}
+                height={200}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          </div>
 
-            {/* Empty filler rows with borders to maintain vertical table grid */}
-            <tr
-              style={{
-                height: isA5
-                  ? isLetterPad
-                    ? `${Math.max(6, 38 - data.items.length * 7)}mm`
-                    : `${Math.max(10, 48 - data.items.length * 8)}mm`
-                  : isLetterPad
-                    ? `${Math.max(20, 85 - data.items.length * 10)}mm`
-                    : `${Math.max(25, 105 - data.items.length * 10)}mm`,
-              }}
-            >
-              <td className="border-r border-black" />
-              <td className="border-r border-black" />
-              <td className="border-r border-black" />
-              <td className="border-r border-black" />
-              <td className="border-r border-black" />
-              <td className="border-r border-black" />
-              <td />
-            </tr>
-          </tbody>
+          {/* Table Structure */}
+          <table className="w-full h-full border-collapse relative z-10 text-left flex-1" style={{ height: "100%" }}>
+            <thead>
+              <tr className="border-b border-black text-center font-bold text-[0.92em]">
+                <th className="py-1 px-1 border-r border-black w-[5%]">S.<br />No.</th>
+                <th className="py-1.5 px-2 border-r border-black w-[49%] text-center font-black tracking-wide text-[1.05em]">DESCRIPTION</th>
+                <th className="py-1 px-1 border-r border-black w-[11%]">HSN<br />CODE</th>
+                <th className="py-1 px-1 border-r border-black w-[9%]">QTY.</th>
+                <th className="py-1 px-1 border-r border-black w-[9%]">RATE</th>
+                <th className="py-1 px-1 border-r border-black w-[6%]">PER</th>
+                <th className="py-1 px-1.5 w-[11%] text-right">
+                  <div>AMOUNT</div>
+                  <div className="text-[0.8em] font-normal flex justify-between px-1">
+                    <span>Rs.</span>
+                    <span>Ps.</span>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody style={{ height: "100%" }}>
+              {data.items.map((item, idx) => (
+                <tr key={item.id || idx} className="align-top font-normal text-[0.95em]">
+                  <td className="py-2 px-1 border-r border-black text-center font-bold">
+                    {idx + 1}
+                  </td>
+                  <td className="py-2 px-2.5 border-r border-black font-extrabold text-[1.06em] uppercase tracking-tight text-black leading-snug">
+                    {item.description}
+                  </td>
+                  <td className="py-2 px-1 border-r border-black text-center tabular-nums">
+                    {item.hsnCode}
+                  </td>
+                  <td className="py-2 px-1 border-r border-black text-center tabular-nums font-bold text-[1.02em]">
+                    {item.quantity}
+                  </td>
+                  <td className="py-2 px-1 border-r border-black text-right tabular-nums pr-1 font-semibold">
+                    {formatNum(item.rate)}
+                  </td>
+                  <td className="py-2 px-1 border-r border-black text-center uppercase font-semibold">
+                    {item.per}
+                  </td>
+                  <td className="py-2 px-1.5 text-right tabular-nums font-black text-[1.02em]">
+                    {formatNum(item.amount)}
+                  </td>
+                </tr>
+              ))}
+
+              {/* Empty filler rows with borders to expand and maintain vertical table grid */}
+              <tr
+                style={{
+                  height: "100%",
+                }}
+                className="h-full"
+              >
+                <td className="border-r border-black" />
+                <td className="border-r border-black">
+                  <div
+                    style={{
+                      height: isA5
+                        ? isLetterPad
+                          ? `${Math.max(10, 48 - data.items.length * 8)}mm`
+                          : `${Math.max(12, 58 - data.items.length * 8)}mm`
+                        : isLetterPad
+                          ? `${Math.max(30, 108 - data.items.length * 10)}mm`
+                          : `${Math.max(30, 114 - data.items.length * 10)}mm`,
+                    }}
+                  />
+                </td>
+                <td className="border-r border-black" />
+                <td className="border-r border-black" />
+                <td className="border-r border-black" />
+                <td className="border-r border-black" />
+                <td />
+              </tr>
+            </tbody>
 
           {/* Subtotals & Taxes Footer inside Table */}
           <tfoot>
-            {/* TOTAL */}
-            <tr className="border-t border-black">
+            {/* SUB TOTAL */}
+            <tr className="border-t border-black font-semibold">
               <td colSpan={4} className="border-r border-black" />
-              <td colSpan={2} className="border-r border-black px-1.5 py-0.5 font-bold uppercase text-right">
-                TOTAL
+              <td colSpan={2} className="border-r border-black px-1.5 py-0.5 text-right font-bold uppercase">
+                SUB TOTAL
               </td>
               <td className="px-1.5 py-0.5 text-right tabular-nums font-bold">
                 {formatNum(data.subtotal)}
               </td>
             </tr>
 
-            {/* SGST */}
-            <tr className="border-t border-black">
-              <td colSpan={4} className="border-r border-black" />
-              <td colSpan={2} className="border-r border-black px-1.5 py-0.5 font-bold uppercase text-right">
-                SGST {data.sgstRate}%
-              </td>
-              <td className="px-1.5 py-0.5 text-right tabular-nums font-bold">
-                {data.sgstAmount > 0 ? formatNum(data.sgstAmount) : "-"}
-              </td>
-            </tr>
-
             {/* CGST */}
-            <tr className="border-t border-black">
-              <td colSpan={4} className="border-r border-black" />
-              <td colSpan={2} className="border-r border-black px-1.5 py-0.5 font-bold uppercase text-right">
-                CGST {data.cgstRate}%
-              </td>
-              <td className="px-1.5 py-0.5 text-right tabular-nums font-bold">
-                {data.cgstAmount > 0 ? formatNum(data.cgstAmount) : "-"}
-              </td>
-            </tr>
+            {data.cgstAmount > 0 ? (
+              <tr className="border-t border-black">
+                <td colSpan={4} className="border-r border-black" />
+                <td colSpan={2} className="border-r border-black px-1.5 py-0.5 text-right font-medium">
+                  OUTPUT CGST {data.cgstRate}%
+                </td>
+                <td className="px-1.5 py-0.5 text-right tabular-nums">
+                  {formatNum(data.cgstAmount)}
+                </td>
+              </tr>
+            ) : null}
+
+            {/* SGST */}
+            {data.sgstAmount > 0 ? (
+              <tr className="border-t border-black">
+                <td colSpan={4} className="border-r border-black" />
+                <td colSpan={2} className="border-r border-black px-1.5 py-0.5 text-right font-medium">
+                  OUTPUT SGST {data.sgstRate}%
+                </td>
+                <td className="px-1.5 py-0.5 text-right tabular-nums">
+                  {formatNum(data.sgstAmount)}
+                </td>
+              </tr>
+            ) : null}
 
             {/* IGST */}
-            <tr className="border-t border-black">
-              <td colSpan={4} className="border-r border-black" />
-              <td colSpan={2} className="border-r border-black px-1.5 py-0.5 font-bold uppercase text-right">
-                IGST {data.igstRate ? `${data.igstRate}%` : "%"}
-              </td>
-              <td className="px-1.5 py-0.5 text-right tabular-nums font-bold">
-                {data.igstAmount > 0 ? formatNum(data.igstAmount) : ""}
-              </td>
-            </tr>
+            {data.igstAmount > 0 ? (
+              <tr className="border-t border-black">
+                <td colSpan={4} className="border-r border-black" />
+                <td colSpan={2} className="border-r border-black px-1.5 py-0.5 text-right font-medium">
+                  OUTPUT IGST {data.igstRate}%
+                </td>
+                <td className="px-1.5 py-0.5 text-right tabular-nums">
+                  {formatNum(data.igstAmount)}
+                </td>
+              </tr>
+            ) : null}
 
             {/* ROUND OFF */}
             <tr className="border-t border-black">
@@ -415,13 +439,13 @@ export function TaxInvoiceDocument({
       </div>
 
       {/* Amount in Words */}
-      <div className="border-x border-b border-black py-1 px-2 font-bold text-[0.95em]">
+      <div className="shrink-0 border-x border-b border-black py-1 px-2 font-bold text-[0.95em]">
         <span>AMOUNT : </span>
         <span className="font-semibold text-gray-900">{data.amountInWords}</span>
       </div>
 
       {/* Legal Declaration, QR Code, and Signature Block */}
-      <div className="border-x border-b border-black grid grid-cols-[46%_22%_32%] divide-x divide-black p-1 items-center">
+      <div className="shrink-0 border-x border-b border-black grid grid-cols-[46%_22%_32%] divide-x divide-black p-1 items-center">
         {/* Left: Standard GST Declarations */}
         <div className="text-[0.8em] text-gray-900 leading-tight space-y-0.5 pr-1">
           <p>(1) GOODS ONCE SOLD NOT BE ACCEPTED BACK.</p>
@@ -459,7 +483,7 @@ export function TaxInvoiceDocument({
       </div>
 
       {/* Bank Details Banner */}
-      <div className="border-x border-b border-black py-1 px-2 text-center font-bold tracking-wide text-[0.95em] bg-white">
+      <div className="shrink-0 border-x border-b border-black py-1 px-2 text-center font-bold tracking-wide text-[0.95em] bg-white">
         <span>{data.bank.bankName} : </span>
         <span>A/C <strong>{data.bank.accountNumber}</strong></span>
         <span className="mx-2.5"> </span>
@@ -468,7 +492,7 @@ export function TaxInvoiceDocument({
 
       {/* Footer Contact (skipped on letter pad: already pre-printed on letterhead footer) */}
       {!isLetterPad ? (
-        <footer className="relative pt-1 px-1 pb-0.5">
+        <footer className="shrink-0 relative pt-1 px-1 pb-0.5">
           <div className="flex flex-col gap-0.5 text-[0.85em] text-gray-900 max-w-[65%]">
             <div className="flex items-center gap-1">
               <MapPin size={11} className="text-red-600 shrink-0" />

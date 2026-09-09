@@ -41,7 +41,7 @@ export function AdminOrderInvoiceView({ orderId }: { orderId: string }) {
 
   function handlePrint() {
     if (!activeInvoice) return;
-    const pageSize = (activeInvoice.resolvedPageSize || "A5") as "A5" | "A4";
+    const pageSize = (activeInvoice.resolvedPageSize || "A4") as "A5" | "A4";
     printInvoiceDocument("admin-invoice-print-view", {
       pageSize,
       letterPadMode,
@@ -100,7 +100,7 @@ export function AdminOrderInvoiceView({ orderId }: { orderId: string }) {
                   forcedSize === null ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                Auto ({invoice?.resolvedPageSize || "A5"})
+                Auto ({invoice?.resolvedPageSize || "A4"})
               </button>
               <button
                 type="button"
