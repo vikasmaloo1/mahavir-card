@@ -48,6 +48,11 @@ export function AdminRecordDetail({ section, id }: { section: DetailSection; id:
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   const primary = useMemo(() => record(payload[section.slice(0, -1)] ?? payload), [payload, section]);
+  const customer = useMemo(() => record(payload.customer), [payload]);
+  const isB2COrder = useMemo(
+    () => section === "orders" && text(customer.customerType || primary.customerType) === "B2C",
+    [section, customer, primary]
+  );
 
   async function load() {
     setLoading(true); setError("");
@@ -65,10 +70,10 @@ export function AdminRecordDetail({ section, id }: { section: DetailSection; id:
     finally { setSaving(false); }
   }
 
-  return <div><header className="flex flex-col justify-between gap-4 border-b border-[#d7dce5] pb-6 sm:flex-row sm:items-end"><div><Link href={`/admin/${section}`} className="inline-flex items-center gap-1 text-sm font-bold text-[#2457b8]"><ArrowLeft size={16} />{section[0].toUpperCase() + section.slice(1)}</Link><p className="mt-5 text-xs font-bold uppercase tracking-[0.14em] text-[#2457b8]">Admin record</p><h1 className="mt-2 break-words text-2xl font-bold sm:text-3xl">{title(section, primary)}</h1><p className="mt-2 text-sm text-[#607089]">Live data, related records, and authorized actions for this {section.slice(0, -1)}.</p></div><div className="flex flex-wrap items-center gap-2">{section === "orders" ? <button type="button" onClick={() => setShowInvoiceModal(true)} className="inline-flex items-center gap-2 border border-emerald-600 bg-emerald-50 px-3 py-2.5 text-sm font-bold text-emerald-800 hover:bg-emerald-100"><Printer size={16} />Tax Invoice</button> : null}<button type="button" onClick={() => void load()} disabled={loading} className="inline-flex items-center gap-2 border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-bold"><RefreshCw size={16} className={loading ? "animate-spin" : ""} />Refresh</button></div></header>
+  return <div><header className="flex flex-col justify-between gap-4 border-b border-[#d7dce5] pb-6 sm:flex-row sm:items-end"><div><Link href={`/admin/${section}`} className="inline-flex items-center gap-1 text-sm font-bold text-[#2457b8]"><ArrowLeft size={16} />{section[0].toUpperCase() + section.slice(1)}</Link><p className="mt-5 text-xs font-bold uppercase tracking-[0.14em] text-[#2457b8]">Admin record</p><h1 className="mt-2 break-words text-2xl font-bold sm:text-3xl">{title(section, primary)}</h1><p className="mt-2 text-sm text-[#607089]">Live data, related records, and authorized actions for this {section.slice(0, -1)}.</p></div><div className="flex flex-wrap items-center gap-2">{isB2COrder ? <button type="button" onClick={() => setShowInvoiceModal(true)} className="inline-flex items-center gap-2 border border-emerald-600 bg-emerald-50 px-3 py-2.5 text-sm font-bold text-emerald-800 hover:bg-emerald-100"><Printer size={16} />Tax Invoice</button> : null}<button type="button" onClick={() => void load()} disabled={loading} className="inline-flex items-center gap-2 border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-bold"><RefreshCw size={16} className={loading ? "animate-spin" : ""} />Refresh</button></div></header>
     {notice ? <Message tone="success">{notice}</Message> : null}{error ? <Message tone="error">{error}</Message> : null}
     {loading ? <p className="mt-6 border border-[#d7dce5] bg-white p-6 text-sm text-[#607089]">Loading record...</p> : <DetailBody section={section} id={id} data={payload} primary={primary} saving={saving} mutate={mutate} onOpenInvoice={() => setShowInvoiceModal(true)} />}
-    {showInvoiceModal && section === "orders" ? <AdminInvoiceManagerModal orderId={id} onClose={() => { setShowInvoiceModal(false); void load(); }} /> : null}
+    {showInvoiceModal && isB2COrder ? <AdminInvoiceManagerModal orderId={id} onClose={() => { setShowInvoiceModal(false); void load(); }} /> : null}
   </div>;
 }
 

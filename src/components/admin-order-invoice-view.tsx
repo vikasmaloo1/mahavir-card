@@ -142,15 +142,24 @@ export function AdminOrderInvoiceView({ orderId }: { orderId: string }) {
             <span>Generating tax invoice...</span>
           </div>
         ) : error ? (
-          <div className="rounded-lg border border-red-300 bg-red-50 p-6 text-center text-red-800">
-            <p className="font-bold">Error loading invoice</p>
+          <div className="rounded-lg border border-red-300 bg-red-50 p-6 text-center text-red-800 max-w-md mx-auto">
+            <p className="font-bold">Tax Invoice Not Available</p>
             <p className="mt-1 text-sm">{error}</p>
-            <button
-              onClick={() => void load()}
-              className="mt-3 rounded bg-red-700 px-3 py-1.5 text-xs font-bold text-white"
-            >
-              Retry
-            </button>
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <Link
+                href={`/admin/orders/${orderId}`}
+                className="rounded bg-[#2457b8] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#1a4497] transition-colors"
+              >
+                Back to Order
+              </Link>
+              <button
+                type="button"
+                onClick={() => void load()}
+                className="rounded border border-red-300 bg-white px-3.5 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
           </div>
         ) : activeInvoice ? (
           <div className="print:m-0 print:p-0 my-4">
