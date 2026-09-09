@@ -6,6 +6,7 @@ import { ArrowLeft, Printer, RefreshCw } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
 import { TaxInvoiceDocument } from "@/components/tax-invoice-document";
+import { printInvoiceDocument } from "@/lib/print-invoice";
 import type { InvoiceData } from "@/lib/invoice-types";
 
 export function CustomerOrderInvoiceView({ orderId }: { orderId: string }) {
@@ -37,10 +38,19 @@ export function CustomerOrderInvoiceView({ orderId }: { orderId: string }) {
     void load();
   }, [orderId]);
 
+  function handlePrint() {
+    if (!invoice) return;
+    const pageSize = (invoice.resolvedPageSize || "A5") as "A5" | "A4";
+    printInvoiceDocument("customer-invoice-print-view", {
+      pageSize,
+      letterPadMode: false,
+    });
+  }
+
   useEffect(() => {
     if (!loading && invoice && autoPrint) {
       const timer = setTimeout(() => {
-        window.print();
+        handlePrint();
       }, 500);
       return () => clearTimeout(timer);
     }
@@ -72,8 +82,8 @@ export function CustomerOrderInvoiceView({ orderId }: { orderId: string }) {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => window.print()}
-              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-700 px-4 py-1.5 text-xs font-bold text-white shadow hover:bg-emerald-800 transition-colors"
+              onClick={handlePrint}
+              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-700 px-4 py-1.5 text-xs font-bold text-white shadow hover:bg-emerald-800 transition-colors cursor-pointer"
             >
               <Printer size={14} />
               Print / Save PDF
@@ -101,7 +111,7 @@ export function CustomerOrderInvoiceView({ orderId }: { orderId: string }) {
             </button>
           </div>
         ) : invoice ? (
-          <div className="print:m-0 print:p-0 my-4">
+          <div className="print:m-0 print:p-0 my-4" id="customer-invoice-print-view">
             <TaxInvoiceDocument data={invoice} />
           </div>
         ) : null}

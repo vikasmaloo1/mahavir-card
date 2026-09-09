@@ -8,6 +8,7 @@ import { useSearchParams } from "next/navigation";
 import { adminRequest } from "@/lib/admin-client";
 import { TaxInvoiceDocument } from "@/components/tax-invoice-document";
 import { AdminInvoiceManagerModal } from "@/components/admin-invoice-manager-modal";
+import { printInvoiceDocument } from "@/lib/print-invoice";
 import type { InvoiceData, InvoiceSizeMode } from "@/lib/invoice-types";
 
 export function AdminOrderInvoiceView({ orderId }: { orderId: string }) {
@@ -19,6 +20,7 @@ export function AdminOrderInvoiceView({ orderId }: { orderId: string }) {
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [showDesk, setShowDesk] = useState(false);
   const [forcedSize, setForcedSize] = useState<InvoiceSizeMode | null>(null);
+  const [letterPadMode, setLetterPadMode] = useState(true);
 
   async function load() {
     setLoading(true);
@@ -37,14 +39,23 @@ export function AdminOrderInvoiceView({ orderId }: { orderId: string }) {
     void load();
   }, [orderId]);
 
+  function handlePrint() {
+    if (!activeInvoice) return;
+    const pageSize = (activeInvoice.resolvedPageSize || "A5") as "A5" | "A4";
+    printInvoiceDocument("admin-invoice-print-view", {
+      pageSize,
+      letterPadMode,
+    });
+  }
+
   useEffect(() => {
     if (!loading && invoice && autoPrint) {
       const timer = setTimeout(() => {
-        window.print();
+        handlePrint();
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [loading, invoice, autoPrint]);
+  }, [loading, invoice, autoPrint, letterPadMode]);
 
   const activeInvoice = invoice
     ? {
@@ -111,6 +122,30 @@ export function AdminOrderInvoiceView({ orderId }: { orderId: string }) {
               </button>
             </div>
 
+            {/* Letter Pad Mode Switcher */}
+            <div className="inline-flex rounded-lg border border-slate-300 bg-slate-50 p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setLetterPadMode(true)}
+                title="Leaves 35mm blank at top & bottom for pre-printed letter pad stationery"
+                className={`rounded px-2.5 py-1 font-semibold transition-colors ${
+                  letterPadMode ? "bg-amber-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Letter Pad (35mm)
+              </button>
+              <button
+                type="button"
+                onClick={() => setLetterPadMode(false)}
+                title="Full invoice with logo and footer for plain paper"
+                className={`rounded px-2.5 py-1 font-semibold transition-colors ${
+                  !letterPadMode ? "bg-[#2457b8] text-white shadow-sm" : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Plain Paper
+              </button>
+            </div>
+
             {/* Edit / Manage Button */}
             <button
               type="button"
@@ -124,8 +159,8 @@ export function AdminOrderInvoiceView({ orderId }: { orderId: string }) {
             {/* Print Button */}
             <button
               type="button"
-              onClick={() => window.print()}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-4 py-1.5 text-xs font-bold text-white shadow hover:bg-emerald-800 transition-colors"
+              onClick={handlePrint}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-4 py-1.5 text-xs font-bold text-white shadow hover:bg-emerald-800 transition-colors cursor-pointer"
             >
               <Printer size={14} />
               Print / Save PDF
@@ -162,8 +197,12 @@ export function AdminOrderInvoiceView({ orderId }: { orderId: string }) {
             </div>
           </div>
         ) : activeInvoice ? (
-          <div className="print:m-0 print:p-0 my-4">
-            <TaxInvoiceDocument data={activeInvoice} variant="admin" />
+          <div className="print:m-0 print:p-0 my-4" id="admin-invoice-print-view">
+            <TaxInvoiceDocument
+              data={activeInvoice}
+              variant="admin"
+              letterPadMode={letterPadMode}
+            />
           </div>
         ) : null}
       </main>

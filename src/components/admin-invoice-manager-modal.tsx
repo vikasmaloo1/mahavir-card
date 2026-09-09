@@ -7,6 +7,7 @@ import { adminRequest } from "@/lib/admin-client";
 import { TaxInvoiceDocument } from "@/components/tax-invoice-document";
 import { determinePageSize } from "@/lib/invoice-helper";
 import { numberToIndianWords } from "@/lib/number-to-words";
+import { printInvoiceDocument } from "@/lib/print-invoice";
 import type { InvoiceData, InvoiceLineItem, InvoiceSizeMode } from "@/lib/invoice-types";
 
 function formatNum(val: number | string | undefined | null): string {
@@ -25,6 +26,7 @@ export function AdminInvoiceManagerModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [letterPadMode, setLetterPadMode] = useState(true);
 
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [activeTab, setActiveTab] = useState<"preview" | "settings">("preview");
@@ -197,7 +199,12 @@ export function AdminInvoiceManagerModal({
   ]);
 
   function handlePrint() {
-    window.print();
+    if (!liveInvoiceData) return;
+    const pageSize = (liveInvoiceData.resolvedPageSize || "A5") as "A5" | "A4";
+    printInvoiceDocument("tax-invoice-print-area", {
+      pageSize,
+      letterPadMode,
+    });
   }
 
   async function handleSave() {
@@ -262,30 +269,6 @@ export function AdminInvoiceManagerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 overflow-y-auto">
-      {/* Print Page Styles injected dynamically */}
-      <style>{`
-        @media print {
-          body * {
-            visibility: hidden !important;
-          }
-          #tax-invoice-print-area, #tax-invoice-print-area * {
-            visibility: visible !important;
-          }
-          #tax-invoice-print-area {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          @page {
-            size: ${liveInvoiceData?.resolvedPageSize === "A5" ? "A5 portrait" : "A4 portrait"};
-            margin: ${liveInvoiceData?.resolvedPageSize === "A5" ? "4mm" : "6mm"};
-          }
-        }
-      `}</style>
-
       <div className="relative w-full max-w-6xl max-h-[92vh] flex flex-col rounded-xl bg-white shadow-2xl overflow-hidden print:max-h-none print:shadow-none print:w-auto">
         {/* Header Bar */}
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3.5 bg-slate-50 print:hidden">
@@ -304,9 +287,42 @@ export function AdminInvoiceManagerModal({
                 Page Size: {liveInvoiceData.resolvedPageSize} ({liveInvoiceData.resolvedPageSize === "A5" ? "Half-Sheet" : "Full-Sheet"})
               </span>
             ) : null}
+            {letterPadMode ? (
+              <span className="hidden lg:inline-flex items-center rounded bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800 border border-amber-200">
+                Letter Pad (35mm blank top/bottom)
+              </span>
+            ) : null}
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Letter Pad Mode Switcher */}
+            <div className="inline-flex rounded border border-slate-300 bg-white p-0.5 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setLetterPadMode(true)}
+                title="Leave 35mm blank at top & bottom for pre-printed letter pad stationery"
+                className={`px-2 py-1 rounded transition-colors ${
+                  letterPadMode
+                    ? "bg-amber-600 text-white font-bold shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Letter Pad (35mm)
+              </button>
+              <button
+                type="button"
+                onClick={() => setLetterPadMode(false)}
+                title="Full invoice with logo and footer for plain paper printing"
+                className={`px-2 py-1 rounded transition-colors ${
+                  !letterPadMode
+                    ? "bg-[#2457b8] text-white font-bold shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Plain Paper
+              </button>
+            </div>
+
             {/* Tab switchers on small viewports */}
             <div className="flex items-center border border-[#cfd7e3] rounded bg-white p-0.5 text-xs font-semibold sm:hidden">
               <button
@@ -329,7 +345,7 @@ export function AdminInvoiceManagerModal({
               type="button"
               onClick={handlePrint}
               disabled={loading || !liveInvoiceData}
-              className="inline-flex items-center gap-1.5 rounded bg-emerald-700 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-800 shadow-xs"
+              className="inline-flex items-center gap-1.5 rounded bg-emerald-700 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-800 shadow-xs cursor-pointer"
             >
               <Printer size={15} /> Print Invoice
             </button>
@@ -337,14 +353,14 @@ export function AdminInvoiceManagerModal({
               type="button"
               onClick={handleSave}
               disabled={saving || loading || !liveInvoiceData}
-              className="inline-flex items-center gap-1.5 rounded bg-[#2457b8] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#1a4497] shadow-xs disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded bg-[#2457b8] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#1a4497] shadow-xs disabled:opacity-50 cursor-pointer"
             >
               <Check size={15} /> {saving ? "Saving..." : "Save Changes"}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="p-1 text-gray-400 hover:text-gray-700 rounded"
+              className="p-1 text-gray-400 hover:text-gray-700 rounded cursor-pointer"
               aria-label="Close"
             >
               <X size={20} />
@@ -709,7 +725,11 @@ export function AdminInvoiceManagerModal({
               }`}
             >
               <div id="tax-invoice-print-area">
-                <TaxInvoiceDocument data={liveInvoiceData} variant="admin" />
+                <TaxInvoiceDocument
+                  data={liveInvoiceData}
+                  variant="admin"
+                  letterPadMode={letterPadMode}
+                />
               </div>
             </div>
           </div>
