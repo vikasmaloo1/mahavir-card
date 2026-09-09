@@ -154,7 +154,7 @@ export function AdminOrderInvoiceView({ orderId }: { orderId: string }) {
           </div>
         ) : activeInvoice ? (
           <div className="print:m-0 print:p-0 my-4">
-            <TaxInvoiceDocument data={activeInvoice} />
+            <TaxInvoiceDocument data={activeInvoice} variant="admin" />
           </div>
         ) : null}
       </main>

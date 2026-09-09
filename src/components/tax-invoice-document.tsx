@@ -13,51 +13,6 @@ function formatNum(val: number | string | undefined | null): string {
   return n.toFixed(2);
 }
 
-// Rainbow honeycomb corner graphic (pointy-top hexagon tessellation), matching the printed bill book.
-const HEX_COLORS = ["#4a2a8a", "#5b2a86", "#7a2a96", "#a4288b", "#cc2773", "#e42e56", "#f04230", "#f9851c", "#fbb118", "#fdd835", "#8bc34a", "#26c6da", "#00acc1", "#3949ab"];
-
-function hexPoints(cx: number, cy: number, r: number) {
-  const pts: string[] = [];
-  for (let i = 0; i < 6; i++) {
-    const angle = (Math.PI / 180) * (60 * i - 90);
-    pts.push(`${(cx + r * Math.cos(angle)).toFixed(1)},${(cy + r * Math.sin(angle)).toFixed(1)}`);
-  }
-  return pts.join(" ");
-}
-
-function buildHexGrid(cols: number, rows: number, r: number) {
-  const hSpacing = r * Math.sqrt(3);
-  const vSpacing = r * 1.5;
-  const hexes: { cx: number; cy: number; color: string }[] = [];
-  for (let row = 0; row < rows; row++) {
-    const offset = row % 2 === 1 ? hSpacing / 2 : 0;
-    for (let col = 0; col < cols; col++) {
-      hexes.push({
-        cx: offset + col * hSpacing + r,
-        cy: row * vSpacing + r,
-        color: HEX_COLORS[(row * 3 + col) % HEX_COLORS.length],
-      });
-    }
-  }
-  return { hexes, width: cols * hSpacing + hSpacing, height: rows * vSpacing + r };
-}
-
-function HexCorner({ flip = false }: { flip?: boolean }) {
-  const r = 15;
-  const { hexes, width, height } = buildHexGrid(7, 5, r);
-  return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      className={`w-full h-full ${flip ? "rotate-180" : ""}`}
-      preserveAspectRatio="xMinYMin slice"
-    >
-      {hexes.map((h, i) => (
-        <polygon key={i} points={hexPoints(h.cx, h.cy, r * 0.97)} fill={h.color} />
-      ))}
-    </svg>
-  );
-}
-
 // Italic display wordmark with drop-cap initials, matching the brand logotype on the printed bill book.
 function Wordmark() {
   return (
@@ -73,10 +28,14 @@ function Wordmark() {
 export function TaxInvoiceDocument({
   data,
   className = "",
+  variant = "customer",
 }: {
   data: InvoiceData;
   className?: string;
+  /** "admin" prints on pre-printed letterhead: skips the logo/branding graphics and leaves a 35mm blank margin top and bottom for it. */
+  variant?: "customer" | "admin";
 }) {
+  const isLetterhead = variant === "admin";
   const isA5 = data.resolvedPageSize === "A5";
   const displayOrderNo = shortenOrderNumber(data.orderNumber);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -130,7 +89,7 @@ export function TaxInvoiceDocument({
             border: none !important;
             box-shadow: none !important;
             margin: 0 !important;
-            padding: ${isA5 ? "6mm" : "8mm"} !important;
+            padding: ${isLetterhead ? `35mm ${isA5 ? "6mm" : "8mm"}` : isA5 ? "6mm" : "8mm"} !important;
             width: 100% !important;
             height: 100% !important;
             max-height: 100% !important;
@@ -141,32 +100,29 @@ export function TaxInvoiceDocument({
         }
       `}</style>
 
-      {/* Top-Left Rainbow Honeycomb Corner */}
-      <div className="absolute top-0 left-0 w-[38%] h-[16mm] overflow-hidden pointer-events-none">
-        <HexCorner />
-      </div>
-
-      {/* Brand Header: Logo Emblem + Mahavir Card */}
+      {/* Brand Header: Logo Emblem + Mahavir Card (skipped on letterhead: already pre-printed) */}
       <header className="relative pt-0.5 px-0.5">
-        <div className="flex justify-end items-center mb-1">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 relative shrink-0 rounded-full overflow-hidden">
-              <Image
-                src="/images/mahavir-card-logo.jpeg"
-                alt="Mahavir Card Emblem"
-                width={80}
-                height={80}
-                className="w-full h-full object-cover scale-110"
-              />
-            </div>
-            <div>
-              <Wordmark />
-              <p className="text-[9.5px] text-gray-700 tracking-normal leading-tight mt-0.5 font-sans font-medium">
-                all kind printing solution
-              </p>
+        {!isLetterhead ? (
+          <div className="flex justify-end items-center mb-1">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 relative shrink-0 rounded-full overflow-hidden">
+                <Image
+                  src="/images/mahavir-card-logo.jpeg"
+                  alt="Mahavir Card Emblem"
+                  width={80}
+                  height={80}
+                  className="w-full h-full object-cover scale-110"
+                />
+              </div>
+              <div>
+                <Wordmark />
+                <p className="text-[9.5px] text-gray-700 tracking-normal leading-tight mt-0.5 font-sans font-medium">
+                  all kind printing solution
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        ) : null}
 
         {/* GSTIN & TAX INVOICE Header Row */}
         <div className="flex justify-between items-baseline pt-1 pb-0.5 px-0.5 font-bold">
@@ -185,6 +141,14 @@ export function TaxInvoiceDocument({
         {/* Left Column: Customer Details */}
         <div className="flex flex-col justify-between border-r border-black p-1">
           <div>
+            {isLetterhead ? (
+              <div className="mb-1 pb-1 border-b border-black leading-tight">
+                <p className="font-black uppercase text-[1.05em]">Mahavir Card</p>
+                <p className="text-[0.85em] text-gray-800">5, Akshar Purushottam Flat, Sarangpur, Dolatkhana, Ahmedabad - 380001.</p>
+                <p className="text-[0.85em] text-gray-800">www.mahavircard.in</p>
+                <p className="text-[0.85em] text-gray-800">mahavircard2011@gmail.com</p>
+              </div>
+            ) : null}
             <div className="flex items-start gap-1">
               <span className="font-bold shrink-0">M/s.</span>
               <span className="font-bold shrink-0">:</span>
@@ -467,30 +431,27 @@ export function TaxInvoiceDocument({
         <span>IFSC CODE : <strong>{data.bank.ifscCode}</strong></span>
       </div>
 
-      {/* Footer Contact & Bottom Faceted Geometric Ribbon */}
-      <footer className="relative pt-1 px-1 pb-0.5">
-        <div className="flex flex-col gap-0.5 text-[0.85em] text-gray-900 max-w-[65%]">
-          <div className="flex items-center gap-1">
-            <MapPin size={11} className="text-red-600 shrink-0" />
-            <span>5, akshar purushottam flat, sarangpur, dolatkhana, ahmedabad - 380001.</span>
-          </div>
-          <div className="flex items-center gap-3">
+      {/* Footer Contact (skipped on letterhead: already pre-printed) */}
+      {!isLetterhead ? (
+        <footer className="relative pt-1 px-1 pb-0.5">
+          <div className="flex flex-col gap-0.5 text-[0.85em] text-gray-900 max-w-[65%]">
             <div className="flex items-center gap-1">
-              <Phone size={11} className="text-emerald-600 shrink-0" />
-              <span className="font-semibold tabular-nums">+91 94263 71150</span>
+              <MapPin size={11} className="text-red-600 shrink-0" />
+              <span>5, akshar purushottam flat, sarangpur, dolatkhana, ahmedabad - 380001.</span>
             </div>
-            <div className="flex items-center gap-1">
-              <Mail size={11} className="text-blue-600 shrink-0" />
-              <span>mahavircard2011@gmail.com</span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                <Phone size={11} className="text-emerald-600 shrink-0" />
+                <span className="font-semibold tabular-nums">+91 94263 71150</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Mail size={11} className="text-blue-600 shrink-0" />
+                <span>mahavircard2011@gmail.com</span>
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* Bottom-Right Rainbow Honeycomb Corner */}
-        <div className="absolute bottom-0 right-0 w-[35%] h-[15mm] overflow-hidden pointer-events-none">
-          <HexCorner flip />
-        </div>
-      </footer>
+        </footer>
+      ) : null}
     </div>
   );
 }
