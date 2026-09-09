@@ -580,7 +580,7 @@ function ResourceTable({ section, items, saving, onEdit, onDelete, onConvert, on
       </div>
       <div className="mt-6 hidden md:block">
         <HorizontalScrollContainer>
-          <div className="border border-[#d7dce5] bg-white">
+          <div className="inline-block min-w-full align-middle border border-[#d7dce5] bg-white">
             <table className="min-w-full text-left text-sm">
               <thead className="border-b border-[#d7dce5] bg-[#f7f9fc]">
                 <tr>
@@ -589,7 +589,7 @@ function ResourceTable({ section, items, saving, onEdit, onDelete, onConvert, on
                       {column.label}
                     </th>
                   ))}
-                  <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.1em] text-[#52647e]">Actions</th>
+                  <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.1em] text-[#52647e]">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -600,8 +600,8 @@ function ResourceTable({ section, items, saving, onEdit, onDelete, onConvert, on
                         {column.render ? column.render(item) : column.value(item)}
                       </td>
                     ))}
-                    <td className="px-4 py-3">
-                      <Actions section={section} item={item} saving={saving} actionLabel={actionLabel} onEdit={onEdit} onDelete={onDelete} onConvert={onConvert} onRemind={onRemind} />
+                    <td className="whitespace-nowrap px-4 py-3 align-middle text-right">
+                      <Actions section={section} item={item} saving={saving} actionLabel={actionLabel} onEdit={onEdit} onDelete={onDelete} onConvert={onConvert} onRemind={onRemind} isMobile={false} />
                     </td>
                   </tr>
                 ))}
@@ -614,13 +614,14 @@ function ResourceTable({ section, items, saving, onEdit, onDelete, onConvert, on
   );
 }
 
-function Actions({ section, item, saving, actionLabel, onEdit, onDelete, onConvert, onRemind }: { section: ModuleKey; item: Row; saving: boolean; actionLabel: string; onEdit: (item: Row) => void; onDelete: (item: Row) => void; onConvert: (item: Row) => void; onRemind: (item: Row) => void }) {
-  if (section === "pricing") return <div className="mt-4 flex flex-wrap justify-end gap-2"><Link href={`/admin/products/${text(item.productId)}?tab=pricing`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold text-[#2457b8]">Open product</Link><button type="button" onClick={() => onEdit(item)} className="border border-[#c9d2df] p-1.5 text-[#24324a]" aria-label="Edit"><Pencil size={15} /></button><button type="button" onClick={() => onDelete(item)} disabled={saving} className="border border-[#efc4be] p-1.5 text-[#b13a2f]" aria-label="Deactivate"><Trash2 size={15} /></button></div>;
-  if (section === "inquiries") return <div className="mt-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={() => onConvert(item)} disabled={saving || item.status === "CONVERTED"} className="border border-[#b8ccf5] px-2.5 py-1.5 text-xs font-bold text-[#2457b8] disabled:opacity-40">Create quote</button><Link href={`/admin/inquiries/${rowId(section, item)}`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold">View details</Link></div>;
-  if (section === "quotes" && text(item.status) === "SENT_TO_CUSTOMER") return <div className="mt-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={() => onRemind(item)} disabled={saving} className="border border-[#b8ccf5] px-2.5 py-1.5 text-xs font-bold text-[#2457b8] disabled:opacity-40">Send Reminder</button><button type="button" onClick={() => onEdit(item)} className="border border-[#c9d2df] p-1.5 text-[#24324a]" aria-label="Edit"><Pencil size={15} /></button></div>;
-  if (section === "artworks") return <div className="mt-4 flex flex-wrap justify-end gap-2"><a href={`/api/artworks/${text(item.id)}/download`} className="inline-flex items-center gap-1.5 border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold text-[#2457b8]"><Download size={14} />Download CDR</a><Link href={`/admin/artworks/${rowId(section, item)}`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold">Review</Link></div>;
-  if (["orders", "quotes", "customers", "payments"].includes(section)) return <div className="mt-4 flex justify-end"><Link href={`/admin/${section}/${rowId(section, item)}`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold text-[#2457b8]">View details</Link></div>;
-  return <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => onEdit(item)} className="border border-[#c9d2df] p-1.5 text-[#24324a]" aria-label="Edit"><Pencil size={15} /></button><button type="button" onClick={() => onDelete(item)} disabled={saving} className="border border-[#efc4be] p-1.5 text-[#b13a2f]" aria-label={actionLabel}><Trash2 size={15} /></button></div>;
+function Actions({ section, item, saving, actionLabel, onEdit, onDelete, onConvert, onRemind, isMobile = true }: { section: ModuleKey; item: Row; saving: boolean; actionLabel: string; onEdit: (item: Row) => void; onDelete: (item: Row) => void; onConvert: (item: Row) => void; onRemind: (item: Row) => void; isMobile?: boolean }) {
+  const marginClass = isMobile ? "mt-4" : "";
+  if (section === "pricing") return <div className={`${marginClass} flex flex-wrap justify-end gap-2`}><Link href={`/admin/products/${text(item.productId)}?tab=pricing`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold text-[#2457b8]">Open product</Link><button type="button" onClick={() => onEdit(item)} className="border border-[#c9d2df] p-1.5 text-[#24324a]" aria-label="Edit"><Pencil size={15} /></button><button type="button" onClick={() => onDelete(item)} disabled={saving} className="border border-[#efc4be] p-1.5 text-[#b13a2f]" aria-label="Deactivate"><Trash2 size={15} /></button></div>;
+  if (section === "inquiries") return <div className={`${marginClass} flex flex-wrap justify-end gap-2`}><button type="button" onClick={() => onConvert(item)} disabled={saving || item.status === "CONVERTED"} className="border border-[#b8ccf5] px-2.5 py-1.5 text-xs font-bold text-[#2457b8] disabled:opacity-40">Create quote</button><Link href={`/admin/inquiries/${rowId(section, item)}`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold">View details</Link></div>;
+  if (section === "quotes" && text(item.status) === "SENT_TO_CUSTOMER") return <div className={`${marginClass} flex flex-wrap justify-end gap-2`}><button type="button" onClick={() => onRemind(item)} disabled={saving} className="border border-[#b8ccf5] px-2.5 py-1.5 text-xs font-bold text-[#2457b8] disabled:opacity-40">Send Reminder</button><button type="button" onClick={() => onEdit(item)} className="border border-[#c9d2df] p-1.5 text-[#24324a]" aria-label="Edit"><Pencil size={15} /></button></div>;
+  if (section === "artworks") return <div className={`${marginClass} flex flex-wrap justify-end gap-2`}><a href={`/api/artworks/${text(item.id)}/download`} className="inline-flex items-center gap-1.5 border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold text-[#2457b8]"><Download size={14} />Download CDR</a><Link href={`/admin/artworks/${rowId(section, item)}`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold">Review</Link></div>;
+  if (["orders", "quotes", "customers", "payments"].includes(section)) return <div className={`${marginClass} flex justify-end`}><Link href={`/admin/${section}/${rowId(section, item)}`} className="border border-[#c9d2df] px-2.5 py-1.5 text-xs font-bold text-[#2457b8]">View details</Link></div>;
+  return <div className={`${marginClass} flex justify-end gap-2`}><button type="button" onClick={() => onEdit(item)} className="border border-[#c9d2df] p-1.5 text-[#24324a]" aria-label="Edit"><Pencil size={15} /></button><button type="button" onClick={() => onDelete(item)} disabled={saving} className="border border-[#efc4be] p-1.5 text-[#b13a2f]" aria-label={actionLabel}><Trash2 size={15} /></button></div>;
 }
 
 interface OrderLineItemState {
