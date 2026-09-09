@@ -14,17 +14,33 @@ import { getCachedSession } from "@/lib/auth/session";
 export async function StorefrontHeader() {
   const session = await getCachedSession();
   let availableBalance: string | null = null;
+  let customerName = "Account";
+  let companyName: string | null = null;
+  let customerType: string | null = null;
 
   if (session?.user?.id) {
     try {
       const [customer] = await db
-        .select({ availableCredit: customers.availableCredit })
+        .select({
+          availableCredit: customers.availableCredit,
+          contactName: customers.contactName,
+          companyName: customers.companyName,
+          customerType: customers.customerType,
+        })
         .from(customers)
         .where(eq(customers.userId, session.user.id))
         .limit(1);
       availableBalance = customer?.availableCredit ?? "0.00";
+      customerType = customer?.customerType ?? null;
+
+      const contact = (customer?.contactName || session.user.name || "").trim();
+      const rawCompany = (customer?.companyName || "").trim();
+      const hasDistinctCompany = Boolean(rawCompany && rawCompany.toLowerCase() !== contact.toLowerCase());
+      companyName = hasDistinctCompany ? rawCompany : null;
+      customerName = contact || rawCompany || session.user.name || "Account";
     } catch {
       availableBalance = "0.00";
+      customerName = session?.user?.name || "Account";
     }
   }
 
@@ -55,7 +71,17 @@ export async function StorefrontHeader() {
               upiVpa={UPI_VPA}
             />
           ) : null}
-          {session ? <CustomerAccountMenu /> : <Link href="/login" aria-label="Login" className="flex items-center gap-1.5 px-2.5 py-2 min-h-[40px] rounded-full text-[var(--mc-muted)] hover:text-[var(--mc-ink)] hover:bg-[var(--mc-surface)]"><UserRound size={17} /> <span className="hidden sm:inline font-semibold">Login</span></Link>}
+          {session ? (
+            <CustomerAccountMenu
+              customerName={customerName}
+              companyName={companyName}
+              customerType={customerType}
+            />
+          ) : (
+            <Link href="/login" aria-label="Login" className="flex items-center gap-1.5 px-2.5 py-2 min-h-[40px] rounded-full text-[var(--mc-muted)] hover:text-[var(--mc-ink)] hover:bg-[var(--mc-surface)]">
+              <UserRound size={17} /> <span className="hidden sm:inline font-semibold">Login</span>
+            </Link>
+          )}
           <Link href="/cart" className="grid size-10 place-items-center rounded-full border border-[var(--mc-line)] bg-white text-[var(--mc-ink)] hover:border-[var(--mc-accent)] hover:text-[var(--mc-accent)] transition-colors" aria-label="Purchase basket"><ShoppingBag size={17} /></Link>
           <Link href="/quote" aria-label="Quote basket" className="flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-3.5 py-2 min-h-[40px] font-semibold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm"><FileText size={16} /> <span className="hidden sm:inline">Quote basket</span></Link>
         </div>
