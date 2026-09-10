@@ -162,7 +162,10 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
     customerType = customer?.customerType === "B2B" ? "B2B" : "B2C";
   }
   const product = await getDatabaseCatalogProduct(slug, customerType);
-  if (!product) notFound();
+  if (!product) {
+    const cleanSearch = slug.replace(/[-_]+/g, " ").trim();
+    redirect(`/products?search=${encodeURIComponent(cleanSearch)}`);
+  }
   const descriptor = `${product.category} · Commercial printing`;
   const returnPath = safeProductReturnPath(query.returnTo);
   const categoryHref = `/products?category=${product.categorySlug}`;

@@ -1,11 +1,11 @@
 export const catalogCategories = [
-  { slug: "visiting-card", name: "Visiting Card", aliases: ["business-cards", "business-card", "visiting-cards"] },
-  { slug: "premium-card", name: "Premium Card", aliases: ["premium-cards"] },
-  { slug: "art-card", name: "Art Card", aliases: ["art-cards"] },
-  { slug: "letterhead-envelope", name: "Letterhead / Envelope", aliases: ["letterhead", "letterheads", "envelope", "envelopes"] },
-  { slug: "brochure", name: "Brochure", aliases: ["brochures"] },
+  { slug: "visiting-card", name: "Visiting Card", aliases: ["visiting-cards", "business-cards", "business-card", "visiting-card", "cards", "card", "visitingcard", "businesscards"] },
+  { slug: "premium-card", name: "Premium Card", aliases: ["premium-cards", "velvet-cards", "foil-cards", "spot-uv-cards", "luxury-cards"] },
+  { slug: "art-card", name: "Art Card", aliases: ["art-cards", "artcard", "artcards"] },
+  { slug: "letterhead-envelope", name: "Letterhead / Envelope", aliases: ["letterhead", "letterheads", "envelope", "envelopes", "letterhead-envelopes", "letterheads-envelopes", "stationery", "office-stationery"] },
+  { slug: "brochure", name: "Brochure", aliases: ["brochures", "pamphlet", "pamphlets", "flyers", "flyer"] },
   { slug: "leaflet-cover", name: "Leaflet", aliases: ["leaflet", "leaflets", "leaflet-cover", "cover", "covers"] },
-  { slug: "sticker", name: "Sticker", aliases: ["stickers", "labels-stickers"] },
+  { slug: "sticker", name: "Sticker", aliases: ["stickers", "label", "labels", "labels-stickers", "vinyl-stickers", "roll-labels"] },
 ] as const;
 
 export type CanonicalCategorySlug = (typeof catalogCategories)[number]["slug"];
