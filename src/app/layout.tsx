@@ -45,8 +45,9 @@ export const metadata: Metadata = {
 
 const localBusinessJsonLd = {
   "@context": "https://schema.org",
-  "@type": "LocalBusiness",
+  "@type": ["LocalBusiness", "PrintShop"],
   name: "Mahavir Card",
+  alternateName: "Mahavir Card All Printing Solution",
   image: "https://mahavircard.in/images/mahavir-print-assortment.png",
   logo: "https://mahavircard.in/icon.png",
   url: "https://mahavircard.in",
@@ -54,12 +55,28 @@ const localBusinessJsonLd = {
   email: "mahavircard2011@gmail.com",
   address: {
     "@type": "PostalAddress",
-    streetAddress: "Khadia Golwad, Opp. Jain Digamber Mandir",
+    streetAddress: "Khadia Golwad, Opp. Jain Digamber Mandir, Old City, Khadia",
     addressLocality: "Ahmedabad",
     addressRegion: "Gujarat",
+    postalCode: "380001",
     addressCountry: "IN",
   },
+  geo: {
+    "@type": "GeoCoordinates",
+    latitude: 23.0232,
+    longitude: 72.5925,
+  },
+  openingHoursSpecification: [
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      opens: "10:00",
+      closes: "20:30",
+    },
+  ],
   priceRange: "₹₹",
+  currenciesAccepted: "INR",
+  paymentAccepted: "Cash, UPI, Credit Card, Bank Transfer",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

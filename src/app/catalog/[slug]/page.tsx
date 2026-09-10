@@ -15,7 +15,7 @@ import { type CatalogProduct, type ConfigField } from "@/lib/catalog";
 import { db } from "@/lib/db/server";
 import { artworkRequirements, categories, customers, pricingRules, productImages, products, productVariants } from "@/lib/db/schema";
 import { conciseProductSpecification, deriveStartingPrice, type StartingPrice } from "@/lib/product-listing-pricing";
-import { safeProductReturnPath } from "@/lib/catalog-routing";
+import { resolveCategorySlug, safeProductReturnPath } from "@/lib/catalog-routing";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +29,15 @@ type PageProduct = CatalogProduct &
 
 export async function generateMetadata({ params }: PageProps<"/catalog/[slug]">): Promise<Metadata> {
   const { slug } = await params;
+  const categorySlug = resolveCategorySlug(slug);
+  if (categorySlug) {
+    return {
+      title: `${categorySlug.replace(/-/g, " ")} Printing | Mahavir Card`,
+      alternates: {
+        canonical: `/products?category=${categorySlug}`,
+      },
+    };
+  }
   const product = await getDatabaseCatalogProduct(slug, null);
   if (!product) {
     return {
@@ -144,7 +153,8 @@ async function getDatabaseCatalogProduct(slug: string, customerType: "B2C" | "B2
 export default async function ProductPage({ params, searchParams }: PageProps<"/catalog/[slug]">) {
   const { slug } = await params;
   const query = await searchParams;
-  if (slug === "business-cards") redirect("/products?category=visiting-card");
+  const categorySlug = resolveCategorySlug(slug);
+  if (categorySlug) redirect(`/products?category=${categorySlug}`);
   const session = await getCachedSession();
   let customerType: "B2C" | "B2B" | null = null;
   if (session?.user?.id) {
