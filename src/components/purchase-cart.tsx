@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ProductImage } from "@/components/product-image";
 import { formatInr, formatRoundOff } from "@/lib/formatting";
-import { stepProductQuantity } from "@/lib/quantity-helper";
+import { stepProductQuantity, MAX_ORDER_QUANTITY } from "@/lib/quantity-helper";
 import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import { showToast } from "@/components/toast-provider";
 
@@ -55,6 +55,10 @@ export function PurchaseCart() {
   useAutoRefresh(load);
 
   async function updateQuantity(item: Item, direction: "UP" | "DOWN") {
+    if (direction === "UP" && item.quantity >= MAX_ORDER_QUANTITY) {
+      showToast.info("Maximum quantity reached", "For orders above 25,000 units, please request a quotation.");
+      return;
+    }
     const nextQty = stepProductQuantity(item.quantity, direction, item.product.categorySlug, item.product.slug);
     if (nextQty === item.quantity) return;
     setBusyId(item.id); setError("");
@@ -178,7 +182,7 @@ export function PurchaseCart() {
                     <button
                       type="button"
                       onClick={() => void updateQuantity(item, "UP")}
-                      disabled={busyId === item.id}
+                      disabled={busyId === item.id || item.quantity >= MAX_ORDER_QUANTITY}
                       className="grid size-8 place-items-center rounded-r-xl hover:bg-slate-50 disabled:opacity-40 transition-colors"
                       aria-label="Increase quantity"
                     >

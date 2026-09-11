@@ -223,7 +223,7 @@ export const inquirySchema = z.object({
 
 export const pricingCalculateSchema = z.object({
   productId: z.string().uuid(),
-  quantity: z.number().int().positive().max(1_000_000),
+  quantity: z.number().int().positive("Quantity must be a positive number").max(25_000, "Quantities above 25,000 units require a custom quotation. Please request a quote."),
   options: metadata,
   addonIds: z.array(z.string().uuid()).max(50).default([]),
   stateCode: z.string().trim().max(10).optional(),
@@ -356,11 +356,21 @@ export const cartKindSchema = z.enum(["PURCHASE", "QUOTE"]);
 export const cartItemSchema = z.object({
   kind: cartKindSchema,
   productId: z.string().uuid(),
-  quantity: z.number().int().positive().max(1_000_000).default(1),
+  quantity: z.number().int().positive("Quantity must be a positive number").max(1_000_000).default(1),
   jobName: z.string().trim().max(160).nullable().optional(),
   configuration: metadata,
+}).refine((data) => {
+  if (data.kind === "PURCHASE" && data.quantity > 25_000) return false;
+  return true;
+}, {
+  message: "Direct online orders are capped at 25,000 units. For higher quantities, please request a quotation.",
+  path: ["quantity"],
 });
-export const cartItemUpdateSchema = z.object({ quantity: z.number().int().positive().max(1_000_000), jobName: z.string().trim().max(160).nullable().optional(), configuration: z.record(z.string(), z.unknown()).optional() });
+export const cartItemUpdateSchema = z.object({
+  quantity: z.number().int().positive("Quantity must be a positive number").max(1_000_000),
+  jobName: z.string().trim().max(160).nullable().optional(),
+  configuration: z.record(z.string(), z.unknown()).optional(),
+});
 
 export const customerOnboardingSchema = z.object({
   customerType: z.enum(["B2B", "B2C"]),

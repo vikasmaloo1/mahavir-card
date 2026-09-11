@@ -22,6 +22,10 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/cart/items
     const existing = await ownedItem(id, session.user.id);
     if (!existing) return jsonError("Basket item not found", 404);
     const input = await readBody(request, cartItemUpdateSchema);
+    if (input.quantity <= 0) return jsonError("Quantity must be a positive number", 422);
+    if (existing.kind === "PURCHASE" && input.quantity > 25000) {
+      return jsonError("Direct online orders are capped at 25,000 units. For higher quantities, please request a quotation.", 422);
+    }
     const { normalizedQuantity } = normalizeProductQuantity(input.quantity, null, existing.product.slug);
     const quantity = normalizedQuantity;
     const configuration = input.configuration ?? existing.configuration;

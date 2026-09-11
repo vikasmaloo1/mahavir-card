@@ -112,10 +112,15 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    setErrorMessage("");
     const parsedAmount = Number(amount);
     if (!parsedAmount || parsedAmount < 500) {
       const err = "Minimum top-up amount is ₹500.";
+      setErrorMessage(err);
+      triggerToast({ type: "error", title: "Invalid Amount", message: err });
+      return;
+    }
+    if (parsedAmount > 100000) {
+      const err = "Maximum top-up amount is ₹1,00,000.";
       setErrorMessage(err);
       triggerToast({ type: "error", title: "Invalid Amount", message: err });
       return;
@@ -276,10 +281,11 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
               </p>
 
               <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">Top-up Amount (₹) <span className="font-normal text-[var(--mc-muted)]">— minimum ₹500</span></span>
+                <span className="mb-2 block text-sm font-semibold text-[var(--mc-ink)]">Top-up Amount (₹) <span className="font-normal text-[var(--mc-muted)]">— min ₹500, max ₹1,00,000</span></span>
                 <input
                   required
-                  min="100"
+                  min="500"
+                  max="100000"
                   step="100"
                   type="number"
                   value={amount}
@@ -291,11 +297,11 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
                     if (e.key === "ArrowUp") {
                       e.preventDefault();
                       const current = parseInt(amount, 10) || 0;
-                      setAmount(String(current ? current + 100 : 500));
+                      setAmount(String(current ? Math.min(100000, current + 100) : 500));
                     } else if (e.key === "ArrowDown") {
                       e.preventDefault();
                       const current = parseInt(amount, 10) || 0;
-                      setAmount(String(Math.max(100, current - 100)));
+                      setAmount(String(Math.max(500, current - 100)));
                     } else if (e.key === "." || e.key === "e" || e.key === "E" || e.key === "+" || e.key === "-") {
                       e.preventDefault();
                     }

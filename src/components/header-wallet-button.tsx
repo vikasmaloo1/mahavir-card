@@ -105,8 +105,12 @@ export function HeaderWalletButton({
     e.preventDefault();
     setError("");
     const parsedAmount = Number(amount);
-    if (!parsedAmount || parsedAmount <= 0) {
-      setError("Please enter an amount greater than ₹0.");
+    if (!parsedAmount || parsedAmount < 500) {
+      setError("Minimum top-up amount is ₹500.");
+      return;
+    }
+    if (parsedAmount > 100000) {
+      setError("Maximum top-up amount is ₹1,00,000.");
       return;
     }
 
@@ -272,7 +276,7 @@ export function HeaderWalletButton({
               <form onSubmit={handleSubmit} noValidate className="mt-3.5 space-y-3.5">
                 <div>
                   <label className="block text-xs font-bold text-[var(--mc-ink)] mb-1">
-                    Top-up Amount (₹)
+                    Top-up Amount (₹) <span className="font-normal text-slate-500">— min ₹500, max ₹1,00,000</span>
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
@@ -281,7 +285,8 @@ export function HeaderWalletButton({
                     <input
                       required
                       type="number"
-                      min="1"
+                      min="500"
+                      max="100000"
                       step="100"
                       value={amount}
                       onChange={(e) => {
@@ -292,11 +297,11 @@ export function HeaderWalletButton({
                         if (e.key === "ArrowUp") {
                           e.preventDefault();
                           const current = parseInt(amount, 10) || 0;
-                          setAmount(String(current + 100));
+                          setAmount(String(current ? Math.min(100000, current + 100) : 500));
                         } else if (e.key === "ArrowDown") {
                           e.preventDefault();
                           const current = parseInt(amount, 10) || 0;
-                          setAmount(String(Math.max(1, current - 100)));
+                          setAmount(String(Math.max(500, current - 100)));
                         } else if (e.key === "." || e.key === "e" || e.key === "E" || e.key === "+" || e.key === "-") {
                           e.preventDefault();
                         }

@@ -71,22 +71,34 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [quoteContext, setQuoteContext] = useState<RequirementContext>({});
   const defaultQty = useMemo(() => isSpecialQuantityProduct(product.categorySlug, product.slug) ? 500 : 1000, [product.categorySlug, product.slug]);
-  const quantity = useMemo(() => normalizeProductQuantity(values.quantity || defaultQty, product.categorySlug, product.slug).normalizedQuantity, [defaultQty, product.categorySlug, product.slug, values.quantity]);
+  const rawEnteredQty = useMemo(() => {
+    const raw = values.quantity ?? String(defaultQty);
+    return Number(String(raw).replace(/[^0-9-]/g, ""));
+  }, [defaultQty, values.quantity]);
+  const isQuantityNegativeOrZero = isNaN(rawEnteredQty) || rawEnteredQty <= 0;
+  const isQuantityAboveMax = rawEnteredQty > 25000;
+  const quantity = useMemo(() => {
+    if (isQuantityNegativeOrZero) return defaultQty;
+    if (isQuantityAboveMax) return 25000;
+    return normalizeProductQuantity(values.quantity || defaultQty, product.categorySlug, product.slug).normalizedQuantity;
+  }, [defaultQty, isQuantityAboveMax, isQuantityNegativeOrZero, product.categorySlug, product.slug, values.quantity]);
   const requirement = requirementFor(details, selectedRuleId);
   const artworkSlots = requirement?.slots?.length ? requirement.slots : [];
   const requiredArtworkKeys = artworkSlots.length ? artworkSlots.filter((slot) => slot.required).map((slot) => slot.slotKey) : ["MAIN"];
   const artworkReady = !requirement?.artworkRequired || requiredArtworkKeys.every((key) => Boolean(artworks[key]));
-  const directReady = product.orderable && Boolean(estimate.calculatedAmount) && estimate.warnings.length === 0 && artworkReady;
+  const directReady = product.orderable && Boolean(estimate.calculatedAmount) && estimate.warnings.length === 0 && artworkReady && !isQuantityAboveMax && !isQuantityNegativeOrZero;
 
   const blockingReasons = useMemo(() => {
     const reasons: string[] = [];
     if (!details) return ["Loading product options\u2026"];
+    if (isQuantityNegativeOrZero) reasons.push(`Quantity must be a positive number (minimum ${defaultQty.toLocaleString("en-IN")}).`);
+    if (isQuantityAboveMax) reasons.push(`Direct online ordering is capped at 25,000 units (${rawEnteredQty.toLocaleString("en-IN")} pcs entered). Please request a custom quotation below.`);
     if (isCalculating) return ["Price is being calculated\u2026"];
-    if (!estimate.calculatedAmount && estimate.warnings.length === 0) reasons.push("Price could not be calculated. Review your configuration.");
+    if (!estimate.calculatedAmount && estimate.warnings.length === 0 && !isQuantityAboveMax && !isQuantityNegativeOrZero) reasons.push("Price could not be calculated. Review your configuration.");
     if (estimate.warnings.length > 0) reasons.push(estimate.warnings[0]);
     if (requirement?.artworkRequired && !artworkReady) reasons.push("Upload your CDR artwork file to enable ordering.");
     return reasons;
-  }, [details, isCalculating, estimate, requirement, artworkReady]);
+  }, [details, isCalculating, estimate, requirement, artworkReady, isQuantityNegativeOrZero, isQuantityAboveMax, defaultQty, rawEnteredQty]);
   const configurationAddons = useMemo(() => {
     const scoped = details?.addons.filter((addon) => addon.pricingRuleId === selectedRuleId) ?? [];
     const available = scoped.length ? scoped : details?.addons.filter((addon) => addon.pricingRuleId === null) ?? [];
@@ -215,6 +227,18 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
     return { ...values, pricingRuleId: selectedRuleId, addonIds, ...(delivery ? { delivery } : {}), ...(Object.keys(artworkIds).length ? { artworkIds } : {}), ...(artworkIds.MAIN ? { artworkId: artworkIds.MAIN } : {}) };
   }
   async function add(kind: "PURCHASE" | "QUOTE", checkout = false) {
+    if (isQuantityNegativeOrZero) {
+      const err = `Quantity must be a positive number (minimum ${defaultQty.toLocaleString("en-IN")}).`;
+      setBasketError(err);
+      showToast.error("Invalid Quantity", err);
+      return;
+    }
+    if (kind === "PURCHASE" && isQuantityAboveMax) {
+      const err = `Direct online ordering is capped at 25,000 units (${rawEnteredQty.toLocaleString("en-IN")} pcs entered). Please request a quotation for bulk quantities.`;
+      setBasketError(err);
+      showToast.error("Bulk Quantity", err);
+      return;
+    }
     setIsAdding(true);
     try {
       const payloadBody = { productId: product.id, quantity, jobName: jobName || undefined, configuration: configuration() };
@@ -280,14 +304,64 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
               <input value={jobName} onChange={(event) => setJobName(event.target.value)} maxLength={160} placeholder="e.g. Restaurant cards" className="w-full rounded-lg border border-[#c9d2df] px-3 py-1.5 text-sm outline-none focus:border-[#2457b8]" />
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs font-bold text-[#263753]">Quantity</span>
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-xs font-bold text-[#263753]">Quantity</span>
+                <span className="text-[11px] text-[#607089]">min {defaultQty.toLocaleString("en-IN")} &bull; max 25,000</span>
+              </div>
               <div className="flex items-center rounded-lg border border-[#c9d2df] bg-white">
-                <input inputMode="numeric" value={values.quantity || String(defaultQty)} onChange={(event) => update("quantity", event.target.value)} onBlur={() => update("quantity", String(quantity))} className="min-w-0 flex-1 px-3 py-1.5 text-sm font-semibold outline-none" />
+                <input
+                  inputMode="numeric"
+                  value={values.quantity ?? String(defaultQty)}
+                  onChange={(event) => update("quantity", event.target.value)}
+                  onBlur={() => update("quantity", String(quantity))}
+                  className="min-w-0 flex-1 px-3 py-1.5 text-sm font-semibold outline-none"
+                />
                 <div className="flex gap-0.5 pr-1.5">
-                  <button type="button" onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "DOWN", product.categorySlug, product.slug)))} className="grid size-7 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors" aria-label="Decrease quantity"><Minus size={13} /></button>
-                  <button type="button" onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "UP", product.categorySlug, product.slug)))} className="grid size-7 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors" aria-label="Increase quantity"><Plus size={13} /></button>
+                  <button
+                    type="button"
+                    disabled={quantity <= defaultQty}
+                    onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "DOWN", product.categorySlug, product.slug)))}
+                    className="grid size-7 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    aria-label="Decrease quantity"
+                  >
+                    <Minus size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={quantity >= 25000}
+                    onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "UP", product.categorySlug, product.slug)))}
+                    className="grid size-7 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    aria-label="Increase quantity"
+                  >
+                    <Plus size={13} />
+                  </button>
                 </div>
               </div>
+              {isQuantityAboveMax ? (
+                <div className="mt-1.5 flex items-center justify-between gap-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 border border-amber-200">
+                  <span>Quantity exceeds direct limit (25,000 pcs).</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuoteContext({
+                        mode: "CUSTOM_REQUEST",
+                        title: `Bulk Quote for ${product.name}`,
+                        subtitle: `Request custom wholesale pricing for ${rawEnteredQty.toLocaleString("en-IN")} pcs.`,
+                        productName: product.name,
+                        category: product.category,
+                        quantity: Math.max(25000, rawEnteredQty || 25000),
+                        customerState: delivery?.stateCode && delivery.stateCode !== "*" ? delivery.stateCode : undefined,
+                      });
+                      setIsQuoteModalOpen(true);
+                    }}
+                    className="font-bold underline hover:text-amber-900 shrink-0"
+                  >
+                    Request Quote &rarr;
+                  </button>
+                </div>
+              ) : isQuantityNegativeOrZero ? (
+                <p className="mt-1 text-[11px] font-medium text-rose-600">Quantity must be at least {defaultQty.toLocaleString("en-IN")} pcs.</p>
+              ) : null}
             </label>
           </div>
 
@@ -506,7 +580,28 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
               ))}
             </div>
           ) : null}
-          {!product.customerType ? (
+          {isQuantityAboveMax ? (
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setQuoteContext({
+                    mode: "CUSTOM_REQUEST",
+                    title: `Bulk Quote for ${product.name}`,
+                    subtitle: `Request custom wholesale pricing for ${rawEnteredQty.toLocaleString("en-IN")} pcs.`,
+                    productName: product.name,
+                    category: product.category,
+                    quantity: Math.max(25000, rawEnteredQty || 25000),
+                    customerState: delivery?.stateCode && delivery.stateCode !== "*" ? delivery.stateCode : undefined,
+                  });
+                  setIsQuoteModalOpen(true);
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-[#1e3a5f] px-4 py-2.5 sm:py-3 text-sm font-bold text-white shadow-sm hover:bg-[#152a45] transition-colors"
+              >
+                Request Bulk Quotation ({rawEnteredQty.toLocaleString("en-IN")} pcs) <ArrowRight size={15} />
+              </button>
+            </div>
+          ) : !product.customerType ? (
             <div className="pt-1">
               <Link
                 href={`/login?next=${encodeURIComponent(typeof window !== "undefined" ? window.location.pathname + window.location.search : `/catalog/${product.slug}`)}`}

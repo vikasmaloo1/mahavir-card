@@ -18,6 +18,10 @@ export async function POST(request: Request) {
     if (!product?.isActive) return jsonError("Product is not available", 422);
     if (input.kind === "PURCHASE" && !product.orderable) return jsonError("This product is available only for quotes", 422);
     if (input.kind === "QUOTE" && !product.quoteable) return jsonError("This product is available only for direct ordering", 422);
+    if (input.quantity <= 0) return jsonError("Quantity must be a positive number", 422);
+    if (input.kind === "PURCHASE" && input.quantity > 25000) {
+      return jsonError("Direct online orders are capped at 25,000 units. For higher quantities, please request a quotation.", 422);
+    }
     const { normalizedQuantity } = normalizeProductQuantity(input.quantity, null, product.slug);
     const quantity = normalizedQuantity;
     if (input.kind === "PURCHASE") {
@@ -38,6 +42,9 @@ export async function POST(request: Request) {
 
     if (existing) {
       const combinedQuantity = existing.quantity + quantity;
+      if (input.kind === "PURCHASE" && combinedQuantity > 25000) {
+        return jsonError("Combined quantity in your basket would exceed 25,000 units. For quantities above 25,000, please request a quotation.", 422);
+      }
       const { normalizedQuantity: finalQuantity } = normalizeProductQuantity(combinedQuantity, null, product.slug);
       const updatedPrice = await calculateCartSelection(input.productId, finalQuantity, input.configuration, session.user.id);
       const [updatedItem] = await db.update(cartItems).set({

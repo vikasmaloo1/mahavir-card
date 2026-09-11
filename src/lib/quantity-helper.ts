@@ -1,7 +1,12 @@
+export const MAX_ORDER_QUANTITY = 25000;
+
 export type QuantityNormalizationResult = {
   normalizedQuantity: number;
   isValid: boolean;
+  isNegativeOrZero: boolean;
+  isAboveMax: boolean;
   minimumQuantity: number;
+  maximumQuantity: number;
   step: number;
   message?: string;
 };
@@ -29,12 +34,12 @@ export function isSpecialQuantityProduct(categorySlug?: string | null, productSl
  * Standard products (including Art Card, Visiting Card, etc.):
  *   - Min: 1000
  *   - Step: 1000
- *   - 1001 -> 2000, 1020 -> 2000, 1500 -> 2000, 1999 -> 2000
+ *   - Max: 25,000 (above 25,000 requires quotation)
  *
  * Premium Card special rule (except 400 GSM Drip-Off):
  *   - Min: 500
  *   - Step: 500
- *   - Allowed: 500, 1000, 1500, 2000, 2500...
+ *   - Max: 25,000 (above 25,000 requires quotation)
  */
 export function normalizeProductQuantity(
   input: number | string | null | undefined,
@@ -43,15 +48,32 @@ export function normalizeProductQuantity(
 ): QuantityNormalizationResult {
   const isSpecial = isSpecialQuantityProduct(categorySlug, productSlug);
   const minQty = isSpecial ? 500 : 1000;
-  const num = typeof input === "string" ? parseInt(input.replace(/[^0-9]/g, ""), 10) : Number(input);
+  const step = isSpecial ? 500 : 1000;
+  const num = typeof input === "string" ? parseInt(input.replace(/[^0-9-]/g, ""), 10) : Number(input);
 
   if (isNaN(num) || num <= 0) {
     return {
       normalizedQuantity: minQty,
       isValid: false,
+      isNegativeOrZero: true,
+      isAboveMax: false,
       minimumQuantity: minQty,
-      step: minQty,
-      message: `Quantity must be at least ${minQty.toLocaleString("en-IN")}.`,
+      maximumQuantity: MAX_ORDER_QUANTITY,
+      step,
+      message: `Quantity must be positive and at least ${minQty.toLocaleString("en-IN")}.`,
+    };
+  }
+
+  if (num > MAX_ORDER_QUANTITY) {
+    return {
+      normalizedQuantity: MAX_ORDER_QUANTITY,
+      isValid: false,
+      isNegativeOrZero: false,
+      isAboveMax: true,
+      minimumQuantity: minQty,
+      maximumQuantity: MAX_ORDER_QUANTITY,
+      step,
+      message: `Direct online ordering is capped at ${MAX_ORDER_QUANTITY.toLocaleString("en-IN")} units. For higher quantities, please request a quotation.`,
     };
   }
 
@@ -60,41 +82,54 @@ export function normalizeProductQuantity(
       return {
         normalizedQuantity: 500,
         isValid: num === 500,
+        isNegativeOrZero: false,
+        isAboveMax: false,
         minimumQuantity: 500,
+        maximumQuantity: MAX_ORDER_QUANTITY,
         step: 500,
       };
     }
-    // Increments of 500 (500, 1000, 1500, 2000, 2500...)
-    const normalized = Math.ceil(num / 500) * 500;
+    // Increments of 500 (500, 1000, 1500, 2000, 2500... up to 25,000)
+    const normalized = Math.min(MAX_ORDER_QUANTITY, Math.ceil(num / 500) * 500);
     return {
       normalizedQuantity: normalized,
       isValid: num === normalized,
+      isNegativeOrZero: false,
+      isAboveMax: false,
       minimumQuantity: 500,
+      maximumQuantity: MAX_ORDER_QUANTITY,
       step: 500,
     };
   }
 
-  // Standard product: blocks of 1000
+  // Standard product: blocks of 1000 up to 25,000
   if (num <= 1000) {
     return {
       normalizedQuantity: 1000,
       isValid: num === 1000,
+      isNegativeOrZero: false,
+      isAboveMax: false,
       minimumQuantity: 1000,
+      maximumQuantity: MAX_ORDER_QUANTITY,
       step: 1000,
     };
   }
 
-  const normalized = Math.ceil(num / 1000) * 1000;
+  const normalized = Math.min(MAX_ORDER_QUANTITY, Math.ceil(num / 1000) * 1000);
   return {
     normalizedQuantity: normalized,
     isValid: num === normalized,
+    isNegativeOrZero: false,
+    isAboveMax: false,
     minimumQuantity: 1000,
+    maximumQuantity: MAX_ORDER_QUANTITY,
     step: 1000,
   };
 }
 
 /**
  * Step quantity up or down according to category rules.
+ * Never allows stepping below minQty or above MAX_ORDER_QUANTITY (25,000).
  */
 export function stepProductQuantity(
   current: number | string | null | undefined,
@@ -103,20 +138,13 @@ export function stepProductQuantity(
   productSlug?: string | null
 ): number {
   const isSpecial = isSpecialQuantityProduct(categorySlug, productSlug);
+  const step = isSpecial ? 500 : 1000;
+  const minQty = isSpecial ? 500 : 1000;
   const { normalizedQuantity } = normalizeProductQuantity(current, categorySlug, productSlug);
 
-  if (isSpecial) {
-    if (direction === "UP") {
-      return Math.max(500, normalizedQuantity + 500);
-    } else {
-      return Math.max(500, normalizedQuantity - 500);
-    }
-  }
-
-  // Standard
   if (direction === "UP") {
-    return Math.max(1000, normalizedQuantity + 1000);
+    return Math.min(MAX_ORDER_QUANTITY, normalizedQuantity + step);
   } else {
-    return Math.max(1000, normalizedQuantity - 1000);
+    return Math.max(minQty, normalizedQuantity - step);
   }
 }

@@ -8,7 +8,7 @@ import { isCustomerProfileComplete } from "@/lib/customer-profile";
 import { requireUser } from "@/lib/permissions";
 
 const topUpSchema = z.object({
-  amount: z.number().min(500, "Minimum top-up amount is ₹500").max(1_000_000),
+  amount: z.number().min(500, "Minimum top-up amount is ₹500").max(100_000, "Maximum top-up amount is ₹1,00,000"),
   utr: z.string().trim().min(4).max(64).nullable().optional(),
   proofImageUrl: z.string().trim().nullable().optional(),
 });

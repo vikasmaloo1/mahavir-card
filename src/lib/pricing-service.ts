@@ -178,6 +178,12 @@ export async function calculateProductPrice(productId: string, rawQuantity: numb
   if (!row || row.product.status !== "ACTIVE") return null;
 
   const product = row.product;
+  if (rawQuantity <= 0) {
+    throw new PricingValidationError("Quantity must be a positive number.");
+  }
+  if (rawQuantity > 25000) {
+    throw new PricingValidationError("Orders above 25,000 units require a custom quotation. Please request a quote.");
+  }
   const { normalizedQuantity } = normalizeProductQuantity(rawQuantity, row.category?.slug, product.slug);
   const quantity = normalizedQuantity;
 

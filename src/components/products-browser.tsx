@@ -9,7 +9,7 @@ import { ProductImage } from "@/components/product-image";
 import { formatInr } from "@/lib/formatting";
 import { productFiltersToSearchParams, productListingHref, readProductFilters, type ProductFilters } from "@/lib/catalog-routing";
 import { RequirementQuoteModal, type RequirementContext } from "@/components/requirement-quote-modal";
-import { normalizeProductQuantity, stepProductQuantity } from "@/lib/quantity-helper";
+import { normalizeProductQuantity, stepProductQuantity, MAX_ORDER_QUANTITY, isSpecialQuantityProduct } from "@/lib/quantity-helper";
 import { ArtworkUploader, type ArtworkRequirement, type UploadedArtwork } from "@/components/artwork-uploader";
 import { showToast } from "@/components/toast-provider";
 import { HorizontalScrollContainer } from "@/components/horizontal-scroll-container";
@@ -1456,6 +1456,7 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
   const [artworks, setArtworks] = useState<Record<string, UploadedArtwork>>({});
   const [submitting, setSubmitting] = useState<"cart" | "buy" | null>(null);
   const [submitError, setSubmitError] = useState("");
+  const minQuantity = isSpecialQuantityProduct(item.category?.slug ?? null, item.slug) ? 500 : 1000;
 
   useEffect(() => {
     let active = true;
@@ -1470,13 +1471,13 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
         if (rule) {
           setRuleId(rule.id);
           const conditionQuantity = rule.conditions?.quantity;
-          setQuantity(conditionQuantity ? Number(conditionQuantity) : normalizeProductQuantity(undefined, null, item.slug).normalizedQuantity);
+          setQuantity(conditionQuantity ? Number(conditionQuantity) : normalizeProductQuantity(undefined, item.category?.slug ?? null, item.slug).normalizedQuantity);
         }
       })
       .catch((caught) => { if (active) setLoadError(caught instanceof Error ? caught.message : "Could not load this product's options"); })
       .finally(() => { if (active) setLoadingDetails(false); });
     return () => { active = false; };
-  }, [item.id, item.slug]);
+  }, [item.category?.slug, item.id, item.slug]);
 
   const requirement = details?.artworkRequirements.find((row) => row.pricingRuleId === ruleId) ?? details?.artworkRequirements.find((row) => !row.pricingRuleId) ?? null;
   const slots = requirement?.slots?.length ? requirement.slots : [];
@@ -1484,6 +1485,14 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
   const artworkReady = requiredKeys.every((key) => Boolean(artworks[key]));
 
   async function submit(checkout: boolean) {
+    if (quantity <= 0) {
+      setSubmitError("Quantity must be a positive number.");
+      return;
+    }
+    if (quantity > MAX_ORDER_QUANTITY) {
+      setSubmitError("Direct orders above 25,000 units require a custom quotation.");
+      return;
+    }
     setSubmitting(checkout ? "buy" : "cart");
     setSubmitError("");
     const artworkIds = Object.fromEntries(Object.entries(artworks).map(([slotKey, artwork]) => [slotKey, artwork.id]));
@@ -1531,10 +1540,27 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
       <div className="flex items-center gap-2.5">
         <span className="text-xs font-bold uppercase text-[var(--mc-muted)]">Quantity</span>
         <div className="flex items-center rounded-full border border-[var(--mc-line)] bg-white">
-          <button type="button" onClick={() => setQuantity((current) => stepProductQuantity(current, "DOWN", null, item.slug))} className="grid size-7 place-items-center hover:bg-[var(--mc-surface)]" aria-label="Decrease quantity">−</button>
+          <button
+            type="button"
+            disabled={quantity <= minQuantity}
+            onClick={() => setQuantity((current) => stepProductQuantity(current, "DOWN", item.category?.slug ?? null, item.slug))}
+            className="grid size-7 place-items-center hover:bg-[var(--mc-surface)] disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label="Decrease quantity"
+          >
+            −
+          </button>
           <span className="min-w-14 text-center text-sm font-bold text-[var(--mc-ink)]">{quantity.toLocaleString("en-IN")}</span>
-          <button type="button" onClick={() => setQuantity((current) => stepProductQuantity(current, "UP", null, item.slug))} className="grid size-7 place-items-center hover:bg-[var(--mc-surface)]" aria-label="Increase quantity">+</button>
+          <button
+            type="button"
+            disabled={quantity >= MAX_ORDER_QUANTITY}
+            onClick={() => setQuantity((current) => stepProductQuantity(current, "UP", item.category?.slug ?? null, item.slug))}
+            className="grid size-7 place-items-center hover:bg-[var(--mc-surface)] disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label="Increase quantity"
+          >
+            +
+          </button>
         </div>
+        <span className="text-[11px] text-[var(--mc-muted)]">min {minQuantity.toLocaleString("en-IN")} &bull; max 25,000</span>
       </div>
 
       {requirement?.artworkRequired ? (
