@@ -32,6 +32,19 @@ export type CatalogProductItem = {
   b2bRatePerSqInch?: number;
   size?: string;
   imageUrl?: string;
+  addon?: {
+    code: string;
+    name: string;
+    amount: number;
+    referenceQuantity?: number;
+  };
+  bladeCharge?: number;
+  minimumArea?: number;
+  minimumCharge?: number;
+  delivery?: {
+    GJ: number;
+    RJ: number;
+  };
 };
 
 export type CatalogCategoryGroup = {
@@ -75,9 +88,22 @@ const defaultBusinessInfo: BusinessInfo = {
   stateCode: "24 (Gujarat)",
 };
 
-function formatDays(str?: string) {
-  if (!str) return "3-4 business days";
-  return str.replace(/working days?/i, "business days");
+function getAddonNote(p: CatalogProductItem): string | null {
+  const notes: string[] = [];
+  if (p.addon) {
+    notes.push(`${p.addon.name}: +₹${p.addon.amount}`);
+  }
+  if (p.bladeCharge) {
+    notes.push(`Half Blade: ₹${p.bladeCharge} / blade`);
+  }
+  if (p.minimumCharge) {
+    notes.push(`Min. Charge: ₹${p.minimumCharge}`);
+  }
+  if (p.minimumArea) {
+    notes.push(`Min. Area: ${p.minimumArea} sq.in`);
+  }
+  if (notes.length === 0) return null;
+  return `(${notes.join(" · ")})`;
 }
 
 export function AdminPriceCatalogDocument({
@@ -103,6 +129,8 @@ export function AdminPriceCatalogDocument({
   const totalActiveProducts = useMemo(() => {
     return categories.reduce((sum, cat) => sum + cat.products.length, 0);
   }, [categories]);
+
+  const isB2BMode = priceMode === "B2B";
 
   return (
     <div className="min-h-screen bg-[#eceff3] text-[#1a202c] font-sans">
@@ -139,7 +167,7 @@ export function AdminPriceCatalogDocument({
                     : "text-[#475569] hover:text-black"
                 }`}
               >
-                Retail & Wholesale
+                Retail & Trade
               </button>
               <button
                 type="button"
@@ -241,7 +269,7 @@ export function AdminPriceCatalogDocument({
       {/* MAIN DOCUMENT CONTAINER */}
       <div className="print-container max-w-[210mm] mx-auto my-6 bg-white shadow-md border border-[#cbd5e1] print:m-0 print:border-none print:shadow-none">
         <table className="w-full border-collapse">
-          {/* REPEATING HEADER (Repeated automatically on all pages in print) */}
+          {/* REPEATING HEADER */}
           <thead>
             <tr>
               <th className="p-0 text-left font-normal border-b-2 border-[#0f223d]">
@@ -276,12 +304,14 @@ export function AdminPriceCatalogDocument({
                       </div>
                     </div>
 
-                    {/* Registration & Contact */}
+                    {/* Registration & Contact: In B2B mode, GSTIN is hidden per request */}
                     <div className="text-right text-[10px] space-y-0.5">
-                      <div className="inline-block bg-[#0f223d] text-white text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-sm">
-                        GSTIN: {business.gstin}
-                      </div>
-                      <p className="text-[#334155] font-semibold pt-1">
+                      {!isB2BMode && (
+                        <div className="inline-block bg-[#0f223d] text-white text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-sm">
+                          GSTIN: {business.gstin}
+                        </div>
+                      )}
+                      <p className="text-[#334155] font-semibold pt-0.5">
                         📞 {business.phone}
                       </p>
                       <p className="text-[#64748b]">
@@ -297,7 +327,7 @@ export function AdminPriceCatalogDocument({
                   <div className="mt-3 pt-2 border-t border-[#e2e8f0] flex items-center justify-between text-[10px]">
                     <div className="flex items-center gap-2">
                       <span className="font-extrabold uppercase tracking-wider text-[#0f223d] text-[11px]">
-                        ★ Official Rate Catalogue & Specification Guide
+                        ★ Official Rate Catalogue
                       </span>
                       <span className="text-[#94a3b8]">|</span>
                       <span className="font-medium text-[#475569]">
@@ -307,7 +337,7 @@ export function AdminPriceCatalogDocument({
                             ? "Trade Wholesale & Retail Rates"
                             : priceMode === "RETAIL"
                             ? "Standard Retail Price List"
-                            : "B2B Wholesale / Broker Price List"}
+                            : "B2B Trade Price List"}
                         </strong>
                       </span>
                     </div>
@@ -320,23 +350,22 @@ export function AdminPriceCatalogDocument({
             </tr>
           </thead>
 
-          {/* REPEATING FOOTER (Repeated automatically on all pages in print) */}
+          {/* REPEATING FOOTER */}
           <tfoot>
             <tr>
               <td className="p-0 text-left font-normal border-t-2 border-[#0f223d]">
                 <div className="px-6 py-2.5 bg-[#f8fafc] text-[9.5px] text-[#475569] leading-tight flex flex-wrap items-center justify-between gap-2">
                   <div className="space-y-0.5">
                     <p className="font-semibold text-[#0f223d]">
-                      Terms & Production Guidelines:
+                      Production Guidelines:
                     </p>
-                    <p>
-                      • All prices are exclusive of 18% GST unless specified. Rates subject to change without prior notice.
-                    </p>
+                    {!isB2BMode && (
+                      <p>
+                        • All prices are exclusive of 18% GST unless specified. Rates subject to change without prior notice.
+                      </p>
+                    )}
                     <p>
                       • Production artwork must be submitted in <strong>CorelDRAW (.CDR)</strong> with all fonts converted to curves.
-                    </p>
-                    <p>
-                      • Turnaround times are calculated in business days from artwork verification and payment clearance.
                     </p>
                   </div>
                   <div className="text-right shrink-0">
@@ -366,96 +395,76 @@ export function AdminPriceCatalogDocument({
                       key={cat.slug}
                       className="category-section page-break-inside-avoid space-y-3"
                     >
-                      {/* BOLD, INCREASED FONT SIZE CATEGORY HEADER */}
-                      <div className="border-b-2 border-[#0f223d] pb-1.5 flex items-baseline justify-between">
-                        <h2 className="text-base sm:text-lg font-black uppercase tracking-wide text-[#0f223d]">
+                      {/* CATEGORY IN MIDDLE: BOLD & LARGE */}
+                      <div className="text-center my-4 pb-2 border-b-2 border-[#0f223d]">
+                        <h2 className="text-lg sm:text-xl font-black uppercase tracking-wider text-[#0f223d]">
                           {cat.name}
                         </h2>
-                        <span className="text-[11px] font-semibold text-[#64748b]">
-                          {cat.products.length} {cat.products.length === 1 ? "Product" : "Products"}
-                        </span>
                       </div>
 
-                      {/* 2 PRODUCTS IN SINGLE ROW GRID */}
-                      <div className="grid grid-cols-2 gap-3">
+                      {/* 2 PRODUCTS IN SINGLE ROW */}
+                      <div className="grid grid-cols-2 gap-3.5">
                         {cat.products.map((p) => {
-                          const qty = p.referenceQuantity ?? 1000;
-                          const formattedQty = `${qty.toLocaleString("en-IN")} Qty`;
+                          const addonNote = getAddonNote(p);
+
+                          // Pricing calculations
+                          const retailRate =
+                            p.ruleType === "PER_SQ_INCH"
+                              ? `${p.ratePerSqInch}${p.rateUnit === "PAISE" ? " paise" : ""} / sq.in`
+                              : p.amount?.toLocaleString("en-IN");
+
+                          const tradeRate =
+                            p.ruleType === "PER_SQ_INCH"
+                              ? `${p.b2bRatePerSqInch ?? p.ratePerSqInch}${p.rateUnit === "PAISE" ? " paise" : ""} / sq.in`
+                              : (p.b2bAmount ?? p.amount)?.toLocaleString("en-IN");
 
                           return (
                             <div
                               key={p.slug}
-                              className="border border-[#cbd5e1] rounded-sm p-3.5 bg-white flex flex-col justify-between page-break-inside-avoid shadow-xs hover:border-[#0f223d] transition-colors"
+                              className="border-2 border-[#cbd5e1] rounded-sm p-4 bg-white flex flex-col justify-between page-break-inside-avoid shadow-xs hover:border-[#0f223d] transition-colors"
                             >
                               <div>
-                                {/* PRODUCT NAME: BOLD, INCREASED SIZE */}
-                                <h3 className="text-[13px] sm:text-[14px] font-black uppercase text-[#0f223d] leading-tight tracking-tight">
+                                {/* PRODUCT NAME: SIZED BIG & BOLD */}
+                                <h3 className="text-[14px] sm:text-[15px] font-black uppercase text-[#0f223d] leading-snug tracking-tight">
                                   {p.name}
                                 </h3>
 
-                                {/* BUSINESS DAYS FORMAT: (business days) */}
-                                <div className="text-[11.5px] text-[#52647e] font-medium italic mt-1">
-                                  ({formatDays(p.productionTime)})
-                                </div>
+                                {/* ADD-ON IN BRACKETS UNDER PRODUCT NAME */}
+                                {addonNote && (
+                                  <div className="text-[11.5px] font-bold text-[#b45309] mt-1 italic">
+                                    {addonNote}
+                                  </div>
+                                )}
 
                                 {/* Optional Size */}
                                 {p.size && (
-                                  <div className="text-[11px] text-[#64748b] font-medium mt-1">
-                                    Size: <strong className="text-[#334155]">{p.size}</strong>
+                                  <div className="text-[11px] text-[#475569] font-medium mt-1">
+                                    Size: <strong className="text-[#1e293b]">{p.size}</strong>
                                   </div>
                                 )}
                               </div>
 
-                              {/* PRICE SECTION: INCREASED SIZE, QUANTITY INCLUDED IN PRICE */}
-                              <div className="mt-3 pt-2.5 border-t border-[#e2e8f0]">
-                                {priceMode === "BOTH" && (
-                                  <div>
-                                    <div className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider mb-1">
-                                      {formattedQty}
-                                    </div>
-                                    <div className="flex items-baseline justify-between gap-2">
-                                      <div>
-                                        <span className="text-[10px] font-bold uppercase text-[#64748b] block">Retail</span>
-                                        <span className="text-[15px] sm:text-[16px] font-black text-[#0f223d]">
-                                          {p.ruleType === "PER_SQ_INCH"
-                                            ? `₹${p.ratePerSqInch}${p.rateUnit === "PAISE" ? " paise" : ""} / sq.in`
-                                            : `₹${p.amount?.toLocaleString("en-IN")}`}
-                                        </span>
-                                      </div>
-                                      <div className="text-right">
-                                        <span className="text-[10px] font-bold uppercase text-[#8a632b] block">Trade</span>
-                                        <span className="text-[15px] sm:text-[16px] font-black text-[#8a632b]">
-                                          {p.ruleType === "PER_SQ_INCH"
-                                            ? `₹${p.b2bRatePerSqInch ?? p.ratePerSqInch}${p.rateUnit === "PAISE" ? " paise" : ""} / sq.in`
-                                            : `₹${(p.b2bAmount ?? p.amount)?.toLocaleString("en-IN")}`}
-                                        </span>
-                                      </div>
-                                    </div>
+                              {/* PRICE: INCREASED SIZE, SIMPLY WRITE "Rate", NO QTY LABEL */}
+                              <div className="mt-3.5 pt-2.5 border-t border-[#e2e8f0]">
+                                {priceMode === "B2B" && (
+                                  <div className="text-[18px] sm:text-[20px] font-black text-[#0f223d]">
+                                    Rate: ₹{tradeRate}
                                   </div>
                                 )}
 
                                 {priceMode === "RETAIL" && (
-                                  <div className="flex items-baseline justify-between gap-2">
-                                    <span className="text-[12px] font-bold text-[#64748b]">
-                                      {formattedQty}:
-                                    </span>
-                                    <span className="text-[16px] sm:text-[17px] font-black text-[#0f223d]">
-                                      {p.ruleType === "PER_SQ_INCH"
-                                        ? `₹${p.ratePerSqInch}${p.rateUnit === "PAISE" ? " paise" : ""} / sq.in`
-                                        : `₹${p.amount?.toLocaleString("en-IN")}`}
-                                    </span>
+                                  <div className="text-[18px] sm:text-[20px] font-black text-[#0f223d]">
+                                    Rate: ₹{retailRate}
                                   </div>
                                 )}
 
-                                {priceMode === "B2B" && (
-                                  <div className="flex items-baseline justify-between gap-2">
-                                    <span className="text-[12px] font-bold text-[#64748b]">
-                                      {formattedQty}:
+                                {priceMode === "BOTH" && (
+                                  <div className="flex items-baseline justify-between gap-2 text-[15px] sm:text-[16px] font-black">
+                                    <span className="text-[#0f223d]">
+                                      Retail: ₹{retailRate}
                                     </span>
-                                    <span className="text-[16px] sm:text-[17px] font-black text-[#8a632b]">
-                                      {p.ruleType === "PER_SQ_INCH"
-                                        ? `₹${p.b2bRatePerSqInch ?? p.ratePerSqInch}${p.rateUnit === "PAISE" ? " paise" : ""} / sq.in`
-                                        : `₹${(p.b2bAmount ?? p.amount)?.toLocaleString("en-IN")}`}
+                                    <span className="text-[#8a632b]">
+                                      Trade: ₹{tradeRate}
                                     </span>
                                   </div>
                                 )}
@@ -469,28 +478,22 @@ export function AdminPriceCatalogDocument({
 
                   {/* DEDICATED QUOTABLE COMMERCIAL PRINTING SERVICES MODULE */}
                   {showQuotable && (
-                    <section className="quotable-section page-break-inside-avoid space-y-3 pt-2">
-                      <div className="border-t-2 border-[#0f223d] pt-3 flex items-center justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="inline-block bg-[#8a632b] text-white text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-xs">
-                              Specialized Commercial Services
-                            </span>
-                            <h2 className="text-sm sm:text-base font-extrabold uppercase tracking-wide text-[#0f223d]">
-                              On-Demand Quotable Fabrication & Publications
-                            </h2>
-                          </div>
-                          <p className="text-[10px] text-[#64748b] mt-0.5">
-                            Custom offset printing, binding, sequential numbering, and corporate stationery quoted individually based on quantity, paper GSM, and specifications.
-                          </p>
+                    <section className="quotable-section page-break-inside-avoid space-y-3 pt-3">
+                      {/* QUOTABLE HEADER IN MIDDLE */}
+                      <div className="text-center my-4 pb-2 border-t-2 border-b-2 border-[#0f223d] pt-3">
+                        <div className="inline-block bg-[#8a632b] text-white text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-xs mb-1">
+                          Specialized Commercial Services
                         </div>
-                        <div className="text-right text-[10px] font-semibold text-[#8a632b]">
-                          Direct Quote Line: +91 94263 71150
-                        </div>
+                        <h2 className="text-lg sm:text-xl font-black uppercase tracking-wider text-[#0f223d]">
+                          On-Demand Quotable Fabrication & Publications
+                        </h2>
+                        <p className="text-[10px] text-[#64748b] mt-0.5">
+                          Direct Quote Line: +91 94263 71150 · mahavircard2011@gmail.com
+                        </p>
                       </div>
 
-                      {/* 4 Commercial Quotable Modules Grid (2 columns) */}
-                      <div className="grid grid-cols-2 gap-3">
+                      {/* 4 Commercial Quotable Modules (2 per row) */}
+                      <div className="grid grid-cols-2 gap-3.5">
                         {/* Module 1: Books Modules & Multi-page Publications */}
                         <div className="border border-[#cbd5e1] rounded-sm p-3.5 bg-white space-y-2">
                           <div className="flex items-center gap-2">
@@ -498,7 +501,7 @@ export function AdminPriceCatalogDocument({
                               <BookOpen size={16} />
                             </div>
                             <div>
-                              <h3 className="text-[12px] font-bold text-[#0f223d] leading-tight">
+                              <h3 className="text-[13px] font-bold text-[#0f223d] leading-tight">
                                 1. Books Modules & Multi-Page Publications
                               </h3>
                               <p className="text-[9.5px] text-[#8a632b] font-semibold">
@@ -541,7 +544,7 @@ export function AdminPriceCatalogDocument({
                               <Calendar size={16} />
                             </div>
                             <div>
-                              <h3 className="text-[12px] font-bold text-[#0f223d] leading-tight">
+                              <h3 className="text-[13px] font-bold text-[#0f223d] leading-tight">
                                 2. Custom Corporate Diaries & Planners
                               </h3>
                               <p className="text-[9.5px] text-[#8a632b] font-semibold">
@@ -577,14 +580,14 @@ export function AdminPriceCatalogDocument({
                           </div>
                         </div>
 
-                        {/* Module 3: Bill Books, Challans & Receipt Vouchers (All "Carbonless NCR" removed) */}
+                        {/* Module 3: Bill Books, Challans & Receipt Vouchers */}
                         <div className="border border-[#cbd5e1] rounded-sm p-3.5 bg-white space-y-2">
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded bg-[#f1f5f9] text-[#0f223d] flex items-center justify-center shrink-0">
                               <Receipt size={16} />
                             </div>
                             <div>
-                              <h3 className="text-[12px] font-bold text-[#0f223d] leading-tight">
+                              <h3 className="text-[13px] font-bold text-[#0f223d] leading-tight">
                                 3. Bill Books, Challans & Receipt Vouchers
                               </h3>
                               <p className="text-[9.5px] text-[#8a632b] font-semibold">
@@ -620,14 +623,14 @@ export function AdminPriceCatalogDocument({
                           </div>
                         </div>
 
-                        {/* Module 4: Corporate & Office Stationery Suite */}
+                        {/* Module 4: Corporate Stationery & Folders Suite */}
                         <div className="border border-[#cbd5e1] rounded-sm p-3.5 bg-white space-y-2">
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded bg-[#f1f5f9] text-[#0f223d] flex items-center justify-center shrink-0">
                               <FileSpreadsheet size={16} />
                             </div>
                             <div>
-                              <h3 className="text-[12px] font-bold text-[#0f223d] leading-tight">
+                              <h3 className="text-[13px] font-bold text-[#0f223d] leading-tight">
                                 4. Corporate Stationery & Folders Suite
                               </h3>
                               <p className="text-[9.5px] text-[#8a632b] font-semibold">

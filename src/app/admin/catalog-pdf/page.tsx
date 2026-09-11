@@ -24,6 +24,8 @@ export const metadata: Metadata = {
   title: "Price Catalogue & Specification Directory (PDF) | Mahavir Card Admin",
   robots: { index: false, follow: false },
 };
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const productSlugImageMap: Record<string, string> = {
   "nt-single": "/images/products/nt-single.jpg",
