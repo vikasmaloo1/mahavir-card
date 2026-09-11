@@ -286,8 +286,8 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
   return (
     <>
       <section className="overflow-hidden rounded-xl border border-[#cfd8e8] bg-white shadow-[0_10px_30px_rgba(16,33,63,0.08)] mb-20 sm:mb-0">
-        <div className="border-b border-[#dfe5ef] px-4 py-2.5 sm:px-5 sm:py-3">
-          <p className="text-xs sm:text-[13px] font-bold uppercase tracking-[0.13em] text-[#2457b8]">Configure your order</p>
+        <div className="border-b border-[#d4e4f5] mc-section-blue px-4 py-2.5 sm:px-5 sm:py-3">
+          <p className="text-xs sm:text-[13px] font-bold uppercase tracking-[0.13em] text-[#1b365d]">Configure your order</p>
         </div>
         <div className="space-y-2.5 p-3 sm:space-y-3 sm:p-4">
           {product.categorySlug === "premium-card" || product.slug.startsWith("premium-") ? (
@@ -483,7 +483,7 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
                   <span className="text-right text-xs text-[#607089]">{estimate.applicableRule ?? "Server pricing"}</span>
                 </div>
                 {estimate.productPrice ? (
-                  <div className="mt-2 rounded-lg bg-[#f8fafc] border border-[#e8edf4] p-2.5 text-xs text-[#607089] space-y-1">
+                  <div className="mt-2 rounded-lg bg-[#FAF5ED] border border-[#ede4d5] p-2.5 text-xs text-[#607089] space-y-1">
                     <div className="flex justify-between"><span>Base price</span><strong className="text-[#162237]">{money(estimate.productPrice)}</strong></div>
                     {estimate.blade ? (
                       <div className="flex justify-between text-[#162237]">

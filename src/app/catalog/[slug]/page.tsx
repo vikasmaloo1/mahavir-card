@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Clock3, FileUp, ShieldCheck } from "lucide-react";
+import { ArrowRight, Clock3, FileUp, ShieldCheck } from "lucide-react";
 import { and, asc, eq, or } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { getCachedSession } from "@/lib/auth/session";
@@ -387,6 +387,71 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
           </aside>
         </div>
       </div>
+
+      {/* 2. ARTWORK GUIDELINES & PRE-PRESS VERIFICATION (Soft Lavender) */}
+      <section className="mt-12 w-full border-t border-[#e6e0f2] mc-section-lavender py-10 lg:py-14">
+        <div className="mx-auto max-w-[1440px] px-4 lg:px-8">
+          <div className="max-w-3xl">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d7cbef] bg-white px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#372a5f] shadow-2xs">
+              Pre-Press Checklist
+            </span>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
+              Artwork Requirements for {product.name}
+            </h2>
+            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+              To ensure sharp offset plates and accurate finishing, follow our standard pre-press tolerances before finalizing your order.
+            </p>
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-xs">
+              <p className="text-xs font-bold uppercase tracking-wider text-[#1e3a5f]">File Format &amp; Color</p>
+              <p className="mt-1 text-sm font-bold text-slate-900">CorelDRAW (.CDR) &bull; CMYK</p>
+              <p className="mt-1 text-xs text-slate-600 leading-relaxed">
+                Convert all RGB to CMYK mode. Avoid 4-color rich black mixes on small typography to prevent color fringing.
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-xs">
+              <p className="text-xs font-bold uppercase tracking-wider text-[#1e3a5f]">Bleed &amp; Margins</p>
+              <p className="mt-1 text-sm font-bold text-slate-900">2 mm Safe Margin</p>
+              <p className="mt-1 text-xs text-slate-600 leading-relaxed">
+                Keep critical logos and contact text at least 2 mm away from die-cut edges to account for machine movement.
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-xs">
+              <p className="text-xs font-bold uppercase tracking-wider text-[#1e3a5f]">Finishing Separations</p>
+              <p className="mt-1 text-sm font-bold text-slate-900">100% K for Spot UV &amp; Foil</p>
+              <p className="mt-1 text-xs text-slate-600 leading-relaxed">
+                For selective spot UV or gold foil, provide UV/foil elements on separate pages in 100% solid Black (K).
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. CTA / CUSTOM ASSISTANCE (Soft Mint) */}
+      <section className="w-full border-t border-[#d2eade] mc-section-mint py-10">
+        <div className="mx-auto flex max-w-[1440px] flex-col justify-between gap-6 px-4 sm:flex-row sm:items-center lg:px-8">
+          <div>
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-[#bddfcb] bg-white px-3 py-0.5 text-xs font-bold uppercase tracking-wider text-[#174834] shadow-2xs">
+              <span className="size-1.5 rounded-full bg-[#174834]" />
+              Need a Custom Variation?
+            </div>
+            <h3 className="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-slate-950">
+              Need custom quantities, different paper stocks, or bespoke finishing?
+            </h3>
+            <p className="mt-1 text-sm text-slate-600">
+              Request a custom quotation tailored to your exact print dimensions and volume requirements.
+            </p>
+          </div>
+          <Link
+            href="/quote"
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#1e3a5f] px-6 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#152a45]"
+          >
+            Request Custom Quote <ArrowRight size={16} />
+          </Link>
+        </div>
+      </section>
       <StorefrontFooter />
     </main>
   );

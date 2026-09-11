@@ -41,20 +41,20 @@ export default function AboutPage() {
           ]}
         />
 
-        <section className="mt-10">
+        <section className="mt-10 rounded-2xl border border-[#d4e4f5] mc-section-blue p-6 sm:p-8">
           <SectionEyebrow label="Who we are" />
-          <h2 className="mt-3 text-2xl font-bold sm:text-3xl">Who we are</h2>
-          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-[var(--mc-muted)]">
+          <h2 className="mt-3 text-2xl font-bold text-slate-950 sm:text-3xl">Who we are</h2>
+          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-slate-700">
             Mahavir Card has been printing in Ahmedabad for over 25 years — nearly three decades — serving individual customers and businesses across Gujarat and Rajasthan.
           </p>
-          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-[var(--mc-muted)]">
+          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-slate-700">
             The press prints visiting cards, brochures, letterheads, envelopes, leaflets and stickers on commercial offset equipment, taking orders directly online with
             live pricing and CDR artwork upload. Both individual (B2C) and business (B2B) customers order through the same catalog, with dedicated wallet/credit
             arrangements available for repeat business accounts.
           </p>
         </section>
 
-        <section className="mt-10">
+        <section className="mt-10 rounded-2xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-xs">
           <SectionEyebrow label="What we print" />
           <h2 className="mt-3 text-2xl font-bold sm:text-3xl">What we print</h2>
           <p className="mt-3 max-w-3xl text-[15px] leading-7 text-[var(--mc-muted)]">
@@ -74,7 +74,7 @@ export default function AboutPage() {
               <Link
                 key={category.slug}
                 href={`/products?category=${category.slug}`}
-                className="group flex items-center justify-between rounded-xl border border-[var(--mc-line)] bg-white px-4 py-3.5 shadow-xs transition hover:border-[var(--mc-accent)] hover:shadow-sm"
+                className="group flex items-center justify-between rounded-xl border border-[var(--mc-line)] bg-[#faf8f5] px-4 py-3.5 shadow-2xs transition hover:border-[var(--mc-accent)] hover:bg-white hover:shadow-xs"
               >
                 <span className="font-bold text-[var(--mc-ink)] group-hover:text-[var(--mc-accent)]">{category.name}</span>
                 <ArrowRight size={16} className="shrink-0 text-[var(--mc-muted)] transition-transform group-hover:translate-x-1 group-hover:text-[var(--mc-accent)]" />
@@ -83,42 +83,42 @@ export default function AboutPage() {
           </div>
         </section>
 
-        <section className="mt-10 rounded-2xl border border-[var(--mc-line)] bg-white p-6 sm:p-8">
+        <section className="mt-10 rounded-2xl border border-[#e6e0f2] mc-section-lavender p-6 sm:p-8">
           <div className="flex items-center gap-2.5">
-            <FileCheck2 size={22} className="text-[var(--mc-accent)]" />
-            <h2 className="text-2xl font-bold">Our approach to quality</h2>
+            <FileCheck2 size={22} className="text-[#1e3a5f]" />
+            <h2 className="text-2xl font-bold text-slate-950">Our approach to quality</h2>
           </div>
-          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-[var(--mc-muted)]">
+          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-slate-700">
             Every CDR file submitted is checked for safe bleed, resolution and correct page ordering before plates are made. Finishing options — thermal matt, velvet
             lamination, selective spot UV gloss, and metallic gold foil stamping — are applied with corner-cut precision as part of the standard production process,
             not as a premium add-on.
           </p>
         </section>
 
-        <section className="mt-10 rounded-2xl border border-[var(--mc-line)] bg-white p-6 sm:p-8">
+        <section className="mt-10 rounded-2xl border border-[#ede4d5] mc-section-beige p-6 sm:p-8">
           <div className="flex items-center gap-2.5">
-            <MapPin size={22} className="text-[var(--mc-accent)]" />
-            <h2 className="text-2xl font-bold">Our location</h2>
+            <MapPin size={22} className="text-[#1e3a5f]" />
+            <h2 className="text-2xl font-bold text-slate-950">Our location</h2>
           </div>
-          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-[var(--mc-muted)]">
+          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-slate-700">
             The press and pickup counter are at Khadia Golwad, Opp. Jain Digamber Mandir, Ahmedabad – 380001. Orders dispatch by courier to Gujarat and Rajasthan, or can be
             collected directly from the facility.
           </p>
-          <Link href="/contact" className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[var(--mc-accent)] hover:underline">
+          <Link href="/contact" className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#1e3a5f] hover:underline">
             Get directions and contact details <ArrowRight size={15} />
           </Link>
         </section>
 
-        <section className="mt-10">
+        <section className="mt-10 rounded-2xl border border-[#fadcce] mc-section-peach p-6 sm:p-8">
           <SectionEyebrow label="Ordering" />
-          <div className="flex items-center gap-2.5">
-            <Printer size={22} className="text-[var(--mc-accent)]" />
-            <h2 className="mt-0 text-2xl font-bold sm:text-3xl">How we work</h2>
+          <div className="mt-3 flex items-center gap-2.5">
+            <Printer size={22} className="text-[#1e3a5f]" />
+            <h2 className="mt-0 text-2xl font-bold text-slate-950 sm:text-3xl">How we work</h2>
           </div>
-          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-[var(--mc-muted)]">
+          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-slate-700">
             Products are configured and priced online, artwork is uploaded directly against each order, and production begins once the CDR file passes pre-press
-            checking. <Link href="/how-it-works" className="font-bold text-[var(--mc-accent)] hover:underline">See the full ordering process</Link>, or read about
-            <Link href="/commercial-offset-printing" className="font-bold text-[var(--mc-accent)] hover:underline"> commercial offset printing</Link> for bulk and business orders.
+            checking. <Link href="/how-it-works" className="font-bold text-[#1e3a5f] hover:underline">See the full ordering process</Link>, or read about
+            <Link href="/commercial-offset-printing" className="font-bold text-[#1e3a5f] hover:underline"> commercial offset printing</Link> for bulk and business orders.
           </p>
         </section>
 
@@ -127,6 +127,7 @@ export default function AboutPage() {
           description="Browse the full catalog with live pricing, or share a custom requirement for a direct quotation."
           primary={{ label: "Browse Products", href: "/products" }}
           secondary={{ label: "Request a Quote", href: "/quote" }}
+          tone="mint"
         />
       </main>
 

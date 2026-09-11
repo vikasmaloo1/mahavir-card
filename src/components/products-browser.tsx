@@ -529,119 +529,127 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
 
   /** Re-adds a previously ordered product using the exact configuration it was ordered with last time. */
   return (
-    <main className="mc-storefront min-h-screen bg-[var(--mc-surface)] text-[var(--mc-ink)]">
-      <div className="mx-auto max-w-[1440px] px-4 py-7 lg:px-8 lg:py-10">
-        {isB2B && walletBalance !== null ? (
-          <Link
-            href="/account/wallet"
-            className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--mc-line)] bg-[var(--mc-paper)] px-4 py-3 shadow-sm transition-colors hover:border-[var(--mc-accent)]"
-          >
-            <span className="flex items-center gap-2.5">
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--mc-accent-soft)] text-[var(--mc-accent)]">
-                <WalletCards size={18} />
+    <main className="mc-storefront min-h-screen text-[var(--mc-ink)]">
+      {/* 1. FILTER & CATEGORY HEADER (Soft Blue) */}
+      <div className="w-full border-b border-[#d4e4f5] mc-section-blue py-6 sm:py-8">
+        <div className="mx-auto max-w-[1440px] px-4 lg:px-8">
+          {isB2B && walletBalance !== null ? (
+            <Link
+              href="/account/wallet"
+              className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-white px-4 py-3 shadow-xs transition-colors hover:border-[var(--mc-accent)]"
+            >
+              <span className="flex items-center gap-2.5">
+                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--mc-accent-soft)] text-[var(--mc-accent)]">
+                  <WalletCards size={18} />
+                </span>
+                <span>
+                  <span className="block text-xs font-bold uppercase text-[var(--mc-muted)]">Wallet balance</span>
+                  <span className="block text-lg font-bold text-[var(--mc-ink)]">{formatInr(walletBalance)}</span>
+                </span>
               </span>
-              <span>
-                <span className="block text-xs font-bold uppercase text-[var(--mc-muted)]">Wallet balance</span>
-                <span className="block text-lg font-bold text-[var(--mc-ink)]">{formatInr(walletBalance)}</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2 text-xs font-bold text-white">
+                Top up <ArrowRight size={14} />
               </span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2 text-xs font-bold text-white">
-              Top up <ArrowRight size={14} />
-            </span>
-          </Link>
-        ) : null}
-        <header className="border-b border-[var(--mc-line)] pb-6">
-          <p className="text-xs font-bold uppercase text-[var(--mc-accent)]">Product catalogue</p>
-          <div className="mt-2 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-            <div>
-              <h1 className="max-w-3xl text-3xl font-bold leading-tight sm:text-[2.35rem]">
-                Choose a print job.
-              </h1>
-              <p className="mt-2 max-w-2xl text-[15px] leading-6 text-[var(--mc-muted)]">
-                Compare specifications, artwork and ordering options in one place.
+            </Link>
+          ) : null}
+          <header className="border-b border-[#c8d8ea] pb-6">
+            <p className="text-xs font-bold uppercase tracking-wider text-[#1b365d]">Product catalogue</p>
+            <div className="mt-2 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+              <div>
+                <h1 className="max-w-3xl text-3xl font-bold leading-tight text-slate-950 sm:text-[2.35rem]">
+                  Choose a print job.
+                </h1>
+                <p className="mt-2 max-w-2xl text-[15px] leading-6 text-slate-600">
+                  Compare specifications, artwork and ordering options in one place.
+                </p>
+              </div>
+              <p className="text-[15px] font-semibold text-slate-600">
+                {pagination.total} products
               </p>
             </div>
-            <p className="text-[15px] font-semibold text-[var(--mc-muted)]">
-              {pagination.total} products
-            </p>
-          </div>
-        </header>
+          </header>
 
-        {/* Search Bar & Clear Action */}
-        <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-          <label className="flex min-w-0 items-center gap-3 rounded-xl border border-[var(--mc-line)] bg-[var(--mc-paper)] px-4 shadow-sm">
-            <Search size={18} className="shrink-0 text-[var(--mc-muted)]" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search visiting cards, brochures, stickers, 400 GSM, thermal matt..."
-              className="min-w-0 flex-1 bg-transparent py-3.5 text-[15px] outline-none"
-            />
-            {query ? (
+          {/* Search Bar & Clear Action */}
+          <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+            <label className="flex min-w-0 items-center gap-3 rounded-xl border border-[#c8d8ea] bg-white px-4 shadow-xs">
+              <Search size={18} className="shrink-0 text-slate-500" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search visiting cards, brochures, stickers, 400 GSM, thermal matt..."
+                className="min-w-0 flex-1 bg-transparent py-3.5 text-[15px] outline-none"
+              />
+              {query ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery("");
+                    setPage(1);
+                  }}
+                  className="grid size-9 place-items-center rounded-full hover:bg-slate-100"
+                  aria-label="Clear search"
+                >
+                  <X size={17} />
+                </button>
+              ) : null}
+            </label>
+            {hasFilters ? (
               <button
                 type="button"
-                onClick={() => {
-                  setQuery("");
-                  setPage(1);
-                }}
-                className="grid size-9 place-items-center rounded-full hover:bg-[var(--mc-surface)]"
-                aria-label="Clear search"
+                onClick={clear}
+                className="rounded-full border border-[#c8d8ea] bg-white px-5 py-3 text-sm font-bold text-[#1e3a5f] hover:bg-slate-50 transition-colors shadow-xs"
               >
-                <X size={17} />
+                Clear filters
               </button>
             ) : null}
-          </label>
-          {hasFilters ? (
-            <button
-              type="button"
-              onClick={clear}
-              className="rounded-full border border-[var(--mc-line)] bg-[var(--mc-paper)] px-5 py-3 text-sm font-bold text-[var(--mc-accent)] hover:bg-[var(--mc-surface)] transition-colors"
-            >
-              Clear filters
-            </button>
-          ) : null}
-        </div>
+          </div>
 
-        {/* Category Pills */}
-        <div
-          ref={categoriesRef}
-          id="categories"
-          className="mt-4 border-y border-[var(--mc-line)] py-3 scroll-mt-28 sm:scroll-mt-24"
-        >
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1">
-            <span className="mr-2 inline-flex shrink-0 items-center gap-2 text-xs font-bold uppercase text-[var(--mc-muted)]">
-              <SlidersHorizontal size={15} />
-              Categories
-            </span>
-            <button
-              type="button"
-              ref={!category ? activePillRef : null}
-              onClick={() => selectCategory("")}
-              className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
-                !category
-                  ? "bg-[#1e3a5f] text-white shadow-2xs font-bold"
-                  : "bg-white border border-slate-200/90 text-slate-700 hover:bg-[#f0f5fa] hover:border-[#d5e3f1] hover:text-[#1b365d]"
-              }`}
-            >
-              All products
-            </button>
-            {categories.map((item) => (
+          {/* Category Pills */}
+          <div
+            ref={categoriesRef}
+            id="categories"
+            className="mt-4 border-t border-[#c8d8ea] pt-3 scroll-mt-28 sm:scroll-mt-24"
+          >
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1">
+              <span className="mr-2 inline-flex shrink-0 items-center gap-2 text-xs font-bold uppercase text-slate-600">
+                <SlidersHorizontal size={15} />
+                Categories
+              </span>
               <button
                 type="button"
-                key={item.id}
-                ref={category === item.slug ? activePillRef : null}
-                onClick={() => selectCategory(item.slug)}
+                ref={!category ? activePillRef : null}
+                onClick={() => selectCategory("")}
                 className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
-                  category === item.slug
-                    ? "bg-[#1e3a5f] text-white shadow-2xs font-bold"
-                    : "bg-white border border-slate-200/90 text-slate-700 hover:bg-[#f0f5fa] hover:border-[#d5e3f1] hover:text-[#1b365d]"
+                  !category
+                    ? "bg-[#1e3a5f] text-white shadow-xs font-bold"
+                    : "bg-white border border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-[#1e3a5f]/40 hover:text-[#1e3a5f]"
                 }`}
               >
-                {item.name}
+                All products
               </button>
-            ))}
+              {categories.map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  ref={category === item.slug ? activePillRef : null}
+                  onClick={() => selectCategory(item.slug)}
+                  className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+                    category === item.slug
+                      ? "bg-[#1e3a5f] text-white shadow-xs font-bold"
+                      : "bg-white border border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-[#1e3a5f]/40 hover:text-[#1e3a5f]"
+                  }`}
+                >
+                  {item.name}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
+      </div>
+
+      {/* 2. PRODUCT GRID SECTION (White) */}
+      <div className="w-full mc-section-white py-8 sm:py-10">
+        <div className="mx-auto max-w-[1440px] px-4 lg:px-8">
 
         {/* PARTIAL / WEAK MATCH BANNER */}
         {searchMeta && searchMeta.confidence === "PARTIAL" && items.length > 0 && (
@@ -1117,7 +1125,39 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
             </div>
           </section>
         ) : null}
+        </div>
       </div>
+
+      {/* 3. SUPPORTING / CUSTOM QUOTE SECTION (Warm Beige) */}
+      <section className="w-full border-t border-[#ede4d5] mc-section-beige py-12">
+        <div className="mx-auto flex max-w-[1440px] flex-col justify-between gap-6 px-4 sm:flex-row sm:items-center lg:px-8">
+          <div>
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-[#e0d4c0] bg-white px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#4d402e] shadow-2xs">
+              <span className="size-1.5 rounded-full bg-[#1e3a5f]" />
+              Custom Print Specifications
+            </div>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              Need a non-standard size, custom paper stock, or volume quotation?
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Submit your specific dimensions, quantities, or special finishing requests for a fast, direct estimate from our Ahmedabad offset press.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              openQuoteFallback({
+                mode: "CUSTOM_REQUEST",
+                title: "Custom Print Specification Quote",
+                subtitle: "Tell us about your non-standard dimensions, materials, or special finishing.",
+              })
+            }
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#1e3a5f] px-7 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#152a45]"
+          >
+            Share Custom Requirement <ArrowRight size={17} />
+          </button>
+        </div>
+      </section>
 
       {/* Embedded Accessible Requirement Quote Modal */}
       <RequirementQuoteModal

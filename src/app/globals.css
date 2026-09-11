@@ -28,27 +28,53 @@
   --background: var(--mc-surface);
   --foreground: var(--mc-ink);
 
-  /* Restrained, soft pastel design tokens for subtle surface contrast & badges */
-  --mc-pastel-blue: #f0f5fa;
-  --mc-pastel-blue-border: #d5e3f1;
+  /* Restrained, soft pastel design tokens for section rhythm & surfaces */
+  --mc-pastel-blue: #eef5fb;
+  --mc-pastel-blue-border: #d4e4f5;
   --mc-pastel-blue-text: #1b365d;
 
-  --mc-pastel-lavender: #f5f3f9;
-  --mc-pastel-lavender-border: #e3dff0;
+  --mc-pastel-lavender: #f5f1fa;
+  --mc-pastel-lavender-border: #e6e0f2;
   --mc-pastel-lavender-text: #372a5f;
 
   --mc-pastel-mint: #eef7f2;
-  --mc-pastel-mint-border: #cde6d7;
+  --mc-pastel-mint-border: #d2eade;
   --mc-pastel-mint-text: #174834;
 
-  --mc-pastel-peach: #fcf4ee;
-  --mc-pastel-peach-border: #f5ddd0;
+  --mc-pastel-peach: #fff4ed;
+  --mc-pastel-peach-border: #fadcce;
   --mc-pastel-peach-text: #63391d;
 
-  --mc-pastel-beige: #faf7f2;
-  --mc-pastel-beige-border: #ece4d7;
+  --mc-pastel-beige: #faf5ed;
+  --mc-pastel-beige-border: #ede4d5;
   --mc-pastel-beige-text: #4d402e;
 }
+
+/* Consistent Section-Background System */
+.mc-section-white {
+  background-color: #ffffff;
+}
+.mc-section-blue {
+  background-color: #eef5fb;
+}
+.mc-section-beige {
+  background-color: #faf5ed;
+}
+.mc-section-lavender {
+  background-color: #f5f1fa;
+}
+.mc-section-mint {
+  background-color: #eef7f2;
+}
+.mc-section-peach {
+  background-color: #fff4ed;
+}
+
+.mc-border-blue { border-color: #d4e4f5; }
+.mc-border-beige { border-color: #ede4d5; }
+.mc-border-lavender { border-color: #e6e0f2; }
+.mc-border-mint { border-color: #d2eade; }
+.mc-border-peach { border-color: #fadcce; }
 
 .bg-pastel-blue { background-color: var(--mc-pastel-blue); }
 .border-pastel-blue { border-color: var(--mc-pastel-blue-border); }

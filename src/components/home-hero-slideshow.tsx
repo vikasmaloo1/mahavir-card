@@ -168,7 +168,7 @@ export function HomeHeroSlideshow({ className = "" }: { className?: string }) {
 
   return (
     <section
-      className={`relative border-b border-slate-200/80 bg-gradient-to-b from-[#f2f6fa]/70 via-[#faf9f6]/60 to-white ${className}`}
+      className={`relative border-b border-[#d4e4f5] mc-section-blue ${className}`}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={handleTouchStart}

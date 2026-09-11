@@ -397,8 +397,9 @@ export function HomeCatalogSections({ initialCategories }: { initialCategories: 
   }, [requestVersion]);
 
   return (
-    <section id="categories" className="mx-auto max-w-[1440px] px-4 py-12 lg:px-8 lg:py-16">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+    <section id="categories" className="w-full border-b border-slate-200/80 mc-section-white py-12 lg:py-16">
+      <div className="mx-auto max-w-[1440px] px-4 lg:px-8">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-[#d5e3f1] bg-[#edf4fb] px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#1b365d] shadow-2xs">
             <span className="size-1.5 rounded-full bg-[#1e3a5f]" />
@@ -508,13 +509,14 @@ export function HomeCatalogSections({ initialCategories }: { initialCategories: 
         </div>
       ) : null}
 
-      <div className="mt-8 text-center sm:hidden">
-        <Link
-          href="/products"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e3a5f] px-6 py-3.5 text-sm font-bold text-white shadow-xs"
-        >
-          View Full Catalogue <ArrowRight size={16} />
-        </Link>
+        <div className="mt-8 text-center sm:hidden">
+          <Link
+            href="/products"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1e3a5f] px-6 py-3.5 text-sm font-bold text-white shadow-xs"
+          >
+            View Full Catalogue <ArrowRight size={16} />
+          </Link>
+        </div>
       </div>
     </section>
   );

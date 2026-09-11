@@ -50,38 +50,36 @@ export default function CommercialOffsetPrintingPage() {
           ]}
         />
 
-        <section className="mt-10">
+        <section className="mt-10 rounded-2xl border border-[#d4e4f5] mc-section-blue p-6 sm:p-8">
           <SectionEyebrow label="The basics" />
-          <h2 className="mt-3 text-2xl font-bold text-[var(--mc-ink)] sm:text-3xl">What commercial offset printing is</h2>
-          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-[var(--mc-muted)]">
+          <h2 className="mt-3 text-2xl font-bold text-slate-950 sm:text-3xl">What commercial offset printing is</h2>
+          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-slate-700">
             Offset printing transfers ink from a plate to a rubber blanket, then onto paper — the standard method for consistent color and sharp detail at real print volumes.
             It is the process behind most business cards, brochures, letterheads and commercial stationery, and is what Mahavir Card&apos;s press runs are built on.
           </p>
+          <div className="mt-6 border-t border-[#d4e4f5] pt-6">
+            <h3 className="text-xl font-bold text-slate-950">When offset printing makes sense</h3>
+            <p className="mt-2 max-w-3xl text-[15px] leading-7 text-slate-700">
+              Offset is the right choice once you need consistent color across a real print run — visiting cards, brochures, letterheads, and stickers ordered in the quantities
+              already listed against each product (starting at 500–1,000 units depending on the item). For a one-off or highly custom job outside the standard catalog, share the
+              requirement through a quote and it will be reviewed directly.
+            </p>
+          </div>
         </section>
 
-        <section className="mt-10">
-          <SectionEyebrow label="When to choose it" />
-          <h2 className="mt-3 text-2xl font-bold text-[var(--mc-ink)] sm:text-3xl">When offset printing makes sense</h2>
-          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-[var(--mc-muted)]">
-            Offset is the right choice once you need consistent color across a real print run — visiting cards, brochures, letterheads, and stickers ordered in the quantities
-            already listed against each product (starting at 500–1,000 units depending on the item). For a one-off or highly custom job outside the standard catalog, share the
-            requirement through a quote and it will be reviewed directly.
-          </p>
-        </section>
-
-        <section className="mt-10">
+        <section className="mt-10 rounded-2xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-xs">
           <SectionEyebrow label="Catalog" />
-          <h2 className="mt-3 text-2xl font-bold text-[var(--mc-ink)] sm:text-3xl">On our online catalog</h2>
-          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-[var(--mc-muted)]">
+          <h2 className="mt-3 text-2xl font-bold text-slate-950 sm:text-3xl">On our online catalog</h2>
+          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-slate-600">
             The categories below are live on the online catalog with instant pricing, and more are being added over time — this is not the full range of what the press
             takes on. Bill books, packing slips, keychains, pens, general stationery, and coaching-institute study material (including work done for institutes such as
             Allen and Bothra Classes) have all been printed directly by quotation.
           </p>
           <ScrollHighlight className="mt-4 max-w-3xl">
-            <p className="p-4 text-[15px] font-semibold leading-7 text-[var(--mc-ink)] sm:p-5">
+            <p className="p-4 text-[15px] font-semibold leading-7 text-[#1e3a5f] sm:p-5">
               Have a specific requirement that isn&apos;t listed?{" "}
-              <Link href="/quote" className="font-bold text-[var(--mc-accent)] hover:underline">Request a quote</Link> or{" "}
-              <Link href="/contact" className="font-bold text-[var(--mc-accent)] hover:underline">send an inquiry</Link> and it&apos;ll be reviewed directly.
+              <Link href="/quote" className="font-bold text-[#1e3a5f] underline">Request a quote</Link> or{" "}
+              <Link href="/contact" className="font-bold text-[#1e3a5f] underline">send an inquiry</Link> and it&apos;ll be reviewed directly.
             </p>
           </ScrollHighlight>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -89,69 +87,64 @@ export default function CommercialOffsetPrintingPage() {
               <Link
                 key={category.slug}
                 href={`/products?category=${category.slug}`}
-                className="group flex items-center justify-between rounded-xl border border-[var(--mc-line)] bg-white px-4 py-3.5 shadow-xs transition hover:border-[var(--mc-accent)] hover:shadow-sm"
+                className="group flex items-center justify-between rounded-xl border border-slate-200 bg-[#faf8f5] px-4 py-3.5 shadow-2xs transition hover:border-[#1e3a5f] hover:bg-white hover:shadow-xs"
               >
-                <span className="font-bold text-[var(--mc-ink)] group-hover:text-[var(--mc-accent)]">{category.name}</span>
-                <ArrowRight size={16} className="shrink-0 text-[var(--mc-muted)] transition-transform group-hover:translate-x-1 group-hover:text-[var(--mc-accent)]" />
+                <span className="font-bold text-slate-900 group-hover:text-[#1e3a5f]">{category.name}</span>
+                <ArrowRight size={16} className="shrink-0 text-slate-400 transition-transform group-hover:translate-x-1 group-hover:text-[#1e3a5f]" />
               </Link>
             ))}
           </div>
         </section>
 
-        <section className="mt-10">
+        <section className="mt-10 rounded-2xl border border-[#ede4d5] mc-section-beige p-6 sm:p-8">
           <SectionEyebrow label="Materials & finishes" />
-          <h2 className="mt-3 text-2xl font-bold text-[var(--mc-ink)] sm:text-3xl">Materials and finishes available</h2>
+          <h2 className="mt-3 text-2xl font-bold text-slate-950 sm:text-3xl">Materials and finishes available</h2>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             {finishes.map((item) => (
-              <div key={item.name} className="flex items-start gap-3 rounded-xl border border-[var(--mc-line)] bg-white p-4">
-                <Check size={17} className="mt-0.5 shrink-0 text-[var(--mc-accent)]" />
+              <div key={item.name} className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs">
+                <Check size={17} className="mt-0.5 shrink-0 text-[#1e3a5f]" />
                 <div>
-                  <p className="font-bold text-[var(--mc-ink)]">{item.name}</p>
-                  <p className="mt-0.5 text-sm text-[var(--mc-muted)]">{item.note}</p>
+                  <p className="font-bold text-slate-950">{item.name}</p>
+                  <p className="mt-0.5 text-sm text-slate-600">{item.note}</p>
                 </div>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="mt-10 rounded-2xl border border-[var(--mc-line)] bg-white p-6 sm:p-8">
+        <section className="mt-10 rounded-2xl border border-[#fadcce] mc-section-peach p-6 sm:p-8">
           <div className="flex items-center gap-2.5">
-            <PackageCheck size={22} className="text-[var(--mc-accent)]" />
-            <h2 className="text-2xl font-bold text-[var(--mc-ink)]">Bulk and commercial-volume printing</h2>
+            <PackageCheck size={22} className="text-[#1e3a5f]" />
+            <h2 className="text-2xl font-bold text-slate-950">Bulk and commercial-volume printing</h2>
           </div>
-          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-[var(--mc-muted)]">
+          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-slate-700">
             For volume orders — product labels, stickers, or custom stationery beyond the standard catalog quantities — share your dimensions and requirement directly and it
             will be quoted for the actual volume, rather than priced against a fixed online rate.
           </p>
-          <Link href="/quote" className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[var(--mc-accent-dark)]">
+          <Link href="/quote" className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#1e3a5f] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#152a45]">
             Request a bulk quote <ArrowRight size={15} />
           </Link>
         </section>
 
-        <section className="mt-10">
-          <SectionEyebrow label="Process" />
-          <h2 className="mt-3 text-2xl font-bold text-[var(--mc-ink)] sm:text-3xl">How ordering works</h2>
-          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-[var(--mc-muted)]">
-            Choose a product, configure the quantity and finish, upload production-ready CDR artwork, and confirm the order with live GST-inclusive pricing —
-            <Link href="/how-it-works" className="font-bold text-[var(--mc-accent)] hover:underline"> the full process is explained step by step here</Link>.
-          </p>
-        </section>
-
-        <section className="mt-10 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-[var(--mc-line)] bg-white p-5">
-            <ShieldCheck size={20} className="text-[var(--mc-accent)]" />
-            <p className="mt-3 font-bold text-[var(--mc-ink)]">Pre-Press Inspection</p>
-            <p className="mt-1 text-sm text-[var(--mc-muted)]">Every CDR file is checked for safe bleed, resolution and page ordering before plates are made.</p>
-          </div>
-          <div className="rounded-xl border border-[var(--mc-line)] bg-white p-5">
-            <Layers size={20} className="text-[var(--mc-accent)]" />
-            <p className="mt-3 font-bold text-[var(--mc-ink)]">Tactile Finishes</p>
-            <p className="mt-1 text-sm text-[var(--mc-muted)]">Thermal matt, velvet lamination, spot UV gloss, and metallic foil stamping with corner cuts.</p>
-          </div>
-          <div className="rounded-xl border border-[var(--mc-line)] bg-white p-5">
-            <Truck size={20} className="text-[var(--mc-accent)]" />
-            <p className="mt-3 font-bold text-[var(--mc-ink)]">Regional Dispatch</p>
-            <p className="mt-1 text-sm text-[var(--mc-muted)]">Insured courier dispatch across Gujarat and Rajasthan, plus counter pickup at the Ahmedabad facility.</p>
+        <section className="mt-10 rounded-2xl border border-[#e6e0f2] mc-section-lavender p-6 sm:p-8">
+          <SectionEyebrow label="Standards & Guarantees" />
+          <h2 className="mt-3 text-2xl font-bold text-slate-950 sm:text-3xl">Built for consistent print runs</h2>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-slate-200/90 bg-white p-5 shadow-xs">
+              <ShieldCheck size={20} className="text-[#1e3a5f]" />
+              <p className="mt-3 font-bold text-slate-950">Pre-Press Inspection</p>
+              <p className="mt-1 text-sm text-slate-600">Every CDR file is checked for safe bleed, resolution and page ordering before plates are made.</p>
+            </div>
+            <div className="rounded-xl border border-slate-200/90 bg-white p-5 shadow-xs">
+              <Layers size={20} className="text-[#1e3a5f]" />
+              <p className="mt-3 font-bold text-slate-950">Tactile Finishes</p>
+              <p className="mt-1 text-sm text-slate-600">Thermal matt, velvet lamination, spot UV gloss, and metallic foil stamping with corner cuts.</p>
+            </div>
+            <div className="rounded-xl border border-slate-200/90 bg-white p-5 shadow-xs">
+              <Truck size={20} className="text-[#1e3a5f]" />
+              <p className="mt-3 font-bold text-slate-950">Regional Dispatch</p>
+              <p className="mt-1 text-sm text-slate-600">Insured courier dispatch across Gujarat and Rajasthan, plus counter pickup at the Ahmedabad facility.</p>
+            </div>
           </div>
         </section>
 
@@ -160,6 +153,7 @@ export default function CommercialOffsetPrintingPage() {
           description="Browse live pricing across every category, or share a custom requirement for a direct quotation."
           primary={{ label: "View Products", href: "/products" }}
           secondary={{ label: "Request a Quote", href: "/quote" }}
+          tone="mint"
         />
       </main>
 

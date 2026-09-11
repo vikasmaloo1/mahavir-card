@@ -232,9 +232,9 @@ export function PurchaseCart() {
         </p>
       ) : null}
     </section>
-    <aside className="h-fit rounded-2xl border border-[#ece4d7] bg-[#faf8f4] p-6 xl:sticky xl:top-[120px] shadow-2xs">
+    <aside className="h-fit rounded-2xl border border-[#ede4d5] mc-section-beige p-6 xl:sticky xl:top-[120px] shadow-2xs">
       <p className="text-xs font-bold uppercase tracking-wider text-[#1e3a5f]">Purchase Basket Summary</p>
-      <div className="mt-4 rounded-xl border border-[#ece4d7]/80 bg-white p-4 shadow-2xs">
+      <div className="mt-4 rounded-xl border border-[#ede4d5]/80 bg-white p-4 shadow-2xs">
         <div className="flex justify-between items-center">
           <span className="text-sm font-semibold text-slate-500">
             {data.items.length} item{data.items.length === 1 ? "" : "s"}
@@ -297,6 +297,14 @@ export function PurchaseCart() {
       >
         Open Custom Quote Basket
       </Link>
+
+      {/* Informational Help Box (Soft Blue) */}
+      <div className="mt-5 rounded-xl border border-[#d4e4f5] mc-section-blue p-4 text-xs text-[#163860]">
+        <p className="font-bold text-[13px] text-[#1b365d]">Commercial Press Guarantee</p>
+        <p className="mt-1 text-slate-600 leading-relaxed">
+          Every CDR artwork file is verified for safe margins, 300 DPI resolution, and bleed before offset printing plates are exposed.
+        </p>
+      </div>
     </aside>
   </div>;
 }

@@ -166,7 +166,7 @@ export default async function Home() {
       <HomeHeroSlideshow />
 
       {/* 2. TRUST & VALUE 4-PILLAR STRIP */}
-      <section className="border-b border-[#ece4d7]/80 bg-[#faf8f4]">
+      <section className="border-b border-[#ede4d5] mc-section-beige">
         <div className="mx-auto grid max-w-[1440px] gap-6 px-4 py-6 sm:grid-cols-2 lg:grid-cols-4 lg:px-8">
           <div className="flex items-start gap-3.5">
             <div className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#e4dcce] bg-white text-[#1e3a5f] shadow-2xs">
@@ -214,12 +214,14 @@ export default async function Home() {
       <HomeCatalogSections initialCategories={initialCategories} />
 
       {/* 4. MID-PAGE PROMOTIONAL BANNER (Dynamic CMS Placed) */}
-      <div className="mx-auto max-w-[1440px] px-4 py-6 lg:px-8">
-        <PromotionalBanner placement="HOME_HERO_BOTTOM" initialBanners={initialHeroBottomBanners} />
-      </div>
+      <section className="w-full border-b border-[#fadcce] mc-section-peach py-8">
+        <div className="mx-auto max-w-[1440px] px-4 lg:px-8">
+          <PromotionalBanner placement="HOME_HERO_BOTTOM" initialBanners={initialHeroBottomBanners} />
+        </div>
+      </section>
 
       {/* 5. COMMERCIAL PRINTING PROCESS (5 STEPS) */}
-      <section className="border-y border-slate-200/80 bg-gradient-to-b from-[#f2f6fa]/80 via-[#f8fafc] to-[#f4f8fb]/50 py-14 lg:py-20">
+      <section className="border-b border-[#d4e4f5] mc-section-blue py-14 lg:py-20">
         <div className="mx-auto max-w-[1440px] px-4 lg:px-8">
           <div className="text-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#d5e3f1] bg-[#edf4fb] px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-[#1b365d] shadow-2xs">
@@ -278,14 +280,16 @@ export default async function Home() {
       </section>
 
       {/* 6. HORIZONTAL CINEMATIC COMMERCIAL BANNER SLIDESHOW */}
-      <CinematicBannerSlideshow placement="HOME_MID" />
+      <section className="w-full border-b border-slate-200/80 mc-section-white py-8 lg:py-12">
+        <CinematicBannerSlideshow placement="HOME_MID" />
+      </section>
 
-      {/* 8. QUALITY & TRUST PROOF SECTION */}
-      <section className="border-t border-slate-200/80 bg-white py-14 lg:py-18">
+      {/* 7. QUALITY & STANDARDS PROOF SECTION */}
+      <section className="border-b border-[#e6e0f2] mc-section-lavender py-14 lg:py-18">
         <div className="mx-auto max-w-[1440px] px-4 lg:px-8">
           <div className="grid gap-8 lg:grid-cols-[.85fr_1.15fr] lg:items-center">
             <div>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d5e3f1] bg-[#edf4fb] px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#1b365d]">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d7cbef] bg-white px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#372a5f] shadow-2xs">
                 Authentic Craftsmanship
               </span>
               <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
@@ -305,7 +309,7 @@ export default async function Home() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
-              <div className="rounded-2xl border border-[#ece4d7] bg-[#faf8f4] p-5 shadow-xs hover:border-[#1e3a5f]/40 transition">
+              <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs hover:border-[#1e3a5f]/40 transition">
                 <FileCheck2 size={24} className="text-[#1e3a5f]" />
                 <h3 className="mt-4 text-sm font-bold text-slate-900">Pre-Press Inspection</h3>
                 <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
@@ -313,7 +317,7 @@ export default async function Home() {
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-[#ece4d7] bg-[#faf8f4] p-5 shadow-xs hover:border-[#1e3a5f]/40 transition">
+              <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs hover:border-[#1e3a5f]/40 transition">
                 <PackageCheck size={24} className="text-[#1e3a5f]" />
                 <h3 className="mt-4 text-sm font-bold text-slate-900">Tactile Finishes</h3>
                 <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
@@ -321,7 +325,7 @@ export default async function Home() {
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-[#ece4d7] bg-[#faf8f4] p-5 shadow-xs hover:border-[#1e3a5f]/40 transition">
+              <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs hover:border-[#1e3a5f]/40 transition">
                 <MapPin size={24} className="text-[#1e3a5f]" />
                 <h3 className="mt-4 text-sm font-bold text-slate-900">Regional Dispatch</h3>
                 <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
@@ -333,17 +337,24 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* 9. BULK CALL TO ACTION BAR */}
-      <section className="border-t border-slate-200/80 bg-[#1e3a5f] text-white">
-        <div className="mx-auto flex max-w-[1440px] flex-col justify-between gap-6 px-4 py-10 sm:flex-row sm:items-center lg:px-8">
+      {/* 8. BULK CALL TO ACTION BAR */}
+      <section className="border-t border-[#d2eade] mc-section-mint py-10">
+        <div className="mx-auto flex max-w-[1440px] flex-col justify-between gap-6 px-4 sm:flex-row sm:items-center lg:px-8">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-300">Commercial &amp; Trade Printing</p>
-            <h2 className="mt-1 text-2xl font-bold sm:text-3xl">Need 10,000 product labels, stickers, or custom stationery?</h2>
-            <p className="mt-1 text-sm text-slate-300">Submit your custom dimensions and artwork for a quick quotation.</p>
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-[#bddfcb] bg-white px-3 py-0.5 text-xs font-bold uppercase tracking-wider text-[#174834] shadow-2xs">
+              <span className="size-1.5 rounded-full bg-[#174834]" />
+              Commercial &amp; Trade Printing
+            </div>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
+              Need 10,000 product labels, stickers, or custom stationery?
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Submit your custom dimensions and artwork for a quick quotation from our Ahmedabad offset press.
+            </p>
           </div>
           <Link
             href="/quote"
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-white px-7 py-3.5 text-sm font-bold text-[#1e3a5f] shadow-sm transition hover:bg-slate-100"
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#1e3a5f] px-7 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#152a45]"
           >
             Request a Quote <ArrowRight size={17} />
           </Link>

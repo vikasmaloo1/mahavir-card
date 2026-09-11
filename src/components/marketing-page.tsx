@@ -53,12 +53,47 @@ export function MarketingCtaBand({
   description,
   primary,
   secondary,
+  tone = "mint",
 }: {
   title: string;
   description: string;
   primary: { label: string; href: string };
   secondary?: { label: string; href: string };
+  tone?: "navy" | "mint" | "peach";
 }) {
+  if (tone === "mint") {
+    return (
+      <section className="mt-14 rounded-2xl border border-[#d2eade] mc-section-mint text-slate-900 shadow-xs">
+        <div className="flex flex-col justify-between gap-6 px-6 py-10 sm:flex-row sm:items-center sm:px-10">
+          <div>
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-[#bddfcb] bg-white px-3 py-0.5 text-xs font-bold uppercase tracking-wider text-[#174834] shadow-2xs">
+              <span className="size-1.5 rounded-full bg-[#174834]" />
+              Start Your Print Job
+            </div>
+            <h2 className="mt-2 text-2xl font-bold sm:text-3xl text-slate-950">{title}</h2>
+            <p className="mt-2 max-w-xl text-sm text-slate-600">{description}</p>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-3">
+            <Link
+              href={primary.href}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#1e3a5f] px-6 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#152a45]"
+            >
+              {primary.label} <ArrowRight size={16} />
+            </Link>
+            {secondary ? (
+              <Link
+                href={secondary.href}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3.5 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
+              >
+                {secondary.label}
+              </Link>
+            ) : null}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="mt-14 rounded-2xl bg-[var(--mc-navy)] text-white">
       <div className="flex flex-col justify-between gap-6 px-6 py-10 sm:flex-row sm:items-center sm:px-10">
@@ -89,8 +124,8 @@ export function MarketingCtaBand({
 
 export function SectionEyebrow({ label }: { label: string }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-[var(--mc-line)] bg-[var(--mc-surface)] px-3 py-1 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-xs">
-      <span className="size-1.5 rounded-full bg-[var(--mc-accent)]" />
+    <div className="inline-flex items-center gap-2 rounded-full border border-slate-300/80 bg-white px-3 py-1 text-xs font-bold uppercase tracking-wider text-slate-800 shadow-2xs">
+      <span className="size-1.5 rounded-full bg-[#1e3a5f]" />
       {label}
     </div>
   );

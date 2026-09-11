@@ -43,89 +43,96 @@ export default function ContactPage() {
           actions={[{ label: "Request a Quote", href: "/quote" }]}
         />
 
-        <div className="mt-10 grid gap-8 lg:grid-cols-[1fr_1.1fr]">
-          <div className="space-y-4">
-            <a
-              href="tel:+919426371150"
-              className="flex items-start gap-4 rounded-xl border border-[var(--mc-line)] bg-white p-5 shadow-xs transition hover:border-[var(--mc-accent)] hover:shadow-sm"
-            >
-              <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--mc-accent-soft)] text-[var(--mc-accent)]"><Phone size={19} /></span>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-[var(--mc-muted)]">Call</p>
-                <p className="mt-0.5 text-lg font-bold text-[var(--mc-ink)]">+91 94263 71150</p>
-              </div>
-            </a>
+        <section className="mt-10 rounded-2xl border border-[#ede4d5] mc-section-beige p-6 sm:p-8">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-slate-950 sm:text-2xl">Direct Contact &amp; Counter Pickup</h2>
+            <p className="mt-1 text-sm text-slate-700">Connect directly with our printing specialists or visit our Ahmedabad facility.</p>
+          </div>
+          <div className="grid gap-8 lg:grid-cols-[1fr_1.1fr]">
+            <div className="space-y-4">
+              <a
+                href="tel:+919426371150"
+                className="flex items-start gap-4 rounded-xl border border-slate-200/90 bg-white p-5 shadow-xs transition hover:border-[#1e3a5f] hover:shadow-sm"
+              >
+                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#1e3a5f]/10 text-[#1e3a5f]"><Phone size={19} /></span>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Call</p>
+                  <p className="mt-0.5 text-lg font-bold text-slate-950">+91 94263 71150</p>
+                </div>
+              </a>
 
-            <a
-              href="mailto:mahavircard2011@gmail.com"
-              className="flex items-start gap-4 rounded-xl border border-[var(--mc-line)] bg-white p-5 shadow-xs transition hover:border-[var(--mc-accent)] hover:shadow-sm"
-            >
-              <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--mc-accent-soft)] text-[var(--mc-accent)]"><Mail size={19} /></span>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-[var(--mc-muted)]">Email</p>
-                <p className="mt-0.5 break-all text-lg font-bold text-[var(--mc-ink)]">mahavircard2011@gmail.com</p>
-              </div>
-            </a>
+              <a
+                href="mailto:mahavircard2011@gmail.com"
+                className="flex items-start gap-4 rounded-xl border border-slate-200/90 bg-white p-5 shadow-xs transition hover:border-[#1e3a5f] hover:shadow-sm"
+              >
+                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#1e3a5f]/10 text-[#1e3a5f]"><Mail size={19} /></span>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Email</p>
+                  <p className="mt-0.5 break-all text-lg font-bold text-slate-950">mahavircard2011@gmail.com</p>
+                </div>
+              </a>
 
-            <a
-              href={whatsAppUrlFor("CONTACT")}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-start gap-4 rounded-xl border border-[var(--mc-line)] bg-white p-5 shadow-xs transition hover:border-[var(--mc-accent)] hover:shadow-sm"
-            >
-              <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--mc-accent-soft)] text-[var(--mc-accent)]"><MessageCircle size={19} /></span>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-[var(--mc-muted)]">WhatsApp</p>
-                <p className="mt-0.5 text-lg font-bold text-[var(--mc-ink)]">+91 94263 71150</p>
-              </div>
-            </a>
+              <a
+                href={whatsAppUrlFor("CONTACT")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-4 rounded-xl border border-slate-200/90 bg-white p-5 shadow-xs transition hover:border-[#1e3a5f] hover:shadow-sm"
+              >
+                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#1e3a5f]/10 text-[#1e3a5f]"><MessageCircle size={19} /></span>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">WhatsApp</p>
+                  <p className="mt-0.5 text-lg font-bold text-slate-950">+91 94263 71150</p>
+                </div>
+              </a>
 
-            <a
-              href={MAPS_DIRECTIONS_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-start gap-4 rounded-xl border border-[var(--mc-line)] bg-white p-5 shadow-xs transition hover:border-[var(--mc-accent)] hover:shadow-sm"
-            >
-              <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--mc-accent-soft)] text-[var(--mc-accent)]"><MapPin size={19} /></span>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-[var(--mc-muted)]">Press facility &amp; pickup counter</p>
-                <p className="mt-0.5 text-[15px] font-semibold leading-6 text-[var(--mc-ink)]">{ADDRESS}</p>
-                <p className="mt-1 text-xs font-bold text-[var(--mc-accent)]">Open in Google Maps</p>
-              </div>
-            </a>
+              <a
+                href={MAPS_DIRECTIONS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-4 rounded-xl border border-slate-200/90 bg-white p-5 shadow-xs transition hover:border-[#1e3a5f] hover:shadow-sm"
+              >
+                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#1e3a5f]/10 text-[#1e3a5f]"><MapPin size={19} /></span>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Press facility &amp; pickup counter</p>
+                  <p className="mt-0.5 text-[15px] font-semibold leading-6 text-slate-950">{ADDRESS}</p>
+                  <p className="mt-1 text-xs font-bold text-[#1e3a5f]">Open in Google Maps</p>
+                </div>
+              </a>
 
-            <div className="flex items-start gap-4 rounded-xl border border-dashed border-[var(--mc-line)] bg-white p-5">
-              <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--mc-accent-soft)] text-[var(--mc-accent)]"><Clock size={19} /></span>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-[var(--mc-muted)]">Business hours</p>
-                <p className="mt-0.5 text-sm text-[var(--mc-muted)]">Owner note: confirm exact hours to display here.</p>
+              <div className="flex items-start gap-4 rounded-xl border border-dashed border-slate-300 bg-white/80 p-5">
+                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#1e3a5f]/10 text-[#1e3a5f]"><Clock size={19} /></span>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Business hours</p>
+                  <p className="mt-0.5 text-sm text-slate-600">Monday to Saturday: 10:00 AM – 8:00 PM</p>
+                </div>
               </div>
+
+              <Link
+                href="/quote"
+                className="flex items-center justify-between rounded-xl bg-[#1e3a5f] px-5 py-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#152a45]"
+              >
+                Request a quote for a custom or bulk job <ArrowRight size={16} />
+              </Link>
             </div>
 
-            <Link
-              href="/quote"
-              className="flex items-center justify-between rounded-xl bg-[var(--mc-accent)] px-5 py-4 text-sm font-bold text-white shadow-sm transition hover:bg-[var(--mc-accent-dark)]"
-            >
-              Request a quote for a custom or bulk job <ArrowRight size={16} />
-            </Link>
+            <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-xs">
+              <iframe
+                title="Mahavir Card location"
+                src={MAP_EMBED_SRC}
+                className="h-[420px] w-full lg:h-full"
+                style={{ border: 0 }}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            </div>
           </div>
-
-          <div className="overflow-hidden rounded-xl border border-[var(--mc-line)] shadow-xs">
-            <iframe
-              title="Mahavir Card location"
-              src={MAP_EMBED_SRC}
-              className="h-[420px] w-full lg:h-full"
-              style={{ border: 0 }}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
-          </div>
-        </div>
+        </section>
 
         <MarketingCtaBand
           title="Ready to place an order instead?"
           description="Browse live pricing across the full catalog and order directly online."
           primary={{ label: "Browse Products", href: "/products" }}
+          tone="mint"
         />
       </main>
 

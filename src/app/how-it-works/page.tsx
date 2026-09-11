@@ -72,35 +72,39 @@ export default function HowItWorksPage() {
           ]}
         />
 
-        <div className="mt-10 space-y-4">
-          {steps.map(({ icon: Icon, step, title, body }) => (
-            <div key={step} className="flex gap-5 rounded-2xl border border-[var(--mc-line)] bg-white p-5 sm:p-6">
-              <div className="flex shrink-0 flex-col items-center gap-2">
-                <span className="grid size-11 place-items-center rounded-full bg-[var(--mc-accent-soft)] text-[var(--mc-accent)]"><Icon size={20} /></span>
-                <span className="text-xs font-black text-[var(--mc-accent)]/50">{step}</span>
+        <section className="mt-10 rounded-2xl border border-[#ede4d5] mc-section-beige p-6 sm:p-8">
+          <h2 className="text-xl font-bold text-slate-950 sm:text-2xl">Production & Ordering Steps</h2>
+          <p className="mt-2 text-sm text-slate-700">Follow our transparent 5-step commercial printing journey from screen to press.</p>
+          <div className="mt-6 space-y-4">
+            {steps.map(({ icon: Icon, step, title, body }) => (
+              <div key={step} className="flex gap-5 rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs sm:p-6">
+                <div className="flex shrink-0 flex-col items-center gap-2">
+                  <span className="grid size-11 place-items-center rounded-full bg-[#1e3a5f]/10 text-[#1e3a5f]"><Icon size={20} /></span>
+                  <span className="text-xs font-black text-[#1e3a5f]/60">{step}</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-950">{title}</h3>
+                  <p className="mt-1.5 text-[15px] leading-6 text-slate-700">{body}</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-[var(--mc-ink)]">{title}</h2>
-                <p className="mt-1.5 text-[15px] leading-6 text-[var(--mc-muted)]">{body}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <section className="mt-10 rounded-2xl border border-[var(--mc-line)] bg-white p-6 sm:p-8">
-          <div className="flex items-center gap-2.5">
-            <Truck size={22} className="text-[var(--mc-accent)]" />
-            <h2 className="text-xl font-bold">Delivery and pickup</h2>
+            ))}
           </div>
-          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-[var(--mc-muted)]">
+        </section>
+
+        <section className="mt-10 rounded-2xl border border-[#e6e0f2] mc-section-lavender p-6 sm:p-8">
+          <div className="flex items-center gap-2.5">
+            <Truck size={22} className="text-[#1e3a5f]" />
+            <h2 className="text-xl font-bold text-slate-950">Delivery and pickup</h2>
+          </div>
+          <p className="mt-3 max-w-3xl text-[15px] leading-7 text-slate-700">
             Orders dispatch by courier across Gujarat and Rajasthan, or can be collected directly from the Khadia Golwad facility in Ahmedabad. Delivery method and pricing
             are shown per product before checkout.
           </p>
         </section>
 
-        <p className="mt-6 text-sm text-[var(--mc-muted)]">
+        <p className="mt-6 text-sm text-slate-600">
           Need help with your artwork file first?{" "}
-          <Link href="/commercial-offset-printing" className="font-bold text-[var(--mc-accent)] hover:underline">Read about commercial offset printing</Link>, or go
+          <Link href="/commercial-offset-printing" className="font-bold text-[#1e3a5f] hover:underline">Read about commercial offset printing</Link>, or go
           straight to the catalog.
         </p>
 
@@ -108,6 +112,7 @@ export default function HowItWorksPage() {
           title="Ready to start your order?"
           description="Choose a product and configure it with live pricing in a few clicks."
           primary={{ label: "Start Your Order", href: "/products" }}
+          tone="mint"
         />
       </main>
 
