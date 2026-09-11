@@ -12,7 +12,7 @@ type NavGroup = { label: string; links: readonly NavLink[] };
 
 const navGroups: readonly NavGroup[] = [
   { label: "", links: [["Dashboard", "/admin", LayoutDashboard]] },
-  { label: "Catalog", links: [["Products", "/admin/products", Boxes], ["Categories", "/admin/categories", FolderKanban], ["Add-ons", "/admin/addons", Settings2], ["Pricing", "/admin/pricing", WandSparkles], ["Delivery", "/admin/delivery", Truck], ["Design templates", "/admin/templates", PenTool]] },
+  { label: "Catalog", links: [["Products", "/admin/products", Boxes], ["Categories", "/admin/categories", FolderKanban], ["Price catalogue (PDF)", "/admin/catalog-pdf", FileText], ["Add-ons", "/admin/addons", Settings2], ["Pricing", "/admin/pricing", WandSparkles], ["Delivery", "/admin/delivery", Truck], ["Design templates", "/admin/templates", PenTool]] },
   { label: "Sales", links: [["Orders", "/admin/orders", Package], ["Quotes", "/admin/quotes", FileText], ["Inquiries", "/admin/inquiries", BarChart3], ["Payments", "/admin/payments", CreditCard], ["Analytics", "/admin/analytics", LineChart]] },
   { label: "Operations", links: [["Customers", "/admin/customers", Users], ["Wallet requests", "/admin/wallet", WalletCards], ["Artwork", "/admin/artworks", FileText], ["Notices", "/admin/notices", Megaphone], ["Banners", "/admin/banners", ImageIcon], ["Terms & conditions", "/admin/terms", FileCheck], ["FAQ", "/admin/faqs", HelpCircle]] },
   { label: "Settings", links: [["Admins", "/admin/admins", Users], ["Business settings", "/admin/business-settings", Building2], ["Storage", "/admin/storage", HardDrive]] },
