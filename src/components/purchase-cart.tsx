@@ -228,9 +228,9 @@ export function PurchaseCart() {
         </p>
       ) : null}
     </section>
-    <aside className="h-fit rounded-2xl border border-slate-200/90 bg-white p-6 xl:sticky xl:top-[120px] shadow-xs">
-      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Purchase Basket Summary</p>
-      <div className="mt-4 border-y border-slate-100 py-4">
+    <aside className="h-fit rounded-2xl border border-[#ece4d7] bg-[#faf8f4] p-6 xl:sticky xl:top-[120px] shadow-2xs">
+      <p className="text-xs font-bold uppercase tracking-wider text-[#1e3a5f]">Purchase Basket Summary</p>
+      <div className="mt-4 rounded-xl border border-[#ece4d7]/80 bg-white p-4 shadow-2xs">
         <div className="flex justify-between items-center">
           <span className="text-sm font-semibold text-slate-500">
             {data.items.length} item{data.items.length === 1 ? "" : "s"}

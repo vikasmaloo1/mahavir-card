@@ -168,7 +168,7 @@ export function HomeHeroSlideshow({ className = "" }: { className?: string }) {
 
   return (
     <section
-      className={`relative border-b border-slate-200/80 bg-white ${className}`}
+      className={`relative border-b border-slate-200/80 bg-gradient-to-b from-[#f2f6fa]/70 via-[#faf9f6]/60 to-white ${className}`}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={handleTouchStart}
@@ -182,7 +182,7 @@ export function HomeHeroSlideshow({ className = "" }: { className?: string }) {
           {/* Left Hero Content */}
           <div className="flex flex-col justify-center">
             <div className="flex items-center gap-2">
-              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-xs">
+              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[#d5e3f1] bg-[#edf4fb] px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-[#1b365d] shadow-2xs">
                 <span className="size-2 rounded-full bg-[#1e3a5f]" />
                 {current.badge}
               </div>
@@ -211,14 +211,14 @@ export function HomeHeroSlideshow({ className = "" }: { className?: string }) {
               </Link>
               <Link
                 href={current.secondaryCtaUrl}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-4 text-sm font-bold text-slate-800 shadow-xs transition hover:border-[#1e3a5f] hover:text-[#1e3a5f]"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300/90 bg-[#faf8f5] px-6 py-4 text-sm font-bold text-slate-800 shadow-2xs transition hover:border-[#1e3a5f] hover:bg-white hover:text-[#1e3a5f]"
               >
                 {current.secondaryCtaLabel} <ReceiptText size={17} />
               </Link>
             </div>
 
             {/* Subtle Local Proof Badge */}
-            <div className="mt-8 flex items-center gap-3 border-t border-slate-100 pt-6 text-xs text-slate-500">
+            <div className="mt-8 flex items-center gap-3 border-t border-slate-200/60 pt-6 text-xs text-slate-600">
               <MapPin size={16} className="shrink-0 text-[#1e3a5f]" />
               <span>Press Facility: Khadia Golwad, Opp. Jain Digamber Mandir, Ahmedabad</span>
             </div>
@@ -238,7 +238,7 @@ export function HomeHeroSlideshow({ className = "" }: { className?: string }) {
               />
 
               {/* Floating Badge */}
-              <div className="absolute inset-x-4 bottom-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/80 bg-white/95 p-3.5 shadow-md backdrop-blur-xs">
+              <div className="absolute inset-x-4 bottom-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/90 bg-white/95 p-3.5 shadow-md backdrop-blur-xs">
                 <div>
                   <p className="text-xs font-extrabold uppercase tracking-wider text-[#1e3a5f]">
                     {current.floatingBadgeTitle}
@@ -247,7 +247,7 @@ export function HomeHeroSlideshow({ className = "" }: { className?: string }) {
                     {current.floatingBadgeSubtitle}
                   </p>
                 </div>
-                <span className="rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700">
+                <span className="rounded-md bg-[#edf4fb] border border-[#d5e3f1] px-2.5 py-1 text-[11px] font-bold text-[#1b365d]">
                   {current.tag}
                 </span>
               </div>

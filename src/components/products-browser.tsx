@@ -619,8 +619,8 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
               onClick={() => selectCategory("")}
               className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
                 !category
-                  ? "bg-[var(--mc-accent)] text-white"
-                  : "bg-[var(--mc-paper)] border border-[var(--mc-line)] text-[var(--mc-muted)] hover:text-[var(--mc-ink)]"
+                  ? "bg-[#1e3a5f] text-white shadow-2xs font-bold"
+                  : "bg-white border border-slate-200/90 text-slate-700 hover:bg-[#f0f5fa] hover:border-[#d5e3f1] hover:text-[#1b365d]"
               }`}
             >
               All products
@@ -633,8 +633,8 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                 onClick={() => selectCategory(item.slug)}
                 className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
                   category === item.slug
-                    ? "bg-[var(--mc-accent)] text-white"
-                    : "bg-[var(--mc-paper)] border border-[var(--mc-line)] text-[var(--mc-muted)] hover:text-[var(--mc-ink)]"
+                    ? "bg-[#1e3a5f] text-white shadow-2xs font-bold"
+                    : "bg-white border border-slate-200/90 text-slate-700 hover:bg-[#f0f5fa] hover:border-[#d5e3f1] hover:text-[#1b365d]"
                 }`}
               >
                 {item.name}
@@ -807,8 +807,8 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
               return (
                 <div
                   key={item.id}
-                  className={`rounded-xl border bg-[var(--mc-paper)] shadow-[0_5px_16px_rgba(16,33,63,0.035)] ${
-                    isUnavailableInState ? "border-amber-200" : "border-[var(--mc-line)]"
+                  className={`rounded-2xl border bg-white shadow-xs transition-all duration-200 hover:border-[#1e3a5f]/40 hover:shadow-md ${
+                    isUnavailableInState ? "border-amber-200" : "border-slate-200/90"
                   }`}
                 >
                 <article
@@ -818,7 +818,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                   <div className="flex min-w-0 gap-3.5">
                     <Link
                       href={destinationHref(item)}
-                      className="relative h-[76px] w-[92px] shrink-0 overflow-hidden rounded-lg bg-[var(--mc-accent-soft)]"
+                      className="relative h-[76px] w-[92px] shrink-0 overflow-hidden rounded-xl bg-[#f0f5fa] border border-[#d5e3f1]/70"
                     >
                       <ProductImage
                         src={item.imageUrl || "/images/mahavir-print-assortment.png"}
@@ -828,17 +828,17 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                     </Link>
                     <div className="min-w-0 self-center">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <p className="text-xs font-bold uppercase text-[var(--mc-accent)]">
+                        <span className="rounded-md border border-[#d5e3f1] bg-[#edf4fb] px-2 py-0.5 text-[11px] font-bold text-[#1b365d]">
                           {item.category?.name ?? "Print product"}
-                        </p>
+                        </span>
                         {isUnavailableInState && (
                           <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 border border-amber-200">
                             {item.stateAvailability?.badgeText}
                           </span>
                         )}
                       </div>
-                      <h2 className="mt-1 text-[17px] font-bold leading-snug text-[var(--mc-ink)]">
-                        <Link href={destinationHref(item)} className="hover:text-[var(--mc-accent)] transition-colors">
+                      <h2 className="mt-1.5 text-[17.5px] font-bold leading-snug text-slate-950">
+                        <Link href={destinationHref(item)} className="hover:text-[#1e3a5f] transition-colors">
                           {item.name}
                         </Link>
                       </h2>
@@ -850,16 +850,16 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
 
                   {/* Price */}
                   <div>
-                    <p className="text-xs font-bold uppercase text-[var(--mc-muted)] xl:hidden">Price</p>
+                    <p className="text-xs font-bold uppercase text-slate-400 xl:hidden">Price</p>
                     {isLoggedIn && item.priceState !== "LOGIN" && item.priceLabel !== "Login to view price" ? (
                       <>
-                        <p className="mt-1 text-[17px] font-bold leading-snug text-[var(--mc-ink)] xl:mt-0">
+                        <p className="mt-1 text-[18px] font-bold leading-snug text-slate-950 xl:mt-0">
                           {item.priceLabel}
                         </p>
                         {item.taxInclusive ? (
-                          <p className="mt-0.5 text-xs text-[var(--mc-muted)]">GST included</p>
+                          <p className="mt-0.5 text-xs text-slate-500">GST included</p>
                         ) : item.priceState === "STARTING" ? (
-                          <p className="mt-0.5 text-xs font-medium text-[var(--mc-muted)]">
+                          <p className="mt-0.5 text-xs font-medium text-slate-500">
                             GST charged additionally as applicable
                           </p>
                         ) : null}
@@ -1404,34 +1404,34 @@ function ProductSpecification({ item }: { item: Product }) {
     : null;
 
   return (
-    <div className="min-w-0 space-y-1 text-[13px] leading-5 text-[var(--mc-muted)]">
-      <p className="text-xs font-bold uppercase text-[var(--mc-muted)] xl:hidden">Specification</p>
+    <div className="min-w-0 space-y-1.5 text-[13px] leading-5 text-slate-600">
+      <p className="text-xs font-bold uppercase text-slate-400 xl:hidden">Specification</p>
       {isPremium ? <p className="font-semibold text-[#1e4da1]">Corner cut included by default.</p> : null}
-      {specText ? <p className="line-clamp-2 text-sm font-medium text-[var(--mc-ink)]">{specText}</p> : null}
+      {specText ? <p className="line-clamp-2 text-sm font-medium text-slate-900">{specText}</p> : null}
       {item.productSize ? (
         <p>
-          <strong className="font-semibold text-[var(--mc-ink)]">Size:</strong> {item.productSize}
+          <strong className="font-semibold text-slate-900">Size:</strong> {item.productSize}
         </p>
       ) : null}
       {artwork ? (
-        <>
+        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
           {artworkLabel ? (
-            <p className="flex items-center gap-1.5">
-              <FileUp size={14} />
+            <span className="inline-flex items-center gap-1 rounded-md border border-[#d5e3f1] bg-[#f0f5fa] px-2 py-0.5 text-[11px] font-semibold text-[#1b365d]">
+              <FileUp size={12} />
               {artworkLabel}
-            </p>
+            </span>
           ) : null}
           {artwork.fullDesign ? (
-            <p>
-              <strong className="font-semibold text-[var(--mc-ink)]">Full:</strong> {artwork.fullDesign}
-            </p>
+            <span className="rounded-md border border-slate-200 bg-[#faf8f5] px-2 py-0.5 text-[11px] text-slate-700">
+              <strong className="font-semibold text-slate-900">Full:</strong> {artwork.fullDesign}
+            </span>
           ) : null}
           {artwork.finalSize ? (
-            <p>
-              <strong className="font-semibold text-[var(--mc-ink)]">Final:</strong> {artwork.finalSize}
-            </p>
+            <span className="rounded-md border border-slate-200 bg-[#faf8f5] px-2 py-0.5 text-[11px] text-slate-700">
+              <strong className="font-semibold text-slate-900">Final:</strong> {artwork.finalSize}
+            </span>
           ) : null}
-        </>
+        </div>
       ) : null}
     </div>
   );

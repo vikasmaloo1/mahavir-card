@@ -70,19 +70,38 @@ export function CustomerNotices({ placement = "GLOBAL" }: { placement?: "GLOBAL"
     return () => observer.disconnect();
   }, [marqueeItems.length]);
 
+  const PASTEL_THEMES = [
+    {
+      badge: "bg-[#edf4fb] text-[#163860] border-[#cfe0f2]",
+      dot: "bg-[#1e3a5f]",
+    },
+    {
+      badge: "bg-[#fcf3ec] text-[#63391d] border-[#f4dbcb]",
+      dot: "bg-[#b85d19]",
+    },
+    {
+      badge: "bg-[#f4f2fa] text-[#3b2b64] border-[#e2dcf2]",
+      dot: "bg-[#543b8c]",
+    },
+    {
+      badge: "bg-[#edf7f2] text-[#144833] border-[#cbe8d8]",
+      dot: "bg-[#1f6b4d]",
+    },
+  ];
+
   if (!loaded) {
     // Reserves the strip's height while the notices fetch is in flight so the
     // ticker popping in doesn't shift everything below it (a real CLS hit
     // since this renders on nearly every page).
-    return <aside className="customer-notice-strip w-full border-b border-slate-200/80 bg-white" aria-hidden="true" />;
+    return <aside className="customer-notice-strip w-full border-b border-slate-200/80 bg-[#faf8f5]/90" aria-hidden="true" />;
   }
   if (!displayItems.length) return null;
 
   return (
-    <aside className="customer-notice-strip relative z-20 w-full overflow-hidden border-b border-slate-200/80 bg-white py-2 text-slate-800 shadow-xs" aria-label="Customer announcements">
+    <aside className="customer-notice-strip relative z-20 w-full overflow-hidden border-b border-slate-200/80 bg-[#faf8f5]/95 py-2 text-slate-800 shadow-2xs" aria-label="Customer announcements">
       {staticNotice ? (
         <div className="ticker-static flex h-full min-w-0 items-center justify-center overflow-hidden whitespace-nowrap px-4">
-          <NoticeTickerItem item={staticNotice} staticMode />
+          <NoticeTickerItem item={staticNotice} theme={PASTEL_THEMES[0]} staticMode />
         </div>
       ) : (
         <div className="flex h-full w-full items-center overflow-hidden">
@@ -91,10 +110,23 @@ export function CustomerNotices({ placement = "GLOBAL" }: { placement?: "GLOBAL"
             style={{ "--ticker-duration": animationDurationSeconds + "s" } as CSSProperties}
           >
             <div ref={sequenceRef} className="ticker-sequence flex shrink-0 items-center">
-              {marqueeItems.map((item) => <NoticeTickerItem key={"track1-" + item.id} item={item} />)}
+              {marqueeItems.map((item, idx) => (
+                <NoticeTickerItem
+                  key={"track1-" + item.id}
+                  item={item}
+                  theme={PASTEL_THEMES[idx % PASTEL_THEMES.length]}
+                />
+              ))}
             </div>
             <div className="ticker-sequence flex shrink-0 items-center" aria-hidden="true">
-              {marqueeItems.map((item) => <NoticeTickerItem key={"track2-" + item.id} item={item} ariaHidden />)}
+              {marqueeItems.map((item, idx) => (
+                <NoticeTickerItem
+                  key={"track2-" + item.id}
+                  item={item}
+                  theme={PASTEL_THEMES[idx % PASTEL_THEMES.length]}
+                  ariaHidden
+                />
+              ))}
             </div>
           </div>
         </div>
@@ -103,21 +135,39 @@ export function CustomerNotices({ placement = "GLOBAL" }: { placement?: "GLOBAL"
   );
 }
 
-function NoticeTickerItem({ item, ariaHidden, staticMode = false }: { item: CustomerNoticeItem; ariaHidden?: boolean; staticMode?: boolean }) {
-  const markerColor = item.tone === "WARNING" ? "bg-amber-600" : item.tone === "SUCCESS" ? "bg-emerald-600" : "bg-[#1e3a5f]";
+function NoticeTickerItem({
+  item,
+  theme,
+  ariaHidden,
+  staticMode = false,
+}: {
+  item: CustomerNoticeItem;
+  theme: { badge: string; dot: string };
+  ariaHidden?: boolean;
+  staticMode?: boolean;
+}) {
+  const markerColor = item.tone === "WARNING" ? "bg-amber-600" : item.tone === "SUCCESS" ? "bg-emerald-600" : theme.dot;
 
   return (
-    <span className={"ticker-notice inline-flex min-w-0 items-center text-sm sm:text-base " + (staticMode ? "max-w-full" : "")} aria-hidden={ariaHidden}>
+    <span className={"ticker-notice inline-flex min-w-0 items-center text-[13.5px] sm:text-[15px] " + (staticMode ? "max-w-full" : "")} aria-hidden={ariaHidden}>
       <span className={"ticker-marker mr-2.5 size-1.5 shrink-0 rotate-45 " + markerColor} aria-hidden="true" />
-      {item.title?.trim() ? <span className="ticker-title shrink-0 font-bold uppercase tracking-wider text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-800">{item.title}</span> : null}
-      {item.message?.trim() ? <span className="ticker-message ml-2.5 min-w-0 font-normal text-slate-700 text-sm sm:text-[15px]">{item.message}</span> : null}
+      {item.title?.trim() ? (
+        <span className={`ticker-title shrink-0 font-bold uppercase tracking-wider text-[11px] px-2.5 py-0.5 rounded-full border shadow-2xs ${theme.badge}`}>
+          {item.title}
+        </span>
+      ) : null}
+      {item.message?.trim() ? (
+        <span className="ticker-message ml-2.5 min-w-0 font-semibold text-slate-800 text-[13.5px] sm:text-[15px]">
+          {item.message}
+        </span>
+      ) : null}
       {item.linkLabel && item.linkUrl ? (
         <Link href={item.linkUrl} tabIndex={ariaHidden ? -1 : 0} className="ticker-cta ml-3 inline-flex shrink-0 items-center gap-1 font-bold text-[#1e3a5f] hover:underline text-xs sm:text-sm">
           <span>{item.linkLabel}</span>
           <span aria-hidden="true">&rarr;</span>
         </Link>
       ) : null}
-      {!staticMode ? <span className="ticker-separator mx-6 shrink-0 text-slate-300 font-bold sm:mx-10" aria-hidden="true">{"\u00b7"}</span> : null}
+      {!staticMode ? <span className="ticker-separator mx-6 shrink-0 text-slate-300 font-bold sm:mx-9" aria-hidden="true">{"\u00b7"}</span> : null}
     </span>
   );
 }

@@ -400,7 +400,7 @@ export function HomeCatalogSections({ initialCategories }: { initialCategories: 
     <section id="categories" className="mx-auto max-w-[1440px] px-4 py-12 lg:px-8 lg:py-16">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-xs">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#d5e3f1] bg-[#edf4fb] px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#1b365d] shadow-2xs">
             <span className="size-1.5 rounded-full bg-[#1e3a5f]" />
             Core Print Categories
           </div>
@@ -413,7 +413,7 @@ export function HomeCatalogSections({ initialCategories }: { initialCategories: 
         </div>
         <Link
           href="/products"
-          className="hidden items-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-800 shadow-xs transition hover:border-[#1e3a5f] hover:text-[#1e3a5f] sm:inline-flex"
+          className="hidden items-center gap-2 rounded-full border border-slate-300/90 bg-[#faf8f5] px-5 py-2.5 text-sm font-bold text-slate-800 shadow-2xs transition hover:border-[#1e3a5f] hover:bg-white hover:text-[#1e3a5f] sm:inline-flex"
         >
           View Full Catalogue <ArrowRight size={16} />
         </Link>
@@ -484,21 +484,21 @@ export function HomeCatalogSections({ initialCategories }: { initialCategories: 
                   />
 
                   <div className="mt-4 px-1">
-                    <h3 className="text-lg font-bold tracking-tight text-slate-900 transition-colors group-hover:text-[#1e3a5f]">
+                    <h3 className="text-[17.5px] font-bold tracking-tight text-slate-900 transition-colors group-hover:text-[#1e3a5f]">
                       {category.name}
                     </h3>
                     <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-600">
                       {category.description || "Custom commercial offset printing format with live online calculation."}
                     </p>
-                    <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-[11px] font-medium text-slate-500">
-                      <span className="rounded bg-slate-100 px-2 py-0.5 text-slate-700 font-semibold">{meta.specs}</span>
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3 text-[11px] font-medium text-slate-500">
+                      <span className="rounded-md border border-[#d5e3f1] bg-[#f0f5fa] px-2 py-0.5 font-semibold text-[#1b365d]">{meta.specs}</span>
                       <span>·</span>
-                      <span>{meta.turnaround}</span>
+                      <span className="rounded-md border border-[#ece4d7] bg-[#faf8f4] px-2 py-0.5 font-medium text-[#4d402e]">{meta.turnaround}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-4 flex items-center justify-between border-t border-slate-100 px-1 pt-3 text-xs font-bold text-[#1e3a5f]">
+                <div className="mt-4 flex items-center justify-between border-t border-slate-100 px-1 pt-3 text-xs font-bold text-[#1e3a5f] group-hover:text-[#152a45]">
                   <span>Configure &amp; Order</span>
                   <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
                 </div>

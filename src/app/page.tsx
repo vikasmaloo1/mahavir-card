@@ -166,45 +166,45 @@ export default async function Home() {
       <HomeHeroSlideshow />
 
       {/* 2. TRUST & VALUE 4-PILLAR STRIP */}
-      <section className="border-b border-slate-200/80 bg-[#f8fafc]">
+      <section className="border-b border-[#ece4d7]/80 bg-[#faf8f4]">
         <div className="mx-auto grid max-w-[1440px] gap-6 px-4 py-6 sm:grid-cols-2 lg:grid-cols-4 lg:px-8">
           <div className="flex items-start gap-3.5">
-            <div className="grid size-10 shrink-0 place-items-center rounded-lg border border-slate-200 bg-white text-[#1e3a5f] shadow-xs">
+            <div className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#e4dcce] bg-white text-[#1e3a5f] shadow-2xs">
               <FileCheck2 size={20} />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-900">Premium Print Quality</p>
-              <p className="mt-0.5 text-xs text-slate-500">Heavy 250–400 GSM cards &amp; precision laminations</p>
+              <p className="text-[14.5px] font-bold text-slate-900">Premium Print Quality</p>
+              <p className="mt-0.5 text-xs text-slate-600">Heavy 250–400 GSM cards &amp; precision laminations</p>
             </div>
           </div>
 
           <div className="flex items-start gap-3.5">
-            <div className="grid size-10 shrink-0 place-items-center rounded-lg border border-slate-200 bg-white text-[#1e3a5f] shadow-xs">
+            <div className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#e4dcce] bg-white text-[#1e3a5f] shadow-2xs">
               <Printer size={20} />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-900">Commercial Printing</p>
-              <p className="mt-0.5 text-xs text-slate-500">Direct offset press capacity from 500 to 50,000+</p>
+              <p className="text-[14.5px] font-bold text-slate-900">Commercial Printing</p>
+              <p className="mt-0.5 text-xs text-slate-600">Direct offset press capacity from 500 to 50,000+</p>
             </div>
           </div>
 
           <div className="flex items-start gap-3.5">
-            <div className="grid size-10 shrink-0 place-items-center rounded-lg border border-slate-200 bg-white text-[#1e3a5f] shadow-xs">
+            <div className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#e4dcce] bg-white text-[#1e3a5f] shadow-2xs">
               <Clock3 size={20} />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-900">Fast Turnaround</p>
-              <p className="mt-0.5 text-xs text-slate-500">1–2 days visiting cards, 3–5 days brochures</p>
+              <p className="text-[14.5px] font-bold text-slate-900">Fast Turnaround</p>
+              <p className="mt-0.5 text-xs text-slate-600">1–2 days visiting cards, 3–5 days brochures</p>
             </div>
           </div>
 
           <div className="flex items-start gap-3.5">
-            <div className="grid size-10 shrink-0 place-items-center rounded-lg border border-slate-200 bg-white text-[#1e3a5f] shadow-xs">
+            <div className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#e4dcce] bg-white text-[#1e3a5f] shadow-2xs">
               <MapPin size={20} />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-900">Ahmedabad Based</p>
-              <p className="mt-0.5 text-xs text-slate-500">Khadia Golwad press facility &amp; counter pickup</p>
+              <p className="text-[14.5px] font-bold text-slate-900">Ahmedabad Based</p>
+              <p className="mt-0.5 text-xs text-slate-600">Khadia Golwad press facility &amp; counter pickup</p>
             </div>
           </div>
         </div>
@@ -219,10 +219,10 @@ export default async function Home() {
       </div>
 
       {/* 5. COMMERCIAL PRINTING PROCESS (5 STEPS) */}
-      <section className="border-y border-slate-200/80 bg-white py-14 lg:py-20">
+      <section className="border-y border-slate-200/80 bg-gradient-to-b from-[#f2f6fa]/80 via-[#f8fafc] to-[#f4f8fb]/50 py-14 lg:py-20">
         <div className="mx-auto max-w-[1440px] px-4 lg:px-8">
           <div className="text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-xs">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#d5e3f1] bg-[#edf4fb] px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-[#1b365d] shadow-2xs">
               <span className="size-1.5 rounded-full bg-[#1e3a5f]" />
               Streamlined Workflow
             </div>
@@ -264,10 +264,10 @@ export default async function Home() {
             ].map((item) => (
               <div
                 key={item.step}
-                className="relative flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-[#faf8f5] p-5 shadow-xs transition hover:border-[#1e3a5f]/40 hover:bg-white hover:shadow-md"
+                className="relative flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs transition hover:border-[#1e3a5f]/40 hover:shadow-md"
               >
                 <div>
-                  <span className="text-2xl font-black text-[#1e3a5f]/40">{item.step}</span>
+                  <span className="text-2xl font-black text-[#1e3a5f]/35">{item.step}</span>
                   <h3 className="mt-3 text-base font-bold text-slate-900">{item.title}</h3>
                   <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{item.desc}</p>
                 </div>
@@ -285,10 +285,10 @@ export default async function Home() {
         <div className="mx-auto max-w-[1440px] px-4 lg:px-8">
           <div className="grid gap-8 lg:grid-cols-[.85fr_1.15fr] lg:items-center">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-[#1e3a5f]">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#d5e3f1] bg-[#edf4fb] px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#1b365d]">
                 Authentic Craftsmanship
               </span>
-              <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
                 Printing Standards You Can Rely On
               </h2>
               <p className="mt-4 text-base leading-relaxed text-slate-600">
@@ -305,7 +305,7 @@ export default async function Home() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200/90 bg-[#faf8f5] p-5 shadow-xs">
+              <div className="rounded-2xl border border-[#ece4d7] bg-[#faf8f4] p-5 shadow-xs hover:border-[#1e3a5f]/40 transition">
                 <FileCheck2 size={24} className="text-[#1e3a5f]" />
                 <h3 className="mt-4 text-sm font-bold text-slate-900">Pre-Press Inspection</h3>
                 <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
@@ -313,7 +313,7 @@ export default async function Home() {
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-200/90 bg-[#faf8f5] p-5 shadow-xs">
+              <div className="rounded-2xl border border-[#ece4d7] bg-[#faf8f4] p-5 shadow-xs hover:border-[#1e3a5f]/40 transition">
                 <PackageCheck size={24} className="text-[#1e3a5f]" />
                 <h3 className="mt-4 text-sm font-bold text-slate-900">Tactile Finishes</h3>
                 <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
@@ -321,7 +321,7 @@ export default async function Home() {
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-200/90 bg-[#faf8f5] p-5 shadow-xs">
+              <div className="rounded-2xl border border-[#ece4d7] bg-[#faf8f4] p-5 shadow-xs hover:border-[#1e3a5f]/40 transition">
                 <MapPin size={24} className="text-[#1e3a5f]" />
                 <h3 className="mt-4 text-sm font-bold text-slate-900">Regional Dispatch</h3>
                 <p className="mt-1.5 text-xs leading-relaxed text-slate-600">

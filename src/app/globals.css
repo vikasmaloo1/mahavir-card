@@ -27,7 +27,48 @@
   --mc-line: #e2e8f0;
   --background: var(--mc-surface);
   --foreground: var(--mc-ink);
+
+  /* Restrained, soft pastel design tokens for subtle surface contrast & badges */
+  --mc-pastel-blue: #f0f5fa;
+  --mc-pastel-blue-border: #d5e3f1;
+  --mc-pastel-blue-text: #1b365d;
+
+  --mc-pastel-lavender: #f5f3f9;
+  --mc-pastel-lavender-border: #e3dff0;
+  --mc-pastel-lavender-text: #372a5f;
+
+  --mc-pastel-mint: #eef7f2;
+  --mc-pastel-mint-border: #cde6d7;
+  --mc-pastel-mint-text: #174834;
+
+  --mc-pastel-peach: #fcf4ee;
+  --mc-pastel-peach-border: #f5ddd0;
+  --mc-pastel-peach-text: #63391d;
+
+  --mc-pastel-beige: #faf7f2;
+  --mc-pastel-beige-border: #ece4d7;
+  --mc-pastel-beige-text: #4d402e;
 }
+
+.bg-pastel-blue { background-color: var(--mc-pastel-blue); }
+.border-pastel-blue { border-color: var(--mc-pastel-blue-border); }
+.text-pastel-blue { color: var(--mc-pastel-blue-text); }
+
+.bg-pastel-lavender { background-color: var(--mc-pastel-lavender); }
+.border-pastel-lavender { border-color: var(--mc-pastel-lavender-border); }
+.text-pastel-lavender { color: var(--mc-pastel-lavender-text); }
+
+.bg-pastel-mint { background-color: var(--mc-pastel-mint); }
+.border-pastel-mint { border-color: var(--mc-pastel-mint-border); }
+.text-pastel-mint { color: var(--mc-pastel-mint-text); }
+
+.bg-pastel-peach { background-color: var(--mc-pastel-peach); }
+.border-pastel-peach { border-color: var(--mc-pastel-peach-border); }
+.text-pastel-peach { color: var(--mc-pastel-peach-text); }
+
+.bg-pastel-beige { background-color: var(--mc-pastel-beige); }
+.border-pastel-beige { border-color: var(--mc-pastel-beige-border); }
+.text-pastel-beige { color: var(--mc-pastel-beige-text); }
 
 @theme inline {
   --color-background: var(--background);

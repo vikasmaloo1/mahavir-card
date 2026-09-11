@@ -279,7 +279,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
               <span aria-current="page" className="font-semibold text-slate-900">{product.name}</span>
             </nav>
           </div>
-          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-700 shadow-xs">
+          <span className="rounded-full border border-[#d5e3f1] bg-[#edf4fb] px-3.5 py-1 text-xs font-bold text-[#1b365d] shadow-2xs">
             {descriptor}
           </span>
         </div>
@@ -305,7 +305,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
             )}
 
             {/* Specifications Bar */}
-            <div className="grid grid-cols-3 gap-2.5 rounded-xl border border-slate-200/90 bg-white p-3 shadow-xs">
+            <div className="grid grid-cols-3 gap-2.5 rounded-xl border border-[#d5e3f1]/90 bg-[#f8fafd] p-3 shadow-2xs">
               <div>
                 <Clock3 size={16} className="text-[#1e3a5f]" />
                 <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Turnaround</p>
@@ -326,7 +326,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
             </div>
 
             {/* Product Overview Card */}
-            <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-xs">
+            <div className="rounded-xl border border-[#ece4d7] bg-[#faf8f4] p-3.5 sm:p-4 shadow-2xs">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#1e3a5f]">
                 Product Information
               </span>
@@ -337,13 +337,13 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
                 {product.description}
               </p>
 
-              <div className="mt-3 flex flex-wrap items-center gap-2.5 border-t border-slate-100 pt-2.5 text-xs">
+              <div className="mt-3 flex flex-wrap items-center gap-2.5 border-t border-slate-200/60 pt-2.5 text-xs">
                 <span className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Base Rate:</span>
                 {product.customerType ? (
                   <>
                     <strong className="text-sm sm:text-base text-slate-950">{product.priceLabel}</strong>
                     {product.startingPrice && product.customerType !== "B2B" ? (
-                      <span className="text-slate-400 text-[11px]">
+                      <span className="text-slate-500 text-[11px]">
                         {product.taxInclusive ? "(GST included)" : "(GST extra as applicable)"}
                       </span>
                     ) : null}
@@ -358,7 +358,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
                 )}
               </div>
               {!product.customerType ? (
-                <div className="mt-2.5 rounded-lg bg-blue-50/70 border border-blue-100 p-2 text-[11px] text-blue-900 flex items-center justify-between gap-2">
+                <div className="mt-2.5 rounded-lg bg-[#edf4fb] border border-[#d5e3f1] p-2 text-[11px] text-[#1b365d] flex items-center justify-between gap-2">
                   <span>Sign in to view rates and place orders</span>
                   <Link href={`/login?next=${encodeURIComponent(`/catalog/${product.slug}`)}`} className="font-bold text-[#1e3a5f] hover:underline shrink-0">
                     Login / Sign up &rarr;
