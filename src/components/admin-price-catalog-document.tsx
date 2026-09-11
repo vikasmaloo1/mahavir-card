@@ -11,17 +11,7 @@ import {
   Receipt,
   FileSpreadsheet,
   CheckCircle2,
-  Clock,
-  Sparkles,
-  Layers,
-  Phone,
-  Mail,
-  Globe,
-  MapPin,
   Building2,
-  AlertCircle,
-  Tag,
-  Package,
 } from "lucide-react";
 
 export type CatalogProductItem = {
@@ -30,7 +20,7 @@ export type CatalogProductItem = {
   slug: string;
   categorySlug: string;
   categoryName: string;
-  shortDescription: string;
+  shortDescription?: string;
   productionTime?: string;
   referenceQuantity?: number;
   referenceWeight?: number;
@@ -41,20 +31,7 @@ export type CatalogProductItem = {
   b2bAmount?: number;
   b2bRatePerSqInch?: number;
   size?: string;
-  imageUrl: string;
-  addon?: {
-    code: string;
-    name: string;
-    amount: number;
-    referenceQuantity?: number;
-  };
-  bladeCharge?: number;
-  minimumArea?: number;
-  minimumCharge?: number;
-  delivery?: {
-    GJ: number;
-    RJ: number;
-  };
+  imageUrl?: string;
 };
 
 export type CatalogCategoryGroup = {
@@ -97,6 +74,11 @@ const defaultBusinessInfo: BusinessInfo = {
   gstin: "24AIUPJ2271L1ZV",
   stateCode: "24 (Gujarat)",
 };
+
+function formatDays(str?: string) {
+  if (!str) return "3-4 business days";
+  return str.replace(/working days?/i, "business days");
+}
 
 export function AdminPriceCatalogDocument({
   categories,
@@ -253,17 +235,13 @@ export function AdminPriceCatalogDocument({
             break-inside: avoid !important;
             page-break-inside: avoid !important;
           }
-          .page-break-before-always {
-            break-before: page !important;
-            page-break-before: always !important;
-          }
         }
       `}</style>
 
       {/* MAIN DOCUMENT CONTAINER */}
       <div className="print-container max-w-[210mm] mx-auto my-6 bg-white shadow-md border border-[#cbd5e1] print:m-0 print:border-none print:shadow-none">
         <table className="w-full border-collapse">
-          {/* REPEATING HEADER (Browser repeats thead on all pages in print) */}
+          {/* REPEATING HEADER (Repeated automatically on all pages in print) */}
           <thead>
             <tr>
               <th className="p-0 text-left font-normal border-b-2 border-[#0f223d]">
@@ -342,7 +320,7 @@ export function AdminPriceCatalogDocument({
             </tr>
           </thead>
 
-          {/* REPEATING FOOTER (Browser repeats tfoot on all pages in print) */}
+          {/* REPEATING FOOTER (Repeated automatically on all pages in print) */}
           <tfoot>
             <tr>
               <td className="p-0 text-left font-normal border-t-2 border-[#0f223d]">
@@ -358,7 +336,7 @@ export function AdminPriceCatalogDocument({
                       • Production artwork must be submitted in <strong>CorelDRAW (.CDR)</strong> with all fonts converted to curves.
                     </p>
                     <p>
-                      • Turnaround times are calculated in working days from artwork verification and payment clearance.
+                      • Turnaround times are calculated in business days from artwork verification and payment clearance.
                     </p>
                   </div>
                   <div className="text-right shrink-0">
@@ -381,247 +359,110 @@ export function AdminPriceCatalogDocument({
           <tbody>
             <tr>
               <td className="p-0">
-                <div className="px-6 py-4 space-y-6">
-                  {/* CATEGORIES WITH PRODUCTS */}
+                <div className="px-6 py-5 space-y-7">
+                  {/* CATEGORIES WITH 2 PRODUCTS PER ROW */}
                   {filteredCategories.map((cat) => (
                     <section
                       key={cat.slug}
-                      className="category-section page-break-inside-avoid space-y-2.5"
+                      className="category-section page-break-inside-avoid space-y-3"
                     >
-                      {/* Category Header */}
-                      <div className="flex items-center justify-between border-b border-[#0f223d] pb-1.5">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-[#8a632b]" />
-                          <h2 className="text-sm font-bold uppercase tracking-wide text-[#0f223d]">
-                            {cat.name}
-                          </h2>
-                          <span className="text-[10px] text-[#64748b]">
-                            ({cat.products.length} {cat.products.length === 1 ? "Product" : "Products"})
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-[#64748b] italic">
-                          {cat.description}
+                      {/* BOLD, INCREASED FONT SIZE CATEGORY HEADER */}
+                      <div className="border-b-2 border-[#0f223d] pb-1.5 flex items-baseline justify-between">
+                        <h2 className="text-base sm:text-lg font-black uppercase tracking-wide text-[#0f223d]">
+                          {cat.name}
+                        </h2>
+                        <span className="text-[11px] font-semibold text-[#64748b]">
+                          {cat.products.length} {cat.products.length === 1 ? "Product" : "Products"}
                         </span>
                       </div>
 
-                      {/* Products Table */}
-                      <div className="border border-[#cbd5e1] rounded overflow-hidden shadow-xs">
-                        <table className="w-full text-left border-collapse text-[10.5px]">
-                          <thead className="bg-[#f1f5f9] border-b border-[#cbd5e1] text-[#334155] font-bold uppercase text-[9px] tracking-wider">
-                            <tr>
-                              <th className="py-2 px-2.5 w-[65px] text-center">Photo</th>
-                              <th className="py-2 px-3">Product & Specifications</th>
-                              <th className="py-2 px-2.5 w-[85px]">Turnaround</th>
-                              {priceMode === "BOTH" && (
-                                <>
-                                  <th className="py-2 px-2.5 w-[90px] text-right bg-[#f8fafc]">
-                                    Retail (₹)
-                                  </th>
-                                  <th className="py-2 px-2.5 w-[95px] text-right bg-[#f1f5f9] text-[#0f223d]">
-                                    B2B Trade (₹)
-                                  </th>
-                                </>
-                              )}
-                              {priceMode === "RETAIL" && (
-                                <th className="py-2 px-3 w-[110px] text-right">
-                                  Retail Price (₹)
-                                </th>
-                              )}
-                              {priceMode === "B2B" && (
-                                <th className="py-2 px-3 w-[110px] text-right text-[#0f223d]">
-                                  Wholesale Rate (₹)
-                                </th>
-                              )}
-                              <th className="py-2 px-3 w-[140px]">Finishing / Add-ons</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[#e2e8f0]">
-                            {cat.products.map((p, idx) => {
-                              const isEven = idx % 2 === 0;
-                              return (
-                                <tr
-                                  key={p.slug}
-                                  className={`page-break-inside-avoid transition-colors ${
-                                    isEven ? "bg-white" : "bg-[#fafbfc]"
-                                  }`}
-                                >
-                                  {/* 1 EXACT PRODUCT PHOTO */}
-                                  <td className="py-2 px-2.5 align-middle text-center">
-                                    <div className="relative w-12 h-12 mx-auto rounded border border-[#cbd5e1] overflow-hidden bg-[#f8fafc] shrink-0">
-                                      <Image
-                                        src={p.imageUrl}
-                                        alt={p.name}
-                                        fill
-                                        sizes="48px"
-                                        className="object-cover"
-                                      />
+                      {/* 2 PRODUCTS IN SINGLE ROW GRID */}
+                      <div className="grid grid-cols-2 gap-3">
+                        {cat.products.map((p) => {
+                          const qty = p.referenceQuantity ?? 1000;
+                          const formattedQty = `${qty.toLocaleString("en-IN")} Qty`;
+
+                          return (
+                            <div
+                              key={p.slug}
+                              className="border border-[#cbd5e1] rounded-sm p-3.5 bg-white flex flex-col justify-between page-break-inside-avoid shadow-xs hover:border-[#0f223d] transition-colors"
+                            >
+                              <div>
+                                {/* PRODUCT NAME: BOLD, INCREASED SIZE */}
+                                <h3 className="text-[13px] sm:text-[14px] font-black uppercase text-[#0f223d] leading-tight tracking-tight">
+                                  {p.name}
+                                </h3>
+
+                                {/* BUSINESS DAYS FORMAT: (business days) */}
+                                <div className="text-[11.5px] text-[#52647e] font-medium italic mt-1">
+                                  ({formatDays(p.productionTime)})
+                                </div>
+
+                                {/* Optional Size */}
+                                {p.size && (
+                                  <div className="text-[11px] text-[#64748b] font-medium mt-1">
+                                    Size: <strong className="text-[#334155]">{p.size}</strong>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* PRICE SECTION: INCREASED SIZE, QUANTITY INCLUDED IN PRICE */}
+                              <div className="mt-3 pt-2.5 border-t border-[#e2e8f0]">
+                                {priceMode === "BOTH" && (
+                                  <div>
+                                    <div className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider mb-1">
+                                      {formattedQty}
                                     </div>
-                                  </td>
-
-                                  {/* Name & Specs */}
-                                  <td className="py-2 px-3 align-top">
-                                    <div className="font-bold text-[#0f223d] text-[11px] leading-tight">
-                                      {p.name}
-                                    </div>
-                                    <div className="text-[10px] text-[#475569] mt-0.5 leading-snug">
-                                      {p.shortDescription}
-                                    </div>
-                                    {p.size && (
-                                      <div className="inline-flex items-center gap-1 mt-1 text-[9px] font-medium text-[#64748b] bg-[#f1f5f9] px-1.5 py-0.2 rounded border border-[#e2e8f0]">
-                                        <span>Size:</span>
-                                        <strong className="text-[#334155]">{p.size}</strong>
-                                      </div>
-                                    )}
-                                  </td>
-
-                                  {/* Turnaround */}
-                                  <td className="py-2 px-2.5 align-top text-[#475569]">
-                                    <div className="flex items-center gap-1 text-[10px]">
-                                      <Clock size={11} className="text-[#8a632b] shrink-0" />
-                                      <span>{p.productionTime || "3-4 days"}</span>
-                                    </div>
-                                    {p.referenceQuantity && (
-                                      <div className="text-[9px] text-[#64748b] mt-0.5">
-                                        Qty: {p.referenceQuantity.toLocaleString("en-IN")}
-                                      </div>
-                                    )}
-                                  </td>
-
-                                  {/* Pricing Columns */}
-                                  {priceMode === "BOTH" && (
-                                    <>
-                                      {/* Retail Rate */}
-                                      <td className="py-2 px-2.5 align-top text-right bg-[#f8fafc]">
-                                        {p.ruleType === "PER_SQ_INCH" ? (
-                                          <div>
-                                            <span className="font-bold text-[#0f223d] text-[11px]">
-                                              ₹{p.ratePerSqInch}
-                                            </span>
-                                            <span className="text-[9px] text-[#64748b] block">
-                                              {p.rateUnit === "PAISE" ? "paise / sq.in" : "/ sq.inch"}
-                                            </span>
-                                          </div>
-                                        ) : (
-                                          <div>
-                                            <span className="font-bold text-[#0f223d] text-[11.5px]">
-                                              ₹{p.amount?.toLocaleString("en-IN")}
-                                            </span>
-                                            <span className="text-[9px] text-[#64748b] block">
-                                              /{p.referenceQuantity ? p.referenceQuantity.toLocaleString("en-IN") : "job"}
-                                            </span>
-                                          </div>
-                                        )}
-                                      </td>
-
-                                      {/* B2B Trade Rate */}
-                                      <td className="py-2 px-2.5 align-top text-right bg-[#f1f5f9]">
-                                        {p.ruleType === "PER_SQ_INCH" ? (
-                                          <div>
-                                            <span className="font-extrabold text-[#8a632b] text-[11.5px]">
-                                              ₹{p.b2bRatePerSqInch ?? p.ratePerSqInch}
-                                            </span>
-                                            <span className="text-[9px] text-[#64748b] block">
-                                              {p.rateUnit === "PAISE" ? "paise / sq.in" : "/ sq.inch"}
-                                            </span>
-                                          </div>
-                                        ) : (
-                                          <div>
-                                            <span className="font-extrabold text-[#8a632b] text-[12px]">
-                                              ₹{(p.b2bAmount ?? p.amount)?.toLocaleString("en-IN")}
-                                            </span>
-                                            <span className="text-[9px] text-[#64748b] block">
-                                              /{p.referenceQuantity ? p.referenceQuantity.toLocaleString("en-IN") : "job"}
-                                            </span>
-                                          </div>
-                                        )}
-                                      </td>
-                                    </>
-                                  )}
-
-                                  {priceMode === "RETAIL" && (
-                                    <td className="py-2 px-3 align-top text-right">
-                                      {p.ruleType === "PER_SQ_INCH" ? (
-                                        <div>
-                                          <span className="font-bold text-[#0f223d] text-[12px]">
-                                            ₹{p.ratePerSqInch}
-                                          </span>
-                                          <span className="text-[9px] text-[#64748b] block">
-                                            {p.rateUnit === "PAISE" ? "paise / sq.in" : "/ sq.inch"}
-                                          </span>
-                                        </div>
-                                      ) : (
-                                        <div>
-                                          <span className="font-bold text-[#0f223d] text-[12px]">
-                                            ₹{p.amount?.toLocaleString("en-IN")}
-                                          </span>
-                                          <span className="text-[9px] text-[#64748b] block">
-                                            /{p.referenceQuantity ? p.referenceQuantity.toLocaleString("en-IN") : "job"}
-                                          </span>
-                                        </div>
-                                      )}
-                                    </td>
-                                  )}
-
-                                  {priceMode === "B2B" && (
-                                    <td className="py-2 px-3 align-top text-right">
-                                      {p.ruleType === "PER_SQ_INCH" ? (
-                                        <div>
-                                          <span className="font-extrabold text-[#8a632b] text-[12px]">
-                                            ₹{p.b2bRatePerSqInch ?? p.ratePerSqInch}
-                                          </span>
-                                          <span className="text-[9px] text-[#64748b] block">
-                                            {p.rateUnit === "PAISE" ? "paise / sq.in" : "/ sq.inch"}
-                                          </span>
-                                        </div>
-                                      ) : (
-                                        <div>
-                                          <span className="font-extrabold text-[#8a632b] text-[12px]">
-                                            ₹{(p.b2bAmount ?? p.amount)?.toLocaleString("en-IN")}
-                                          </span>
-                                          <span className="text-[9px] text-[#64748b] block">
-                                            /{p.referenceQuantity ? p.referenceQuantity.toLocaleString("en-IN") : "job"}
-                                          </span>
-                                        </div>
-                                      )}
-                                    </td>
-                                  )}
-
-                                  {/* Finishing & Add-ons */}
-                                  <td className="py-2 px-3 align-top text-[9.5px] text-[#475569] space-y-0.5">
-                                    {p.addon && (
-                                      <div className="flex items-center gap-1 text-[#0f223d] font-semibold">
-                                        <Sparkles size={10} className="text-[#8a632b] shrink-0" />
-                                        <span>
-                                          {p.addon.name}: +₹{p.addon.amount}
+                                    <div className="flex items-baseline justify-between gap-2">
+                                      <div>
+                                        <span className="text-[10px] font-bold uppercase text-[#64748b] block">Retail</span>
+                                        <span className="text-[15px] sm:text-[16px] font-black text-[#0f223d]">
+                                          {p.ruleType === "PER_SQ_INCH"
+                                            ? `₹${p.ratePerSqInch}${p.rateUnit === "PAISE" ? " paise" : ""} / sq.in`
+                                            : `₹${p.amount?.toLocaleString("en-IN")}`}
                                         </span>
                                       </div>
-                                    )}
-                                    {p.bladeCharge && (
-                                      <div className="text-[#475569]">
-                                        Half Blade: ₹{p.bladeCharge} / blade
+                                      <div className="text-right">
+                                        <span className="text-[10px] font-bold uppercase text-[#8a632b] block">Trade</span>
+                                        <span className="text-[15px] sm:text-[16px] font-black text-[#8a632b]">
+                                          {p.ruleType === "PER_SQ_INCH"
+                                            ? `₹${p.b2bRatePerSqInch ?? p.ratePerSqInch}${p.rateUnit === "PAISE" ? " paise" : ""} / sq.in`
+                                            : `₹${(p.b2bAmount ?? p.amount)?.toLocaleString("en-IN")}`}
+                                        </span>
                                       </div>
-                                    )}
-                                    {p.minimumCharge && (
-                                      <div className="text-[#64748b]">
-                                        Min. charge: ₹{p.minimumCharge}
-                                      </div>
-                                    )}
-                                    {p.minimumArea && (
-                                      <div className="text-[#64748b]">
-                                        Min. area: {p.minimumArea} sq.in
-                                      </div>
-                                    )}
-                                    {p.delivery && (
-                                      <div className="text-[8.5px] text-[#64748b] pt-0.5">
-                                        Courier: GJ ₹{p.delivery.GJ} | RJ ₹{p.delivery.RJ}
-                                      </div>
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {priceMode === "RETAIL" && (
+                                  <div className="flex items-baseline justify-between gap-2">
+                                    <span className="text-[12px] font-bold text-[#64748b]">
+                                      {formattedQty}:
+                                    </span>
+                                    <span className="text-[16px] sm:text-[17px] font-black text-[#0f223d]">
+                                      {p.ruleType === "PER_SQ_INCH"
+                                        ? `₹${p.ratePerSqInch}${p.rateUnit === "PAISE" ? " paise" : ""} / sq.in`
+                                        : `₹${p.amount?.toLocaleString("en-IN")}`}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {priceMode === "B2B" && (
+                                  <div className="flex items-baseline justify-between gap-2">
+                                    <span className="text-[12px] font-bold text-[#64748b]">
+                                      {formattedQty}:
+                                    </span>
+                                    <span className="text-[16px] sm:text-[17px] font-black text-[#8a632b]">
+                                      {p.ruleType === "PER_SQ_INCH"
+                                        ? `₹${p.b2bRatePerSqInch ?? p.ratePerSqInch}${p.rateUnit === "PAISE" ? " paise" : ""} / sq.in`
+                                        : `₹${(p.b2bAmount ?? p.amount)?.toLocaleString("en-IN")}`}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </section>
                   ))}
@@ -635,32 +476,32 @@ export function AdminPriceCatalogDocument({
                             <span className="inline-block bg-[#8a632b] text-white text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-xs">
                               Specialized Commercial Services
                             </span>
-                            <h2 className="text-sm font-extrabold uppercase tracking-wide text-[#0f223d]">
+                            <h2 className="text-sm sm:text-base font-extrabold uppercase tracking-wide text-[#0f223d]">
                               On-Demand Quotable Fabrication & Publications
                             </h2>
                           </div>
                           <p className="text-[10px] text-[#64748b] mt-0.5">
-                            Custom offset printing, binding, sequential numbering, and corporate stationery quoted individually based on quantity, paper GSM, and finishing specifications.
+                            Custom offset printing, binding, sequential numbering, and corporate stationery quoted individually based on quantity, paper GSM, and specifications.
                           </p>
                         </div>
-                        <div className="text-right text-[9.5px] font-semibold text-[#8a632b]">
+                        <div className="text-right text-[10px] font-semibold text-[#8a632b]">
                           Direct Quote Line: +91 94263 71150
                         </div>
                       </div>
 
-                      {/* 4 Commercial Quotable Modules Grid */}
+                      {/* 4 Commercial Quotable Modules Grid (2 columns) */}
                       <div className="grid grid-cols-2 gap-3">
                         {/* Module 1: Books Modules & Multi-page Publications */}
-                        <div className="border border-[#cbd5e1] rounded p-3 bg-white space-y-2">
+                        <div className="border border-[#cbd5e1] rounded-sm p-3.5 bg-white space-y-2">
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded bg-[#f1f5f9] text-[#0f223d] flex items-center justify-center shrink-0">
                               <BookOpen size={16} />
                             </div>
                             <div>
-                              <h3 className="text-[11.5px] font-bold text-[#0f223d] leading-tight">
+                              <h3 className="text-[12px] font-bold text-[#0f223d] leading-tight">
                                 1. Books Modules & Multi-Page Publications
                               </h3>
-                              <p className="text-[9px] text-[#8a632b] font-semibold">
+                              <p className="text-[9.5px] text-[#8a632b] font-semibold">
                                 Annual Reports · Catalogues · Manuals · Magazines
                               </p>
                             </div>
@@ -694,16 +535,16 @@ export function AdminPriceCatalogDocument({
                         </div>
 
                         {/* Module 2: Custom Diaries & Planners */}
-                        <div className="border border-[#cbd5e1] rounded p-3 bg-white space-y-2">
+                        <div className="border border-[#cbd5e1] rounded-sm p-3.5 bg-white space-y-2">
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded bg-[#f1f5f9] text-[#0f223d] flex items-center justify-center shrink-0">
                               <Calendar size={16} />
                             </div>
                             <div>
-                              <h3 className="text-[11.5px] font-bold text-[#0f223d] leading-tight">
+                              <h3 className="text-[12px] font-bold text-[#0f223d] leading-tight">
                                 2. Custom Corporate Diaries & Planners
                               </h3>
-                              <p className="text-[9px] text-[#8a632b] font-semibold">
+                              <p className="text-[9.5px] text-[#8a632b] font-semibold">
                                 Executive PU Leatherette · Dated & Undated Planners
                               </p>
                             </div>
@@ -712,19 +553,19 @@ export function AdminPriceCatalogDocument({
                             <li className="flex items-start gap-1.5">
                               <CheckCircle2 size={11} className="text-[#8a632b] shrink-0 mt-0.5" />
                               <span>
-                                <strong>Cover Styling:</strong> Imported PU leatherette, hardbound thermal matt, thermo-PU debossing, two-tone stitch finishing.
+                                <strong>Cover Styling:</strong> Premium PU leatherette, hardbound thermal matt, thermo-PU debossing, two-tone stitch finishing.
                               </span>
                             </li>
                             <li className="flex items-start gap-1.5">
                               <CheckCircle2 size={11} className="text-[#8a632b] shrink-0 mt-0.5" />
                               <span>
-                                <strong>Personalization:</strong> Blind debossing, metallic foil stamping, custom full-color tip-in pages (company profile & product highlights).
+                                <strong>Personalization:</strong> Blind debossing, metallic foil stamping, custom full-color tip-in pages (company profile & highlights).
                               </span>
                             </li>
                             <li className="flex items-start gap-1.5">
                               <CheckCircle2 size={11} className="text-[#8a632b] shrink-0 mt-0.5" />
                               <span>
-                                <strong>Accessories:</strong> Silk ribbon bookmarks with metal tags, magnetic buckle / elastic band closure, pen loop, document pocket.
+                                <strong>Accessories:</strong> Silk satin bookmark ribbon.
                               </span>
                             </li>
                           </ul>
@@ -736,18 +577,18 @@ export function AdminPriceCatalogDocument({
                           </div>
                         </div>
 
-                        {/* Module 3: Bill Books, Challans & Receipt Books */}
-                        <div className="border border-[#cbd5e1] rounded p-3 bg-white space-y-2">
+                        {/* Module 3: Bill Books, Challans & Receipt Vouchers (All "Carbonless NCR" removed) */}
+                        <div className="border border-[#cbd5e1] rounded-sm p-3.5 bg-white space-y-2">
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded bg-[#f1f5f9] text-[#0f223d] flex items-center justify-center shrink-0">
                               <Receipt size={16} />
                             </div>
                             <div>
-                              <h3 className="text-[11.5px] font-bold text-[#0f223d] leading-tight">
-                                3. Carbonless NCR Bill Books & Vouchers
+                              <h3 className="text-[12px] font-bold text-[#0f223d] leading-tight">
+                                3. Bill Books, Challans & Receipt Vouchers
                               </h3>
-                              <p className="text-[9px] text-[#8a632b] font-semibold">
-                                Duplicate · Triplicate · Quadruplicate NCR Sets
+                              <p className="text-[9.5px] text-[#8a632b] font-semibold">
+                                Duplicate · Triplicate · Quadruplicate Book Sets
                               </p>
                             </div>
                           </div>
@@ -755,7 +596,7 @@ export function AdminPriceCatalogDocument({
                             <li className="flex items-start gap-1.5">
                               <CheckCircle2 size={11} className="text-[#8a632b] shrink-0 mt-0.5" />
                               <span>
-                                <strong>NCR Paper Grade:</strong> 55-60 GSM high-sensitivity self-copy paper (White, Pink, Yellow, Green, Blue) — no carbon mess.
+                                <strong>Paper Grade:</strong> 55-60 GSM high-sensitivity self-copy paper (White, Pink, Yellow, Green, Blue) — clean and smudge-free.
                               </span>
                             </li>
                             <li className="flex items-start gap-1.5">
@@ -779,17 +620,17 @@ export function AdminPriceCatalogDocument({
                           </div>
                         </div>
 
-                        {/* Module 4: Corporate & Office Stationery */}
-                        <div className="border border-[#cbd5e1] rounded p-3 bg-white space-y-2">
+                        {/* Module 4: Corporate & Office Stationery Suite */}
+                        <div className="border border-[#cbd5e1] rounded-sm p-3.5 bg-white space-y-2">
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 rounded bg-[#f1f5f9] text-[#0f223d] flex items-center justify-center shrink-0">
                               <FileSpreadsheet size={16} />
                             </div>
                             <div>
-                              <h3 className="text-[11.5px] font-bold text-[#0f223d] leading-tight">
+                              <h3 className="text-[12px] font-bold text-[#0f223d] leading-tight">
                                 4. Corporate Stationery & Folders Suite
                               </h3>
-                              <p className="text-[9px] text-[#8a632b] font-semibold">
+                              <p className="text-[9.5px] text-[#8a632b] font-semibold">
                                 Letterheads · Envelopes · Folders · Vouchers
                               </p>
                             </div>
@@ -804,7 +645,7 @@ export function AdminPriceCatalogDocument({
                             <li className="flex items-start gap-1.5">
                               <CheckCircle2 size={11} className="text-[#8a632b] shrink-0 mt-0.5" />
                               <span>
-                                <strong>Peel & Seal Envelopes:</strong> Window & non-window 9.5"x4.25", 10"x12" laminated cloth-line security envelopes.
+                                <strong>Peel & Seal Envelopes:</strong> Window & non-window 9.5"x4.25", 10"x12" laminated security envelopes.
                               </span>
                             </li>
                             <li className="flex items-start gap-1.5">
@@ -826,7 +667,7 @@ export function AdminPriceCatalogDocument({
                   )}
 
                   {/* REMITTANCE & BANKING DETAILS */}
-                  <section className="bank-section page-break-inside-avoid border border-[#cbd5e1] rounded p-3 bg-[#f8fafc]">
+                  <section className="bank-section page-break-inside-avoid border border-[#cbd5e1] rounded p-3.5 bg-[#f8fafc]">
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <h4 className="text-[11px] font-bold uppercase text-[#0f223d] flex items-center gap-1.5">
