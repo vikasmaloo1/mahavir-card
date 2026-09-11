@@ -106,6 +106,23 @@ function getAddonNote(p: CatalogProductItem): string | null {
   return `(${notes.join(" · ")})`;
 }
 
+function getCategoryBaseQuantity(products: CatalogProductItem[]): number {
+  const counts = new Map<number, number>();
+  for (const p of products) {
+    const q = p.referenceQuantity || 1000;
+    counts.set(q, (counts.get(q) || 0) + 1);
+  }
+  let maxQty = 1000;
+  let maxCount = 0;
+  for (const [qty, count] of counts.entries()) {
+    if (count > maxCount) {
+      maxCount = count;
+      maxQty = qty;
+    }
+  }
+  return maxQty;
+}
+
 export function AdminPriceCatalogDocument({
   categories,
   businessInfo: propBusiness,
@@ -133,7 +150,7 @@ export function AdminPriceCatalogDocument({
   const isB2BMode = priceMode === "B2B";
 
   return (
-    <div className="min-h-screen bg-[#eceff3] text-[#1a202c] font-sans">
+    <div className="min-h-screen bg-[#eceff3] text-[#1a202c] font-sans print:bg-white print:p-0 print:m-0">
       {/* SCREEN-ONLY TOOLBAR */}
       <div className="no-print sticky top-0 z-30 border-b border-[#cbd5e1] bg-white/95 backdrop-blur shadow-sm px-4 py-3 sm:px-6">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
@@ -230,7 +247,7 @@ export function AdminPriceCatalogDocument({
         </div>
       </div>
 
-      {/* PRINT STYLES */}
+      {/* PRINT STYLES: HIDE EVERYTHING EXCEPT THE DOCUMENT */}
       <style jsx global>{`
         @media print {
           @page {
@@ -247,6 +264,9 @@ export function AdminPriceCatalogDocument({
             print-color-adjust: exact !important;
             font-size: 11px !important;
           }
+          header:not(.print-table-header),
+          nav,
+          aside,
           .no-print {
             display: none !important;
           }
@@ -270,7 +290,7 @@ export function AdminPriceCatalogDocument({
       <div className="print-container max-w-[210mm] mx-auto my-6 bg-white shadow-md border border-[#cbd5e1] print:m-0 print:border-none print:shadow-none">
         <table className="w-full border-collapse">
           {/* REPEATING HEADER */}
-          <thead>
+          <thead className="print-table-header">
             <tr>
               <th className="p-0 text-left font-normal border-b-2 border-[#0f223d]">
                 <div className="px-6 pt-5 pb-3">
@@ -304,7 +324,7 @@ export function AdminPriceCatalogDocument({
                       </div>
                     </div>
 
-                    {/* Registration & Contact: In B2B mode, GSTIN is hidden per request */}
+                    {/* Registration & Contact: In B2B mode, GSTIN is completely removed */}
                     <div className="text-right text-[10px] space-y-0.5">
                       {!isB2BMode && (
                         <div className="inline-block bg-[#0f223d] text-white text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-sm">
@@ -390,91 +410,104 @@ export function AdminPriceCatalogDocument({
               <td className="p-0">
                 <div className="px-6 py-5 space-y-7">
                   {/* CATEGORIES WITH 2 PRODUCTS PER ROW */}
-                  {filteredCategories.map((cat) => (
-                    <section
-                      key={cat.slug}
-                      className="category-section page-break-inside-avoid space-y-3"
-                    >
-                      {/* CATEGORY IN MIDDLE: BOLD & LARGE */}
-                      <div className="text-center my-4 pb-2 border-b-2 border-[#0f223d]">
-                        <h2 className="text-lg sm:text-xl font-black uppercase tracking-wider text-[#0f223d]">
-                          {cat.name}
-                        </h2>
-                      </div>
+                  {filteredCategories.map((cat) => {
+                    const baseQty = getCategoryBaseQuantity(cat.products);
 
-                      {/* 2 PRODUCTS IN SINGLE ROW */}
-                      <div className="grid grid-cols-2 gap-3.5">
-                        {cat.products.map((p) => {
-                          const addonNote = getAddonNote(p);
+                    return (
+                      <section
+                        key={cat.slug}
+                        className="category-section page-break-inside-avoid space-y-3"
+                      >
+                        {/* CATEGORY IN MIDDLE: BOLD, LARGE, WITH QUANTITY IN BRACKETS */}
+                        <div className="text-center my-4 pb-2 border-b-2 border-[#0f223d]">
+                          <h2 className="text-lg sm:text-xl font-black uppercase tracking-wider text-[#0f223d]">
+                            {cat.name} ({baseQty.toLocaleString("en-IN")} QTY)
+                          </h2>
+                        </div>
 
-                          // Pricing calculations
-                          const retailRate =
-                            p.ruleType === "PER_SQ_INCH"
-                              ? `${p.ratePerSqInch}${p.rateUnit === "PAISE" ? " paise" : ""} / sq.in`
-                              : p.amount?.toLocaleString("en-IN");
+                        {/* 2 PRODUCTS IN SINGLE ROW */}
+                        <div className="grid grid-cols-2 gap-3.5">
+                          {cat.products.map((p) => {
+                            const addonNote = getAddonNote(p);
+                            const isDifferentQty =
+                              p.referenceQuantity && p.referenceQuantity !== baseQty;
 
-                          const tradeRate =
-                            p.ruleType === "PER_SQ_INCH"
-                              ? `${p.b2bRatePerSqInch ?? p.ratePerSqInch}${p.rateUnit === "PAISE" ? " paise" : ""} / sq.in`
-                              : (p.b2bAmount ?? p.amount)?.toLocaleString("en-IN");
+                            // Pricing calculations
+                            const retailRate =
+                              p.ruleType === "PER_SQ_INCH"
+                                ? `${p.ratePerSqInch}${p.rateUnit === "PAISE" ? " paise" : ""} / sq.in`
+                                : p.amount?.toLocaleString("en-IN");
 
-                          return (
-                            <div
-                              key={p.slug}
-                              className="border-2 border-[#cbd5e1] rounded-sm p-4 bg-white flex flex-col justify-between page-break-inside-avoid shadow-xs hover:border-[#0f223d] transition-colors"
-                            >
-                              <div>
-                                {/* PRODUCT NAME: SIZED BIG & BOLD */}
-                                <h3 className="text-[14px] sm:text-[15px] font-black uppercase text-[#0f223d] leading-snug tracking-tight">
-                                  {p.name}
-                                </h3>
+                            const tradeRate =
+                              p.ruleType === "PER_SQ_INCH"
+                                ? `${p.b2bRatePerSqInch ?? p.ratePerSqInch}${p.rateUnit === "PAISE" ? " paise" : ""} / sq.in`
+                                : (p.b2bAmount ?? p.amount)?.toLocaleString("en-IN");
 
-                                {/* ADD-ON IN BRACKETS UNDER PRODUCT NAME */}
-                                {addonNote && (
-                                  <div className="text-[11.5px] font-bold text-[#b45309] mt-1 italic">
-                                    {addonNote}
-                                  </div>
-                                )}
+                            return (
+                              <div
+                                key={p.slug}
+                                className="border-2 border-[#cbd5e1] rounded-sm p-4 bg-white flex flex-col justify-between page-break-inside-avoid shadow-xs hover:border-[#0f223d] transition-colors"
+                              >
+                                <div>
+                                  {/* PRODUCT NAME: SIZED BIG & BOLD */}
+                                  <h3 className="text-[14px] sm:text-[15px] font-black uppercase text-[#0f223d] leading-snug tracking-tight">
+                                    {p.name}
+                                  </h3>
 
-                                {/* Optional Size */}
-                                {p.size && (
-                                  <div className="text-[11px] text-[#475569] font-medium mt-1">
-                                    Size: <strong className="text-[#1e293b]">{p.size}</strong>
-                                  </div>
-                                )}
+                                  {/* IF QUANTITY DIFFERS FROM CATEGORY BASE (e.g. 1000 in Premium Card), DISPLAY IN BRACKET */}
+                                  {isDifferentQty && (
+                                    <div className="text-[12px] font-black text-[#0f223d] mt-0.5">
+                                      ({p.referenceQuantity?.toLocaleString("en-IN")} Qty)
+                                    </div>
+                                  )}
+
+                                  {/* ADD-ON IN BRACKETS UNDER PRODUCT NAME */}
+                                  {addonNote && (
+                                    <div className="text-[11.5px] font-bold text-[#b45309] mt-1 italic">
+                                      {addonNote}
+                                    </div>
+                                  )}
+
+                                  {/* Optional Size */}
+                                  {p.size && (
+                                    <div className="text-[11px] text-[#475569] font-medium mt-1">
+                                      Size: <strong className="text-[#1e293b]">{p.size}</strong>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* PRICE: INCREASED SIZE, SIMPLY WRITE "Rate", NO QTY LABEL */}
+                                <div className="mt-3.5 pt-2.5 border-t border-[#e2e8f0]">
+                                  {priceMode === "B2B" && (
+                                    <div className="text-[18px] sm:text-[20px] font-black text-[#0f223d]">
+                                      Rate: ₹{tradeRate}
+                                    </div>
+                                  )}
+
+                                  {priceMode === "RETAIL" && (
+                                    <div className="text-[18px] sm:text-[20px] font-black text-[#0f223d]">
+                                      Rate: ₹{retailRate}
+                                    </div>
+                                  )}
+
+                                  {priceMode === "BOTH" && (
+                                    <div className="flex items-baseline justify-between gap-2 text-[15px] sm:text-[16px] font-black">
+                                      <span className="text-[#0f223d]">
+                                        Retail: ₹{retailRate}
+                                      </span>
+                                      <span className="text-[#8a632b]">
+                                        Trade: ₹{tradeRate}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-
-                              {/* PRICE: INCREASED SIZE, SIMPLY WRITE "Rate", NO QTY LABEL */}
-                              <div className="mt-3.5 pt-2.5 border-t border-[#e2e8f0]">
-                                {priceMode === "B2B" && (
-                                  <div className="text-[18px] sm:text-[20px] font-black text-[#0f223d]">
-                                    Rate: ₹{tradeRate}
-                                  </div>
-                                )}
-
-                                {priceMode === "RETAIL" && (
-                                  <div className="text-[18px] sm:text-[20px] font-black text-[#0f223d]">
-                                    Rate: ₹{retailRate}
-                                  </div>
-                                )}
-
-                                {priceMode === "BOTH" && (
-                                  <div className="flex items-baseline justify-between gap-2 text-[15px] sm:text-[16px] font-black">
-                                    <span className="text-[#0f223d]">
-                                      Retail: ₹{retailRate}
-                                    </span>
-                                    <span className="text-[#8a632b]">
-                                      Trade: ₹{tradeRate}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </section>
-                  ))}
+                            );
+                          })}
+                        </div>
+                      </section>
+                    );
+                  })}
 
                   {/* DEDICATED QUOTABLE COMMERCIAL PRINTING SERVICES MODULE */}
                   {showQuotable && (

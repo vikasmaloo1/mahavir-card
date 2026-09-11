@@ -24,16 +24,16 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const access = await getAdminAccess(new Request("http://localhost/admin", { headers: requestHeaders }));
   if (!access) redirect("/admin/login");
 
-  return <div className="min-h-screen bg-[#f5f7fa] text-[#162237]">
-    <aside className="fixed inset-y-0 left-0 z-10 hidden w-64 flex-col bg-[#13233d] text-white lg:flex">
+  return <div className="min-h-screen bg-[#f5f7fa] text-[#162237] print:bg-white print:text-black">
+    <aside className="fixed inset-y-0 left-0 z-10 hidden w-64 flex-col bg-[#13233d] text-white lg:flex print:hidden">
       <div className="border-b border-white/10 px-6 py-6"><Link href="/" className="text-lg font-bold">mahavir<span className="text-[#8fb3ff]">card</span><span className="ml-2 text-[10px] font-medium uppercase tracking-[0.16em] text-[#a8b7cb]">admin</span></Link></div>
       <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="Admin navigation">{navGroups.map((group) => <div key={group.label || "dashboard"} className="mb-4">{group.label ? <p className="mb-1 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#71839b]">{group.label}</p> : null}<div className="space-y-0.5">{group.links.map(([label, href, Icon]) => <Link href={href} key={href} className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-[#b8c4d4] hover:bg-white/10 hover:text-white"><Icon size={17} />{label}</Link>)}</div></div>)}</nav>
       <div className="border-t border-white/10 px-3 py-4"><Link href="/" className="flex items-center gap-3 px-3 py-2.5 text-sm text-[#b8c4d4] hover:text-white"><LogOut size={17} />Back to storefront</Link><LogoutButton redirectTo="/admin/login" className="flex w-full items-center gap-3 px-3 py-2.5 text-sm text-[#b8c4d4] hover:text-white" /></div>
     </aside>
-    <div className="min-w-0 lg:pl-64">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d7dce5] bg-white px-4 py-4 sm:px-5 lg:px-8"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#2457b8]">Operations</p><p className="mt-1 text-sm font-semibold">Mahavir Card admin workspace</p></div><div className="flex items-center gap-4"><Link href="/" className="text-sm font-semibold text-[#607089] hover:text-[#2457b8]">View storefront</Link><LogoutButton redirectTo="/admin/login" className="inline-flex items-center gap-2 text-sm font-semibold text-[#9b2525] lg:hidden" /></div></header>
-      <nav className="flex gap-1 overflow-x-auto border-b border-[#d7dce5] bg-white px-4 py-2 lg:hidden" aria-label="Admin navigation">{mobileLinks.map(([label, href, Icon]) => <Link href={href} key={href} className="inline-flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-semibold text-[#52647e] hover:bg-[#f5f7fa] hover:text-[#162237]"><Icon size={16} />{label}</Link>)}</nav>
-      <main className="min-w-0 px-4 py-6 sm:px-5 sm:py-8 lg:px-8">{children}</main>
+    <div className="min-w-0 lg:pl-64 print:pl-0 print:m-0">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d7dce5] bg-white px-4 py-4 sm:px-5 lg:px-8 print:hidden"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#2457b8]">Operations</p><p className="mt-1 text-sm font-semibold">Mahavir Card admin workspace</p></div><div className="flex items-center gap-4"><Link href="/" className="text-sm font-semibold text-[#607089] hover:text-[#2457b8]">View storefront</Link><LogoutButton redirectTo="/admin/login" className="inline-flex items-center gap-2 text-sm font-semibold text-[#9b2525] lg:hidden" /></div></header>
+      <nav className="flex gap-1 overflow-x-auto border-b border-[#d7dce5] bg-white px-4 py-2 lg:hidden print:hidden" aria-label="Admin navigation">{mobileLinks.map(([label, href, Icon]) => <Link href={href} key={href} className="inline-flex shrink-0 items-center gap-2 px-3 py-2 text-sm font-semibold text-[#52647e] hover:bg-[#f5f7fa] hover:text-[#162237]"><Icon size={16} />{label}</Link>)}</nav>
+      <main className="min-w-0 px-4 py-6 sm:px-5 sm:py-8 lg:px-8 print:p-0 print:m-0">{children}</main>
     </div>
   </div>;
 }
