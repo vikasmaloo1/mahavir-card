@@ -15,7 +15,13 @@ import { showToast } from "@/components/toast-provider";
 import { HorizontalScrollContainer } from "@/components/horizontal-scroll-container";
 
 type ProductDetail = {
-  pricingRules: Array<{ id: string; name: string; conditions: Record<string, unknown> }>;
+  pricingRules: Array<{
+    id: string;
+    name: string;
+    ruleType?: string;
+    conditions: Record<string, unknown>;
+    priceFormula?: Record<string, unknown>;
+  }>;
   addons: Array<{ addonId: string; name: string; price: string; pricingRuleId: string | null; isDefault: boolean }>;
   deliveryRules: Array<{ deliveryMethod: "PICKUP" | "LOCAL_DELIVERY" | "COURIER"; stateCode: string }>;
   artworkRequirements: Array<ArtworkRequirement & { pricingRuleId: string | null }>;
@@ -53,6 +59,8 @@ type Product = {
   orderable: boolean;
   quoteable: boolean;
   hasAddons: boolean;
+  addons?: Array<{ id: string; name: string; price: string | null; isDefault: boolean }>;
+  isSquareInch?: boolean;
   hasArtworkRequirement: boolean;
   artworkSummary: ArtworkSummary | null;
   stateAvailability?: StateAvailability;
@@ -781,6 +789,25 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                             ) : null}
                           </div>
                         ) : null}
+                        {item.addons && item.addons.length > 0 ? (
+                          <div className="mt-1 flex flex-wrap items-center gap-1">
+                            {item.addons.map((ad) => (
+                              <span
+                                key={ad.id}
+                                className="inline-flex items-center gap-0.5 rounded bg-blue-50/90 px-1.5 py-0.5 text-[10.5px] font-semibold text-[#1e3a5f] border border-[#bfd3f5]"
+                                title={`Optional finishing: ${ad.name}`}
+                              >
+                                +{ad.name}{ad.price && Number(ad.price) > 0 ? ` (+₹${Number(ad.price)})` : ""}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (item.category?.slug === "premium-card" || item.slug.startsWith("premium-")) ? (
+                          <div className="mt-1 flex flex-wrap items-center gap-1">
+                            <span className="inline-flex items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-emerald-800 border border-emerald-200">
+                              ✓ Corner Cut included
+                            </span>
+                          </div>
+                        ) : null}
                       </div>
                       <div className="hidden text-sm text-[var(--mc-muted)] sm:block">
                         <p className="truncate">{item.listingSpecification || item.productSize || "-"}</p>
@@ -1496,6 +1523,18 @@ function ProductSpecification({ item }: { item: Product }) {
           ) : null}
         </div>
       ) : null}
+      {item.addons && item.addons.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-1 pt-0.5">
+          {item.addons.map((ad) => (
+            <span
+              key={ad.id}
+              className="inline-flex items-center gap-0.5 rounded bg-blue-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-[#1e3a5f] border border-[#bfd3f5]"
+            >
+              +{ad.name}{ad.price && Number(ad.price) > 0 ? ` (+₹${Number(ad.price)})` : ""}
+            </span>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1518,9 +1557,24 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
   const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([]);
   const [quantity, setQuantity] = useState(1000);
 
-  // Sticker / Custom dimension fields
-  const [width, setWidth] = useState("2");
-  const [height, setHeight] = useState("2");
+  const isSticker =
+    item.category?.slug === "sticker" ||
+    item.slug.includes("sticker") ||
+    item.slug.startsWith("sticker-") ||
+    item.slug.startsWith("avery-sticker");
+
+  const isSquareInch =
+    Boolean(item.isSquareInch) ||
+    isSticker ||
+    item.category?.slug === "art-card" ||
+    item.slug.includes("art-card") ||
+    Boolean(details?.pricingRules?.some((r) => r.ruleType === "PER_SQ_INCH"));
+
+  const isArtCardBoth = item.slug.includes("art-card-both-side");
+
+  // Custom dimension fields
+  const [width, setWidth] = useState(isArtCardBoth ? "10" : "2");
+  const [height, setHeight] = useState(isArtCardBoth ? "5" : "2");
   const [bladeCount, setBladeCount] = useState("0");
 
   const [artworks, setArtworks] = useState<Record<string, UploadedArtwork>>({});
@@ -1530,12 +1584,6 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
   const [calculating, setCalculating] = useState(false);
 
   const minQuantity = isSpecialQuantityProduct(item.category?.slug ?? null, item.slug) ? 500 : 1000;
-
-  const isSticker =
-    item.category?.slug === "sticker" ||
-    item.slug.includes("sticker") ||
-    item.slug.startsWith("sticker-") ||
-    item.slug.startsWith("avery-sticker");
 
   useEffect(() => {
     let active = true;
@@ -1578,13 +1626,21 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
     return null;
   }, [width, height]);
 
+  const activeRule = details?.pricingRules.find((r) => r.id === ruleId) ?? details?.pricingRules[0];
+  const minimumArea = (activeRule?.priceFormula as any)?.minimumArea
+    ? Number((activeRule?.priceFormula as any).minimumArea)
+    : isArtCardBoth
+    ? 50
+    : null;
+  const bladeCharge = Number((activeRule?.priceFormula as any)?.bladeCharge || (activeRule?.conditions as any)?.bladeCharge || 0);
+
   useEffect(() => {
     if (!details || !ruleId) return;
     const controller = new AbortController();
     setCalculating(true);
     const timer = setTimeout(() => {
       const options: Record<string, string> = { pricingRuleId: ruleId };
-      if (isSticker) {
+      if (isSquareInch) {
         if (parseFloat(width) > 0) options.width = String(width);
         if (parseFloat(height) > 0) options.height = String(height);
         if (parseInt(bladeCount, 10) > 0) options.bladeCount = String(bladeCount);
@@ -1607,6 +1663,7 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
             setSubmitError("");
           } else if (payload?.error?.message) {
             setEstimatedPrice(null);
+            setSubmitError(payload.error.message);
           }
         })
         .catch(() => {})
@@ -1616,7 +1673,7 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
       clearTimeout(timer);
       controller.abort();
     };
-  }, [details, isSticker, item.id, quantity, ruleId, selectedAddonIds, width, height, bladeCount]);
+  }, [details, isSquareInch, item.id, quantity, ruleId, selectedAddonIds, width, height, bladeCount]);
 
   const requirement = details?.artworkRequirements.find((row) => row.pricingRuleId === ruleId) ?? details?.artworkRequirements.find((row) => !row.pricingRuleId) ?? null;
   const slots = requirement?.slots?.length ? requirement.slots : [];
@@ -1632,11 +1689,15 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
       setSubmitError("Direct orders above 25,000 units require a custom quotation.");
       return;
     }
-    if (isSticker) {
+    if (isSquareInch) {
       const w = parseFloat(width);
       const h = parseFloat(height);
       if (isNaN(w) || w <= 0 || isNaN(h) || h <= 0) {
         setSubmitError("Please enter valid positive width and height in inches.");
+        return;
+      }
+      if (minimumArea && (w * h) < minimumArea) {
+        setSubmitError(`This product requires a minimum area of ${minimumArea} sq. inches (${(w * h).toFixed(1)} sq. in entered).`);
         return;
       }
     }
@@ -1647,7 +1708,7 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
       quantity: String(quantity),
       pricingRuleId: ruleId,
       addonIds: selectedAddonIds,
-      ...(isSticker ? { width: String(width), height: String(height), bladeCount: String(bladeCount || "0") } : {}),
+      ...(isSquareInch ? { width: String(width), height: String(height), bladeCount: String(bladeCount || "0") } : {}),
       ...(Object.keys(artworkIds).length ? { artworkIds } : {}),
       ...(artworkIds.MAIN ? { artworkId: artworkIds.MAIN } : {}),
     };
@@ -1676,7 +1737,7 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
   if (loadingDetails) return <p className="py-4 text-sm text-[var(--mc-muted)]">Loading order options&hellip;</p>;
   if (!details || loadError) return <p className="py-4 text-sm font-semibold text-[#a53025]">{loadError || "Could not load options."}</p>;
 
-  const hasMultipleRules = !isSticker && (details.pricingRules?.length ?? 0) > 1;
+  const hasMultipleRules = !isSquareInch && (details.pricingRules?.length ?? 0) > 1;
 
   return (
     <div className="space-y-4">
@@ -1696,14 +1757,22 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
 
       {/* Main Options Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* 1. Size / Dimensions (takes 2 cols for stickers or single-rule items) */}
-        {isSticker ? (
+        {/* 1. Size / Dimensions (takes 2 cols for stickers, art cards or single-rule items) */}
+        {isSquareInch ? (
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3 sm:col-span-2 lg:col-span-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wide text-slate-700">Sticker Dimensions</span>
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-700">
+                {isSticker ? "Sticker Dimensions" : "Dimensions (Width × Height)"}
+              </span>
               {stickerArea ? (
-                <span className="text-xs font-bold text-[var(--mc-accent-dark)] bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200">
-                  Total Area: {stickerArea} sq.in / pc
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-md border ${
+                  minimumArea && parseFloat(stickerArea) < minimumArea
+                    ? "bg-amber-50 text-amber-800 border-amber-300"
+                    : "text-[var(--mc-accent-dark)] bg-blue-50 border-blue-200"
+                }`}>
+                  {minimumArea && parseFloat(stickerArea) < minimumArea
+                    ? `Area: ${stickerArea} sq.in (Min ${minimumArea} sq.in)`
+                    : `Total Area: ${stickerArea} sq.in / pc`}
                 </span>
               ) : null}
             </div>
@@ -1719,7 +1788,7 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
                     value={width}
                     onChange={(e) => setWidth(e.target.value)}
                     className="w-full h-11 rounded-lg border border-slate-300 px-3.5 pr-10 text-sm sm:text-base font-bold text-slate-900 focus:border-[var(--mc-accent)] focus:ring-1 focus:ring-[var(--mc-accent)] outline-none"
-                    placeholder="2"
+                    placeholder={isArtCardBoth ? "10" : "2"}
                   />
                   <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 select-none">in</span>
                 </div>
@@ -1735,15 +1804,15 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
                     value={height}
                     onChange={(e) => setHeight(e.target.value)}
                     className="w-full h-11 rounded-lg border border-slate-300 px-3.5 pr-10 text-sm sm:text-base font-bold text-slate-900 focus:border-[var(--mc-accent)] focus:ring-1 focus:ring-[var(--mc-accent)] outline-none"
-                    placeholder="2"
+                    placeholder={isArtCardBoth ? "5" : "2"}
                   />
                   <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 select-none">in</span>
                 </div>
               </div>
             </div>
-            {details?.pricingRules[0]?.conditions && (details.pricingRules[0].conditions as any)?.bladeCharge ? (
+            {bladeCharge > 0 ? (
               <div className="pt-1">
-                <label className="text-xs font-semibold text-slate-600 block mb-1">Half Blades (₹50 / blade)</label>
+                <label className="text-xs font-semibold text-slate-600 block mb-1">Half Blades (₹{bladeCharge} / blade)</label>
                 <input
                   type="number"
                   min="0"
@@ -1755,7 +1824,9 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
               </div>
             ) : null}
             <p className="text-[11px] text-slate-500">
-              Enter custom sticker width &amp; height in inches. Calculated live per square inch.
+              {minimumArea
+                ? `Enter width & height in inches (minimum ${minimumArea} sq. inches required). Calculated live.`
+                : "Enter custom width & height in inches. Calculated live per square inch."}
             </p>
           </div>
         ) : (
@@ -1905,7 +1976,7 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
                   compact
                   configuration={{
                     quantity: String(quantity),
-                    ...(isSticker ? { width, height } : {}),
+                    ...(isSquareInch ? { width, height } : {}),
                   }}
                   artwork={artworks[slot.slotKey] ?? null}
                   onUploaded={(uploaded) =>
@@ -1928,7 +1999,7 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
                 compact
                 configuration={{
                   quantity: String(quantity),
-                  ...(isSticker ? { width, height } : {}),
+                  ...(isSquareInch ? { width, height } : {}),
                 }}
                 artwork={artworks.MAIN ?? null}
                 onUploaded={(uploaded) =>
@@ -1963,7 +2034,7 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
       <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200/90">
         <div className="text-xs text-slate-600">
           <span className="font-bold text-slate-900">{quantity.toLocaleString("en-IN")} pcs</span>
-          {isSticker && stickerArea ? <> &bull; <span className="font-semibold">{width}&Prime; &times; {height}&Prime; ({stickerArea} sq.in)</span></> : null}
+          {isSquareInch && stickerArea ? <> &bull; <span className="font-semibold">{width}&Prime; &times; {height}&Prime; ({stickerArea} sq.in)</span></> : null}
           {estimatedPrice ? <> &bull; <span className="font-bold text-[var(--mc-accent-dark)]">{formatInr(estimatedPrice)}</span></> : null}
         </div>
         <div className="flex items-center gap-2.5">

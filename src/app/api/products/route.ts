@@ -3,6 +3,7 @@ import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
 import { db } from "@/lib/db/server";
 import {
+  addons,
   artworkRequirements,
   artworkSlots,
   categories,
@@ -113,6 +114,7 @@ export async function GET(request: Request) {
               productId: pricingRules.productId,
               variantId: pricingRules.variantId,
               variantActive: productVariants.isActive,
+              ruleType: pricingRules.ruleType,
               conditions: pricingRules.conditions,
               priceFormula: pricingRules.priceFormula,
               productionTime: pricingRules.productionTime,
@@ -125,9 +127,17 @@ export async function GET(request: Request) {
             .where(and(inArray(pricingRules.productId, productIds), eq(pricingRules.isActive, true), or(eq(pricingRules.customerType, customerType), eq(pricingRules.customerType, "BOTH"))))
             .orderBy(asc(pricingRules.sortOrder)),
           db
-            .select({ productId: productAddons.productId })
+            .select({
+              productId: productAddons.productId,
+              addonId: productAddons.addonId,
+              name: addons.name,
+              price: productAddons.price,
+              isDefault: productAddons.isDefault,
+            })
             .from(productAddons)
-            .where(and(inArray(productAddons.productId, productIds), eq(productAddons.isActive, true))),
+            .innerJoin(addons, eq(productAddons.addonId, addons.id))
+            .where(and(inArray(productAddons.productId, productIds), eq(productAddons.isActive, true), eq(addons.isActive, true)))
+            .orderBy(asc(productAddons.sortOrder)),
           db
             .select({
               id: artworkRequirements.id,
@@ -193,6 +203,12 @@ export async function GET(request: Request) {
         )
       : new Map();
     const productAddonsMap = new Set(addonRows.map((row) => row.productId));
+    const productAddonsListMap = new Map<string, Array<{ id: string; name: string; price: string | null; isDefault: boolean }>>();
+    for (const row of addonRows) {
+      const list = productAddonsListMap.get(row.productId) ?? [];
+      list.push({ id: row.addonId, name: row.name, price: row.price, isDefault: row.isDefault });
+      productAddonsListMap.set(row.productId, list);
+    }
     const productionTimeMap = new Map<string, string>();
     for (const rule of rules) {
       if (rule.productionTime && !productionTimeMap.has(rule.productId)) {
@@ -239,6 +255,15 @@ export async function GET(request: Request) {
       };
       const priceInfo = authenticated ? (startingPrices.get(product.id) ?? unauthenticatedPrice) : unauthenticatedPrice;
 
+      const productRules = rules.filter((r) => r.productId === product.id);
+      const isSquareInch =
+        productRules.some((r) => r.ruleType === "PER_SQ_INCH") ||
+        categoryData?.slug === "sticker" ||
+        categoryData?.slug === "art-card" ||
+        product.slug.includes("sticker") ||
+        product.slug.includes("art-card") ||
+        product.slug.startsWith("avery-sticker");
+
       return {
         ...product,
         imageUrl: primaryImageMap.get(product.id) || product.imageUrl || null,
@@ -249,6 +274,8 @@ export async function GET(request: Request) {
         ...priceInfo,
         isLoggedIn: authenticated,
         hasAddons: productAddonsMap.has(product.id),
+        addons: productAddonsListMap.get(product.id) ?? [],
+        isSquareInch,
         hasArtworkRequirement: Boolean(requirement),
         artworkSummary,
         stateAvailability,
