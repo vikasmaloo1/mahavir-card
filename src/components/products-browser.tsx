@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Check, FileUp, RefreshCw, Search, ShoppingBag, SlidersHorizontal, Sparkles, X, WalletCards, Zap } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ProductImage } from "@/components/product-image";
 import { formatInr } from "@/lib/formatting";
@@ -16,7 +16,7 @@ import { HorizontalScrollContainer } from "@/components/horizontal-scroll-contai
 
 type ProductDetail = {
   pricingRules: Array<{ id: string; name: string; conditions: Record<string, unknown> }>;
-  addons: Array<{ addonId: string; pricingRuleId: string | null; isDefault: boolean }>;
+  addons: Array<{ addonId: string; name: string; price: string; pricingRuleId: string | null; isDefault: boolean }>;
   deliveryRules: Array<{ deliveryMethod: "PICKUP" | "LOCAL_DELIVERY" | "COURIER"; stateCode: string }>;
   artworkRequirements: Array<ArtworkRequirement & { pricingRuleId: string | null }>;
 };
@@ -728,8 +728,9 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
 
             {items.map((item, index) => {
               const isUnavailableInState = item.stateAvailability?.status === "UNAVAILABLE_IN_STATE";
-              const quickOrderEligible = isB2B && item.orderable && !item.hasArtworkRequirement && !isUnavailableInState;
-              const expandableEligible = isB2B && item.orderable && item.hasArtworkRequirement && !isUnavailableInState;
+              const isSticker = item.category?.slug === "sticker" || item.slug.includes("sticker") || item.slug.startsWith("sticker-") || item.slug.startsWith("avery-sticker");
+              const quickOrderEligible = isB2B && item.orderable && !item.hasArtworkRequirement && !isUnavailableInState && !isSticker;
+              const expandableEligible = isB2B && item.orderable && item.hasArtworkRequirement && !isUnavailableInState && !isSticker;
               const isAddingToCart = quickActionId === `${item.id}:cart`;
               const isBuyingNow = quickActionId === `${item.id}:buy`;
               const rowError = quickError[item.id];
@@ -782,7 +783,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                         ) : null}
                       </div>
                       <div className="hidden text-sm text-[var(--mc-muted)] sm:block">
-                        <p className="truncate">{item.listingSpecification || item.productSize || "-"}</p>
+                        <p className="truncate">{item.listingSpecification || item.productSize || (isSticker ? "Square-inch pricing · Enter size inside" : "-")}</p>
                         {item.artworkSummary?.fullDesign || item.artworkSummary?.safeArea ? (
                           <p className="mt-0.5 truncate text-xs">
                             {item.artworkSummary?.fullDesign ? <>Full: {item.artworkSummary.fullDesign}</> : null}
@@ -1200,6 +1201,25 @@ function RowActions({
   productHref: (item: Product) => string;
   isLoggedIn?: boolean;
 }) {
+  const isSticker =
+    item.category?.slug === "sticker" ||
+    item.slug.includes("sticker") ||
+    item.slug.startsWith("sticker-") ||
+    item.slug.startsWith("avery-sticker");
+
+  if (isSticker) {
+    return (
+      <div className="flex items-center gap-1.5 whitespace-nowrap">
+        <Link
+          href={productHref(item)}
+          className="inline-flex items-center gap-1 rounded bg-[var(--mc-accent)] px-2.5 py-1 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-xs"
+        >
+          <span>Go inside &amp; write size</span>
+          <ArrowRight size={12} />
+        </Link>
+      </div>
+    );
+  }
   if (isUnavailableInState) {
     return (
       <button
@@ -1213,45 +1233,50 @@ function RowActions({
             additionalNotes: item.stateAvailability?.message || undefined,
           })
         }
-        className="inline-flex items-center justify-center gap-1.5 rounded-full bg-amber-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-700 transition-colors shadow-sm"
+        className="inline-flex items-center gap-1 rounded bg-amber-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-amber-700 transition-colors shadow-xs whitespace-nowrap"
       >
         <span>Request Quote</span>
-        <ArrowRight size={16} />
+        <ArrowRight size={12} />
       </button>
     );
   }
   if (quickOrderEligible) {
     if (quickAddedId === item.id) {
       return (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 border border-emerald-200">
-            <Check size={15} /> Added to basket
+        <div className="flex items-center gap-1.5 whitespace-nowrap">
+          <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200">
+            <Check size={12} /> Added
           </span>
-          <Link href="/cart" className="text-xs font-bold text-[var(--mc-accent)] underline">View basket</Link>
+          <Link href="/cart" className="text-xs font-bold text-[var(--mc-accent)] hover:underline">
+            View basket
+          </Link>
         </div>
       );
     }
     return (
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          disabled={Boolean(quickActionId)}
-          onClick={() => void quickOrder(item, true)}
-          className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <Zap size={15} />
-          {isBuyingNow ? "Starting..." : "Buy now"}
-        </button>
+      <div className="flex items-center gap-1.5 whitespace-nowrap">
         <button
           type="button"
           disabled={Boolean(quickActionId)}
           onClick={() => void quickOrder(item, false)}
-          className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-4 py-2.5 text-sm font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center gap-1 rounded bg-[var(--mc-accent)] px-2.5 py-1 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-xs disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <ShoppingBag size={15} />
-          {isAddingToCart ? "Adding..." : "Add to basket"}
+          <ShoppingBag size={12} />
+          <span>{isAddingToCart ? "..." : "Add"}</span>
         </button>
-        <Link href={productHref(item)} className="text-xs font-bold text-[var(--mc-muted)] underline hover:text-[var(--mc-accent)]">
+        <button
+          type="button"
+          disabled={Boolean(quickActionId)}
+          onClick={() => void quickOrder(item, true)}
+          className="inline-flex items-center gap-1 rounded border border-[var(--mc-line)] bg-white px-2 py-1 text-xs font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors disabled:cursor-not-allowed disabled:opacity-60 shadow-xs"
+        >
+          <Zap size={12} />
+          <span>{isBuyingNow ? "..." : "Buy"}</span>
+        </button>
+        <Link
+          href={productHref(item)}
+          className="text-xs font-bold text-[var(--mc-muted)] hover:text-[var(--mc-accent)] hover:underline"
+        >
           Details
         </Link>
       </div>
@@ -1259,15 +1284,22 @@ function RowActions({
   }
   if (expandableEligible) {
     return (
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-1.5 whitespace-nowrap">
         <button
           type="button"
           onClick={() => setExpandedId(isExpanded ? null : item.id)}
-          className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm"
+          className="inline-flex items-center gap-1 rounded bg-[var(--mc-accent)] px-2.5 py-1 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-xs"
         >
-          {isExpanded ? "Close" : "Order now"} <ArrowRight size={16} className={isExpanded ? "rotate-90 transition-transform" : "transition-transform"} />
+          <span>{isExpanded ? "Close" : "Order now"}</span>
+          <ArrowRight
+            size={12}
+            className={isExpanded ? "rotate-90 transition-transform" : "transition-transform"}
+          />
         </button>
-        <Link href={productHref(item)} className="text-xs font-bold text-[var(--mc-muted)] underline hover:text-[var(--mc-accent)]">
+        <Link
+          href={productHref(item)}
+          className="text-xs font-bold text-[var(--mc-muted)] hover:text-[var(--mc-accent)] hover:underline"
+        >
           Details
         </Link>
       </div>
@@ -1276,9 +1308,10 @@ function RowActions({
   return (
     <Link
       href={productHref(item)}
-      className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm"
+      className="inline-flex items-center gap-1 rounded bg-[var(--mc-accent)] px-2.5 py-1 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-xs whitespace-nowrap"
     >
-      Configure <ArrowRight size={16} />
+      <span>Configure</span>
+      <ArrowRight size={12} />
     </Link>
   );
 }
@@ -1492,11 +1525,20 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
   const [loadingDetails, setLoadingDetails] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [ruleId, setRuleId] = useState<string | null>(null);
+  const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([]);
   const [quantity, setQuantity] = useState(1000);
   const [artworks, setArtworks] = useState<Record<string, UploadedArtwork>>({});
   const [submitting, setSubmitting] = useState<"cart" | "buy" | null>(null);
   const [submitError, setSubmitError] = useState("");
+  const [estimatedPrice, setEstimatedPrice] = useState<string | null>(null);
+  const [calculating, setCalculating] = useState(false);
   const minQuantity = isSpecialQuantityProduct(item.category?.slug ?? null, item.slug) ? 500 : 1000;
+
+  const isSticker =
+    item.category?.slug === "sticker" ||
+    item.slug.includes("sticker") ||
+    item.slug.startsWith("sticker-") ||
+    item.slug.startsWith("avery-sticker");
 
   useEffect(() => {
     let active = true;
@@ -1513,11 +1555,53 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
           const conditionQuantity = rule.conditions?.quantity;
           setQuantity(conditionQuantity ? Number(conditionQuantity) : normalizeProductQuantity(undefined, item.category?.slug ?? null, item.slug).normalizedQuantity);
         }
+        if (data.addons?.length) {
+          const scoped = rule ? data.addons.filter((addon) => addon.pricingRuleId === rule.id) : [];
+          const list = scoped.length ? scoped : data.addons.filter((addon) => addon.pricingRuleId === null);
+          setSelectedAddonIds(list.filter((addon) => addon.isDefault).map((addon) => addon.addonId));
+        }
       })
       .catch((caught) => { if (active) setLoadError(caught instanceof Error ? caught.message : "Could not load this product's options"); })
       .finally(() => { if (active) setLoadingDetails(false); });
     return () => { active = false; };
   }, [item.category?.slug, item.id, item.slug]);
+
+  const availableAddons = useMemo(() => {
+    if (!details?.addons?.length) return [];
+    const scoped = details.addons.filter((addon) => addon.pricingRuleId === ruleId);
+    return scoped.length ? scoped : details.addons.filter((addon) => addon.pricingRuleId === null);
+  }, [details?.addons, ruleId]);
+
+  useEffect(() => {
+    if (!details || !ruleId || isSticker) return;
+    const controller = new AbortController();
+    setCalculating(true);
+    const timer = setTimeout(() => {
+      fetch("/api/pricing/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: item.id,
+          quantity,
+          options: { pricingRuleId: ruleId },
+          addonIds: selectedAddonIds,
+        }),
+        signal: controller.signal,
+      })
+        .then((res) => res.json())
+        .then((payload) => {
+          if (payload?.success && payload?.data?.calculatedAmount) {
+            setEstimatedPrice(payload.data.calculatedAmount);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setCalculating(false));
+    }, 120);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [details, isSticker, item.id, quantity, ruleId, selectedAddonIds]);
 
   const requirement = details?.artworkRequirements.find((row) => row.pricingRuleId === ruleId) ?? details?.artworkRequirements.find((row) => !row.pricingRuleId) ?? null;
   const slots = requirement?.slots?.length ? requirement.slots : [];
@@ -1536,7 +1620,13 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
     setSubmitting(checkout ? "buy" : "cart");
     setSubmitError("");
     const artworkIds = Object.fromEntries(Object.entries(artworks).map(([slotKey, artwork]) => [slotKey, artwork.id]));
-    const configuration = { quantity: String(quantity), pricingRuleId: ruleId, ...(Object.keys(artworkIds).length ? { artworkIds } : {}), ...(artworkIds.MAIN ? { artworkId: artworkIds.MAIN } : {}) };
+    const configuration = {
+      quantity: String(quantity),
+      pricingRuleId: ruleId,
+      addonIds: selectedAddonIds,
+      ...(Object.keys(artworkIds).length ? { artworkIds } : {}),
+      ...(artworkIds.MAIN ? { artworkId: artworkIds.MAIN } : {}),
+    };
     try {
       const response = await fetch("/api/cart/items", {
         method: "POST",
@@ -1559,103 +1649,223 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
     }
   }
 
-  if (loadingDetails) return <p className="text-sm text-[var(--mc-muted)]">Loading order options&hellip;</p>;
-  if (!details || loadError) return <p className="text-sm font-semibold text-[#a53025]">{loadError || "Could not load this product's options."}</p>;
+  if (loadingDetails) return <p className="text-xs text-[var(--mc-muted)]">Loading options&hellip;</p>;
+  if (!details || loadError) return <p className="text-xs font-semibold text-[#a53025]">{loadError || "Could not load options."}</p>;
+
+  if (isSticker) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-2.5 py-1 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">Custom Size Required</span>
+          <span className="text-slate-700">Stickers are priced by square inches (width &times; height). Please go inside to write custom dimensions and order.</span>
+        </div>
+        <Link
+          href={`/catalog/${item.slug}`}
+          className="inline-flex items-center gap-1 rounded bg-[var(--mc-accent)] px-3 py-1 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-xs shrink-0"
+        >
+          <span>Go inside &amp; write size</span>
+          <ArrowRight size={12} />
+        </Link>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-2.5">
-      {details.pricingRules.length > 1 ? (
-        <div>
-          <p className="mb-1.5 text-xs font-bold uppercase text-[var(--mc-muted)]">Card stock and print</p>
-          <div className="flex flex-wrap gap-1.5">
-            {details.pricingRules.map((rule) => (
-              <button key={rule.id} type="button" onClick={() => setRuleId(rule.id)} className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${ruleId === rule.id ? "border-[var(--mc-accent)] bg-[var(--mc-accent)] text-white" : "border-[var(--mc-line)] bg-white text-[var(--mc-ink)] hover:bg-[var(--mc-surface)]"}`}>
-                {rule.name}
-              </button>
-            ))}
+    <div className="space-y-1">
+      <div className="flex flex-wrap items-center gap-2 py-0.5 text-xs">
+        {/* Size / Stock */}
+        {details.pricingRules.length > 1 ? (
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-[11px] font-bold text-slate-500 uppercase">Stock/Side:</span>
+            <select
+              value={ruleId ?? ""}
+              onChange={(e) => setRuleId(e.target.value)}
+              className="h-7 rounded border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-900 focus:border-[var(--mc-accent)] outline-none"
+            >
+              {details.pricingRules.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : item.productSize ? (
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-[11px] font-bold text-slate-500 uppercase">Size:</span>
+            <span className="inline-flex items-center h-7 rounded border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700">
+              {item.productSize}
+            </span>
+          </div>
+        ) : null}
+
+        {/* Add-ons in line of quantity */}
+        {availableAddons.length > 0 ? (
+          <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+            {availableAddons.map((addon) => {
+              const isChecked = selectedAddonIds.includes(addon.addonId);
+              return (
+                <label
+                  key={addon.addonId}
+                  className={`inline-flex items-center gap-1 h-7 rounded border px-2 text-xs font-medium cursor-pointer select-none transition-colors ${
+                    isChecked
+                      ? "border-[var(--mc-accent)] bg-blue-50 text-[var(--mc-ink)] font-semibold"
+                      : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => {
+                      setSelectedAddonIds((current) =>
+                        current.includes(addon.addonId)
+                          ? current.filter((id) => id !== addon.addonId)
+                          : [...current, addon.addonId]
+                      );
+                    }}
+                    className="size-3 accent-[var(--mc-accent)] rounded"
+                  />
+                  <span>{addon.name}</span>
+                  {addon.price && Number(addon.price) > 0 ? (
+                    <span className="text-[11px] text-[var(--mc-accent-dark)] font-bold">
+                      (+₹{addon.price})
+                    </span>
+                  ) : null}
+                </label>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {/* Quantity in line */}
+        <div className="flex items-center gap-1 shrink-0">
+          <span className="text-[11px] font-bold text-slate-500 uppercase">Qty:</span>
+          <div className="inline-flex items-center rounded border border-slate-300 bg-white h-7">
+            <button
+              type="button"
+              disabled={quantity <= minQuantity}
+              onClick={() =>
+                setQuantity((current) =>
+                  stepProductQuantity(current, "DOWN", item.category?.slug ?? null, item.slug)
+                )
+              }
+              className="px-2 text-xs font-bold hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Decrease quantity"
+            >
+              −
+            </button>
+            <span className="min-w-12 text-center text-xs font-bold text-slate-900">
+              {quantity.toLocaleString("en-IN")}
+            </span>
+            <button
+              type="button"
+              disabled={quantity >= MAX_ORDER_QUANTITY}
+              onClick={() =>
+                setQuantity((current) =>
+                  stepProductQuantity(current, "UP", item.category?.slug ?? null, item.slug)
+                )
+              }
+              className="px-2 text-xs font-bold hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Increase quantity"
+            >
+              +
+            </button>
           </div>
         </div>
-      ) : null}
 
-      <div className="flex items-center gap-2.5">
-        <span className="text-xs font-bold uppercase text-[var(--mc-muted)]">Quantity</span>
-        <div className="flex items-center rounded-full border border-[var(--mc-line)] bg-white">
+        {/* Live Rate in line */}
+        <div className="flex items-center gap-1 shrink-0">
+          <span className="text-[11px] font-bold text-slate-500 uppercase">Rate:</span>
+          <span className="text-xs font-extrabold text-[var(--mc-ink)] whitespace-nowrap">
+            {calculating ? "..." : estimatedPrice ? formatInr(estimatedPrice) : item.priceLabel || "-"}
+          </span>
+        </div>
+
+        {/* CDR Artwork upload in line */}
+        {requirement?.artworkRequired ? (
+          <div className="shrink-0">
+            {slots.length ? (
+              slots.map((slot) => (
+                <ArtworkUploader
+                  key={slot.id}
+                  productId={item.id}
+                  pricingRuleId={ruleId}
+                  requirement={requirement}
+                  slot={slot}
+                  compact
+                  inline
+                  configuration={{ quantity: String(quantity) }}
+                  artwork={artworks[slot.slotKey] ?? null}
+                  onUploaded={(uploaded) =>
+                    setArtworks((current) => ({ ...current, [slot.slotKey]: uploaded }))
+                  }
+                  onRemoved={() =>
+                    setArtworks((current) => {
+                      const next = { ...current };
+                      delete next[slot.slotKey];
+                      return next;
+                    })
+                  }
+                />
+              ))
+            ) : (
+              <ArtworkUploader
+                productId={item.id}
+                pricingRuleId={ruleId}
+                requirement={requirement}
+                compact
+                inline
+                configuration={{ quantity: String(quantity) }}
+                artwork={artworks.MAIN ?? null}
+                onUploaded={(uploaded) =>
+                  setArtworks((current) => ({ ...current, MAIN: uploaded }))
+                }
+                onRemoved={() =>
+                  setArtworks((current) => {
+                    const next = { ...current };
+                    delete next.MAIN;
+                    return next;
+                  })
+                }
+              />
+            )}
+          </div>
+        ) : null}
+
+        {/* Action buttons: no big buttons, in one row only */}
+        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
           <button
             type="button"
-            disabled={quantity <= minQuantity}
-            onClick={() => setQuantity((current) => stepProductQuantity(current, "DOWN", item.category?.slug ?? null, item.slug))}
-            className="grid size-7 place-items-center hover:bg-[var(--mc-surface)] disabled:opacity-40 disabled:cursor-not-allowed"
-            aria-label="Decrease quantity"
+            disabled={!artworkReady || submitting !== null || quantity <= 0}
+            onClick={() => void submit(false)}
+            title={!artworkReady ? "Upload CDR artwork to enable ordering" : undefined}
+            className="inline-flex items-center gap-1 h-7 px-2.5 rounded bg-[var(--mc-accent)] text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
           >
-            −
+            <ShoppingBag size={12} />
+            <span>{submitting === "cart" ? "Adding..." : "Add to basket"}</span>
           </button>
-          <span className="min-w-14 text-center text-sm font-bold text-[var(--mc-ink)]">{quantity.toLocaleString("en-IN")}</span>
           <button
             type="button"
-            disabled={quantity >= MAX_ORDER_QUANTITY}
-            onClick={() => setQuantity((current) => stepProductQuantity(current, "UP", item.category?.slug ?? null, item.slug))}
-            className="grid size-7 place-items-center hover:bg-[var(--mc-surface)] disabled:opacity-40 disabled:cursor-not-allowed"
-            aria-label="Increase quantity"
+            disabled={!artworkReady || submitting !== null || quantity <= 0}
+            onClick={() => void submit(true)}
+            title={!artworkReady ? "Upload CDR artwork to enable ordering" : undefined}
+            className="inline-flex items-center gap-1 h-7 px-2 rounded border border-slate-300 bg-white text-xs font-bold text-slate-800 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
           >
-            +
+            <Zap size={12} />
+            <span>{submitting === "buy" ? "..." : "Buy"}</span>
           </button>
+          <Link
+            href={`/catalog/${item.slug}`}
+            className="text-xs font-semibold text-slate-500 hover:text-[var(--mc-accent)] hover:underline whitespace-nowrap"
+          >
+            Details &rarr;
+          </Link>
         </div>
-        <span className="text-[11px] text-[var(--mc-muted)]">min {minQuantity.toLocaleString("en-IN")} &bull; max 25,000</span>
       </div>
 
-      {requirement?.artworkRequired ? (
-        <div className="space-y-2">
-          {slots.length ? slots.map((slot) => (
-            <ArtworkUploader
-              key={slot.id}
-              productId={item.id}
-              pricingRuleId={ruleId}
-              requirement={requirement}
-              slot={slot}
-              compact
-              configuration={{ quantity: String(quantity) }}
-              artwork={artworks[slot.slotKey] ?? null}
-              onUploaded={(uploaded) => setArtworks((current) => ({ ...current, [slot.slotKey]: uploaded }))}
-              onRemoved={() => setArtworks((current) => { const next = { ...current }; delete next[slot.slotKey]; return next; })}
-            />
-          )) : (
-            <ArtworkUploader
-              productId={item.id}
-              pricingRuleId={ruleId}
-              requirement={requirement}
-              compact
-              configuration={{ quantity: String(quantity) }}
-              artwork={artworks.MAIN ?? null}
-              onUploaded={(uploaded) => setArtworks((current) => ({ ...current, MAIN: uploaded }))}
-              onRemoved={() => setArtworks((current) => { const next = { ...current }; delete next.MAIN; return next; })}
-            />
-          )}
-        </div>
+      {submitError ? <p className="text-xs font-semibold text-[#a53025]">{submitError}</p> : null}
+      {!artworkReady && requirement?.artworkRequired ? (
+        <p className="text-[11px] font-medium text-amber-800">Please upload your CorelDRAW (.cdr) file to enable ordering.</p>
       ) : null}
-
-      {submitError ? <p className="text-sm font-semibold text-[#a53025]">{submitError}</p> : null}
-
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={!artworkReady || submitting !== null}
-          onClick={() => void submit(true)}
-          className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-5 py-2.5 text-sm font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <Zap size={15} />
-          {submitting === "buy" ? "Starting..." : "Buy now"}
-        </button>
-        <button
-          type="button"
-          disabled={!artworkReady || submitting !== null}
-          onClick={() => void submit(false)}
-          className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--mc-line)] bg-white px-4 py-2.5 text-sm font-bold text-[var(--mc-ink)] hover:bg-[var(--mc-surface)] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <ShoppingBag size={15} />
-          {submitting === "cart" ? "Adding..." : "Add to basket"}
-        </button>
-        {!artworkReady ? <p className="w-full text-xs font-medium text-[var(--mc-muted)]">Upload the required artwork to enable ordering.</p> : null}
-      </div>
     </div>
   );
 }
