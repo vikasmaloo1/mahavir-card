@@ -183,6 +183,18 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
         <aside
           role="status"
           aria-live="polite"
+          onMouseEnter={() => {
+            if (toastTimeoutRef.current) {
+              clearTimeout(toastTimeoutRef.current);
+              toastTimeoutRef.current = null;
+            }
+          }}
+          onMouseLeave={() => {
+            if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+            toastTimeoutRef.current = setTimeout(() => {
+              setToast(null);
+            }, 5000);
+          }}
           className={`fixed bottom-5 right-4 z-50 flex w-[calc(100%-2rem)] max-w-md items-start gap-3.5 rounded-2xl border p-4 shadow-2xl backdrop-blur-md transition-all duration-300 sm:top-6 sm:bottom-auto sm:right-6 animate-in fade-in slide-in-from-bottom-5 sm:slide-in-from-top-5 ${
             toast.type === "success"
               ? "border-emerald-300 bg-white/95 text-emerald-950 shadow-emerald-900/15 ring-2 ring-emerald-500/20"
