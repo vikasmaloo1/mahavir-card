@@ -270,7 +270,8 @@ export function TaxInvoiceDocument({
         </div>
 
         {/* Itemized Table with Faded Watermark - Expanded to fill vertical space */}
-        <div className="relative my-0.5 border border-black flex-1 flex flex-col justify-between min-h-0 overflow-hidden">
+        {/* No overflow-hidden here: the wrapper must never clip the tfoot totals (G.TOTAL). The filler row below is a small floor; the table's height:100% distributes any leftover space to it. */}
+        <div className="relative my-0.5 border border-black flex-1 flex flex-col justify-between min-h-0">
           {/* Faded Watermark Emblem in Background */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.06] overflow-hidden">
             <div className="w-[50mm] h-[50mm] relative rounded-full overflow-hidden">
@@ -341,12 +342,14 @@ export function TaxInvoiceDocument({
                 <td className="border-r border-black">
                   <div
                     style={{
+                      // Floor only. Kept small on the letter pad layouts, where 70mm of the page is reserved
+                      // for the pre-printed stationery and a large fixed gap pushed the totals off the sheet.
                       height: isA5
                         ? isLetterPad
-                          ? `${Math.max(10, 48 - data.items.length * 8)}mm`
+                          ? `${Math.max(4, 24 - data.items.length * 6)}mm`
                           : `${Math.max(12, 58 - data.items.length * 8)}mm`
                         : isLetterPad
-                          ? `${Math.max(30, 108 - data.items.length * 10)}mm`
+                          ? `${Math.max(10, 70 - data.items.length * 10)}mm`
                           : `${Math.max(30, 114 - data.items.length * 10)}mm`,
                     }}
                   />

@@ -26,13 +26,14 @@ const TOAST_EVENT = "mc-toast-event";
 export function showToast(options: Omit<ToastItem, "id">) {
   if (typeof window === "undefined") return;
   const id = "toast_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now();
-  // Toasts with action buttons get 10s default so customers have ample time to read and click
-  const defaultDuration = options.durationMs ?? (options.action ? 10000 : options.type === "error" ? 8000 : 6000);
+  // If the notification has an action button (e.g. View basket), do NOT auto-dismiss (duration 0).
+  // Otherwise, default to 10s for informational alerts.
+  const defaultDuration = options.action ? 0 : options.type === "error" ? 10000 : 8000;
   window.dispatchEvent(
     new CustomEvent<ToastItem>(TOAST_EVENT, {
       detail: {
         id,
-        durationMs: defaultDuration,
+        durationMs: options.durationMs !== undefined ? options.durationMs : defaultDuration,
         ...options,
       },
     })
@@ -88,6 +89,13 @@ export function ToastContainer() {
 function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => void }) {
   const [isHovered, setIsHovered] = useState(false);
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onDismissRef = React.useRef(onDismiss);
+  onDismissRef.current = onDismiss;
+
+  // If toast has an action button (like "View basket →"), NEVER auto-dismiss!
+  // It stays until the user clicks the action button or the close (X) button.
+  const hasAction = Boolean(toast.action);
+  const shouldAutoDismiss = !hasAction && Boolean(toast.durationMs && toast.durationMs > 0);
   const duration = toast.durationMs && toast.durationMs > 0 ? toast.durationMs : 8000;
 
   const clearTimer = useCallback(() => {
@@ -102,18 +110,20 @@ function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => vo
       clearTimer();
       if (delayMs > 0 && delayMs !== Infinity) {
         timerRef.current = setTimeout(() => {
-          onDismiss();
+          onDismissRef.current();
         }, delayMs);
       }
     },
-    [clearTimer, onDismiss]
+    [clearTimer]
   );
 
-  // Initial countdown
+  // Initial countdown ONLY for non-actionable toasts
   useEffect(() => {
-    startTimer(duration);
+    if (shouldAutoDismiss) {
+      startTimer(duration);
+    }
     return () => clearTimer();
-  }, [duration, startTimer, clearTimer]);
+  }, [shouldAutoDismiss, duration, startTimer, clearTimer]);
 
   // When mouse enters anywhere in the toast: cancel dismiss timer completely
   const handleMouseEnter = () => {
@@ -121,10 +131,12 @@ function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => vo
     clearTimer();
   };
 
-  // When mouse leaves: resume a generous 5-second timer
+  // When mouse leaves: resume a generous 6-second timer only if it is auto-dismissable
   const handleMouseLeave = () => {
     setIsHovered(false);
-    startTimer(5000);
+    if (shouldAutoDismiss) {
+      startTimer(6000);
+    }
   };
 
   return (
