@@ -141,7 +141,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
   const router = useRouter();
   const [items, setItems] = useState<Product[]>([]);
   const [quickActionId, setQuickActionId] = useState<string | null>(null);
-  const [quickAddedId, setQuickAddedId] = useState<string | null>(null);
+  const [addedProductIds, setAddedProductIds] = useState<Set<string>>(new Set());
   const [quickError, setQuickError] = useState<Record<string, string>>({});
   const [orderHistory, setOrderHistory] = useState<OrderHistoryEntry[]>([]);
   const [orderHistoryPage, setOrderHistoryPage] = useState(1);
@@ -520,14 +520,13 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
       if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "Could not add this product to your basket");
 
       if (checkout) { router.push("/checkout"); return; }
-      setQuickAddedId(item.id);
+      setAddedProductIds((prev) => new Set([...prev, item.id]));
       showToast.success(
         "Added to basket successfully!",
         `${item.name} added to your basket.`,
         { action: { label: "View basket →", href: "/cart" } }
       );
       refreshCartProductIds();
-      window.setTimeout(() => setQuickAddedId((current) => (current === item.id ? null : current)), 12000);
     } catch (caught) {
       setQuickError((current) => ({ ...current, [item.id]: caught instanceof Error ? caught.message : "Could not add this product to your basket" }));
     } finally {
@@ -749,7 +748,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                   quickOrderEligible={quickOrderEligible}
                   expandableEligible={expandableEligible}
                   isExpanded={isExpanded}
-                  quickAddedId={quickAddedId}
+                  isAdded={addedProductIds.has(item.id)}
                   quickActionId={quickActionId}
                   isBuyingNow={isBuyingNow}
                   isAddingToCart={isAddingToCart}
@@ -833,7 +832,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                     </div>
                     {isExpanded ? (
                       <div className="border-t-2 border-[var(--mc-accent)]/20 bg-[#f8fbfe] p-4 sm:p-6 shadow-inner transition-all">
-                        <InlineOrderPanel item={item} onAdded={() => { setExpandedId(null); refreshCartProductIds(); }} />
+                        <InlineOrderPanel item={item} onAdded={() => { setExpandedId(null); setAddedProductIds((prev) => new Set([...prev, item.id])); refreshCartProductIds(); }} />
                       </div>
                     ) : null}
                   </div>
@@ -915,7 +914,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                 </article>
                 {isExpanded ? (
                   <div className="border-t border-[var(--mc-line)] p-4">
-                    <InlineOrderPanel item={item} onAdded={() => { setExpandedId(null); refreshCartProductIds(); }} />
+                    <InlineOrderPanel item={item} onAdded={() => { setExpandedId(null); setAddedProductIds((prev) => new Set([...prev, item.id])); refreshCartProductIds(); }} />
                   </div>
                 ) : null}
                 </div>
@@ -1203,7 +1202,7 @@ function RowActions({
   quickOrderEligible,
   expandableEligible,
   isExpanded,
-  quickAddedId,
+  isAdded = false,
   quickActionId,
   isBuyingNow,
   isAddingToCart,
@@ -1219,7 +1218,7 @@ function RowActions({
   quickOrderEligible: boolean;
   expandableEligible: boolean;
   isExpanded: boolean;
-  quickAddedId: string | null;
+  isAdded?: boolean;
   quickActionId: string | null;
   isBuyingNow: boolean;
   isAddingToCart: boolean;
@@ -1251,7 +1250,7 @@ function RowActions({
     );
   }
   if (quickOrderEligible) {
-    const isAddedRecently = quickAddedId === item.id;
+    const isAddedRecently = isAdded;
     return (
       <div className="flex items-center gap-1.5 whitespace-nowrap">
         {isAddedRecently || inCart ? (

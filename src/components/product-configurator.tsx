@@ -263,7 +263,6 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
         return;
       }
       setJustAdded(true);
-      setTimeout(() => setJustAdded(false), 2500);
       showToast.success(
         kind === "QUOTE" ? "Added to quote request!" : "Added to basket successfully!",
         `${product.name} (${Number(quantity).toLocaleString("en-IN")} pcs) added to your ${kind === "QUOTE" ? "quote request" : "basket"}.`,
@@ -628,7 +627,7 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
                 {justAdded ? (
                   <>
                     <Check size={16} className="text-emerald-600" />
-                    <span>Added to basket!</span>
+                    <span>Added to basket! · Add more</span>
                   </>
                 ) : isAdding ? (
                   <span>Adding...</span>

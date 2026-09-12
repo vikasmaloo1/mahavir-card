@@ -26,15 +26,16 @@ const TOAST_EVENT = "mc-toast-event";
 export function showToast(options: Omit<ToastItem, "id">) {
   if (typeof window === "undefined") return;
   const id = "toast_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now();
-  // If the notification has an action button (e.g. View basket), do NOT auto-dismiss (duration 0).
-  // Otherwise, default to 10s for informational alerts.
-  const defaultDuration = options.action ? 0 : options.type === "error" ? 10000 : 8000;
+  // Actionable notifications (e.g. View basket) NEVER auto-dismiss on timer (duration 0).
+  // Non-actionable alerts have a generous 25s window, and freeze permanently upon any hover or touch.
+  const defaultDuration = options.action ? 0 : 25000;
+  const { durationMs, ...restOptions } = options;
   window.dispatchEvent(
     new CustomEvent<ToastItem>(TOAST_EVENT, {
       detail: {
         id,
-        durationMs: options.durationMs !== undefined ? options.durationMs : defaultDuration,
-        ...options,
+        durationMs: durationMs !== undefined ? durationMs : defaultDuration,
+        ...restOptions,
       },
     })
   );
@@ -77,7 +78,7 @@ export function ToastContainer() {
     <aside
       role="region"
       aria-label="Notifications"
-      className="fixed bottom-4 right-4 z-[99999] flex max-w-sm w-[calc(100vw-2rem)] flex-col gap-2.5 sm:bottom-6 sm:right-6 pointer-events-none"
+      className="fixed bottom-4 left-4 right-4 z-[999999] flex max-w-sm w-auto mx-auto flex-col gap-2.5 sm:left-auto sm:right-6 sm:bottom-6 sm:w-full pointer-events-none"
     >
       {toasts.map((toast) => (
         <ToastCard key={toast.id} toast={toast} onDismiss={() => removeToast(toast.id)} />
@@ -87,16 +88,16 @@ export function ToastContainer() {
 }
 
 function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => void }) {
-  const [isHovered, setIsHovered] = useState(false);
+  const [isInteracted, setIsInteracted] = useState(false);
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const onDismissRef = React.useRef(onDismiss);
   onDismissRef.current = onDismiss;
 
   // If toast has an action button (like "View basket →"), NEVER auto-dismiss!
-  // It stays until the user clicks the action button or the close (X) button.
+  // It stays until the user explicitly clicks or dismisses.
   const hasAction = Boolean(toast.action);
   const shouldAutoDismiss = !hasAction && Boolean(toast.durationMs && toast.durationMs > 0);
-  const duration = toast.durationMs && toast.durationMs > 0 ? toast.durationMs : 8000;
+  const duration = toast.durationMs && toast.durationMs > 0 ? toast.durationMs : 25000;
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
@@ -105,48 +106,36 @@ function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => vo
     }
   }, []);
 
-  const startTimer = useCallback(
-    (delayMs: number) => {
-      clearTimer();
-      if (delayMs > 0 && delayMs !== Infinity) {
-        timerRef.current = setTimeout(() => {
-          onDismissRef.current();
-        }, delayMs);
-      }
-    },
-    [clearTimer]
-  );
-
   // Initial countdown ONLY for non-actionable toasts
   useEffect(() => {
     if (shouldAutoDismiss) {
-      startTimer(duration);
+      clearTimer();
+      timerRef.current = setTimeout(() => {
+        onDismissRef.current();
+      }, duration);
     }
     return () => clearTimer();
-  }, [shouldAutoDismiss, duration, startTimer, clearTimer]);
+  }, [shouldAutoDismiss, duration, clearTimer]);
 
-  // When mouse enters anywhere in the toast: cancel dismiss timer completely
-  const handleMouseEnter = () => {
-    setIsHovered(true);
+  // When mouse enters, moves, or user touches on mobile:
+  // PERMANENTLY CANCEL ANY DISMISS TIMER! The notification will NEVER disappear while interacting.
+  const handleInteraction = useCallback(() => {
+    setIsInteracted(true);
     clearTimer();
-  };
-
-  // When mouse leaves: resume a generous 6-second timer only if it is auto-dismissable
-  const handleMouseLeave = () => {
-    setIsHovered(false);
-    if (shouldAutoDismiss) {
-      startTimer(6000);
-    }
-  };
+  }, [clearTimer]);
 
   return (
     <div
       role="status"
       aria-live="polite"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={handleInteraction}
+      onMouseMove={handleInteraction}
+      onPointerEnter={handleInteraction}
+      onPointerDown={handleInteraction}
+      onTouchStart={handleInteraction}
+      onTouchMove={handleInteraction}
       className={`pointer-events-auto relative overflow-hidden flex items-start gap-3 rounded-xl border p-3.5 shadow-xl backdrop-blur-md transition-all duration-200 animate-in fade-in slide-in-from-bottom-3 ${
-        isHovered ? "shadow-2xl ring-2 ring-[var(--mc-accent)]/30 scale-[1.01]" : ""
+        isInteracted ? "shadow-2xl ring-2 ring-[var(--mc-accent)]/40" : ""
       } ${
         toast.type === "success"
           ? "border-emerald-300 bg-white/95 text-emerald-950 shadow-emerald-900/10 ring-1 ring-emerald-500/20"
@@ -183,8 +172,7 @@ function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => vo
             {toast.action.href ? (
               <Link
                 href={toast.action.href}
-                onClick={onDismiss}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--mc-accent)] px-3 py-1.5 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--mc-accent)] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] active:scale-95 transition-all shadow-sm cursor-pointer"
               >
                 <span>{toast.action.label}</span>
                 <ExternalLink size={12} />
@@ -194,9 +182,8 @@ function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => vo
                 type="button"
                 onClick={() => {
                   toast.action?.onClick?.();
-                  onDismiss();
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--mc-accent)] px-3 py-1.5 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-sm cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--mc-accent)] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] active:scale-95 transition-all shadow-sm cursor-pointer"
               >
                 {toast.action.label}
               </button>
@@ -214,8 +201,8 @@ function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => vo
         <X size={15} />
       </button>
 
-      {/* Subtle indicator when timer is paused on hover */}
-      {isHovered && (
+      {/* Subtle indicator when timer is paused on hover/touch */}
+      {isInteracted && (
         <span className="absolute bottom-1 right-2 text-[9px] font-semibold text-slate-400/80 uppercase tracking-wider select-none">
           Paused
         </span>

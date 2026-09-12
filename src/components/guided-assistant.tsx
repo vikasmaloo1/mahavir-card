@@ -25,6 +25,8 @@ export function GuidedAssistant() {
 
 function GuidedAssistantCard({ message }: { message: GuidedAssistantMessage }) {
   const [visible, setVisible] = useState(false);
+  const visibleRef = useRef(false);
+  visibleRef.current = visible;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idleDelay = message.idleDelayMs ?? DEFAULT_IDLE_DELAY_MS;
 
@@ -38,12 +40,16 @@ function GuidedAssistantCard({ message }: { message: GuidedAssistantMessage }) {
     if (dismissed) return;
 
     function scheduleIdleShow() {
+      if (visibleRef.current) return;
       if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => setVisible(true), idleDelay);
+      timerRef.current = setTimeout(() => {
+        setVisible(true);
+      }, idleDelay);
     }
 
     function handleActivity() {
-      setVisible(false);
+      // If notification is already visible, NEVER hide it when user moves cursor or touches to click!
+      if (visibleRef.current) return;
       scheduleIdleShow();
     }
 
