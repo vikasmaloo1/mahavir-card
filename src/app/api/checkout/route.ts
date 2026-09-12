@@ -55,13 +55,18 @@ export async function POST(request: Request) {
 
     const result = await db.transaction(async (tx) => {
       const [existingCustomer] = await tx.select().from(customers).where(eq(customers.userId, session.user.id)).limit(1);
+      const effectiveCustomerType = input.customer.customerType || existingCustomer?.customerType || "B2C";
       const customerValues = {
-        ...input.customer,
+        contactName: input.customer.contactName,
+        companyName: input.customer.companyName,
+        phone: input.customer.phone,
         email: session.user.email,
         city: input.address.city,
         state: input.address.state,
         stateCode: input.address.stateCode,
-        ...(existingCustomer ? {} : { creditEnabled: true }),
+        ...(existingCustomer
+          ? (effectiveCustomerType === "B2B" && existingCustomer.customerType !== "B2B" ? { customerType: "B2B", creditEnabled: true } : {})
+          : { customerType: effectiveCustomerType, creditEnabled: effectiveCustomerType === "B2B" }),
         updatedAt: new Date(),
       };
       let customer = existingCustomer

@@ -47,6 +47,7 @@ export async function POST(request: Request) {
       city: input.city,
       state: input.state,
       stateCode: input.stateCode,
+      ...(input.customerType === "B2B" ? { creditEnabled: true } : {}),
       updatedAt: new Date(),
     };
 
@@ -83,6 +84,7 @@ export async function PATCH(request: Request) {
     const targetCustomerType = input.customerType ?? existing.customerType;
     if (targetCustomerType === "B2B" && !input.companyName?.trim()) return jsonError("Company name is required for B2B accounts", 422);
 
+    const isSwitchingToB2B = targetCustomerType === "B2B" && existing.customerType !== "B2B";
     const result = await db.transaction(async (tx) => {
       const [customer] = await tx.update(customers).set({
         contactName: input.contactName,
@@ -93,6 +95,7 @@ export async function PATCH(request: Request) {
         state: input.state,
         stateCode: input.stateCode,
         gstNumber: input.gstNumber?.trim() || null,
+        ...(isSwitchingToB2B ? { creditEnabled: true } : {}),
         ...(input.emailNotificationsEnabled !== undefined ? { emailNotificationsEnabled: input.emailNotificationsEnabled } : {}),
         ...(input.whatsappNotificationsEnabled !== undefined ? { whatsappNotificationsEnabled: input.whatsappNotificationsEnabled } : {}),
         updatedAt: new Date(),

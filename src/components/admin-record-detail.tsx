@@ -436,6 +436,7 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showCreditModal, setShowCreditModal] = useState(false);
   const [ledgerPage, setLedgerPage] = useState(1);
   const LEDGER_PAGE_SIZE = 10;
 
@@ -493,6 +494,13 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
             )}
             <button
               type="button"
+              onClick={() => setShowCreditModal(true)}
+              className="inline-flex items-center gap-1.5 rounded border border-[#2457b8] bg-blue-50/60 px-3.5 py-2 text-xs font-bold text-[#2457b8] hover:bg-blue-100 transition-colors shadow-xs"
+            >
+              Credit &amp; Terms
+            </button>
+            <button
+              type="button"
               onClick={() => setShowAddModal(true)}
               className="inline-flex items-center gap-1.5 rounded bg-emerald-700 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-800 transition-colors shadow-xs"
             >
@@ -548,14 +556,56 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
             </p>
           </div>
 
-          <div className="rounded border border-[#e1e6ee] bg-slate-50/70 p-3">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[#607089]">Credit Eligibility</p>
-            <p className="mt-1 text-base font-semibold text-[#162237]">
-              {customer.creditEnabled ? "Enabled (Allow B2B Credit)" : "Disabled"}
-            </p>
-            <p className="mt-1 text-[11px] text-[#607089]">
-              Payment Terms: {customer.paymentTermsDays ? `${customer.paymentTermsDays} days` : "Immediate"}
-            </p>
+          <div className="rounded border border-[#e1e6ee] bg-slate-50/70 p-3 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#607089]">Credit Eligibility</p>
+                <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${customer.creditEnabled ? "bg-emerald-100 text-emerald-800 border border-emerald-300" : "bg-red-50 text-red-700 border border-red-200"}`}>
+                  {customer.creditEnabled ? "Enabled" : "Disabled"}
+                </span>
+              </div>
+              <p className="mt-1 text-base font-semibold text-[#162237]">
+                {customer.creditEnabled ? "Allow B2B Credit" : "Credit Disabled"}
+              </p>
+              <p className="mt-0.5 text-[11px] text-[#607089]">
+                Terms: {customer.paymentTermsDays ? `${customer.paymentTermsDays} days` : "Immediate"} · Limit: {formattedAmount(customer.creditLimit || 0)}
+              </p>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#e1e6ee] pt-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  const willDisable = customer.creditEnabled;
+                  const promptMsg = willDisable
+                    ? `Disable credit eligibility for ${customer.contactName || customer.companyName}? They will be required to pay upfront and will not be able to order on credit.`
+                    : `Enable credit eligibility for ${customer.contactName || customer.companyName}?`;
+                  if (window.confirm(promptMsg)) {
+                    await mutate(
+                      `/api/admin/customers/${customer.id}`,
+                      {
+                        method: "PATCH",
+                        body: JSON.stringify({ creditEnabled: !willDisable }),
+                      },
+                      `Credit eligibility ${willDisable ? "disabled" : "enabled"} successfully.`
+                    );
+                  }
+                }}
+                className={`inline-flex items-center justify-center rounded px-2.5 py-1 text-xs font-bold transition-colors shadow-2xs ${
+                  customer.creditEnabled
+                    ? "border border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
+                    : "border border-emerald-600 bg-emerald-700 text-white hover:bg-emerald-800"
+                }`}
+              >
+                {customer.creditEnabled ? "Disable Credit" : "Enable Credit"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCreditModal(true)}
+                className="inline-flex items-center justify-center rounded border border-[#c9d2df] bg-white px-2 py-1 text-xs font-semibold text-[#24324a] hover:bg-slate-50 transition-colors shadow-2xs"
+              >
+                Edit Settings
+              </button>
+            </div>
           </div>
 
           <div className="rounded border border-[#e1e6ee] bg-slate-50/70 p-3">
@@ -710,6 +760,18 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
           onSuccess={() => {
             setShowLoginModal(false);
             void mutate(`/api/admin/customers/${customer.id}`, {}, "Storefront login created successfully.");
+          }}
+        />
+      ) : null}
+
+      {/* Edit Credit Settings Modal */}
+      {showCreditModal ? (
+        <EditCreditSettingsModal
+          customer={customer}
+          onClose={() => setShowCreditModal(false)}
+          onSuccess={(msg) => {
+            setShowCreditModal(false);
+            void mutate(`/api/admin/customers/${customer.id}`, {}, msg);
           }}
         />
       ) : null}
@@ -1480,6 +1542,151 @@ function AdjustBalanceModal({
               className="rounded bg-[#2457b8] px-5 py-2 font-bold text-white hover:bg-[#1a4497] disabled:opacity-50"
             >
               {submitting ? "Adjusting..." : "Apply Adjustment"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function EditCreditSettingsModal({
+  customer,
+  onClose,
+  onSuccess,
+}: {
+  customer: Row;
+  onClose: () => void;
+  onSuccess: (message: string) => void;
+}) {
+  const [creditEnabled, setCreditEnabled] = useState(customer.creditEnabled !== false);
+  const [customerType, setCustomerType] = useState(String(customer.customerType || "B2B"));
+  const [creditLimit, setCreditLimit] = useState(String(customer.creditLimit ?? "0"));
+  const [paymentTermsDays, setPaymentTermsDays] = useState(String(customer.paymentTermsDays ?? "0"));
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setError("");
+    setSubmitting(true);
+    try {
+      await adminRequest(`/api/admin/customers/${customer.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          creditEnabled,
+          customerType,
+          creditLimit: Number(creditLimit || 0).toFixed(2),
+          paymentTermsDays: Math.max(0, parseInt(paymentTermsDays || "0", 10)),
+        }),
+      });
+      onSuccess("Customer credit & terms updated successfully.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update credit settings");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+        <div className="flex items-center justify-between border-b pb-3">
+          <div>
+            <h3 className="text-lg font-bold text-[#162237]">Credit &amp; Terms Settings</h3>
+            <p className="text-xs text-[#607089] mt-0.5">{text(customer.contactName || customer.companyName)}</p>
+          </div>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <X size={18} />
+          </button>
+        </div>
+
+        <form onSubmit={submit} className="mt-4 space-y-4 text-xs">
+          <div>
+            <label className="block font-semibold text-slate-700">Credit Eligibility *</label>
+            <div className="mt-1.5 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setCreditEnabled(true)}
+                className={`rounded-lg border p-2.5 text-center font-bold text-xs transition-colors ${
+                  creditEnabled
+                    ? "border-emerald-600 bg-emerald-50 text-emerald-800 ring-2 ring-emerald-600"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                Enabled (Allow Credit)
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreditEnabled(false)}
+                className={`rounded-lg border p-2.5 text-center font-bold text-xs transition-colors ${
+                  !creditEnabled
+                    ? "border-red-600 bg-red-50 text-red-800 ring-2 ring-red-600"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                Disabled (No Credit)
+              </button>
+            </div>
+            <p className="mt-1 text-[11px] text-[#607089]">
+              When enabled, B2B customers can place orders on credit even with ₹0 or insufficient balance.
+            </p>
+          </div>
+
+          <label className="block">
+            <span className="font-semibold text-slate-700">Customer Type</span>
+            <select
+              value={customerType}
+              onChange={(e) => setCustomerType(e.target.value)}
+              className="mt-1 w-full rounded border border-[#c9d2df] p-2.5 outline-none focus:border-[#2457b8]"
+            >
+              <option value="B2B">B2B (Business / Trade)</option>
+              <option value="B2C">B2C (Individual / Retail)</option>
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="font-semibold text-slate-700">Credit Limit (₹)</span>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={creditLimit}
+              onChange={(e) => setCreditLimit(e.target.value)}
+              className="mt-1 w-full rounded border border-[#c9d2df] p-2.5 outline-none focus:border-[#2457b8]"
+            />
+          </label>
+
+          <label className="block">
+            <span className="font-semibold text-slate-700">Payment Terms (Days)</span>
+            <input
+              type="number"
+              min="0"
+              max="365"
+              value={paymentTermsDays}
+              onChange={(e) => setPaymentTermsDays(e.target.value)}
+              placeholder="e.g. 15, 30"
+              className="mt-1 w-full rounded border border-[#c9d2df] p-2.5 outline-none focus:border-[#2457b8]"
+            />
+            <span className="mt-1 block text-[11px] text-[#607089]">Enter 0 for immediate payment upon delivery.</span>
+          </label>
+
+          {error ? <p className="text-xs font-semibold text-red-600">{error}</p> : null}
+
+          <div className="mt-5 flex justify-end gap-2 pt-2 border-t">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded border border-[#c9d2df] px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded bg-[#2457b8] px-5 py-2 font-bold text-white hover:bg-[#1a4497] disabled:opacity-50"
+            >
+              {submitting ? "Saving..." : "Save Credit Settings"}
             </button>
           </div>
         </form>

@@ -1288,6 +1288,8 @@ function ModuleForm({ section, item, products, saving, onSubmit, onCancel }: { s
   const value = (key: string) => asString(section === "payments" ? nested(item ?? {}, `payment.${key}`) : section === "admins" ? nested(item ?? {}, key === "status" ? "admin.status" : `user.${key}`) : item?.[key]);
   const [form, setForm] = useState<Record<string, string>>(() => ({
     name: value("name"), title: value("title"), titleGu: value("titleGu"), titleHi: value("titleHi"), content: value("content"), contentGu: value("contentGu"), contentHi: value("contentHi"), category: value("category") || "GENERAL", slug: value("slug"), description: value("description"), sortOrder: value("sortOrder") || "0", code: value("code"), pricingType: value("pricingType") || "FIXED", priceConfiguration: asJson(item?.priceConfiguration), productId: value("productId"), ruleType: value("ruleType") || "FIXED_PER_REFERENCE_QUANTITY", conditions: asJson(item?.conditions), priceFormula: asJson(item?.priceFormula), baseAmount: asString(object(item?.priceFormula).amount), rateUnit: asString(object(item?.priceFormula).rateUnit) || (object(item?.priceFormula).ratePaisePerSqInch ? "PAISE" : "RUPEES"), rateValue: asString(object(item?.priceFormula).ratePaisePerSqInch ?? object(item?.priceFormula).ratePerSqInch), minimumArea: asString(object(item?.priceFormula).minimumArea), minimumCharge: asString(object(item?.priceFormula).minimumCharge), bladeCharge: asString(object(item?.priceFormula).bladeCharge), referenceQuantity: asString(object(item?.conditions).quantity) || "1", taxRate: value("taxRate") || "18", productionTime: value("productionTime"), deliveryMethod: value("deliveryMethod") || "COURIER", stateCode: value("stateCode") || "GJ", price: value("price"), status: value("status") || defaultStatus(section), notes: value("notes"), internalNotes: value("internalNotes"), contactName: value("contactName"), email: value("email"), phone: value("phone"), companyName: value("companyName"), gstNumber: value("gstNumber"), message: value("message"), tone: value("tone") || "INFO", placement: value("placement") || (section === "banners" ? "HOME_HERO_BOTTOM" : "GLOBAL"), animationType: value("animationType") || (section === "banners" ? "FADE" : "MARQUEE"), priority: value("priority") || "NORMAL", subtitle: value("subtitle"), badge: value("badge"), ctaLabel: value("ctaLabel"), ctaUrl: value("ctaUrl"), imageUrl: value("imageUrl"), storageKey: value("storageKey"), linkLabel: value("linkLabel"), linkUrl: value("linkUrl"), startsAt: dateInput(item?.startsAt), endsAt: dateInput(item?.endsAt), method: value("method") || "MANUAL", amount: value("amount"), orderId: value("orderId"), provider: value("provider"), providerOrderId: value("providerOrderId"), providerPaymentId: value("providerPaymentId"), password: "", quantity: "1", unitPrice: "0", itemDescription: "",
+    customerType: value("customerType") || "B2B",
+    creditEnabled: item ? String(item.creditEnabled ?? "true") : "true",
   }));
   const [formError, setFormError] = useState("");
   const toggleValue = (key: string, fallback: boolean) => asBoolean(item?.[key], fallback);
@@ -1388,7 +1390,24 @@ function ModuleFields({ section, form, toggles, products, update, setForm, setTo
           {field("Phone (10-digit mobile)", "phone", { placeholder: "e.g. 9876543210" })}
           {field("Email address", "email", { type: "email", placeholder: "e.g. customer@example.com", required: toggles.createLogin })}
           {field("GST number (optional)", "gstNumber", { placeholder: "e.g. 24AAAAA0000A1Z5" })}
-          {select("Customer type", "customerType", ["B2B", "B2C"])}
+          <label className="block text-sm font-semibold text-[#263753]">
+            <span>Customer type</span>
+            <select
+              value={form.customerType || "B2B"}
+              onChange={(event) => {
+                const nextType = event.target.value;
+                setForm((cur) => ({
+                  ...cur,
+                  customerType: nextType,
+                  ...(!editing && nextType === "B2B" ? { creditEnabled: "true" } : {}),
+                }));
+              }}
+              className="mt-1.5 w-full border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#2457b8]"
+            >
+              <option value="B2B">B2B (Business / Trade)</option>
+              <option value="B2C">B2C (Individual / Retail)</option>
+            </select>
+          </label>
           {field("City", "city", { placeholder: "e.g. Ahmedabad" })}
           <label className="block text-sm font-semibold text-[#263753]">
             <span>State</span>
@@ -1409,7 +1428,17 @@ function ModuleFields({ section, form, toggles, products, update, setForm, setTo
             {field(!editing ? "Opening balance (₹)" : "Available balance (₹)", "availableCredit", { placeholder: "0.00" })}
             {field("Credit limit (₹)", "creditLimit", { placeholder: "0.00" })}
             {field("Payment terms (days)", "paymentTermsDays", { type: "number", placeholder: "0" })}
-            {select("Credit enabled", "creditEnabled", ["false", "true"])}
+            <label className="block text-sm font-semibold text-[#263753]">
+              <span>Credit enabled (B2B Credit)</span>
+              <select
+                value={form.creditEnabled ?? "true"}
+                onChange={update("creditEnabled")}
+                className="mt-1.5 w-full border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#2457b8]"
+              >
+                <option value="true">true (Enabled)</option>
+                <option value="false">false (Disabled)</option>
+              </select>
+            </label>
             {editing ? select("Account status", "status", ["ACTIVE", "INACTIVE"]) : null}
           </div>
         </div>
@@ -1495,8 +1524,13 @@ function buildPayload(section: ModuleKey, form: Record<string, string>, toggles:
   }
   if (section === "delivery") return { productId: form.productId, deliveryMethod: form.deliveryMethod, stateCode: form.stateCode, price: form.price, taxInclusive: toggles.taxInclusive, isActive: toggles.isActive, sortOrder: 0 };
   if (section === "quotes") return editing ? { status: form.status, notes: empty(form.notes) } : { contactName: form.contactName, email: form.email, phone: empty(form.phone), companyName: empty(form.companyName), notes: empty(form.notes), items: [{ description: form.itemDescription, quantity: number(form.quantity), unitPrice: form.unitPrice, configuration: {} }] };
-  if (section === "orders") return { status: form.status, notes: empty(form.notes) };
-  if (section === "customers") return { contactName: form.contactName, companyName: form.companyName, phone: empty(form.phone), email: empty(form.email), gstNumber: empty(form.gstNumber), customerType: form.customerType || "B2C", city: empty(form.city), state: form.stateCode === "RJ" ? "Rajasthan" : "Gujarat", stateCode: form.stateCode || "GJ", creditEnabled: form.creditEnabled === "true", creditLimit: form.creditLimit || "0", availableCredit: form.availableCredit || "0", paymentTermsDays: number(form.paymentTermsDays || "0"), status: form.status, createLogin: toggles.createLogin ?? false, password: form.password };
+  if (section === "customers") {
+    const isB2B = (form.customerType || "B2B") === "B2B";
+    const creditEnabled = form.creditEnabled !== undefined && form.creditEnabled !== ""
+      ? form.creditEnabled === "true"
+      : isB2B;
+    return { contactName: form.contactName, companyName: form.companyName, phone: empty(form.phone), email: empty(form.email), gstNumber: empty(form.gstNumber), customerType: form.customerType || (editing ? "B2C" : "B2B"), city: empty(form.city), state: form.stateCode === "RJ" ? "Rajasthan" : "Gujarat", stateCode: form.stateCode || "GJ", creditEnabled, creditLimit: form.creditLimit || "0", availableCredit: form.availableCredit || "0", paymentTermsDays: number(form.paymentTermsDays || "0"), status: form.status, createLogin: toggles.createLogin ?? false, password: form.password };
+  }
   if (section === "inquiries") return { status: form.status, message: form.message, internalNotes: empty(form.internalNotes) };
   if (section === "payments") return { ...(editing ? {} : { orderId: form.orderId }), method: form.method, amount: form.amount, status: form.status, provider: empty(form.provider), providerOrderId: empty(form.providerOrderId), providerPaymentId: empty(form.providerPaymentId) };
   if (section === "artworks") return { status: form.status, notes: empty(form.notes) };

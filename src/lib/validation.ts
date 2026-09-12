@@ -332,6 +332,7 @@ export const checkoutSchema = z.object({
     contactName: z.string().trim().min(2).max(120),
     companyName: z.string().trim().min(2).max(160),
     phone: z.string().trim().min(8).max(30),
+    customerType: z.enum(["B2B", "B2C"]).optional(),
   }),
   address: z.object({
     line1: z.string().trim().min(3).max(200),

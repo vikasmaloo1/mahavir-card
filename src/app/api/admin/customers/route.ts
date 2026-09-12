@@ -77,7 +77,10 @@ export async function POST(request: Request) {
     const city = typeof body.city === "string" ? body.city.trim() || null : null;
     const gstNumber = typeof body.gstNumber === "string" ? body.gstNumber.trim().toUpperCase() || null : null;
 
-    const creditEnabled = body.creditEnabled === true || body.creditEnabled === "true";
+    const creditEnabled =
+      body.creditEnabled !== undefined && body.creditEnabled !== null && body.creditEnabled !== ""
+        ? (body.creditEnabled === true || body.creditEnabled === "true")
+        : customerType === "B2B";
     const creditLimit = Number(body.creditLimit || 0).toFixed(2);
     const availableCredit = Number(body.availableCredit || 0).toFixed(2);
     const paymentTermsDays = Math.max(0, Number(body.paymentTermsDays || 0));

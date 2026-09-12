@@ -225,6 +225,13 @@
       "when": 1788949360730,
       "tag": "0031_third_gravity",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1789197482198,
+      "tag": "0032_b2b_credit_default",
+      "breakpoints": true
     }
   ]
 }
