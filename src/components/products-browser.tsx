@@ -728,9 +728,8 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
 
             {items.map((item, index) => {
               const isUnavailableInState = item.stateAvailability?.status === "UNAVAILABLE_IN_STATE";
-              const isSticker = item.category?.slug === "sticker" || item.slug.includes("sticker") || item.slug.startsWith("sticker-") || item.slug.startsWith("avery-sticker");
-              const quickOrderEligible = isB2B && item.orderable && !item.hasArtworkRequirement && !isUnavailableInState && !isSticker;
-              const expandableEligible = isB2B && item.orderable && item.hasArtworkRequirement && !isUnavailableInState && !isSticker;
+              const quickOrderEligible = isB2B && item.orderable && !item.hasArtworkRequirement && !isUnavailableInState;
+              const expandableEligible = isB2B && item.orderable && item.hasArtworkRequirement && !isUnavailableInState;
               const isAddingToCart = quickActionId === `${item.id}:cart`;
               const isBuyingNow = quickActionId === `${item.id}:buy`;
               const rowError = quickError[item.id];
@@ -783,7 +782,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                         ) : null}
                       </div>
                       <div className="hidden text-sm text-[var(--mc-muted)] sm:block">
-                        <p className="truncate">{item.listingSpecification || item.productSize || (isSticker ? "Square-inch pricing · Enter size inside" : "-")}</p>
+                        <p className="truncate">{item.listingSpecification || item.productSize || "-"}</p>
                         {item.artworkSummary?.fullDesign || item.artworkSummary?.safeArea ? (
                           <p className="mt-0.5 truncate text-xs">
                             {item.artworkSummary?.fullDesign ? <>Full: {item.artworkSummary.fullDesign}</> : null}
@@ -805,7 +804,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                       </div>
                     </div>
                     {isExpanded ? (
-                      <div className="border-t border-[var(--mc-line)] bg-[var(--mc-surface)] px-3 py-3">
+                      <div className="border-t-2 border-[var(--mc-accent)]/20 bg-[#f8fbfe] p-4 sm:p-6 shadow-inner transition-all">
                         <InlineOrderPanel item={item} onAdded={() => { setExpandedId(null); refreshCartProductIds(); }} />
                       </div>
                     ) : null}
@@ -1201,25 +1200,6 @@ function RowActions({
   productHref: (item: Product) => string;
   isLoggedIn?: boolean;
 }) {
-  const isSticker =
-    item.category?.slug === "sticker" ||
-    item.slug.includes("sticker") ||
-    item.slug.startsWith("sticker-") ||
-    item.slug.startsWith("avery-sticker");
-
-  if (isSticker) {
-    return (
-      <div className="flex items-center gap-1.5 whitespace-nowrap">
-        <Link
-          href={productHref(item)}
-          className="inline-flex items-center gap-1 rounded bg-[var(--mc-accent)] px-2.5 py-1 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-xs"
-        >
-          <span>Go inside &amp; write size</span>
-          <ArrowRight size={12} />
-        </Link>
-      </div>
-    );
-  }
   if (isUnavailableInState) {
     return (
       <button
@@ -1527,11 +1507,18 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
   const [ruleId, setRuleId] = useState<string | null>(null);
   const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([]);
   const [quantity, setQuantity] = useState(1000);
+
+  // Sticker / Custom dimension fields
+  const [width, setWidth] = useState("2");
+  const [height, setHeight] = useState("2");
+  const [bladeCount, setBladeCount] = useState("0");
+
   const [artworks, setArtworks] = useState<Record<string, UploadedArtwork>>({});
   const [submitting, setSubmitting] = useState<"cart" | "buy" | null>(null);
   const [submitError, setSubmitError] = useState("");
   const [estimatedPrice, setEstimatedPrice] = useState<string | null>(null);
   const [calculating, setCalculating] = useState(false);
+
   const minQuantity = isSpecialQuantityProduct(item.category?.slug ?? null, item.slug) ? 500 : 1000;
 
   const isSticker =
@@ -1572,18 +1559,33 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
     return scoped.length ? scoped : details.addons.filter((addon) => addon.pricingRuleId === null);
   }, [details?.addons, ruleId]);
 
+  const stickerArea = useMemo(() => {
+    const w = parseFloat(width);
+    const h = parseFloat(height);
+    if (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) {
+      return (w * h).toFixed(2);
+    }
+    return null;
+  }, [width, height]);
+
   useEffect(() => {
-    if (!details || !ruleId || isSticker) return;
+    if (!details || !ruleId) return;
     const controller = new AbortController();
     setCalculating(true);
     const timer = setTimeout(() => {
+      const options: Record<string, string> = { pricingRuleId: ruleId };
+      if (isSticker) {
+        if (parseFloat(width) > 0) options.width = String(width);
+        if (parseFloat(height) > 0) options.height = String(height);
+        if (parseInt(bladeCount, 10) > 0) options.bladeCount = String(bladeCount);
+      }
       fetch("/api/pricing/calculate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           productId: item.id,
           quantity,
-          options: { pricingRuleId: ruleId },
+          options,
           addonIds: selectedAddonIds,
         }),
         signal: controller.signal,
@@ -1592,16 +1594,19 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
         .then((payload) => {
           if (payload?.success && payload?.data?.calculatedAmount) {
             setEstimatedPrice(payload.data.calculatedAmount);
+            setSubmitError("");
+          } else if (payload?.error?.message) {
+            setEstimatedPrice(null);
           }
         })
         .catch(() => {})
         .finally(() => setCalculating(false));
-    }, 120);
+    }, 150);
     return () => {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [details, isSticker, item.id, quantity, ruleId, selectedAddonIds]);
+  }, [details, isSticker, item.id, quantity, ruleId, selectedAddonIds, width, height, bladeCount]);
 
   const requirement = details?.artworkRequirements.find((row) => row.pricingRuleId === ruleId) ?? details?.artworkRequirements.find((row) => !row.pricingRuleId) ?? null;
   const slots = requirement?.slots?.length ? requirement.slots : [];
@@ -1617,13 +1622,22 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
       setSubmitError("Direct orders above 25,000 units require a custom quotation.");
       return;
     }
+    if (isSticker) {
+      const w = parseFloat(width);
+      const h = parseFloat(height);
+      if (isNaN(w) || w <= 0 || isNaN(h) || h <= 0) {
+        setSubmitError("Please enter valid positive width and height in inches.");
+        return;
+      }
+    }
     setSubmitting(checkout ? "buy" : "cart");
     setSubmitError("");
     const artworkIds = Object.fromEntries(Object.entries(artworks).map(([slotKey, artwork]) => [slotKey, artwork.id]));
-    const configuration = {
+    const configuration: Record<string, unknown> = {
       quantity: String(quantity),
       pricingRuleId: ruleId,
       addonIds: selectedAddonIds,
+      ...(isSticker ? { width: String(width), height: String(height), bladeCount: String(bladeCount || "0") } : {}),
       ...(Object.keys(artworkIds).length ? { artworkIds } : {}),
       ...(artworkIds.MAIN ? { artworkId: artworkIds.MAIN } : {}),
     };
@@ -1649,67 +1663,190 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
     }
   }
 
-  if (loadingDetails) return <p className="text-xs text-[var(--mc-muted)]">Loading options&hellip;</p>;
-  if (!details || loadError) return <p className="text-xs font-semibold text-[#a53025]">{loadError || "Could not load options."}</p>;
+  if (loadingDetails) return <p className="py-4 text-sm text-[var(--mc-muted)]">Loading order options&hellip;</p>;
+  if (!details || loadError) return <p className="py-4 text-sm font-semibold text-[#a53025]">{loadError || "Could not load options."}</p>;
 
-  if (isSticker) {
-    return (
-      <div className="flex flex-wrap items-center justify-between gap-2.5 py-1 text-xs">
+  return (
+    <div className="space-y-4">
+      {/* Header bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/90 pb-3">
         <div className="flex items-center gap-2">
-          <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">Custom Size Required</span>
-          <span className="text-slate-700">Stickers are priced by square inches (width &times; height). Please go inside to write custom dimensions and order.</span>
+          <span className="font-bold text-base text-[var(--mc-ink)]">{item.name}</span>
+          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-[var(--mc-accent)] border border-blue-200">
+            Quick Configure
+          </span>
         </div>
         <Link
           href={`/catalog/${item.slug}`}
-          className="inline-flex items-center gap-1 rounded bg-[var(--mc-accent)] px-3 py-1 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-xs shrink-0"
+          className="text-xs font-bold text-[var(--mc-accent)] hover:underline inline-flex items-center gap-1"
         >
-          <span>Go inside &amp; write size</span>
-          <ArrowRight size={12} />
+          <span>Open full product page</span>
+          <ArrowRight size={13} />
         </Link>
       </div>
-    );
-  }
 
-  return (
-    <div className="space-y-1">
-      <div className="flex flex-wrap items-center gap-2 py-0.5 text-xs">
-        {/* Size / Stock */}
+      {/* Main Options Grid */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* 1. Size / Dimensions */}
+        {isSticker ? (
+          <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-700">Sticker Dimensions</span>
+              {stickerArea ? (
+                <span className="text-[11px] font-bold text-[var(--mc-accent-dark)] bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                  {stickerArea} sq.in
+                </span>
+              ) : null}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[11px] font-semibold text-slate-500 block mb-1">Width (inches)</label>
+                <input
+                  type="number"
+                  step="0.25"
+                  min="0.5"
+                  max="100"
+                  value={width}
+                  onChange={(e) => setWidth(e.target.value)}
+                  className="w-full h-9 rounded-lg border border-slate-300 px-2.5 text-xs font-bold text-slate-900 focus:border-[var(--mc-accent)] outline-none"
+                  placeholder="2"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-slate-500 block mb-1">Height (inches)</label>
+                <input
+                  type="number"
+                  step="0.25"
+                  min="0.5"
+                  max="100"
+                  value={height}
+                  onChange={(e) => setHeight(e.target.value)}
+                  className="w-full h-9 rounded-lg border border-slate-300 px-2.5 text-xs font-bold text-slate-900 focus:border-[var(--mc-accent)] outline-none"
+                  placeholder="2"
+                />
+              </div>
+            </div>
+            {details?.pricingRules[0]?.conditions && (details.pricingRules[0].conditions as any)?.bladeCharge ? (
+              <div className="pt-1">
+                <label className="text-[11px] font-semibold text-slate-500 block mb-0.5">Half Blades (₹50 / blade)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="50"
+                  value={bladeCount}
+                  onChange={(e) => setBladeCount(e.target.value)}
+                  className="w-full h-8 rounded-lg border border-slate-300 px-2 text-xs font-semibold text-slate-800 focus:border-[var(--mc-accent)] outline-none"
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-2">
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-700 block">Product Size</span>
+            <div className="flex items-center h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800">
+              {item.productSize || item.listingSpecification || "Standard Size (3.5 × 2 in)"}
+            </div>
+            <p className="text-[11px] text-slate-500">Standard offset print die cut</p>
+          </div>
+        )}
+
+        {/* 2. Paper Stock / Printing Rule */}
         {details.pricingRules.length > 1 ? (
-          <div className="flex items-center gap-1 shrink-0">
-            <span className="text-[11px] font-bold text-slate-500 uppercase">Stock/Side:</span>
+          <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-2">
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-700 block">Paper Stock &amp; Print</span>
             <select
               value={ruleId ?? ""}
               onChange={(e) => setRuleId(e.target.value)}
-              className="h-7 rounded border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-900 focus:border-[var(--mc-accent)] outline-none"
+              className="w-full h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-900 focus:border-[var(--mc-accent)] outline-none"
             >
-              {details.pricingRules.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
+              {details.pricingRules.map((rule) => (
+                <option key={rule.id} value={rule.id}>
+                  {rule.name}
                 </option>
               ))}
             </select>
+            <p className="text-[11px] text-slate-500">Selected printing specification</p>
           </div>
-        ) : item.productSize ? (
-          <div className="flex items-center gap-1 shrink-0">
-            <span className="text-[11px] font-bold text-slate-500 uppercase">Size:</span>
-            <span className="inline-flex items-center h-7 rounded border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700">
-              {item.productSize}
-            </span>
+        ) : (
+          <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-2">
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-700 block">Paper Stock</span>
+            <div className="flex items-center h-9 px-3 rounded-lg bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 truncate">
+              {details.pricingRules[0]?.name || item.name}
+            </div>
+            <p className="text-[11px] text-slate-500">Offset production quality</p>
           </div>
-        ) : null}
+        )}
 
-        {/* Add-ons in line of quantity */}
-        {availableAddons.length > 0 ? (
-          <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+        {/* 3. Quantity Stepper */}
+        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-700">Quantity</span>
+            <span className="text-[11px] text-slate-500">min {minQuantity.toLocaleString("en-IN")} pcs</span>
+          </div>
+          <div className="flex items-center rounded-lg border border-slate-300 bg-white h-9 overflow-hidden">
+            <button
+              type="button"
+              disabled={quantity <= minQuantity}
+              onClick={() =>
+                setQuantity((current) =>
+                  stepProductQuantity(current, "DOWN", item.category?.slug ?? null, item.slug)
+                )
+              }
+              className="w-10 h-full flex items-center justify-center text-sm font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              aria-label="Decrease quantity"
+            >
+              −
+            </button>
+            <span className="flex-1 text-center text-xs font-bold text-slate-900">
+              {quantity.toLocaleString("en-IN")} pcs
+            </span>
+            <button
+              type="button"
+              disabled={quantity >= MAX_ORDER_QUANTITY}
+              onClick={() =>
+                setQuantity((current) =>
+                  stepProductQuantity(current, "UP", item.category?.slug ?? null, item.slug)
+                )
+              }
+              className="w-10 h-full flex items-center justify-center text-sm font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              aria-label="Increase quantity"
+            >
+              +
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-500">Max limit: 25,000 units</p>
+        </div>
+
+        {/* 4. Live Rate & Estimated Total */}
+        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-2 flex flex-col justify-between">
+          <span className="text-xs font-bold uppercase tracking-wide text-slate-700 block">Total Rate</span>
+          <div>
+            <div className="text-xl font-black text-[var(--mc-ink)]">
+              {calculating ? "Calculating..." : estimatedPrice ? formatInr(estimatedPrice) : item.priceLabel || "-"}
+            </div>
+            <div className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700">
+              <span className="size-1.5 rounded-full bg-emerald-500" />
+              <span>Wholesale Rate (No GST)</span>
+            </div>
+          </div>
+          <span className="text-[10px] text-slate-400">Includes packaging &amp; standard lead time</span>
+        </div>
+      </div>
+
+      {/* Add-ons Row */}
+      {availableAddons.length > 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-2.5">
+          <span className="text-xs font-bold uppercase tracking-wide text-slate-700 block">Available Finishing / Add-ons</span>
+          <div className="flex flex-wrap gap-2.5">
             {availableAddons.map((addon) => {
               const isChecked = selectedAddonIds.includes(addon.addonId);
               return (
                 <label
                   key={addon.addonId}
-                  className={`inline-flex items-center gap-1 h-7 rounded border px-2 text-xs font-medium cursor-pointer select-none transition-colors ${
+                  className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-medium cursor-pointer select-none transition-colors ${
                     isChecked
-                      ? "border-[var(--mc-accent)] bg-blue-50 text-[var(--mc-ink)] font-semibold"
-                      : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                      ? "border-[var(--mc-accent)] bg-blue-50/80 text-[var(--mc-ink)] font-semibold shadow-2xs"
+                      : "border-slate-300 bg-slate-50/60 text-slate-700 hover:bg-slate-100/70"
                   }`}
                 >
                   <input
@@ -1722,11 +1859,11 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
                           : [...current, addon.addonId]
                       );
                     }}
-                    className="size-3 accent-[var(--mc-accent)] rounded"
+                    className="size-4 accent-[var(--mc-accent)] rounded"
                   />
                   <span>{addon.name}</span>
                   {addon.price && Number(addon.price) > 0 ? (
-                    <span className="text-[11px] text-[var(--mc-accent-dark)] font-bold">
+                    <span className="text-xs text-[var(--mc-accent-dark)] font-bold">
                       (+₹{addon.price})
                     </span>
                   ) : null}
@@ -1734,55 +1871,19 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
               );
             })}
           </div>
-        ) : null}
+        </div>
+      ) : null}
 
-        {/* Quantity in line */}
-        <div className="flex items-center gap-1 shrink-0">
-          <span className="text-[11px] font-bold text-slate-500 uppercase">Qty:</span>
-          <div className="inline-flex items-center rounded border border-slate-300 bg-white h-7">
-            <button
-              type="button"
-              disabled={quantity <= minQuantity}
-              onClick={() =>
-                setQuantity((current) =>
-                  stepProductQuantity(current, "DOWN", item.category?.slug ?? null, item.slug)
-                )
-              }
-              className="px-2 text-xs font-bold hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
-              aria-label="Decrease quantity"
-            >
-              −
-            </button>
-            <span className="min-w-12 text-center text-xs font-bold text-slate-900">
-              {quantity.toLocaleString("en-IN")}
+      {/* CorelDRAW Artwork File Upload */}
+      {requirement?.artworkRequired ? (
+        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-700 block">
+              CorelDRAW (.cdr) Production Artwork
             </span>
-            <button
-              type="button"
-              disabled={quantity >= MAX_ORDER_QUANTITY}
-              onClick={() =>
-                setQuantity((current) =>
-                  stepProductQuantity(current, "UP", item.category?.slug ?? null, item.slug)
-                )
-              }
-              className="px-2 text-xs font-bold hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
-              aria-label="Increase quantity"
-            >
-              +
-            </button>
+            <span className="text-[11px] font-medium text-slate-500">Required format: .CDR</span>
           </div>
-        </div>
-
-        {/* Live Rate in line */}
-        <div className="flex items-center gap-1 shrink-0">
-          <span className="text-[11px] font-bold text-slate-500 uppercase">Rate:</span>
-          <span className="text-xs font-extrabold text-[var(--mc-ink)] whitespace-nowrap">
-            {calculating ? "..." : estimatedPrice ? formatInr(estimatedPrice) : item.priceLabel || "-"}
-          </span>
-        </div>
-
-        {/* CDR Artwork upload in line */}
-        {requirement?.artworkRequired ? (
-          <div className="shrink-0">
+          <div className="space-y-2">
             {slots.length ? (
               slots.map((slot) => (
                 <ArtworkUploader
@@ -1792,8 +1893,10 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
                   requirement={requirement}
                   slot={slot}
                   compact
-                  inline
-                  configuration={{ quantity: String(quantity) }}
+                  configuration={{
+                    quantity: String(quantity),
+                    ...(isSticker ? { width, height } : {}),
+                  }}
                   artwork={artworks[slot.slotKey] ?? null}
                   onUploaded={(uploaded) =>
                     setArtworks((current) => ({ ...current, [slot.slotKey]: uploaded }))
@@ -1813,8 +1916,10 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
                 pricingRuleId={ruleId}
                 requirement={requirement}
                 compact
-                inline
-                configuration={{ quantity: String(quantity) }}
+                configuration={{
+                  quantity: String(quantity),
+                  ...(isSticker ? { width, height } : {}),
+                }}
                 artwork={artworks.MAIN ?? null}
                 onUploaded={(uploaded) =>
                   setArtworks((current) => ({ ...current, MAIN: uploaded }))
@@ -1829,43 +1934,49 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
               />
             )}
           </div>
-        ) : null}
+        </div>
+      ) : null}
 
-        {/* Action buttons: no big buttons, in one row only */}
-        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+      {/* Error / Warning Notice */}
+      {submitError ? (
+        <div role="alert" className="rounded-lg bg-red-50 p-3 text-xs font-semibold text-[#a53025] border border-red-200">
+          {submitError}
+        </div>
+      ) : null}
+      {!artworkReady && requirement?.artworkRequired ? (
+        <div className="rounded-lg bg-amber-50 p-3 text-xs font-medium text-amber-800 border border-amber-200">
+          Please upload your CorelDRAW (.cdr) artwork file above to enable adding to basket.
+        </div>
+      ) : null}
+
+      {/* Bottom Action Footer */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200/90">
+        <div className="text-xs text-slate-600">
+          <span className="font-bold text-slate-900">{quantity.toLocaleString("en-IN")} pcs</span>
+          {isSticker && stickerArea ? <> &bull; <span className="font-semibold">{width}&Prime; &times; {height}&Prime; ({stickerArea} sq.in)</span></> : null}
+          {estimatedPrice ? <> &bull; <span className="font-bold text-[var(--mc-accent-dark)]">{formatInr(estimatedPrice)}</span></> : null}
+        </div>
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             disabled={!artworkReady || submitting !== null || quantity <= 0}
             onClick={() => void submit(false)}
-            title={!artworkReady ? "Upload CDR artwork to enable ordering" : undefined}
-            className="inline-flex items-center gap-1 h-7 px-2.5 rounded bg-[var(--mc-accent)] text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
+            className="inline-flex items-center gap-2 rounded-lg bg-[var(--mc-accent)] px-5 py-2.5 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
           >
-            <ShoppingBag size={12} />
+            <ShoppingBag size={14} />
             <span>{submitting === "cart" ? "Adding..." : "Add to basket"}</span>
           </button>
           <button
             type="button"
             disabled={!artworkReady || submitting !== null || quantity <= 0}
             onClick={() => void submit(true)}
-            title={!artworkReady ? "Upload CDR artwork to enable ordering" : undefined}
-            className="inline-flex items-center gap-1 h-7 px-2 rounded border border-slate-300 bg-white text-xs font-bold text-slate-800 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-xs font-bold text-slate-800 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
           >
-            <Zap size={12} />
-            <span>{submitting === "buy" ? "..." : "Buy"}</span>
+            <Zap size={14} />
+            <span>{submitting === "buy" ? "Starting..." : "Buy now"}</span>
           </button>
-          <Link
-            href={`/catalog/${item.slug}`}
-            className="text-xs font-semibold text-slate-500 hover:text-[var(--mc-accent)] hover:underline whitespace-nowrap"
-          >
-            Details &rarr;
-          </Link>
         </div>
       </div>
-
-      {submitError ? <p className="text-xs font-semibold text-[#a53025]">{submitError}</p> : null}
-      {!artworkReady && requirement?.artworkRequired ? (
-        <p className="text-[11px] font-medium text-amber-800">Please upload your CorelDRAW (.cdr) file to enable ordering.</p>
-      ) : null}
     </div>
   );
 }
