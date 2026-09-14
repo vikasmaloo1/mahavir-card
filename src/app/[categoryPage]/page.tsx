@@ -11,6 +11,10 @@ import { StorefrontHeader } from "@/components/storefront-header";
 import { categoryCopy } from "@/content/category-copy";
 import { getCategoryListing } from "@/lib/category-listing";
 import { seoCategoryByPath, seoCategoryPages } from "@/lib/seo-categories";
+import { getCachedSession } from "@/lib/auth/session";
+import { db } from "@/lib/db/server";
+import { customers } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 const SITE = "https://mahavircard.in";
 
@@ -28,6 +32,7 @@ export async function generateMetadata({ params }: { params: Promise<{ categoryP
   const page = seoCategoryByPath(categoryPage);
   if (!page) return { robots: { index: false, follow: false } };
   const url = `${SITE}/${page.path}`;
+
   return {
     title: { absolute: page.title },
     description: page.description,
@@ -49,6 +54,12 @@ export default async function CategoryLandingPage({ params }: { params: Promise<
   const { categoryPage } = await params;
   const page = seoCategoryByPath(categoryPage);
   if (!page) notFound();
+
+  const session = await getCachedSession();
+  const customer = session?.user?.id
+    ? (await db.select({ customerType: customers.customerType }).from(customers).where(eq(customers.userId, session.user.id)).limit(1))[0]
+    : undefined;
+  const isB2B = customer?.customerType === "B2B";
 
   const listing = await getCategoryListing(page.category);
   const items = listing?.items ?? [];
@@ -119,7 +130,7 @@ export default async function CategoryLandingPage({ params }: { params: Promise<
           <h1 className="mt-2 max-w-3xl text-3xl font-bold leading-tight text-[var(--mc-ink)] sm:text-[2.35rem]">{page.h1}</h1>
           <p className="mt-3 max-w-2xl text-[15px] leading-7 text-[var(--mc-muted)]">{page.description}</p>
           <p className="mt-3 text-sm text-[var(--mc-muted)]">
-            {items.length} product{items.length === 1 ? "" : "s"} · Base prices exclusive of GST ·{" "}
+            {items.length} product{items.length === 1 ? "" : "s"} {!isB2B ? "· Base prices exclusive of GST " : ""}·{" "}
             <Link href={`/products?category=${page.category}`} className="font-semibold text-[var(--mc-accent)] hover:underline">Filter &amp; order online</Link>
           </p>
         </header>

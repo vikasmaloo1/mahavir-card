@@ -461,7 +461,7 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
                   </Link>
                 </div>
                 <p className="mt-1.5 text-slate-600 leading-relaxed">
-                  Sign in or create an account to view prices, calculate totals with GST &amp; delivery, and order.
+                  Sign in or create an account to view prices, calculate live totals and delivery, and order.
                 </p>
                 <Link
                   href={`/login?next=${encodeURIComponent(typeof window !== "undefined" ? window.location.pathname + window.location.search : `/catalog/${product.slug}`)}`}
@@ -500,7 +500,7 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
                     ) : null}
                     {Number(estimate.locationSurcharge?.amount || 0) > 0 ? <div className="flex justify-between"><span>{estimate.locationSurcharge?.label ?? "Location charge"}</span><strong className="text-[#162237]">{money(estimate.locationSurcharge?.amount)}</strong></div> : null}
                     {Number(estimate.delivery?.price || 0) > 0 ? <div className="flex justify-between"><span>Courier</span><strong className="text-[#162237]">{money(estimate.delivery?.price)}</strong></div> : null}
-                    {estimate.taxRate && Number(estimate.taxRate) > 0 && estimate.priceBeforeTax ? (
+                    {estimate.taxRate && Number(estimate.taxRate) > 0 && estimate.priceBeforeTax && product.customerType !== "B2B" ? (
                       <div className="border-t border-[#e2e7ef] pt-1 mt-1 space-y-1">
                         <div className="flex justify-between"><span>Taxable subtotal</span><strong className="text-[#162237]">{money(estimate.priceBeforeTax)}</strong></div>
                         {estimate.taxJurisdictionState === "GJ" ? (

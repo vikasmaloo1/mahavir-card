@@ -4,7 +4,7 @@ import { ArrowRight, Clock3 } from "lucide-react";
 import type { CatalogProduct } from "@/lib/catalog";
 import { ProductImage } from "@/components/product-image";
 
-export function ProductCard({ product }: { product: CatalogProduct & { priceLabel: string; isLoggedIn?: boolean } }) {
+export function ProductCard({ product }: { product: CatalogProduct & { priceLabel: string; isLoggedIn?: boolean; customerType?: "B2C" | "B2B" | null } }) {
   const targetHref = `/catalog/${product.slug}`;
 
   return (
@@ -42,7 +42,9 @@ export function ProductCard({ product }: { product: CatalogProduct & { priceLabe
             {product.isLoggedIn !== false && product.priceLabel !== "Login to view price" ? (
               <>
                 <p className="mt-0.5 text-base font-bold text-slate-900">{product.priceLabel}</p>
-                <p className="text-[10px] text-slate-400">Exclusive of GST</p>
+                {product.customerType !== "B2B" ? (
+                  <p className="text-[10px] text-slate-400">Exclusive of GST</p>
+                ) : null}
               </>
             ) : (
               <Link href="/login" className="mt-1 block text-xs font-bold text-[#1e3a5f] hover:underline">

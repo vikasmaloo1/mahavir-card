@@ -891,13 +891,15 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                         <p className="mt-1 text-[18px] font-bold leading-snug text-slate-950 xl:mt-0">
                           {item.priceLabel}
                         </p>
-                        {item.taxInclusive ? (
-                          <p className="mt-0.5 text-xs text-slate-500">GST included</p>
-                        ) : item.priceState === "STARTING" ? (
-                          <p className="mt-0.5 text-xs font-medium text-slate-500">
-                            GST charged additionally as applicable
-                          </p>
-                        ) : null}
+                        {!isB2B && (
+                          item.taxInclusive ? (
+                            <p className="mt-0.5 text-xs text-slate-500">GST included</p>
+                          ) : item.priceState === "STARTING" ? (
+                            <p className="mt-0.5 text-xs font-medium text-slate-500">
+                              GST charged additionally as applicable
+                            </p>
+                          ) : null
+                        )}
                       </>
                     ) : (
                       <Link href="/login" className="mt-1 block text-xs font-bold text-[var(--mc-accent)] hover:underline xl:mt-0">
@@ -947,9 +949,11 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                 </button>
               </nav>
             ) : null}
-            <p className="border-t border-[var(--mc-line)] pt-4 text-right text-xs font-medium text-[var(--mc-muted)]">
-              Base prices shown above are exclusive of GST. GST charged additionally as applicable.
-            </p>
+            {!isB2B ? (
+              <p className="border-t border-[var(--mc-line)] pt-4 text-right text-xs font-medium text-[var(--mc-muted)]">
+                Base prices shown above are exclusive of GST. GST charged additionally as applicable.
+              </p>
+            ) : null}
           </section>
         ) : null}
         {isB2B && items.length ? (
@@ -1906,7 +1910,7 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
             </div>
             <div className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700">
               <span className="size-1.5 rounded-full bg-emerald-500" />
-              <span>Wholesale Rate (No GST)</span>
+              <span>B2B Wholesale Rate</span>
             </div>
           </div>
           <span className="text-[10px] text-slate-400">Includes packaging &amp; standard lead time</span>

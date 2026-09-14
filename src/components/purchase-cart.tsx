@@ -259,14 +259,18 @@ export function PurchaseCart() {
                 <strong className="text-slate-900">{money(data.summary.deliverySubtotal)}</strong>
               </p>
             ) : null}
-            <p className="flex justify-between border-t border-slate-100 pt-2 font-semibold text-slate-900">
-              <span>Taxable subtotal:</span>
-              <strong>{money(data.summary.priceBeforeTax)}</strong>
-            </p>
-            <p className="flex justify-between">
-              <span>GST (18%):</span>
-              <strong className="text-slate-900">{money(data.summary.tax)}</strong>
-            </p>
+            {Number(data.summary.tax) > 0 ? (
+              <>
+                <p className="flex justify-between border-t border-slate-100 pt-2 font-semibold text-slate-900">
+                  <span>Taxable subtotal:</span>
+                  <strong>{money(data.summary.priceBeforeTax)}</strong>
+                </p>
+                <p className="flex justify-between">
+                  <span>GST (18%):</span>
+                  <strong className="text-slate-900">{money(data.summary.tax)}</strong>
+                </p>
+              </>
+            ) : null}
             {data.summary.roundOff && Math.abs(Number(data.summary.roundOff)) > 0.001 ? (
               <p className="flex justify-between text-xs text-slate-500">
                 <span>Paisa adjustment (Round off):</span>
@@ -278,7 +282,7 @@ export function PurchaseCart() {
           </div>
         ) : null}
       </div>
-      {data.summary.taxInclusive ? (
+      {data.summary.taxInclusive && Number(data.summary.tax) > 0 ? (
         <p className="mt-3 text-[11px] text-slate-400">Total includes all applicable GST/taxes.</p>
       ) : null}
       <Link
