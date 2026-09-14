@@ -1,4 +1,20 @@
 import type { NextConfig } from "next";
+// Legacy /catalog/<category-or-alias> URLs become true 308s here (before rendering), so crawlers never
+// see a streamed 200 shell for them. Product slugs are untouched because they never match an alias.
+// Keep in sync with catalogCategories (src/lib/catalog-routing.ts) and seoCategoryPages (src/lib/seo-categories.ts);
+// next.config cannot import from src/, so the mapping is mirrored here.
+const legacyCategoryAliases: Record<string, string[]> = {
+  "visiting-card-printing-ahmedabad": ["visiting-card", "visiting-cards", "business-cards", "business-card", "cards", "card", "visitingcard", "businesscards"],
+  "premium-visiting-cards-ahmedabad": ["premium-card", "premium-cards", "velvet-cards", "foil-cards", "spot-uv-cards", "luxury-cards"],
+  "art-card-printing-ahmedabad": ["art-card", "art-cards", "artcard", "artcards"],
+  "letterhead-envelope-printing-ahmedabad": ["letterhead-envelope", "letterhead", "letterheads", "envelope", "envelopes", "letterhead-envelopes", "letterheads-envelopes", "stationery", "office-stationery"],
+  "brochure-printing-ahmedabad": ["brochure", "brochures", "pamphlet", "pamphlets", "flyers", "flyer"],
+  "leaflet-printing-ahmedabad": ["leaflet-cover", "leaflet", "leaflets", "cover", "covers"],
+  "sticker-printing-ahmedabad": ["sticker", "stickers", "label", "labels", "labels-stickers", "vinyl-stickers", "roll-labels"],
+};
+const legacyCategoryRedirects = Object.entries(legacyCategoryAliases).flatMap(([landing, aliases]) =>
+  aliases.map((alias) => ({ source: "/catalog/" + alias, destination: "/" + landing, permanent: true })),
+);
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -17,6 +33,7 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      ...legacyCategoryRedirects,
       {
         source: "/catalogue",
         destination: "/products",
@@ -25,41 +42,6 @@ const nextConfig: NextConfig = {
       {
         source: "/catalogue/:slug*",
         destination: "/catalog/:slug*",
-        permanent: true,
-      },
-      {
-        source: "/catalog/visiting-cards",
-        destination: "/products?category=visiting-card",
-        permanent: true,
-      },
-      {
-        source: "/catalog/letterheads",
-        destination: "/products?category=letterhead-envelope",
-        permanent: true,
-      },
-      {
-        source: "/catalog/envelopes",
-        destination: "/products?category=letterhead-envelope",
-        permanent: true,
-      },
-      {
-        source: "/catalog/brochures",
-        destination: "/products?category=brochure",
-        permanent: true,
-      },
-      {
-        source: "/catalog/stickers",
-        destination: "/products?category=sticker",
-        permanent: true,
-      },
-      {
-        source: "/catalog/flyers",
-        destination: "/products?category=brochure",
-        permanent: true,
-      },
-      {
-        source: "/catalog/cards",
-        destination: "/products?category=visiting-card",
         permanent: true,
       },
     ];

@@ -8,6 +8,7 @@ import { CustomerNotices } from "@/components/customer-notices";
 import { MarketingBreadcrumb, MarketingCtaBand, MarketingHero, SectionEyebrow } from "@/components/marketing-page";
 import { ScrollHighlight } from "@/components/scroll-highlight";
 import { catalogCategories } from "@/lib/catalog-routing";
+import { categoryHref } from "@/lib/seo-categories";
 
 export const metadata: Metadata = {
   title: "Commercial Offset Printing in Ahmedabad, Gujarat",
@@ -86,7 +87,7 @@ export default function CommercialOffsetPrintingPage() {
             {catalogCategories.map((category) => (
               <Link
                 key={category.slug}
-                href={`/products?category=${category.slug}`}
+                href={categoryHref(category.slug)}
                 className="group flex items-center justify-between rounded-xl border border-slate-200 bg-[#faf8f5] px-4 py-3.5 shadow-2xs transition hover:border-[#1e3a5f] hover:bg-white hover:shadow-xs"
               >
                 <span className="font-bold text-slate-900 group-hover:text-[#1e3a5f]">{category.name}</span>

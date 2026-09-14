@@ -11,6 +11,7 @@ export default function robots(): MetadataRoute.Robots {
           "/admin/*",
           "/api/",
           "/api/*",
+          "/api-docs",
           "/cart",
           "/checkout",
           "/account",
@@ -18,10 +19,11 @@ export default function robots(): MetadataRoute.Robots {
           "/quote",
           "/login",
           "/design-templates",
+          "/terms-and-conditions",
         ],
       },
     ],
     sitemap: "https://mahavircard.in/sitemap.xml",
+    host: "https://mahavircard.in",
   };
 }
-

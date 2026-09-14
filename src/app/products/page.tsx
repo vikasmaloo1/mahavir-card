@@ -8,6 +8,7 @@ import { Suspense } from "react";
 import { getCachedSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import { catalogCategories, isLegacyCategorySlug, productFiltersToSearchParams, readProductFilters } from "@/lib/catalog-routing";
+import { categoryHref } from "@/lib/seo-categories";
 import { db } from "@/lib/db";
 import { customers } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -22,7 +23,7 @@ export async function generateMetadata({ searchParams }: PageProps<"/products">)
       title: `${category.name} Printing & Rates in Ahmedabad, Gujarat`,
       description: `Commercial ${category.name.toLowerCase()} printing from Mahavir Card in Ahmedabad, Gujarat. Live pricing, custom specifications, and instant CDR upload.`,
       alternates: {
-        canonical: `/products?category=${category.slug}`,
+        canonical: categoryHref(category.slug),
       },
     };
   }
@@ -78,7 +79,7 @@ export default async function ProductsPage({ searchParams }: PageProps<"/product
               "@type": "ListItem",
               position: 3,
               name: catalogCategories.find((c) => c.slug === initialFilters.category)?.name ?? initialFilters.category,
-              item: `https://mahavircard.in/products?category=${initialFilters.category}`,
+              item: `https://mahavircard.in${categoryHref(initialFilters.category)}`,
             },
           ]
         : []),

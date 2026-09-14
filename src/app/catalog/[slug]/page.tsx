@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ArrowRight, Clock3, FileUp, ShieldCheck } from "lucide-react";
 import { and, asc, eq, or } from "drizzle-orm";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { getCachedSession } from "@/lib/auth/session";
 import Link from "next/link";
 
@@ -16,6 +16,7 @@ import { db } from "@/lib/db/server";
 import { artworkRequirements, categories, customers, pricingRules, productImages, products, productVariants } from "@/lib/db/schema";
 import { conciseProductSpecification, deriveStartingPrice, type StartingPrice } from "@/lib/product-listing-pricing";
 import { resolveCategorySlug, safeProductReturnPath } from "@/lib/catalog-routing";
+import { categoryHref } from "@/lib/seo-categories";
 
 export const dynamic = "force-dynamic";
 
@@ -29,22 +30,12 @@ type PageProduct = CatalogProduct &
 
 export async function generateMetadata({ params }: PageProps<"/catalog/[slug]">): Promise<Metadata> {
   const { slug } = await params;
+  // Redirect/404 here, not only in the page body: metadata resolves before streaming starts, so
+  // this is what makes the response a real 308/404 instead of a 200 shell (a soft-404 to Google).
   const categorySlug = resolveCategorySlug(slug);
-  if (categorySlug) {
-    return {
-      title: `${categorySlug.replace(/-/g, " ")} Printing | Mahavir Card`,
-      alternates: {
-        canonical: `/products?category=${categorySlug}`,
-      },
-    };
-  }
+  if (categorySlug) permanentRedirect(categoryHref(categorySlug));
   const product = await getDatabaseCatalogProduct(slug, null);
-  if (!product) {
-    return {
-      title: "Product Details | Mahavir Card",
-      robots: { index: false, follow: false },
-    };
-  }
+  if (!product) notFound();
 
   return {
     title: `${product.name} — ${product.category} Printing in Ahmedabad`,
@@ -154,7 +145,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   const { slug } = await params;
   const query = await searchParams;
   const categorySlug = resolveCategorySlug(slug);
-  if (categorySlug) redirect(`/products?category=${categorySlug}`);
+  if (categorySlug) permanentRedirect(categoryHref(categorySlug));
   const session = await getCachedSession();
   let customerType: "B2C" | "B2B" | null = null;
   if (session?.user?.id) {
@@ -163,12 +154,11 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   }
   const product = await getDatabaseCatalogProduct(slug, customerType);
   if (!product) {
-    const cleanSearch = slug.replace(/[-_]+/g, " ").trim();
-    redirect(`/products?search=${encodeURIComponent(cleanSearch)}`);
+    notFound();
   }
   const descriptor = `${product.category} · Commercial printing`;
   const returnPath = safeProductReturnPath(query.returnTo);
-  const categoryHref = `/products?category=${product.categorySlug}`;
+  const categoryPath = categoryHref(product.categorySlug);
 
   // Derive material finish badges from product characteristics
   const finishes: Array<{ label: string; tone: string }> = [];
@@ -242,7 +232,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
         "@type": "ListItem",
         position: 3,
         name: product.category,
-        item: `https://mahavircard.in/products?category=${product.categorySlug}`,
+        item: `https://mahavircard.in${categoryHref(product.categorySlug)}`,
       },
       {
         "@type": "ListItem",
@@ -274,7 +264,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
               <span>/</span>
               <Link href={returnPath} className="hover:text-[#1e3a5f]">Order now</Link>
               <span>/</span>
-              <Link href={categoryHref} className="hover:text-[#1e3a5f]">{product.category}</Link>
+              <Link href={categoryPath} className="hover:text-[#1e3a5f]">{product.category}</Link>
               <span>/</span>
               <span aria-current="page" className="font-semibold text-slate-900">{product.name}</span>
             </nav>

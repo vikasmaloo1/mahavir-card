@@ -43,19 +43,24 @@ export const metadata: Metadata = {
   },
 };
 
+// Single sitewide LocalBusiness entity. NAP must match the footer and Google Business Profile verbatim.
 const localBusinessJsonLd = {
   "@context": "https://schema.org",
   "@type": ["LocalBusiness", "PrintShop"],
+  "@id": "https://mahavircard.in/#business",
   name: "Mahavir Card",
-  alternateName: "Mahavir Card All Printing Solution",
-  image: "https://mahavircard.in/images/mahavir-print-assortment.png",
+  alternateName: "Mahavir Card All Kind Printing Solution",
+  description: "Commercial offset printing press in Ahmedabad, Gujarat — visiting cards, premium cards, art cards, letterheads, envelopes, brochures, leaflets and stickers with live online rates and CDR artwork upload.",
+  image: ["https://mahavircard.in/images/mahavir-print-assortment.png", "https://mahavircard.in/images/home-hero-printing.jpg"],
   logo: "https://mahavircard.in/icon.png",
   url: "https://mahavircard.in",
-  telephone: "+91-94263-71150",
+  telephone: "+91 94263 71150",
   email: "mahavircard2011@gmail.com",
+  vatID: "24AIUPJ2271L1ZV",
+  taxID: "24AIUPJ2271L1ZV",
   address: {
     "@type": "PostalAddress",
-    streetAddress: "Khadia Golwad, Opp. Jain Digamber Mandir, Old City, Khadia",
+    streetAddress: "Khadia Golwad, Opp. Jain Digamber Mandir",
     addressLocality: "Ahmedabad",
     addressRegion: "Gujarat",
     postalCode: "380001",
@@ -77,6 +82,12 @@ const localBusinessJsonLd = {
   priceRange: "₹₹",
   currenciesAccepted: "INR",
   paymentAccepted: "Cash, UPI, Credit Card, Bank Transfer",
+  areaServed: [
+    { "@type": "City", name: "Ahmedabad" },
+    { "@type": "AdministrativeArea", name: "Gujarat" },
+    { "@type": "AdministrativeArea", name: "Rajasthan" },
+  ],
+  sameAs: ["https://www.instagram.com/mahavircard2011/"],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

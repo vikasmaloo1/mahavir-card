@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { normalizeCategoryHref } from "@/lib/seo-categories";
 import { ArrowRight, ChevronLeft, ChevronRight, MapPin, ReceiptText } from "lucide-react";
 import { useCallback, useEffect, useState, useRef } from "react";
 
@@ -48,9 +49,9 @@ const defaultHeroSlides: HeroSlide[] = [
     subtitle:
       "400 GSM card stocks, velvet soft-touch lamination, selective spot UV gloss, metallic gold foil stamping, and smooth rounded die-cut corners.",
     primaryCtaLabel: "Explore Visiting Cards",
-    primaryCtaUrl: "/products?category=visiting-card",
+    primaryCtaUrl: "/visiting-card-printing-ahmedabad",
     secondaryCtaLabel: "View Premium Cards",
-    secondaryCtaUrl: "/products?category=premium-card",
+    secondaryCtaUrl: "/premium-visiting-cards-ahmedabad",
     imageUrl: "/images/visiting-card-promo.jpg",
     imageAlt: "Luxury foil stamped and velvet coated business cards on studio desk",
     floatingBadgeTitle: "Tactile Luxury",
@@ -65,9 +66,9 @@ const defaultHeroSlides: HeroSlide[] = [
     subtitle:
       "100 GSM Alabaster letterheads, custom flap envelopes, 250 GSM art card brochures, and corporate presentation suites calibrated for commercial distribution.",
     primaryCtaLabel: "Configure Brochures",
-    primaryCtaUrl: "/products?category=brochure",
+    primaryCtaUrl: "/brochure-printing-ahmedabad",
     secondaryCtaLabel: "Letterhead & Envelopes",
-    secondaryCtaUrl: "/products?category=letterhead-envelope",
+    secondaryCtaUrl: "/letterhead-envelope-printing-ahmedabad",
     imageUrl: "/images/banners/banner-stationery-suite.jpg",
     imageAlt: "Executive stationery suite with embossed letterhead, custom envelopes and brochures on slate desk",
     floatingBadgeTitle: "Executive Suite",
@@ -82,7 +83,7 @@ const defaultHeroSlides: HeroSlide[] = [
     subtitle:
       "Avery and standard vinyl adhesive stickers, custom retail boxes, and bottle labels priced by finished square-inch area with automated margin checking.",
     primaryCtaLabel: "Configure Stickers",
-    primaryCtaUrl: "/products?category=sticker",
+    primaryCtaUrl: "/sticker-printing-ahmedabad",
     secondaryCtaLabel: "All Products",
     secondaryCtaUrl: "/products",
     imageUrl: "/images/banners/banner-stickers-packaging.jpg",
@@ -115,7 +116,7 @@ export function HomeHeroSlideshow({ className = "" }: { className?: string }) {
               titleHighlight: parts[1] ? parts[1].trim() : "",
               subtitle: b.subtitle || "Premium printing made simple.",
               primaryCtaLabel: b.ctaLabel || "Order Now",
-              primaryCtaUrl: b.ctaUrl || "/products",
+              primaryCtaUrl: normalizeCategoryHref(b.ctaUrl),
               secondaryCtaLabel: "Explore Printing",
               secondaryCtaUrl: "#categories",
               imageUrl: b.imageUrl || "/images/home-hero-printing.jpg",

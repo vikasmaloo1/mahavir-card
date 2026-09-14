@@ -3,6 +3,9 @@ import { redirect } from "next/navigation";
 
 import { AdminLoginForm } from "@/components/admin-login-form";
 import { getAdminAccess } from "@/lib/permissions";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Admin Login", robots: { index: false, follow: false } };
 
 export default async function AdminLoginPage() {
   const requestHeaders = await headers();

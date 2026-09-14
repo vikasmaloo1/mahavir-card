@@ -30,91 +30,6 @@ export const metadata: Metadata = {
   },
 };
 
-const localBusinessJsonLd = {
-  "@context": "https://schema.org",
-  "@type": ["LocalBusiness", "ProfessionalService"],
-  "@id": "https://mahavircard.in/#business",
-  name: "Mahavir Card",
-  alternateName: "Mahavir Card Offset Printing",
-  image: "https://mahavircard.in/images/home-hero-printing.jpg",
-  logo: "https://mahavircard.in/icon.png",
-  url: "https://mahavircard.in",
-  telephone: "+919426371150",
-  email: "mahavircard2011@gmail.com",
-  priceRange: "₹₹",
-  currenciesAccepted: "INR",
-  paymentAccepted: "Cash, UPI, Credit Card, Debit Card, Net Banking",
-  address: {
-    "@type": "PostalAddress",
-    streetAddress: "Khadia Golwad, Opp. Jain Digamber Mandir",
-    addressLocality: "Ahmedabad",
-    addressRegion: "Gujarat",
-    postalCode: "380001",
-    addressCountry: "IN",
-  },
-  geo: {
-    "@type": "GeoCoordinates",
-    latitude: 23.0232,
-    longitude: 72.5938,
-  },
-  openingHoursSpecification: [
-    {
-      "@type": "OpeningHoursSpecification",
-      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
-      opens: "09:30",
-      closes: "20:30",
-    },
-  ],
-  areaServed: [
-    { "@type": "City", name: "Ahmedabad" },
-    { "@type": "AdministrativeArea", name: "Gujarat" },
-    { "@type": "AdministrativeArea", name: "Rajasthan" },
-    { "@type": "Country", name: "India" },
-  ],
-  hasOfferCatalog: {
-    "@type": "OfferCatalog",
-    name: "Commercial Printing Services",
-    itemListElement: [
-      {
-        "@type": "OfferCatalog",
-        name: "Visiting Cards & Business Cards",
-        itemListElement: [
-          { "@type": "Offer", itemOffered: { "@type": "Service", name: "NT Single Visiting Card Printing" } },
-          { "@type": "Offer", itemOffered: { "@type": "Service", name: "NT Front Back Visiting Card Printing" } },
-          { "@type": "Offer", itemOffered: { "@type": "Service", name: "Tearable Art Card Visiting Cards 250 GSM" } },
-          { "@type": "Offer", itemOffered: { "@type": "Service", name: "400 GSM Thermal Matt Visiting Cards with Spot UV" } },
-          { "@type": "Offer", itemOffered: { "@type": "Service", name: "400 GSM Velvet Business Cards with Foil & Drip-Off" } },
-        ],
-      },
-      {
-        "@type": "OfferCatalog",
-        name: "Brochures, Leaflets & Flyers",
-        itemListElement: [
-          { "@type": "Offer", itemOffered: { "@type": "Service", name: "A4 Art Paper Brochure Printing" } },
-          { "@type": "Offer", itemOffered: { "@type": "Service", name: "A8 250 GSM Tearable Brochure Printing" } },
-          { "@type": "Offer", itemOffered: { "@type": "Service", name: "130 GSM & 170 GSM Leaflet Printing" } },
-        ],
-      },
-      {
-        "@type": "OfferCatalog",
-        name: "Stationery, Letterheads & Envelopes",
-        itemListElement: [
-          { "@type": "Offer", itemOffered: { "@type": "Service", name: "Letterhead Printing (Alabaster & SS Finish)" } },
-          { "@type": "Offer", itemOffered: { "@type": "Service", name: "Custom Envelope & Cover Printing" } },
-        ],
-      },
-      {
-        "@type": "OfferCatalog",
-        name: "Stickers & Product Labels",
-        itemListElement: [
-          { "@type": "Offer", itemOffered: { "@type": "Service", name: "Standard Adhesive Sticker Printing" } },
-          { "@type": "Offer", itemOffered: { "@type": "Service", name: "Avery Sticker Printing (Laminated & Non-Laminated)" } },
-        ],
-      },
-    ],
-  },
-};
-
 export default async function Home() {
   const now = new Date();
   const [categoryRows, images, heroBottomBanners] = await Promise.all([
@@ -155,10 +70,6 @@ export default async function Home() {
 
   return (
     <main className="mc-storefront min-h-screen bg-[#fcfbf9] text-slate-900">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
-      />
       <StorefrontHeader />
       <CustomerNotices placement="HOME" />
 

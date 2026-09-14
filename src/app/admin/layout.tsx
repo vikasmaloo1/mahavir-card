@@ -6,6 +6,9 @@ import type { LucideIcon } from "lucide-react";
 
 import { LogoutButton } from "@/components/logout-button";
 import { getAdminAccess } from "@/lib/permissions";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 type NavLink = readonly [string, string, LucideIcon];
 type NavGroup = { label: string; links: readonly NavLink[] };

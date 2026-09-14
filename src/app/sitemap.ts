@@ -1,84 +1,52 @@
 import type { MetadataRoute } from "next";
+import { and, eq, max } from "drizzle-orm";
 
 import { db } from "@/lib/db/server";
-import { products } from "@/lib/db/schema";
-import { and, eq } from "drizzle-orm";
-import { catalogCategories } from "@/lib/catalog-routing";
+import { categories, products } from "@/lib/db/schema";
+import { seoCategoryPages } from "@/lib/seo-categories";
+
+const SITE = "https://mahavircard.in";
+
+// Bump when the copy on a static page changes. Using `new Date()` here would falsely claim
+// every page changed on every crawl, which Google learns to ignore.
+const STATIC_CONTENT_UPDATED = new Date("2026-09-12T00:00:00+05:30");
+
+const staticPages: Array<{ path: string; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"]; priority: number }> = [
+  { path: "", changeFrequency: "weekly", priority: 1.0 },
+  { path: "/commercial-offset-printing", changeFrequency: "monthly", priority: 0.8 },
+  { path: "/about", changeFrequency: "monthly", priority: 0.6 },
+  { path: "/contact", changeFrequency: "monthly", priority: 0.6 },
+  { path: "/how-it-works", changeFrequency: "monthly", priority: 0.5 },
+  { path: "/artwork-guide", changeFrequency: "monthly", priority: 0.5 },
+  { path: "/faq", changeFrequency: "monthly", priority: 0.5 },
+];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = "https://mahavircard.in";
-
-  const activeProducts = await db
-    .select({ slug: products.slug, updatedAt: products.updatedAt })
+  // Latest product update per category drives each landing page's lastmod.
+  const categoryUpdates = await db
+    .select({ slug: categories.slug, updatedAt: max(products.updatedAt) })
     .from(products)
-    .where(and(eq(products.isActive, true), eq(products.status, "ACTIVE")));
+    .innerJoin(categories, eq(products.categoryId, categories.id))
+    .where(and(eq(products.isActive, true), eq(products.status, "ACTIVE")))
+    .groupBy(categories.slug);
+  const lastProductUpdate = new Map(categoryUpdates.map((row) => [row.slug, row.updatedAt]));
 
   return [
-    {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 1.0,
-    },
-    {
-      url: `${baseUrl}/products`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/commercial-offset-printing`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/about`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
-    {
-      url: `${baseUrl}/contact`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
-    {
-      url: `${baseUrl}/how-it-works`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
-    ...catalogCategories.map((category) => ({
-      url: `${baseUrl}/products?category=${category.slug}`,
-      lastModified: new Date(),
-      changeFrequency: "weekly" as const,
-      priority: 0.8,
+    ...staticPages.map((page) => ({
+      url: `${SITE}${page.path}`,
+      lastModified: STATIC_CONTENT_UPDATED,
+      changeFrequency: page.changeFrequency,
+      priority: page.priority,
     })),
-    ...activeProducts.map((product) => ({
-      url: `${baseUrl}/catalog/${product.slug}`,
-      lastModified: product.updatedAt,
-      changeFrequency: "weekly" as const,
-      priority: 0.7,
-    })),
-    {
-      url: `${baseUrl}/terms`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
-    {
-      url: `${baseUrl}/faq`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
-    {
-      url: `${baseUrl}/artwork-guide`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
+    ...seoCategoryPages.map((page) => {
+      const productUpdate = lastProductUpdate.get(page.category);
+      const productDate = productUpdate ? new Date(productUpdate) : null;
+      return {
+        url: `${SITE}/${page.path}`,
+        lastModified: productDate && productDate > STATIC_CONTENT_UPDATED ? productDate : STATIC_CONTENT_UPDATED,
+        changeFrequency: "weekly" as const,
+        priority: 0.9,
+      };
+    }),
   ];
 }

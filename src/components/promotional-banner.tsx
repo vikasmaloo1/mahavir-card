@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { normalizeCategoryHref } from "@/lib/seo-categories";
 import { ArrowRight, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useState, useRef } from "react";
 
@@ -134,7 +135,7 @@ export function PromotionalBanner({
             {banner.ctaLabel && banner.ctaUrl ? (
               <div className="pt-2">
                 <Link
-                  href={banner.ctaUrl}
+                  href={normalizeCategoryHref(banner.ctaUrl)}
                   className="inline-flex items-center gap-2 rounded-xl bg-[#1e3a5f] px-6 py-3 text-sm font-bold text-white shadow-xs transition-all duration-200 hover:bg-[#152a45] hover:shadow-sm"
                 >
                   {banner.ctaLabel}

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { categoryHref } from "@/lib/seo-categories";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 
@@ -472,7 +473,7 @@ export function HomeCatalogSections({ initialCategories }: { initialCategories: 
             return (
               <Link
                 key={category.slug}
-                href={"/products?category=" + category.slug}
+                href={categoryHref(category.slug)}
                 className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-[#1e3a5f]/40 hover:shadow-md"
               >
                 <div>

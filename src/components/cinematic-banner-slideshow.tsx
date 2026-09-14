@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { normalizeCategoryHref } from "@/lib/seo-categories";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useState, useRef } from "react";
 
@@ -25,9 +26,9 @@ const defaultSlides: CinematicSlide[] = [
     subtitle:
       "Make an unmistakable impression with selective high-gloss spot UV, thermal matt coatings, and metallic gold foil stamping on heavy 400 GSM card stocks.",
     primaryCtaLabel: "Explore Premium Cards",
-    primaryCtaUrl: "/products?category=premium-card",
+    primaryCtaUrl: "/premium-visiting-cards-ahmedabad",
     secondaryCtaLabel: "Visiting Card Rates",
-    secondaryCtaUrl: "/products?category=visiting-card",
+    secondaryCtaUrl: "/visiting-card-printing-ahmedabad",
     imageUrl: "/images/visiting-card-promo.jpg",
   },
   {
@@ -37,7 +38,7 @@ const defaultSlides: CinematicSlide[] = [
     subtitle:
       "Precision machine creasing, rich CMYK color gamut, and thermal lamination options in standard A4 trifold and A8 pocket formats calibrated for commercial trade distribution.",
     primaryCtaLabel: "Configure Brochures",
-    primaryCtaUrl: "/products?category=brochure",
+    primaryCtaUrl: "/brochure-printing-ahmedabad",
     secondaryCtaLabel: "View All Products",
     secondaryCtaUrl: "/products",
     imageUrl: "/images/brochure-category.jpg",
@@ -49,7 +50,7 @@ const defaultSlides: CinematicSlide[] = [
     subtitle:
       "Strong adhesive backing on Avery and standard vinyl stocks, calculated down to the exact square inch with automated bleed detection and safe trimming margins.",
     primaryCtaLabel: "Configure Stickers",
-    primaryCtaUrl: "/products?category=sticker",
+    primaryCtaUrl: "/sticker-printing-ahmedabad",
     secondaryCtaLabel: "Request Custom Size",
     secondaryCtaUrl: "/quote",
     imageUrl: "/images/sticker-category.jpg",
@@ -93,7 +94,7 @@ export function CinematicBannerSlideshow({
             title: b.title,
             subtitle: b.subtitle || "",
             primaryCtaLabel: b.ctaLabel || "Learn More",
-            primaryCtaUrl: b.ctaUrl || "/products",
+            primaryCtaUrl: normalizeCategoryHref(b.ctaUrl),
             secondaryCtaLabel: "View Catalog",
             secondaryCtaUrl: "/products",
             imageUrl: b.imageUrl || "/images/home-hero-printing.jpg",
