@@ -148,6 +148,7 @@ export function AdminBillsList() {
 
   // === Modals & Invoice Preview State ===
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingBillId, setEditingBillId] = useState<string | null>(null);
   const [managingOrderId, setManagingOrderId] = useState<string | null>(null);
   const [viewingBillId, setViewingBillId] = useState<string | null>(null);
   const [viewingInvoiceData, setViewingInvoiceData] = useState<InvoiceData | null>(null);
@@ -1017,6 +1018,14 @@ export function AdminBillsList() {
                             </button>
                             <button
                               type="button"
+                              onClick={() => setEditingBillId(b.id)}
+                              className="p-1.5 text-slate-600 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
+                              title="Edit Bill Details"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => handleDeleteBill(b.id, b.invoiceNumber)}
                               className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                               title="Delete Bill"
@@ -1078,6 +1087,18 @@ export function AdminBillsList() {
         <AdminManualBillModal
           onClose={() => setShowCreateModal(false)}
           onBillCreated={() => {
+            loadBills();
+          }}
+        />
+      ) : null}
+
+      {/* Edit Manual Bill Modal */}
+      {editingBillId ? (
+        <AdminManualBillModal
+          editBillId={editingBillId}
+          onClose={() => setEditingBillId(null)}
+          onBillCreated={() => {
+            setEditingBillId(null);
             loadBills();
           }}
         />

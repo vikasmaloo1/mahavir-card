@@ -84,9 +84,11 @@ function formatDateDisplay(yyyyMmDd: string): string {
 export function AdminManualBillModal({
   onClose,
   onBillCreated,
+  editBillId,
 }: {
   onClose: () => void;
   onBillCreated?: () => void;
+  editBillId?: string | null;
 }) {
   const [activeTab, setActiveTab] = useState<"form" | "preview">("form");
   const [saving, setSaving] = useState(false);
@@ -120,7 +122,7 @@ export function AdminManualBillModal({
   const [stateCode, setStateCode] = useState("GJ");
   const [postalCode, setPostalCode] = useState("");
   const [gstin, setGstin] = useState("");
-  const [saveAsNewCustomer, setSaveAsNewCustomer] = useState(false);
+  const [saveAsNewCustomer, setSaveAsNewCustomer] = useState(true);
 
   // Item Types
   const [itemTypes, setItemTypes] = useState<BillItemType[]>([]);
@@ -175,7 +177,9 @@ export function AdminManualBillModal({
       try {
         const [typesRes, billsRes] = await Promise.all([
           adminRequest<{ types: BillItemType[] }>("/api/admin/bills/types"),
-          adminRequest<{ nextNumbers?: { nextInvoiceNumber: string; nextChalanNumber: string } }>("/api/admin/bills?limit=1"),
+          !editBillId
+            ? adminRequest<{ nextNumbers?: { nextInvoiceNumber: string; nextChalanNumber: string } }>("/api/admin/bills?limit=1")
+            : Promise.resolve(null),
         ]);
 
         if (typesRes?.types) {
@@ -192,7 +196,65 @@ export function AdminManualBillModal({
       loadCustomers("");
     }
     init();
-  }, []);
+
+    if (editBillId) {
+      async function loadEditBill() {
+        try {
+          const res = await adminRequest<{ bill: any }>(`/api/admin/bills/${editBillId}`);
+          const b = res?.bill;
+          if (b) {
+            setInvoiceNumber(b.invoiceNumber || "");
+            setChalanNumber(b.chalanNumber || "");
+            if (b.invoiceDate) {
+              setInvoiceDate(new Date(b.invoiceDate).toISOString().slice(0, 10));
+            }
+            if (b.chalanDate) {
+              setChalanDate(new Date(b.chalanDate).toISOString().slice(0, 10));
+            }
+            setTerms(b.terms || "Immediate");
+            setStatus(b.status || "PAID");
+            setNotes(b.notes || "");
+            setSelectedCustomerId(b.customerId || null);
+            setCustomerName(b.customerName || "");
+            setCompanyName(b.companyName || "");
+            setPhone(b.phone || "");
+            setAddressLine1(b.addressLine1 || "");
+            setAddressLine2(b.addressLine2 || "");
+            setCity(b.city || "Ahmedabad");
+            setState(b.state || "Gujarat");
+            setStateCode(b.stateCode || "GJ");
+            setPostalCode(b.postalCode || "");
+            setGstin(b.gstin || "");
+            if (Array.isArray(b.items) && b.items.length > 0) {
+              setItems(
+                b.items.map((it: any, idx: number) => ({
+                  id: it.id || `item-${idx + 1}`,
+                  itemType: it.itemType || "",
+                  description: it.description || "",
+                  hsnCode: it.hsnCode || "4909",
+                  quantity: Number(it.quantity || 1),
+                  rate: Number(it.rate || 0),
+                  per: it.per || "PCS.",
+                  amount: Number(it.amount || 0),
+                }))
+              );
+            }
+            setTaxType(b.taxType || "INTRA_STATE");
+            setCgstRate(Number(b.cgstRate || 9));
+            setSgstRate(Number(b.sgstRate || 9));
+            setIgstRate(Number(b.igstRate || 18));
+            setDeliveryCharge(Number(b.deliveryCharge || 0));
+            if (b.roundOff !== undefined && b.roundOff !== null) {
+              setCustomRoundOff(Number(b.roundOff));
+            }
+          }
+        } catch (err: any) {
+          setError(err.message || "Failed to load bill for editing");
+        }
+      }
+      loadEditBill();
+    }
+  }, [editBillId]);
 
   // Search existing customers in picker dialog with debounce
   useEffect(() => {
@@ -525,10 +587,17 @@ export function AdminManualBillModal({
         roundOff,
       };
 
-      const res = await adminRequest<{ bill: any }>("/api/admin/bills", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+      if (editBillId) {
+        await adminRequest<{ bill: any }>(`/api/admin/bills/${editBillId}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await adminRequest<{ bill: any }>("/api/admin/bills", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      }
 
       if (shouldPrint) {
         // Switch to preview tab and print
@@ -560,8 +629,14 @@ export function AdminManualBillModal({
               <Layers className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold tracking-tight">Manual Tax Bill & Chalan Generator</h2>
-              <p className="text-xs text-slate-400">Generate incremental bills with custom HSN, tax %, and customer details</p>
+              <h2 className="text-base font-bold tracking-tight">
+                {editBillId ? `Edit Bill: ${invoiceNumber || "..."}` : "Manual Tax Bill & Chalan Generator"}
+              </h2>
+              <p className="text-xs text-slate-400">
+                {editBillId
+                  ? "Update invoice details, line items, customer, and tax calculations"
+                  : "Generate incremental bills with custom HSN, tax %, and customer details"}
+              </p>
             </div>
           </div>
 
@@ -1294,7 +1369,7 @@ export function AdminManualBillModal({
                     className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
                   >
                     <Printer className="w-4 h-4 text-slate-300" />
-                    Save & Print Invoice
+                    {editBillId ? "Update & Print Invoice" : "Save & Print Invoice"}
                   </button>
 
                   <button
@@ -1304,7 +1379,7 @@ export function AdminManualBillModal({
                     className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
                   >
                     {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                    Save Bill
+                    {editBillId ? "Update Bill" : "Save Bill"}
                   </button>
                 </div>
               </div>

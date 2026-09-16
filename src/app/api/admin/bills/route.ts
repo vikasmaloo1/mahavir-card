@@ -1,7 +1,7 @@
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { handleApiError, jsonError, jsonOk } from "@/lib/api";
 import { db } from "@/lib/db/server";
-import { bills, customers } from "@/lib/db/schema";
+import { addresses, bills, customers } from "@/lib/db/schema";
 import { getNextBillNumbers, parseChalanNumber } from "@/lib/bill-sequence-server";
 import { getFinancialYear, parseInvoiceNumber } from "@/lib/invoice-sequence";
 import { numberToIndianWords } from "@/lib/number-to-words";
@@ -166,29 +166,80 @@ export async function POST(request: Request) {
 
     let customerId = body.customerId ? String(body.customerId).trim() : null;
 
-    // If admin requested to save as a new customer in system
-    if (body.saveAsNewCustomer && !customerId) {
+    // Automatically check or save new customer in system by default
+    if (!customerId && customerName) {
       try {
-        const [createdCustomer] = await db
-          .insert(customers)
-          .values({
-            contactName: customerName,
-            companyName: body.companyName ? String(body.companyName).trim() : customerName,
-            email: `bill-customer-${Date.now()}@offline.local`,
-            phone: body.phone ? String(body.phone).trim() : null,
-            gstNumber: body.gstin ? String(body.gstin).trim().toUpperCase() : null,
-            customerType: "B2C",
-            city: body.city ? String(body.city).trim() : "Ahmedabad",
-            state: body.state ? String(body.state).trim() : "Gujarat",
-            stateCode: body.stateCode ? String(body.stateCode).trim().toUpperCase() : "GJ",
-            status: "ACTIVE",
-          })
-          .returning();
-        if (createdCustomer) {
-          customerId = createdCustomer.id;
+        let matchedCustomer = null;
+        const phoneClean = body.phone ? String(body.phone).trim() : "";
+        if (phoneClean) {
+          const [byPhone] = await db
+            .select()
+            .from(customers)
+            .where(eq(customers.phone, phoneClean))
+            .limit(1);
+          matchedCustomer = byPhone || null;
+        }
+
+        if (!matchedCustomer && customerName) {
+          const [byName] = await db
+            .select()
+            .from(customers)
+            .where(ilike(customers.contactName, customerName))
+            .limit(1);
+          matchedCustomer = byName || null;
+        }
+
+        if (matchedCustomer) {
+          customerId = matchedCustomer.id;
+          const updateCust: Record<string, any> = {};
+          if (!matchedCustomer.gstNumber && body.gstin) {
+            updateCust.gstNumber = String(body.gstin).trim().toUpperCase();
+          }
+          if (!matchedCustomer.companyName && body.companyName) {
+            updateCust.companyName = String(body.companyName).trim();
+          }
+          if (Object.keys(updateCust).length > 0) {
+            await db.update(customers).set(updateCust).where(eq(customers.id, matchedCustomer.id));
+          }
+        } else {
+          // Automatically save new customer in the system by default
+          const [createdCustomer] = await db
+            .insert(customers)
+            .values({
+              contactName: customerName,
+              companyName: body.companyName ? String(body.companyName).trim() : customerName,
+              email: `bill-customer-${Date.now()}@offline.local`,
+              phone: phoneClean || null,
+              gstNumber: body.gstin ? String(body.gstin).trim().toUpperCase() : null,
+              customerType: body.gstin ? "B2B" : "B2C",
+              city: body.city ? String(body.city).trim() : "Ahmedabad",
+              state: body.state ? String(body.state).trim() : "Gujarat",
+              stateCode: body.stateCode ? String(body.stateCode).trim().toUpperCase() : "GJ",
+              status: "ACTIVE",
+            })
+            .returning();
+          if (createdCustomer) {
+            customerId = createdCustomer.id;
+            if (body.addressLine1) {
+              await db
+                .insert(addresses)
+                .values({
+                  customerId: createdCustomer.id,
+                  type: "BILLING",
+                  line1: String(body.addressLine1).trim(),
+                  line2: body.addressLine2 ? String(body.addressLine2).trim() : null,
+                  city: body.city ? String(body.city).trim() : "Ahmedabad",
+                  state: body.state ? String(body.state).trim() : "Gujarat",
+                  stateCode: body.stateCode ? String(body.stateCode).trim().toUpperCase() : "GJ",
+                  postalCode: body.postalCode ? String(body.postalCode).trim() : "380001",
+                  isDefault: true,
+                })
+                .catch(() => {});
+            }
+          }
         }
       } catch (err) {
-        console.error("Failed to auto-create customer from bill:", err);
+        console.error("Failed to auto-save customer from bill:", err);
       }
     }
 
