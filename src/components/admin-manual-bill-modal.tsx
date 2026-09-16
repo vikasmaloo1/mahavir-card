@@ -12,6 +12,7 @@ import {
   Search,
   Trash2,
   UserPlus,
+  Users,
   X,
 } from "lucide-react";
 
@@ -52,6 +53,10 @@ interface CustomerOption {
   state?: string | null;
   stateCode?: string | null;
   gstNumber?: string | null;
+  customerType?: string | null;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  postalCode?: string | null;
 }
 
 function formatNum(val: number | string | undefined | null): string {
@@ -97,12 +102,13 @@ export function AdminManualBillModal({
   const [status, setStatus] = useState<"PAID" | "UNPAID" | "PARTIAL">("PAID");
   const [notes, setNotes] = useState("");
 
-  // Customer state
+  // Customer state & picker dialog
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
   const [customerSearchQuery, setCustomerSearchQuery] = useState("");
-  const [customerResults, setCustomerResults] = useState<CustomerOption[]>([]);
-  const [searchingCustomers, setSearchingCustomers] = useState(false);
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [allCustomers, setAllCustomers] = useState<CustomerOption[]>([]);
+  const [customerTypeFilter, setCustomerTypeFilter] = useState<"ALL" | "B2C" | "B2B">("ALL");
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
 
   const [customerName, setCustomerName] = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -147,7 +153,23 @@ export function AdminManualBillModal({
   const [deliveryCharge, setDeliveryCharge] = useState<number>(0);
   const [customRoundOff, setCustomRoundOff] = useState<number | null>(null);
 
-  // Fetch item types and next sequential numbers on mount
+  async function loadCustomers(queryStr: string = "") {
+    setLoadingCustomers(true);
+    try {
+      const params = new URLSearchParams();
+      if (queryStr.trim()) params.set("query", queryStr.trim());
+      params.set("limit", "100");
+      const res = await adminRequest<any>(`/api/admin/customers?${params.toString()}`);
+      const list = res?.items || res?.customers || [];
+      setAllCustomers(list);
+    } catch (err: any) {
+      console.error("Failed to load customers:", err);
+    } finally {
+      setLoadingCustomers(false);
+    }
+  }
+
+  // Fetch item types, next sequential numbers and pre-load customers on mount
   useEffect(() => {
     async function init() {
       try {
@@ -167,45 +189,43 @@ export function AdminManualBillModal({
       } catch (err: any) {
         console.error("Failed to load initial bill data:", err);
       }
+      loadCustomers("");
     }
     init();
   }, []);
 
-  // Search existing customers
+  // Search existing customers in picker dialog with debounce
   useEffect(() => {
-    if (!customerSearchQuery || customerSearchQuery.length < 2) {
-      setCustomerResults([]);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setSearchingCustomers(true);
-      try {
-        const res = await adminRequest<{ customers: CustomerOption[] }>(
-          `/api/admin/customers?query=${encodeURIComponent(customerSearchQuery)}&limit=8`
-        );
-        setCustomerResults(res.customers || []);
-        setShowCustomerDropdown(true);
-      } catch (e) {
-        console.error("Customer search error:", e);
-      } finally {
-        setSearchingCustomers(false);
-      }
+    if (!showCustomerPicker) return;
+    const timer = setTimeout(() => {
+      loadCustomers(customerSearchQuery);
     }, 250);
-
     return () => clearTimeout(timer);
-  }, [customerSearchQuery]);
+  }, [customerSearchQuery, showCustomerPicker]);
+
+  const filteredCustomers = useMemo(() => {
+    let list = allCustomers;
+    if (customerTypeFilter === "B2C") {
+      list = list.filter((c) => c.customerType !== "B2B");
+    } else if (customerTypeFilter === "B2B") {
+      list = list.filter((c) => c.customerType === "B2B");
+    }
+    return list;
+  }, [allCustomers, customerTypeFilter]);
 
   function handleSelectCustomer(c: CustomerOption) {
     setSelectedCustomerId(c.id);
     setCustomerName(c.contactName || c.companyName || "");
     setCompanyName(c.companyName || "");
     setPhone(c.phone || "");
+    setAddressLine1(c.addressLine1 || "");
+    setAddressLine2(c.addressLine2 || "");
     setCity(c.city || "Ahmedabad");
     setState(c.state || "Gujarat");
     setStateCode(c.stateCode || "GJ");
+    setPostalCode(c.postalCode || "");
     setGstin(c.gstNumber || "");
-    setShowCustomerDropdown(false);
+    setShowCustomerPicker(false);
     setCustomerSearchQuery("");
 
     // Automatically set tax type based on state
@@ -694,57 +714,66 @@ export function AdminManualBillModal({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {/* Search box for selecting customer */}
-                    <div className="relative">
-                      <div className="flex items-center bg-slate-50 border border-slate-300 rounded-md px-2 py-1 text-xs">
-                        <Search className="w-3.5 h-3.5 text-slate-400 mr-1.5 shrink-0" />
-                        <input
-                          type="text"
-                          value={customerSearchQuery}
-                          onChange={(e) => setCustomerSearchQuery(e.target.value)}
-                          placeholder="Search existing customer..."
-                          className="bg-transparent border-none outline-hidden text-xs w-48"
-                        />
-                        {searchingCustomers ? (
-                          <RefreshCw className="w-3 h-3 text-slate-400 animate-spin ml-1" />
-                        ) : null}
-                      </div>
-
-                      {/* Search Results Dropdown */}
-                      {showCustomerDropdown && customerResults.length > 0 ? (
-                        <div className="absolute right-0 top-full mt-1 w-72 bg-white border border-slate-300 rounded-lg shadow-xl z-20 max-h-56 overflow-y-auto">
-                          {customerResults.map((c) => (
-                            <button
-                              key={c.id}
-                              type="button"
-                              onClick={() => handleSelectCustomer(c)}
-                              className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 border-b border-slate-100 last:border-none flex flex-col"
-                            >
-                              <span className="font-bold text-slate-900">{c.contactName || c.companyName}</span>
-                              {c.companyName && c.companyName !== c.contactName ? (
-                                <span className="text-[11px] text-slate-500">{c.companyName}</span>
-                              ) : null}
-                              <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
-                                <span>{c.phone || "No phone"}</span>
-                                <span>{c.city || "GJ"}</span>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-
                     {selectedCustomerId ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowCustomerPicker(true);
+                            loadCustomers(customerSearchQuery);
+                          }}
+                          className="px-2.5 py-1 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-md font-semibold flex items-center gap-1 border border-blue-200"
+                        >
+                          <Search className="w-3.5 h-3.5" />
+                          Change Customer
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleClearCustomer}
+                          className="px-2 py-1 text-xs text-slate-500 hover:text-red-600 font-medium"
+                        >
+                          Clear Selection
+                        </button>
+                      </div>
+                    ) : (
                       <button
                         type="button"
-                        onClick={handleClearCustomer}
-                        className="px-2 py-1 text-xs text-slate-500 hover:text-red-600 font-medium"
+                        onClick={() => {
+                          setShowCustomerPicker(true);
+                          loadCustomers(customerSearchQuery);
+                        }}
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors"
                       >
-                        Clear Selection
+                        <Users className="w-3.5 h-3.5" />
+                        Select Existing Customer (B2B & B2C)
                       </button>
-                    ) : null}
+                    )}
                   </div>
                 </div>
+
+                {/* Selected Customer Highlight Card */}
+                {selectedCustomerId ? (
+                  <div className="bg-blue-50/70 border border-blue-200 rounded-lg p-3 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 text-xs">
+                          {customerName}
+                        </span>
+                        {companyName && companyName !== customerName ? (
+                          <span className="text-xs text-slate-600 font-medium">({companyName})</span>
+                        ) : null}
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-100 text-blue-800 uppercase">
+                          Selected
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-600 mt-1">
+                        {phone ? <span>Mo: <strong>{phone}</strong></span> : null}
+                        <span>City: <strong>{city}</strong>, {stateCode}</span>
+                        {gstin ? <span className="font-mono">GSTIN: <strong>{gstin}</strong></span> : null}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
                 {/* Customer Details Inputs */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -1372,6 +1401,177 @@ export function AdminManualBillModal({
           </div>
         </div>
       ) : null}
+
+      {/* Customer Picker Dialog Modal */}
+      {showCustomerPicker && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-2xl bg-white rounded-xl shadow-2xl flex flex-col max-h-[85vh] border border-slate-200 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 bg-slate-900 text-white border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-blue-400" />
+                <div>
+                  <h3 className="font-bold text-sm">Select Customer (B2B & B2C)</h3>
+                  <p className="text-xs text-slate-400">Search by name, company, phone, city or GSTIN</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCustomerPicker(false)}
+                className="p-1 text-slate-400 hover:text-white rounded-md hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Search and Tabs */}
+            <div className="p-4 border-b border-slate-200 bg-slate-50 space-y-3">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={customerSearchQuery}
+                  onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                  placeholder="Type to search: e.g. Mahavir, company, phone, GSTIN..."
+                  className="w-full pl-9 pr-8 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-hidden font-medium"
+                  autoFocus
+                />
+                {customerSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomerSearchQuery("");
+                      loadCustomers("");
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Segment filter buttons */}
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => setCustomerTypeFilter("ALL")}
+                    className={`px-3 py-1 rounded-md font-semibold transition-colors ${
+                      customerTypeFilter === "ALL" ? "bg-white text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    All ({allCustomers.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomerTypeFilter("B2C")}
+                    className={`px-3 py-1 rounded-md font-semibold transition-colors ${
+                      customerTypeFilter === "B2C" ? "bg-white text-blue-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    B2C Retail ({allCustomers.filter((c) => c.customerType !== "B2B").length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomerTypeFilter("B2B")}
+                    className={`px-3 py-1 rounded-md font-semibold transition-colors ${
+                      customerTypeFilter === "B2B" ? "bg-white text-purple-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    B2B Wholesale ({allCustomers.filter((c) => c.customerType === "B2B").length})
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleClearCustomer();
+                    setShowCustomerPicker(false);
+                  }}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  + Enter New / Manual
+                </button>
+              </div>
+            </div>
+
+            {/* Customer List */}
+            <div className="flex-1 overflow-y-auto divide-y divide-slate-100 max-h-[420px]">
+              {loadingCustomers ? (
+                <div className="p-8 text-center text-slate-500 text-xs flex flex-col items-center justify-center gap-2">
+                  <RefreshCw className="w-5 h-5 animate-spin text-blue-600" />
+                  <span>Loading customers...</span>
+                </div>
+              ) : filteredCustomers.length === 0 ? (
+                <div className="p-8 text-center text-slate-500 text-xs">
+                  <p className="font-semibold text-slate-700">No customers found</p>
+                  <p className="text-[11px] text-slate-400 mt-1">Try a different search query or click "Enter New / Manual" above</p>
+                </div>
+              ) : (
+                filteredCustomers.map((c) => {
+                  const isB2B = c.customerType === "B2B";
+                  const isSelected = selectedCustomerId === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => handleSelectCustomer(c)}
+                      className={`w-full text-left p-3.5 hover:bg-blue-50/50 transition-colors flex items-center justify-between gap-3 ${
+                        isSelected ? "bg-blue-50 border-l-4 border-l-blue-600" : ""
+                      }`}
+                    >
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-xs text-slate-900 truncate">
+                            {c.contactName || c.companyName || "Unnamed"}
+                          </span>
+                          <span
+                            className={`px-1.5 py-0.5 text-[10px] font-bold rounded-sm uppercase ${
+                              isB2B
+                                ? "bg-purple-100 text-purple-800 border border-purple-200"
+                                : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                            }`}
+                          >
+                            {isB2B ? "B2B" : "B2C"}
+                          </span>
+                          {c.companyName && c.companyName !== c.contactName && (
+                            <span className="text-xs text-slate-500 font-medium truncate">
+                              ({c.companyName})
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-600">
+                          {c.phone && <span>📞 {c.phone}</span>}
+                          {c.city && <span>📍 {c.city}{c.state ? `, ${c.state}` : ""}</span>}
+                          {c.gstNumber && <span className="font-mono font-semibold text-slate-700">GST: {c.gstNumber}</span>}
+                        </div>
+                      </div>
+
+                      <span className="shrink-0 px-2.5 py-1 text-xs font-semibold bg-white border border-slate-200 hover:border-blue-400 text-blue-700 rounded-md shadow-2xs">
+                        {isSelected ? "Selected" : "Select"}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Dialog Footer */}
+            <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+              <span>Showing {filteredCustomers.length} customer(s)</span>
+              <button
+                type="button"
+                onClick={() => setShowCustomerPicker(false)}
+                className="px-3 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md font-medium text-xs shadow-2xs"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
