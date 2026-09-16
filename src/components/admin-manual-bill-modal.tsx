@@ -161,7 +161,10 @@ export function AdminManualBillModal({
     setLoadingCustomers(true);
     try {
       const params = new URLSearchParams();
-      if (queryStr.trim()) params.set("query", queryStr.trim());
+      if (queryStr.trim()) {
+        params.set("query", queryStr.trim());
+        params.set("q", queryStr.trim());
+      }
       params.set("limit", "100");
       const res = await adminRequest<any>(`/api/admin/customers?${params.toString()}`);
       const list = res?.items || res?.customers || [];
@@ -285,7 +288,7 @@ export function AdminManualBillModal({
     return list;
   }, [allCustomers, customerTypeFilter]);
 
-  function handleSelectCustomer(c: CustomerOption) {
+  async function handleSelectCustomer(c: CustomerOption) {
     setSelectedCustomerId(c.id);
     setCustomerName(c.contactName || c.companyName || "");
     setCompanyName(c.companyName || "");
@@ -305,6 +308,40 @@ export function AdminManualBillModal({
       setTaxType("INTER_STATE");
     } else {
       setTaxType("INTRA_STATE");
+    }
+
+    // Secondary fallback: if addressLine1 is missing, fetch full customer details
+    if (!c.addressLine1 && c.id) {
+      try {
+        const detail = await adminRequest<{ customer: any; addresses?: any[]; orders?: any[] }>(
+          `/api/admin/customers/${c.id}`
+        );
+        if (detail) {
+          const addrs = detail.addresses || [];
+          const bestAddr = addrs.find((a: any) => a.isDefault) || addrs.find((a: any) => a.type === "BILLING") || addrs[0];
+          if (bestAddr) {
+            if (bestAddr.line1) setAddressLine1(bestAddr.line1);
+            if (bestAddr.line2) setAddressLine2(bestAddr.line2 || "");
+            if (bestAddr.city) setCity(bestAddr.city);
+            if (bestAddr.state) setState(bestAddr.state);
+            if (bestAddr.stateCode) setStateCode(bestAddr.stateCode);
+            if (bestAddr.postalCode) setPostalCode(bestAddr.postalCode);
+          } else if (detail.orders && detail.orders.length > 0) {
+            const ordWithAddr = detail.orders.find((o: any) => o.deliveryAddress?.line1);
+            if (ordWithAddr?.deliveryAddress) {
+              const da = ordWithAddr.deliveryAddress;
+              if (da.line1) setAddressLine1(da.line1);
+              if (da.line2) setAddressLine2(da.line2 || "");
+              if (da.city) setCity(da.city);
+              if (da.state) setState(da.state);
+              if (da.stateCode) setStateCode(da.stateCode || ordWithAddr.deliveryState || "GJ");
+              if (da.postalCode) setPostalCode(da.postalCode);
+            }
+          }
+        }
+      } catch {
+        // Keep existing values
+      }
     }
   }
 
@@ -854,6 +891,11 @@ export function AdminManualBillModal({
                       <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-600 mt-1">
                         {phone ? <span>Mo: <strong>{phone}</strong></span> : null}
                         <span>City: <strong>{city}</strong>, {stateCode}</span>
+                        {addressLine1 ? (
+                          <span>
+                            Address: <strong>{[addressLine1, addressLine2, postalCode].filter(Boolean).join(", ")}</strong>
+                          </span>
+                        ) : null}
                         {gstin ? <span className="font-mono">GSTIN: <strong>{gstin}</strong></span> : null}
                       </div>
                     </div>
@@ -1689,7 +1731,11 @@ export function AdminManualBillModal({
 
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-600">
                           {c.phone && <span>📞 {c.phone}</span>}
-                          {c.city && <span>📍 {c.city}{c.state ? `, ${c.state}` : ""}</span>}
+                          {(c.addressLine1 || c.city) && (
+                            <span>
+                              📍 {[c.addressLine1, c.addressLine2, c.city, c.stateCode || c.state, c.postalCode].filter(Boolean).join(", ")}
+                            </span>
+                          )}
                           {c.gstNumber && <span className="font-mono font-semibold text-slate-700">GST: {c.gstNumber}</span>}
                         </div>
                       </div>

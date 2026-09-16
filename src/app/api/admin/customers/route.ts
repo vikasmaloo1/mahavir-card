@@ -1,9 +1,9 @@
-import { and, asc, count, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 
 import { auth } from "@/lib/auth/server";
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
 import { db } from "@/lib/db/server";
-import { customers, user as authUser, walletTransactions } from "@/lib/db/schema";
+import { addresses, bills, customers, orders, user as authUser, walletTransactions } from "@/lib/db/schema";
 import { isValidIndianPhoneNumber, normalizePhoneNumber } from "@/lib/phone";
 import { requireRole } from "@/lib/permissions";
 
@@ -138,7 +138,7 @@ export async function GET(request: Request) {
     const params = new URL(request.url).searchParams;
     const page = Math.max(1, Number(params.get("page") ?? 1));
     const limit = Math.min(100, Math.max(1, Number(params.get("limit") ?? 25)));
-    const query = params.get("q")?.trim();
+    const query = (params.get("query") || params.get("q"))?.trim();
     const customerType = params.get("customerType")?.trim();
     const status = params.get("status")?.trim();
     const state = params.get("state")?.trim();
@@ -222,8 +222,121 @@ export async function GET(request: Request) {
 
     const total = Number(totalResult[0]?.value ?? 0);
 
+    // Attach address for each customer from addresses table, or fallback to past bills / orders
+    const customerIds = data.map((c) => c.id);
+    let addressRows: any[] = [];
+    const billAddressMap = new Map<string, any>();
+    const orderAddressMap = new Map<string, any>();
+
+    if (customerIds.length > 0) {
+      // 1. Query addresses table
+      addressRows = await db
+        .select()
+        .from(addresses)
+        .where(inArray(addresses.customerId, customerIds));
+
+      // 2. For customers without address in addresses table, check bills table
+      const custsWithoutAddress = customerIds.filter(
+        (id) => !addressRows.some((a) => a.customerId === id && (a.line1 || a.line2))
+      );
+
+      if (custsWithoutAddress.length > 0) {
+        const billRows = await db
+          .select({
+            customerId: bills.customerId,
+            addressLine1: bills.addressLine1,
+            addressLine2: bills.addressLine2,
+            city: bills.city,
+            state: bills.state,
+            stateCode: bills.stateCode,
+            postalCode: bills.postalCode,
+          })
+          .from(bills)
+          .where(
+            and(
+              inArray(bills.customerId, custsWithoutAddress),
+              sql`${bills.addressLine1} IS NOT NULL AND ${bills.addressLine1} != ''`
+            )
+          )
+          .orderBy(desc(bills.createdAt));
+
+        for (const b of billRows) {
+          if (b.customerId && !billAddressMap.has(b.customerId) && b.addressLine1) {
+            billAddressMap.set(b.customerId, {
+              line1: b.addressLine1,
+              line2: b.addressLine2,
+              city: b.city,
+              state: b.state,
+              stateCode: b.stateCode,
+              postalCode: b.postalCode,
+            });
+          }
+        }
+      }
+
+      // 3. For customers still without address, check orders table
+      const stillWithoutAddress = custsWithoutAddress.filter((id) => !billAddressMap.has(id));
+      if (stillWithoutAddress.length > 0) {
+        const orderRows = await db
+          .select({
+            customerId: orders.customerId,
+            deliveryAddress: orders.deliveryAddress,
+            deliveryState: orders.deliveryState,
+          })
+          .from(orders)
+          .where(
+            and(
+              inArray(orders.customerId, stillWithoutAddress),
+              sql`${orders.deliveryAddress} IS NOT NULL`
+            )
+          )
+          .orderBy(desc(orders.createdAt));
+
+        for (const o of orderRows) {
+          if (o.customerId && !orderAddressMap.has(o.customerId) && o.deliveryAddress?.line1) {
+            orderAddressMap.set(o.customerId, {
+              line1: o.deliveryAddress.line1,
+              line2: o.deliveryAddress.line2,
+              city: o.deliveryAddress.city,
+              state: o.deliveryAddress.state,
+              stateCode: o.deliveryAddress.stateCode || o.deliveryState,
+              postalCode: o.deliveryAddress.postalCode,
+            });
+          }
+        }
+      }
+    }
+
+    const items = data.map((cust) => {
+      const custAddrs = addressRows.filter((a) => a.customerId === cust.id);
+      const primaryAddr =
+        custAddrs.find((a) => a.isDefault) ||
+        custAddrs.find((a) => a.type === "BILLING") ||
+        custAddrs[0];
+      const fallbackBill = billAddressMap.get(cust.id);
+      const fallbackOrder = orderAddressMap.get(cust.id);
+
+      const finalLine1 = primaryAddr?.line1 || fallbackBill?.line1 || fallbackOrder?.line1 || null;
+      const finalLine2 = primaryAddr?.line2 || fallbackBill?.line2 || fallbackOrder?.line2 || null;
+      const finalCity = primaryAddr?.city || fallbackBill?.city || fallbackOrder?.city || cust.city || "Ahmedabad";
+      const finalState = primaryAddr?.state || fallbackBill?.state || fallbackOrder?.state || cust.state || "Gujarat";
+      const finalStateCode = primaryAddr?.stateCode || fallbackBill?.stateCode || fallbackOrder?.stateCode || cust.stateCode || "GJ";
+      const finalPostalCode = primaryAddr?.postalCode || fallbackBill?.postalCode || fallbackOrder?.postalCode || null;
+
+      return {
+        ...cust,
+        addressLine1: finalLine1,
+        addressLine2: finalLine2,
+        city: finalCity,
+        state: finalState,
+        stateCode: finalStateCode,
+        postalCode: finalPostalCode,
+        addresses: custAddrs,
+      };
+    });
+
     return jsonOk({
-      items: data,
+      items,
       page,
       limit,
       total,
