@@ -19,6 +19,21 @@ export function determinePageSize(itemCount: number, mode: InvoiceSizeMode = "AU
 
 export function defaultHsnForDescription(desc: string): string {
   const lower = desc.toLowerCase();
+  if (lower.includes("synthetic") || lower.includes("pvc cover")) {
+    return "4921"; // Synthetic Covers
+  }
+  if (
+    lower.includes("book") ||
+    lower.includes("diary") ||
+    lower.includes("diaries") ||
+    lower.includes("register") ||
+    lower.includes("notebook") ||
+    lower.includes("receipt") ||
+    lower.includes("challan book") ||
+    lower.includes("chalan book")
+  ) {
+    return "4820"; // Books (registers, notebooks, diaries, order books, receipt books)
+  }
   if (lower.includes("sticker") || lower.includes("label") || lower.includes("adhesive")) {
     return "4821"; // Stickers & labels
   }

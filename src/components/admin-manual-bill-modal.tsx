@@ -10,6 +10,7 @@ import {
   Printer,
   RefreshCw,
   Search,
+  Tag,
   Trash2,
   UserPlus,
   Users,
@@ -124,8 +125,9 @@ export function AdminManualBillModal({
   const [gstin, setGstin] = useState("");
   const [saveAsNewCustomer, setSaveAsNewCustomer] = useState(true);
 
-  // Item Types
+  // Item Types & HSN Master Options
   const [itemTypes, setItemTypes] = useState<BillItemType[]>([]);
+  const [hsnOptions, setHsnOptions] = useState<Array<{ code: string; description: string; gstRate: string }>>([]);
   const [showAddTypeModal, setShowAddTypeModal] = useState(false);
   const [newTypeName, setNewTypeName] = useState("");
   const [newTypeHsn, setNewTypeHsn] = useState("4909");
@@ -171,19 +173,27 @@ export function AdminManualBillModal({
     }
   }
 
-  // Fetch item types, next sequential numbers and pre-load customers on mount
+  // Fetch item types, HSN codes, next sequential numbers and pre-load customers on mount
   useEffect(() => {
     async function init() {
       try {
-        const [typesRes, billsRes] = await Promise.all([
+        const [typesRes, billsRes, hsnRes] = await Promise.all([
           adminRequest<{ types: BillItemType[] }>("/api/admin/bills/types"),
           !editBillId
             ? adminRequest<{ nextNumbers?: { nextInvoiceNumber: string; nextChalanNumber: string } }>("/api/admin/bills?limit=1")
             : Promise.resolve(null),
+          adminRequest<{ hsnList: Array<{ code: string; description: string; gstRate: string }> }>("/api/admin/bills/hsn"),
         ]);
 
         if (typesRes?.types) {
           setItemTypes(typesRes.types);
+        }
+
+        if (hsnRes?.hsnList) {
+          setHsnOptions(hsnRes.hsnList);
+          if (hsnRes.hsnList.length > 0 && !newTypeHsn) {
+            setNewTypeHsn(hsnRes.hsnList[0].code);
+          }
         }
 
         if (billsRes?.nextNumbers) {
@@ -992,7 +1002,7 @@ export function AdminManualBillModal({
                       Line Items & HSN Codes
                     </span>
                     <span className="text-[11px] text-slate-500">
-                      (Cards: 4909, Papers/Brochures: 4802, Stickers: 4821)
+                      (Cards: 4909, Papers: 4802, Stickers: 4821, Books: 4820, Synthetic Covers: 4921)
                     </span>
                   </div>
 
@@ -1060,11 +1070,30 @@ export function AdminManualBillModal({
                         </label>
                         <input
                           type="text"
+                          list={`hsn-datalist-${idx}`}
                           value={item.hsnCode}
                           onChange={(e) => handleItemChange(idx, "hsnCode", e.target.value)}
-                          className="w-full px-1.5 py-1 text-xs text-center bg-white border border-slate-300 rounded-md font-mono"
+                          placeholder="HSN"
+                          className="w-full px-1.5 py-1 text-xs text-center bg-white border border-slate-300 rounded-md font-mono font-bold text-blue-700 focus:ring-1 focus:ring-blue-500"
                           required
                         />
+                        <datalist id={`hsn-datalist-${idx}`}>
+                          {hsnOptions.length > 0 ? (
+                            hsnOptions.map((h) => (
+                              <option key={h.code} value={h.code}>
+                                {h.code} - {h.description}
+                              </option>
+                            ))
+                          ) : (
+                            <>
+                              <option value="4909">4909 - Card & Premium Card</option>
+                              <option value="4802">4802 - Paper & Brochure</option>
+                              <option value="4821">4821 - Sticker & Labels</option>
+                              <option value="4820">4820 - Books (Diaries, Registers)</option>
+                              <option value="4921">4921 - Synthetic Covers</option>
+                            </>
+                          )}
+                        </datalist>
                       </div>
 
                       {/* Quantity */}
@@ -1139,6 +1168,35 @@ export function AdminManualBillModal({
                         </button>
                       </div>
                     </div>
+                  ))}
+                </div>
+
+                {/* Quick HSN Presets */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100 text-[11px]">
+                  <span className="text-slate-500 font-semibold flex items-center gap-1">
+                    <Tag className="w-3 h-3 text-blue-600" />
+                    Quick HSN:
+                  </span>
+                  {[
+                    { code: "4909", label: "Cards (4909)" },
+                    { code: "4802", label: "Papers (4802)" },
+                    { code: "4821", label: "Stickers (4821)" },
+                    { code: "4820", label: "Books (4820)" },
+                    { code: "4921", label: "Synthetic Covers (4921)" },
+                  ].map((preset) => (
+                    <button
+                      key={preset.code}
+                      type="button"
+                      onClick={() => {
+                        if (items.length > 0) {
+                          handleItemChange(items.length - 1, "hsnCode", preset.code);
+                        }
+                      }}
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 border border-slate-200 rounded text-slate-700 font-medium transition-colors"
+                      title={`Apply HSN ${preset.code} to last row`}
+                    >
+                      {preset.label}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -1420,11 +1478,23 @@ export function AdminManualBillModal({
                   <select
                     value={newTypeHsn}
                     onChange={(e) => setNewTypeHsn(e.target.value)}
-                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md"
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md bg-white font-medium"
                   >
-                    <option value="4909">4909 (Card & Premium Card)</option>
-                    <option value="4802">4802 (Paper, Cover & Art Card Brochure)</option>
-                    <option value="4821">4821 (Sticker & Labels)</option>
+                    {hsnOptions.length > 0 ? (
+                      hsnOptions.map((h) => (
+                        <option key={h.code} value={h.code}>
+                          {h.code} ({h.description})
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="4909">4909 (Card & Premium Card)</option>
+                        <option value="4802">4802 (Paper, Cover & Art Card Brochure)</option>
+                        <option value="4821">4821 (Sticker & Labels)</option>
+                        <option value="4820">4820 (Books - Registers, Diaries, Notebooks)</option>
+                        <option value="4921">4921 (Synthetic Covers)</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>

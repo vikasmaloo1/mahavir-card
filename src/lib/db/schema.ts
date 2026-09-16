@@ -974,3 +974,15 @@ export const billItemTypes = pgTable("bill_item_types", {
   isActive: boolean("isActive").notNull().default(true),
   ...timestamps,
 });
+
+/** HSN Master for manual billing and tax configuration */
+export const hsnMaster = pgTable("hsn_master", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  code: text("code").notNull().unique(),
+  description: text("description").notNull(),
+  gstRate: numeric("gstRate", { precision: 6, scale: 3 }).notNull().default("18.000"),
+  sortOrder: integer("sortOrder").notNull().default(0),
+  isActive: boolean("isActive").notNull().default(true),
+  ...timestamps,
+});
+

@@ -112,16 +112,52 @@ async function main() {
   `);
   console.log("✓ categories HSN codes updated");
 
-  // 6. Seed preset bill item types
+  // 6. HSN Master Table
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS hsn_master (
+      "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      "code" text NOT NULL UNIQUE,
+      "description" text NOT NULL,
+      "gstRate" numeric(6, 3) NOT NULL DEFAULT 18.000,
+      "sortOrder" integer NOT NULL DEFAULT 0,
+      "isActive" boolean NOT NULL DEFAULT true,
+      "createdAt" timestamp with time zone NOT NULL DEFAULT now(),
+      "updatedAt" timestamp with time zone NOT NULL DEFAULT now()
+    );
+  `);
+  console.log("✓ hsn_master table ensured");
+
+  const defaultHsns = [
+    { code: "4909", desc: "Card & Premium Card (Visiting cards, letterheads)", rate: "18.000", sort: 1 },
+    { code: "4802", desc: "Paper, Cover & Art Card Brochure", rate: "18.000", sort: 2 },
+    { code: "4821", desc: "Sticker & Labels", rate: "18.000", sort: 3 },
+    { code: "4820", desc: "Books (Registers, notebooks, diaries, order books, receipt books)", rate: "18.000", sort: 4 },
+    { code: "4921", desc: "Synthetic Covers", rate: "18.000", sort: 5 },
+  ];
+  for (const h of defaultHsns) {
+    await db.execute(sql`
+      INSERT INTO hsn_master ("code", "description", "gstRate", "sortOrder", "isActive")
+      VALUES (${h.code}, ${h.desc}, ${h.rate}, ${h.sort}, true)
+      ON CONFLICT ("code") DO UPDATE
+      SET "description" = EXCLUDED."description",
+          "gstRate" = EXCLUDED."gstRate",
+          "isActive" = true;
+    `);
+  }
+  console.log("✓ default HSN codes seeded (including 4820 & 4921)");
+
+  // 7. Seed preset bill item types
   const defaultTypes = [
     { name: "Card & Premium Card", hsn: "4909", per: "PCS.", sort: 1 },
     { name: "Paper & Cover & Art Card Brochure", hsn: "4802", per: "PCS.", sort: 2 },
     { name: "Sticker", hsn: "4821", per: "PCS.", sort: 3 },
-    { name: "Visiting Cards (Single Side)", hsn: "4909", per: "PCS.", sort: 4 },
-    { name: "Visiting Cards (Both Side)", hsn: "4909", per: "PCS.", sort: 5 },
-    { name: "Letterhead", hsn: "4802", per: "PCS.", sort: 6 },
-    { name: "Envelope", hsn: "4802", per: "PCS.", sort: 7 },
-    { name: "Flyer / Pamphlet", hsn: "4802", per: "PCS.", sort: 8 },
+    { name: "Books", hsn: "4820", per: "PCS.", sort: 4 },
+    { name: "Synthetic Covers", hsn: "4921", per: "PCS.", sort: 5 },
+    { name: "Visiting Cards (Single Side)", hsn: "4909", per: "PCS.", sort: 6 },
+    { name: "Visiting Cards (Both Side)", hsn: "4909", per: "PCS.", sort: 7 },
+    { name: "Letterhead", hsn: "4802", per: "PCS.", sort: 8 },
+    { name: "Envelope", hsn: "4802", per: "PCS.", sort: 9 },
+    { name: "Flyer / Pamphlet", hsn: "4802", per: "PCS.", sort: 10 },
   ];
 
   for (const t of defaultTypes) {
@@ -133,7 +169,7 @@ async function main() {
           "defaultPer" = EXCLUDED."defaultPer";
     `);
   }
-  console.log("✓ default bill item types seeded");
+  console.log("✓ default bill item types seeded (including Books and Synthetic Covers)");
 
   // Print current categories with their HSN codes
   const cats = await db.execute(sql`SELECT id, name, slug, "hsnCode" FROM categories ORDER BY "sortOrder" ASC, name ASC;`);

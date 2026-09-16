@@ -75,6 +75,15 @@ interface BillItemType {
   isActive: boolean;
 }
 
+interface HsnMasterItem {
+  id: string;
+  code: string;
+  description: string;
+  gstRate: string;
+  sortOrder: number;
+  isActive: boolean;
+}
+
 interface BillSummary {
   id: string;
   invoiceNumber: string;
@@ -155,9 +164,20 @@ export function AdminBillsList() {
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [letterPadMode, setLetterPadMode] = useState(false);
 
-  // Manage Item Types Modal
+  // Manage Item Types & HSN Master Modal
   const [showTypesManager, setShowTypesManager] = useState(false);
+  const [typesManagerTab, setTypesManagerTab] = useState<"hsn" | "types">("hsn");
   const [itemTypes, setItemTypes] = useState<BillItemType[]>([]);
+  const [hsnList, setHsnList] = useState<HsnMasterItem[]>([]);
+  const [loadingHsn, setLoadingHsn] = useState(false);
+
+  // New HSN state
+  const [newHsnCode, setNewHsnCode] = useState("");
+  const [newHsnDescription, setNewHsnDescription] = useState("");
+  const [newHsnRate, setNewHsnRate] = useState("18.000");
+  const [savingHsn, setSavingHsn] = useState(false);
+
+  // New Type state
   const [newTypeName, setNewTypeName] = useState("");
   const [newTypeHsn, setNewTypeHsn] = useState("4909");
   const [newTypePer, setNewTypePer] = useState("PCS.");
@@ -226,10 +246,26 @@ export function AdminBillsList() {
     }
   }
 
+  async function loadHsnList() {
+    setLoadingHsn(true);
+    try {
+      const res = await adminRequest<{ hsnList: HsnMasterItem[] }>("/api/admin/bills/hsn");
+      setHsnList(res.hsnList || []);
+      if (res.hsnList && res.hsnList.length > 0 && !newTypeHsn) {
+        setNewTypeHsn(res.hsnList[0].code);
+      }
+    } catch (e) {
+      console.error("Failed to load HSN list:", e);
+    } finally {
+      setLoadingHsn(false);
+    }
+  }
+
   // Initial load
   useEffect(() => {
     loadStoreOrders();
     loadBills();
+    loadHsnList();
   }, []);
 
   // Store orders pagination / filters trigger
@@ -372,6 +408,30 @@ export function AdminBillsList() {
     }
   }
 
+  async function handleAddHsn(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newHsnCode.trim() || !newHsnDescription.trim()) return;
+    setSavingHsn(true);
+    try {
+      await adminRequest("/api/admin/bills/hsn", {
+        method: "POST",
+        body: JSON.stringify({
+          code: newHsnCode.trim(),
+          description: newHsnDescription.trim(),
+          gstRate: newHsnRate.trim() || "18.000",
+        }),
+      });
+      setNewHsnCode("");
+      setNewHsnDescription("");
+      setNewHsnRate("18.000");
+      await loadHsnList();
+    } catch (err: any) {
+      alert(err.message || "Failed to add HSN code");
+    } finally {
+      setSavingHsn(false);
+    }
+  }
+
   function getStatusBadgeStyle(status: string) {
     const s = status.toUpperCase();
     if (s === "IN_PRODUCTION" || s === "PRODUCTION") {
@@ -409,13 +469,29 @@ export function AdminBillsList() {
           <button
             type="button"
             onClick={() => {
+              loadHsnList();
               loadItemTypes();
+              setTypesManagerTab("hsn");
               setShowTypesManager(true);
             }}
             className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-colors"
           >
-            <Tag className="w-3.5 h-3.5 text-slate-500" />
-            Item Types & HSN
+            <Tag className="w-3.5 h-3.5 text-blue-600" />
+            HSN Master
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              loadHsnList();
+              loadItemTypes();
+              setTypesManagerTab("types");
+              setShowTypesManager(true);
+            }}
+            className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-colors"
+          >
+            <Layers className="w-3.5 h-3.5 text-purple-600" />
+            Item Types
           </button>
 
           <button
@@ -1164,17 +1240,19 @@ export function AdminBillsList() {
         </div>
       ) : null}
 
-      {/* Item Types Manager Modal ("listing add new types") */}
+      {/* Item Types & HSN Master Modal */}
       {showTypesManager ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl p-5 border border-slate-300 max-h-[90vh] flex flex-col">
+          <div className="relative w-full max-w-3xl bg-white rounded-xl shadow-2xl p-5 border border-slate-300 max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
               <div>
                 <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
                   <Tag className="w-4 h-4 text-blue-600" />
-                  Bill Item Types & HSN Presets
+                  HSN & Bill Items Master
                 </h3>
-                <p className="text-xs text-slate-500">Preset item types with pre-configured HSN codes for quick billing</p>
+                <p className="text-xs text-slate-500">
+                  Manage GST HSN codes (4820 Books, 4921 Synthetic Covers, etc.) and preset item types
+                </p>
               </div>
               <button
                 onClick={() => setShowTypesManager(false)}
@@ -1184,88 +1262,248 @@ export function AdminBillsList() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto py-4 space-y-4 text-xs">
-              {/* Add New Type Form */}
-              <form onSubmit={handleAddType} className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-3">
-                <span className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
-                  + Add New Item Type
+            {/* Modal Tabs */}
+            <div className="flex items-center gap-2 pt-3 border-b border-slate-200">
+              <button
+                type="button"
+                onClick={() => setTypesManagerTab("hsn")}
+                className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 ${
+                  typesManagerTab === "hsn"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <Tag className="w-3.5 h-3.5" />
+                <span>HSN Master Codes</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-blue-100 text-blue-800">
+                  {hsnList.length}
                 </span>
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
-                  <div className="sm:col-span-4">
-                    <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
-                      Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={newTypeName}
-                      onChange={(e) => setNewTypeName(e.target.value)}
-                      placeholder="e.g. Art Card 350 GSM"
-                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md bg-white"
-                      required
-                    />
-                  </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTypesManagerTab("types")}
+                className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors flex items-center gap-2 ${
+                  typesManagerTab === "types"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Bill Item Types</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-700">
+                  {itemTypes.length}
+                </span>
+              </button>
+            </div>
 
-                  <div className="sm:col-span-3">
-                    <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
-                      HSN Code *
-                    </label>
-                    <select
-                      value={newTypeHsn}
-                      onChange={(e) => setNewTypeHsn(e.target.value)}
-                      className="w-full px-2 py-1.5 border border-slate-300 rounded-md bg-white"
-                    >
-                      <option value="4909">4909 (Card)</option>
-                      <option value="4802">4802 (Paper/Brochure)</option>
-                      <option value="4821">4821 (Sticker)</option>
-                    </select>
-                  </div>
+            <div className="flex-1 overflow-y-auto py-4 space-y-4 text-xs">
+              {typesManagerTab === "hsn" ? (
+                <>
+                  {/* Add New HSN Form */}
+                  <form onSubmit={handleAddHsn} className="bg-blue-50/50 p-3 rounded-lg border border-blue-200 space-y-3">
+                    <span className="font-bold text-blue-900 block uppercase tracking-wider text-[10px]">
+                      + Add New HSN Master Code
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                      <div className="sm:col-span-3">
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
+                          HSN Code *
+                        </label>
+                        <input
+                          type="text"
+                          value={newHsnCode}
+                          onChange={(e) => setNewHsnCode(e.target.value)}
+                          placeholder="e.g. 4820 or 4921"
+                          className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md bg-white font-mono font-bold"
+                          required
+                        />
+                      </div>
 
-                  <div className="sm:col-span-2">
-                    <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
-                      Unit (Per)
-                    </label>
-                    <input
-                      type="text"
-                      value={newTypePer}
-                      onChange={(e) => setNewTypePer(e.target.value.toUpperCase())}
-                      placeholder="PCS."
-                      className="w-full px-2 py-1.5 uppercase border border-slate-300 rounded-md bg-white"
-                    />
-                  </div>
+                      <div className="sm:col-span-5">
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
+                          Description / Category *
+                        </label>
+                        <input
+                          type="text"
+                          value={newHsnDescription}
+                          onChange={(e) => setNewHsnDescription(e.target.value)}
+                          placeholder="e.g. Books (Registers, Diaries) or Synthetic Covers"
+                          className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md bg-white"
+                          required
+                        />
+                      </div>
 
-                  <div className="sm:col-span-3">
-                    <button
-                      type="submit"
-                      disabled={savingType}
-                      className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold disabled:opacity-50"
-                    >
-                      {savingType ? "Adding..." : "+ Add Type"}
-                    </button>
-                  </div>
-                </div>
-              </form>
+                      <div className="sm:col-span-2">
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
+                          GST Rate (%)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.001"
+                          value={newHsnRate}
+                          onChange={(e) => setNewHsnRate(e.target.value)}
+                          placeholder="18"
+                          className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md bg-white"
+                        />
+                      </div>
 
-              {/* Existing Types List */}
-              <div className="border border-slate-200 rounded-lg overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-100 border-b border-slate-200 font-bold text-[10px] text-slate-600 uppercase">
-                      <th className="py-2 px-3">Type Name</th>
-                      <th className="py-2 px-3 text-center">HSN Code</th>
-                      <th className="py-2 px-3 text-center">Default Unit</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {itemTypes.map((t) => (
-                      <tr key={t.id} className="hover:bg-slate-50">
-                        <td className="py-2 px-3 font-semibold text-slate-800">{t.name}</td>
-                        <td className="py-2 px-3 text-center font-mono font-bold text-blue-700">{t.hsnCode}</td>
-                        <td className="py-2 px-3 text-center font-medium text-slate-600 uppercase">{t.defaultPer}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                      <div className="sm:col-span-2">
+                        <button
+                          type="submit"
+                          disabled={savingHsn}
+                          className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold disabled:opacity-50"
+                        >
+                          {savingHsn ? "Saving..." : "+ Add HSN"}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+
+                  {/* Existing HSN Codes Table */}
+                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-100 border-b border-slate-200 font-bold text-[10px] text-slate-600 uppercase">
+                          <th className="py-2.5 px-3">HSN Code</th>
+                          <th className="py-2.5 px-3">Description / Item Category</th>
+                          <th className="py-2.5 px-3 text-center">GST Rate</th>
+                          <th className="py-2.5 px-3 text-center">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {loadingHsn ? (
+                          <tr>
+                            <td colSpan={4} className="py-6 text-center text-slate-400">
+                              Loading HSN codes...
+                            </td>
+                          </tr>
+                        ) : hsnList.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="py-6 text-center text-slate-400">
+                              No HSN codes found.
+                            </td>
+                          </tr>
+                        ) : (
+                          hsnList.map((h) => (
+                            <tr key={h.id || h.code} className="hover:bg-slate-50">
+                              <td className="py-2 px-3 font-mono font-bold text-blue-700">
+                                {h.code}
+                              </td>
+                              <td className="py-2 px-3 font-medium text-slate-800">
+                                {h.description}
+                              </td>
+                              <td className="py-2 px-3 text-center font-semibold text-slate-600">
+                                {Number(h.gstRate || 18)}%
+                              </td>
+                              <td className="py-2 px-3 text-center">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                  Active
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Add New Type Form */}
+                  <form onSubmit={handleAddType} className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-3">
+                    <span className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
+                      + Add New Item Type
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                      <div className="sm:col-span-4">
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
+                          Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={newTypeName}
+                          onChange={(e) => setNewTypeName(e.target.value)}
+                          placeholder="e.g. Books or Art Card"
+                          className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md bg-white"
+                          required
+                        />
+                      </div>
+
+                      <div className="sm:col-span-4">
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
+                          HSN Code *
+                        </label>
+                        <select
+                          value={newTypeHsn}
+                          onChange={(e) => setNewTypeHsn(e.target.value)}
+                          className="w-full px-2 py-1.5 border border-slate-300 rounded-md bg-white font-medium"
+                        >
+                          {hsnList.length > 0 ? (
+                            hsnList.map((h) => (
+                              <option key={h.code} value={h.code}>
+                                {h.code} ({h.description})
+                              </option>
+                            ))
+                          ) : (
+                            <>
+                              <option value="4909">4909 (Card)</option>
+                              <option value="4802">4802 (Paper/Brochure)</option>
+                              <option value="4821">4821 (Sticker)</option>
+                              <option value="4820">4820 (Books)</option>
+                              <option value="4921">4921 (Synthetic Covers)</option>
+                            </>
+                          )}
+                        </select>
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
+                          Unit (Per)
+                        </label>
+                        <input
+                          type="text"
+                          value={newTypePer}
+                          onChange={(e) => setNewTypePer(e.target.value.toUpperCase())}
+                          placeholder="PCS."
+                          className="w-full px-2 py-1.5 uppercase border border-slate-300 rounded-md bg-white"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <button
+                          type="submit"
+                          disabled={savingType}
+                          className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold disabled:opacity-50"
+                        >
+                          {savingType ? "Adding..." : "+ Add Type"}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+
+                  {/* Existing Types List */}
+                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-100 border-b border-slate-200 font-bold text-[10px] text-slate-600 uppercase">
+                          <th className="py-2 px-3">Type Name</th>
+                          <th className="py-2 px-3 text-center">HSN Code</th>
+                          <th className="py-2 px-3 text-center">Default Unit</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {itemTypes.map((t) => (
+                          <tr key={t.id} className="hover:bg-slate-50">
+                            <td className="py-2 px-3 font-semibold text-slate-800">{t.name}</td>
+                            <td className="py-2 px-3 text-center font-mono font-bold text-blue-700">{t.hsnCode}</td>
+                            <td className="py-2 px-3 text-center font-medium text-slate-600 uppercase">{t.defaultPer}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="pt-3 border-t border-slate-200 flex justify-end">
