@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 
 import { handleApiError, jsonError, jsonOk } from "@/lib/api";
 import { db } from "@/lib/db/server";
-import { businessSettings, customers, orderItems, orders } from "@/lib/db/schema";
+import { businessSettings, categories, customers, orderItems, orders, products } from "@/lib/db/schema";
 import { buildInvoiceData } from "@/lib/invoice-helper";
 import { getOrAllocateInvoiceNumber } from "@/lib/invoice-sequence-server";
 import { requireUser } from "@/lib/permissions";
@@ -40,7 +40,23 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
     }
 
     const [items, settingsRows] = await Promise.all([
-      db.select().from(orderItems).where(eq(orderItems.orderId, id)),
+      db
+        .select({
+          id: orderItems.id,
+          orderId: orderItems.orderId,
+          productId: orderItems.productId,
+          description: orderItems.description,
+          jobName: orderItems.jobName,
+          configuration: orderItems.configuration,
+          quantity: orderItems.quantity,
+          unitPrice: orderItems.unitPrice,
+          totalPrice: orderItems.totalPrice,
+          hsnCode: categories.hsnCode,
+        })
+        .from(orderItems)
+        .leftJoin(products, eq(orderItems.productId, products.id))
+        .leftJoin(categories, eq(products.categoryId, categories.id))
+        .where(eq(orderItems.orderId, id)),
       db.select().from(businessSettings).where(eq(businessSettings.id, "primary")).limit(1),
     ]);
 

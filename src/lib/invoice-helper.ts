@@ -2,7 +2,7 @@ import { numberToIndianWords } from "./number-to-words";
 import { getFinancialYear, formatInvoiceNumber } from "./invoice-sequence";
 import type { InvoiceData, InvoiceLineItem, InvoiceSizeMode } from "./invoice-types";
 
-function formatDateIn(date: Date | string | null | undefined): string {
+export function formatDateIn(date: Date | string | null | undefined): string {
   if (!date) return "";
   const d = typeof date === "string" ? new Date(date) : date;
   if (isNaN(d.getTime())) return "";
@@ -19,10 +19,23 @@ export function determinePageSize(itemCount: number, mode: InvoiceSizeMode = "AU
 
 export function defaultHsnForDescription(desc: string): string {
   const lower = desc.toLowerCase();
-  if (lower.includes("sticker") || lower.includes("label") || lower.includes("adhesive") || lower.includes("sheet")) {
-    return "4821"; // Paper labels and stickers
+  if (lower.includes("sticker") || lower.includes("label") || lower.includes("adhesive")) {
+    return "4821"; // Stickers & labels
   }
-  return "4911"; // Printed materials / trade advertising / visiting cards
+  if (
+    lower.includes("paper") ||
+    lower.includes("cover") ||
+    lower.includes("art card") ||
+    lower.includes("brochure") ||
+    lower.includes("letterhead") ||
+    lower.includes("envelope") ||
+    lower.includes("leaflet") ||
+    lower.includes("flyer") ||
+    lower.includes("pamphlet")
+  ) {
+    return "4802"; // Paper & cover & art card brochure
+  }
+  return "4909"; // Card & premium card / visiting cards
 }
 
 export function shortenOrderNumber(raw: string | undefined | null): string {
@@ -110,6 +123,8 @@ export function buildInvoiceData(
     invoiceYear: financialYear,
     invoiceSequence: order.invoiceSequence,
     invoiceDate: overrides?.invoiceDate || (order.invoiceDate ? formatDateIn(order.invoiceDate) : formattedOrderDate),
+    challanNumber: overrides?.challanNumber || order.chalanNumber || undefined,
+    challanDate: overrides?.challanDate || (order.chalanDate ? formatDateIn(order.chalanDate) : undefined),
     orderDate: overrides?.orderDate || formattedOrderDate,
     terms: overrides?.terms || "Immediate",
 

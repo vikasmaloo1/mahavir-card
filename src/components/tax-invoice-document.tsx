@@ -247,19 +247,37 @@ export function TaxInvoiceDocument({
               </div>
             </div>
 
+            {/* Chalan No & Date (if present) */}
+            {data.challanNumber ? (
+              <div className="grid grid-cols-[60%_40%] divide-x divide-black p-1 items-center">
+                <div className="whitespace-nowrap overflow-hidden">
+                  <span className="font-bold">CHALAN NO.: </span>
+                  <span className="font-bold text-[0.98em] tabular-nums">
+                    {data.challanNumber}
+                  </span>
+                </div>
+                <div className="pl-1 whitespace-nowrap overflow-hidden">
+                  <span className="font-bold">DT. </span>
+                  <span className="tabular-nums">{data.challanDate || data.invoiceDate}</span>
+                </div>
+              </div>
+            ) : null}
+
             {/* Order No & Date */}
-            <div className="grid grid-cols-[60%_40%] divide-x divide-black p-1 items-center">
-              <div className="whitespace-nowrap overflow-hidden">
-                <span className="font-bold">ORDER NO.: </span>
-                <span className="font-bold text-[0.98em] tabular-nums">
-                  {displayOrderNo}
-                </span>
+            {displayOrderNo ? (
+              <div className="grid grid-cols-[60%_40%] divide-x divide-black p-1 items-center">
+                <div className="whitespace-nowrap overflow-hidden">
+                  <span className="font-bold">ORDER NO.: </span>
+                  <span className="font-bold text-[0.98em] tabular-nums">
+                    {displayOrderNo}
+                  </span>
+                </div>
+                <div className="pl-1 whitespace-nowrap overflow-hidden">
+                  <span className="font-bold">DT. </span>
+                  <span className="tabular-nums">{data.orderDate}</span>
+                </div>
               </div>
-              <div className="pl-1 whitespace-nowrap overflow-hidden">
-                <span className="font-bold">DT. </span>
-                <span className="tabular-nums">{data.orderDate}</span>
-              </div>
-            </div>
+            ) : null}
 
             {/* Terms */}
             <div className="p-1 whitespace-nowrap overflow-hidden">

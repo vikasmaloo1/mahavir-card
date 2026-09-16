@@ -133,6 +133,7 @@ export const categories = pgTable("categories", {
   name: text("name").notNull().unique(),
   slug: text("slug").notNull().unique(),
   description: text("description"),
+  hsnCode: text("hsnCode").notNull().default("4909"),
   sortOrder: integer("sortOrder").notNull().default(0),
   isActive: boolean("isActive").notNull().default(true),
   ...timestamps,
@@ -609,6 +610,9 @@ export const orders = pgTable(
     invoiceYear: text("invoiceYear"),
     invoiceSequence: integer("invoiceSequence"),
     invoiceDate: timestamp("invoiceDate", { withTimezone: true }),
+    chalanNumber: text("chalanNumber"),
+    chalanSequence: integer("chalanSequence"),
+    chalanDate: timestamp("chalanDate", { withTimezone: true }),
     subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull().default("0"),
     taxableSubtotal: numeric("taxableSubtotal", { precision: 12, scale: 2 }).notNull().default("0"),
     tax: numeric("tax", { precision: 12, scale: 2 }).notNull().default("0"),
@@ -891,3 +895,82 @@ export const faqs = pgTable(
   },
   (table) => [index("faqs_category_idx").on(table.category, table.sortOrder)],
 );
+
+/** Manual bills / invoices created by admin */
+export const bills = pgTable(
+  "bills",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    invoiceNumber: text("invoiceNumber").notNull().unique(),
+    invoiceYear: text("invoiceYear").notNull(),
+    invoiceSequence: integer("invoiceSequence").notNull(),
+    invoiceDate: timestamp("invoiceDate", { withTimezone: true }).notNull().defaultNow(),
+    chalanNumber: text("chalanNumber"),
+    chalanSequence: integer("chalanSequence"),
+    chalanDate: timestamp("chalanDate", { withTimezone: true }),
+
+    customerId: uuid("customerId").references(() => customers.id, { onDelete: "set null" }),
+    customerName: text("customerName").notNull(),
+    companyName: text("companyName"),
+    phone: text("phone"),
+    addressLine1: text("addressLine1"),
+    addressLine2: text("addressLine2"),
+    city: text("city").default("Ahmedabad"),
+    state: text("state").default("Gujarat"),
+    stateCode: text("stateCode").default("GJ"),
+    postalCode: text("postalCode"),
+    gstin: text("gstin"),
+
+    items: jsonb("items")
+      .$type<
+        Array<{
+          id?: string;
+          description: string;
+          hsnCode: string;
+          quantity: number;
+          rate: number;
+          per: string;
+          amount: number;
+          itemType?: string;
+        }>
+      >()
+      .notNull()
+      .default([]),
+
+    taxType: text("taxType").notNull().default("INTRA_STATE"), // INTRA_STATE, INTER_STATE, EXEMPT
+    cgstRate: numeric("cgstRate", { precision: 6, scale: 3 }).notNull().default("9.000"),
+    cgstAmount: numeric("cgstAmount", { precision: 12, scale: 2 }).notNull().default("0"),
+    sgstRate: numeric("sgstRate", { precision: 6, scale: 3 }).notNull().default("9.000"),
+    sgstAmount: numeric("sgstAmount", { precision: 12, scale: 2 }).notNull().default("0"),
+    igstRate: numeric("igstRate", { precision: 6, scale: 3 }).notNull().default("0.000"),
+    igstAmount: numeric("igstAmount", { precision: 12, scale: 2 }).notNull().default("0"),
+
+    subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull().default("0"),
+    deliveryCharge: numeric("deliveryCharge", { precision: 12, scale: 2 }).notNull().default("0"),
+    roundOff: numeric("roundOff", { precision: 12, scale: 2 }).notNull().default("0"),
+    grandTotal: numeric("grandTotal", { precision: 12, scale: 2 }).notNull().default("0"),
+    amountInWords: text("amountInWords"),
+
+    terms: text("terms").default("Immediate"),
+    notes: text("notes"),
+    status: text("status").notNull().default("PAID"), // PAID, UNPAID, PARTIAL, CANCELLED
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("bills_invoice_number_idx").on(table.invoiceNumber),
+    index("bills_invoice_year_seq_idx").on(table.invoiceYear, table.invoiceSequence),
+    index("bills_chalan_number_idx").on(table.chalanNumber),
+  ],
+);
+
+/** Preset/Custom bill item types for quick manual billing */
+export const billItemTypes = pgTable("bill_item_types", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull().unique(),
+  hsnCode: text("hsnCode").notNull().default("4909"),
+  defaultRate: numeric("defaultRate", { precision: 12, scale: 2 }).default("0"),
+  defaultPer: text("defaultPer").notNull().default("PCS."),
+  sortOrder: integer("sortOrder").notNull().default(0),
+  isActive: boolean("isActive").notNull().default(true),
+  ...timestamps,
+});
