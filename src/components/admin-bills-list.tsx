@@ -183,6 +183,10 @@ export function AdminBillsList() {
   const [newTypePer, setNewTypePer] = useState("PCS.");
   const [newTypeRate, setNewTypeRate] = useState("0");
   const [savingType, setSavingType] = useState(false);
+  const [typeInlineAddHsn, setTypeInlineAddHsn] = useState(false);
+  const [typeInlineHsnCode, setTypeInlineHsnCode] = useState("");
+  const [typeInlineHsnDesc, setTypeInlineHsnDesc] = useState("");
+  const [typeInlineHsnRate, setTypeInlineHsnRate] = useState("18.000");
 
   // Load Store Orders Invoices
   async function loadStoreOrders() {
@@ -389,17 +393,43 @@ export function AdminBillsList() {
     if (!newTypeName.trim()) return;
     setSavingType(true);
     try {
+      let finalHsn = newTypeHsn.trim();
+
+      if (typeInlineAddHsn) {
+        const cleanCode = typeInlineHsnCode.trim();
+        const cleanDesc = typeInlineHsnDesc.trim();
+        if (!cleanCode || !cleanDesc) {
+          alert("Please enter both HSN code and description");
+          setSavingType(false);
+          return;
+        }
+        await adminRequest("/api/admin/bills/hsn", {
+          method: "POST",
+          body: JSON.stringify({
+            code: cleanCode,
+            description: cleanDesc,
+            gstRate: typeInlineHsnRate.trim() || "18.000",
+          }),
+        });
+        finalHsn = cleanCode;
+        await loadHsnList();
+      }
+
       await adminRequest("/api/admin/bills/types", {
         method: "POST",
         body: JSON.stringify({
           name: newTypeName.trim(),
-          hsnCode: newTypeHsn.trim(),
+          hsnCode: finalHsn || "4909",
           defaultPer: newTypePer.trim(),
-          defaultRate: newTypeRate,
+          defaultRate: newTypeRate || "0",
         }),
       });
       setNewTypeName("");
       setNewTypeRate("0");
+      setTypeInlineAddHsn(false);
+      setTypeInlineHsnCode("");
+      setTypeInlineHsnDesc("");
+      setTypeInlineHsnRate("18.000");
       loadItemTypes();
     } catch (err: any) {
       alert(err.message || "Failed to add type");
@@ -1410,12 +1440,28 @@ export function AdminBillsList() {
               ) : (
                 <>
                   {/* Add New Type Form */}
-                  <form onSubmit={handleAddType} className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-3">
-                    <span className="font-bold text-slate-700 block uppercase tracking-wider text-[10px]">
-                      + Add New Item Type
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
-                      <div className="sm:col-span-4">
+                  <form onSubmit={handleAddType} className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-800 block uppercase tracking-wider text-[10px]">
+                        + Add New Item Type
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTypeInlineAddHsn(!typeInlineAddHsn);
+                          if (!typeInlineAddHsn) {
+                            setTypeInlineHsnCode("");
+                            setTypeInlineHsnDesc("");
+                          }
+                        }}
+                        className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                      >
+                        {typeInlineAddHsn ? "← Pick Existing HSN" : "+ Add New HSN with Type"}
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+                      <div className={typeInlineAddHsn ? "sm:col-span-6" : "sm:col-span-4"}>
                         <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
                           Name *
                         </label>
@@ -1424,37 +1470,48 @@ export function AdminBillsList() {
                           value={newTypeName}
                           onChange={(e) => setNewTypeName(e.target.value)}
                           placeholder="e.g. Books or Art Card"
-                          className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md bg-white"
+                          className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md bg-white font-medium"
                           required
                         />
                       </div>
 
-                      <div className="sm:col-span-4">
-                        <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
-                          HSN Code *
-                        </label>
-                        <select
-                          value={newTypeHsn}
-                          onChange={(e) => setNewTypeHsn(e.target.value)}
-                          className="w-full px-2 py-1.5 border border-slate-300 rounded-md bg-white font-medium"
-                        >
-                          {hsnList.length > 0 ? (
-                            hsnList.map((h) => (
-                              <option key={h.code} value={h.code}>
-                                {h.code} ({h.description})
-                              </option>
-                            ))
-                          ) : (
-                            <>
-                              <option value="4909">4909 (Card)</option>
-                              <option value="4802">4802 (Paper/Brochure)</option>
-                              <option value="4821">4821 (Sticker)</option>
-                              <option value="4820">4820 (Books)</option>
-                              <option value="4921">4921 (Synthetic Covers)</option>
-                            </>
-                          )}
-                        </select>
-                      </div>
+                      {!typeInlineAddHsn ? (
+                        <div className="sm:col-span-4">
+                          <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
+                            HSN Code *
+                          </label>
+                          <select
+                            value={newTypeHsn}
+                            onChange={(e) => {
+                              if (e.target.value === "__NEW__") {
+                                setTypeInlineAddHsn(true);
+                              } else {
+                                setNewTypeHsn(e.target.value);
+                              }
+                            }}
+                            className="w-full px-2 py-1.5 border border-slate-300 rounded-md bg-white font-medium"
+                          >
+                            {hsnList.length > 0 ? (
+                              hsnList.map((h) => (
+                                <option key={h.code} value={h.code}>
+                                  {h.code} ({h.description})
+                                </option>
+                              ))
+                            ) : (
+                              <>
+                                <option value="4909">4909 (Card)</option>
+                                <option value="4802">4802 (Paper/Brochure)</option>
+                                <option value="4821">4821 (Sticker)</option>
+                                <option value="4820">4820 (Books)</option>
+                                <option value="4921">4921 (Synthetic Covers)</option>
+                              </>
+                            )}
+                            <option value="__NEW__" className="font-bold text-blue-600">
+                              + Add New HSN Code...
+                            </option>
+                          </select>
+                        </div>
+                      ) : null}
 
                       <div className="sm:col-span-2">
                         <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
@@ -1465,20 +1522,104 @@ export function AdminBillsList() {
                           value={newTypePer}
                           onChange={(e) => setNewTypePer(e.target.value.toUpperCase())}
                           placeholder="PCS."
-                          className="w-full px-2 py-1.5 uppercase border border-slate-300 rounded-md bg-white"
+                          className="w-full px-2 py-1.5 uppercase border border-slate-300 rounded-md bg-white font-medium"
                         />
                       </div>
 
                       <div className="sm:col-span-2">
-                        <button
-                          type="submit"
-                          disabled={savingType}
-                          className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold disabled:opacity-50"
-                        >
-                          {savingType ? "Adding..." : "+ Add Type"}
-                        </button>
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
+                          Rate (₹)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={newTypeRate}
+                          onChange={(e) => setNewTypeRate(e.target.value)}
+                          placeholder="0"
+                          className="w-full px-2 py-1.5 border border-slate-300 rounded-md bg-white font-medium"
+                        />
                       </div>
+
+                      {!typeInlineAddHsn && (
+                        <div className="sm:col-span-2">
+                          <button
+                            type="submit"
+                            disabled={savingType}
+                            className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold disabled:opacity-50"
+                          >
+                            {savingType ? "Adding..." : "+ Add Type"}
+                          </button>
+                        </div>
+                      )}
                     </div>
+
+                    {/* Inline HSN definition inputs if toggled */}
+                    {typeInlineAddHsn && (
+                      <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-lg space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">
+                            + New HSN Definition
+                          </span>
+                          <span className="text-[9px] text-blue-700 font-semibold bg-blue-100 px-1.5 py-0.5 rounded">
+                            Saves to HSN Master automatically
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                          <div className="sm:col-span-3">
+                            <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
+                              HSN Code *
+                            </label>
+                            <input
+                              type="text"
+                              value={typeInlineHsnCode}
+                              onChange={(e) => setTypeInlineHsnCode(e.target.value.replace(/\D/g, ""))}
+                              placeholder="e.g. 4819"
+                              className="w-full px-2.5 py-1.5 border border-blue-300 rounded-md bg-white font-mono font-bold text-xs"
+                              required={typeInlineAddHsn}
+                              autoFocus
+                            />
+                          </div>
+                          <div className="sm:col-span-3">
+                            <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
+                              GST Rate (%)
+                            </label>
+                            <select
+                              value={typeInlineHsnRate}
+                              onChange={(e) => setTypeInlineHsnRate(e.target.value)}
+                              className="w-full px-2 py-1.5 border border-blue-300 rounded-md bg-white text-xs font-semibold"
+                            >
+                              <option value="18.000">18% (Standard Print)</option>
+                              <option value="12.000">12%</option>
+                              <option value="5.000">5%</option>
+                              <option value="28.000">28%</option>
+                              <option value="0.000">0% (Exempt)</option>
+                            </select>
+                          </div>
+                          <div className="sm:col-span-4">
+                            <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
+                              Description *
+                            </label>
+                            <input
+                              type="text"
+                              value={typeInlineHsnDesc}
+                              onChange={(e) => setTypeInlineHsnDesc(e.target.value)}
+                              placeholder="e.g. Cartons & Folding Boxes"
+                              className="w-full px-2.5 py-1.5 border border-blue-300 rounded-md bg-white text-xs"
+                              required={typeInlineAddHsn}
+                            />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <button
+                              type="submit"
+                              disabled={savingType}
+                              className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold disabled:opacity-50 text-xs"
+                            >
+                              {savingType ? "Adding..." : "+ Save Both"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </form>
 
                   {/* Existing Types List */}

@@ -134,6 +134,10 @@ export function AdminManualBillModal({
   const [newTypePer, setNewTypePer] = useState("PCS.");
   const [newTypeRate, setNewTypeRate] = useState("0");
   const [savingNewType, setSavingNewType] = useState(false);
+  const [isAddingNewHsn, setIsAddingNewHsn] = useState(false);
+  const [inlineHsnCode, setInlineHsnCode] = useState("");
+  const [inlineHsnDesc, setInlineHsnDesc] = useState("");
+  const [inlineHsnRate, setInlineHsnRate] = useState("18.000");
 
   // Items
   const [items, setItems] = useState<ItemRow[]>([
@@ -416,18 +420,60 @@ export function AdminManualBillModal({
     });
   }
 
-  // Save new custom type via API
+  // Save new custom type via API (with optional inline HSN creation)
   async function handleCreateNewType(e: React.FormEvent) {
     e.preventDefault();
     if (!newTypeName.trim()) return;
 
     setSavingNewType(true);
     try {
+      let selectedHsn = newTypeHsn.trim();
+
+      // If adding a new HSN code inline
+      if (isAddingNewHsn) {
+        const cleanCode = inlineHsnCode.trim();
+        const cleanDesc = inlineHsnDesc.trim();
+
+        if (!cleanCode) {
+          alert("Please enter an HSN code (e.g. 4819)");
+          setSavingNewType(false);
+          return;
+        }
+        if (!cleanDesc) {
+          alert("Please enter a description for the new HSN code");
+          setSavingNewType(false);
+          return;
+        }
+
+        const hsnRes = await adminRequest<{ hsn: { code: string; description: string; gstRate: string } }>(
+          "/api/admin/bills/hsn",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              code: cleanCode,
+              description: cleanDesc,
+              gstRate: inlineHsnRate.trim() || "18.000",
+            }),
+          }
+        );
+
+        if (hsnRes?.hsn) {
+          setHsnOptions((prev) => {
+            const exists = prev.some((h) => h.code === hsnRes.hsn.code);
+            if (exists) {
+              return prev.map((h) => (h.code === hsnRes.hsn.code ? hsnRes.hsn : h));
+            }
+            return [...prev, hsnRes.hsn];
+          });
+        }
+        selectedHsn = cleanCode;
+      }
+
       const res = await adminRequest<{ type: BillItemType }>("/api/admin/bills/types", {
         method: "POST",
         body: JSON.stringify({
           name: newTypeName.trim(),
-          hsnCode: newTypeHsn.trim() || "4909",
+          hsnCode: selectedHsn || "4909",
           defaultPer: newTypePer.trim() || "PCS.",
           defaultRate: newTypeRate || "0",
         }),
@@ -435,14 +481,33 @@ export function AdminManualBillModal({
 
       if (res?.type) {
         setItemTypes((prev) => [...prev, res.type]);
-        // Also update current item row if desired
-        if (items.length > 0) {
-          handleItemChange(items.length - 1, "itemType", res.type.name);
-        }
+        // Also update current item row immediately with full details
+        setItems((prevItems) => {
+          if (prevItems.length === 0) return prevItems;
+          const updated = [...prevItems];
+          const lastIdx = updated.length - 1;
+          const current = updated[lastIdx];
+          const rateVal = Number(res.type.defaultRate || 0);
+          const qVal = Number(current.quantity || 1);
+          updated[lastIdx] = {
+            ...current,
+            itemType: res.type.name,
+            description: res.type.name.toUpperCase(),
+            hsnCode: res.type.hsnCode,
+            per: res.type.defaultPer || "PCS.",
+            rate: rateVal > 0 ? rateVal : current.rate,
+            amount: Number((qVal * (rateVal > 0 ? rateVal : current.rate)).toFixed(2)),
+          };
+          return updated;
+        });
       }
       setShowAddTypeModal(false);
       setNewTypeName("");
       setNewTypeRate("0");
+      setIsAddingNewHsn(false);
+      setInlineHsnCode("");
+      setInlineHsnDesc("");
+      setInlineHsnRate("18.000");
     } catch (err: any) {
       alert(err.message || "Failed to save item type");
     } finally {
@@ -1493,11 +1558,23 @@ export function AdminManualBillModal({
         <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md bg-white rounded-xl shadow-2xl p-5 border border-slate-300">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
-              <h3 className="font-bold text-slate-900 text-sm">Add New Bill Item Type</h3>
-              <button onClick={() => setShowAddTypeModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Add New Bill Item Type</h3>
+                <p className="text-[11px] text-slate-500">Create item presets and define new HSN codes on-the-fly</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddTypeModal(false);
+                  setIsAddingNewHsn(false);
+                }}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                ✕
+              </button>
             </div>
 
-            <form onSubmit={handleCreateNewType} className="space-y-3 text-xs">
+            <form onSubmit={handleCreateNewType} className="space-y-3.5 text-xs">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">
                   Type Name * (e.g. Brochure Single Fold, Vinyl Sticker)
@@ -1507,20 +1584,42 @@ export function AdminManualBillModal({
                   value={newTypeName}
                   onChange={(e) => setNewTypeName(e.target.value)}
                   placeholder="Enter item type name"
-                  className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 font-medium"
                   required
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">
-                  HSN Code *
-                </label>
-                <div className="flex gap-2">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-semibold text-slate-700">
+                    HSN Code *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddingNewHsn(!isAddingNewHsn);
+                      if (!isAddingNewHsn) {
+                        setInlineHsnCode("");
+                        setInlineHsnDesc("");
+                      }
+                    }}
+                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                  >
+                    {isAddingNewHsn ? "← Pick Existing HSN" : "+ Add New HSN Code"}
+                  </button>
+                </div>
+
+                {!isAddingNewHsn ? (
                   <select
                     value={newTypeHsn}
-                    onChange={(e) => setNewTypeHsn(e.target.value)}
-                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md bg-white font-medium"
+                    onChange={(e) => {
+                      if (e.target.value === "__NEW__") {
+                        setIsAddingNewHsn(true);
+                      } else {
+                        setNewTypeHsn(e.target.value);
+                      }
+                    }}
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md bg-white font-medium text-slate-800"
                   >
                     {hsnOptions.length > 0 ? (
                       hsnOptions.map((h) => (
@@ -1537,8 +1636,69 @@ export function AdminManualBillModal({
                         <option value="4921">4921 (Synthetic Covers)</option>
                       </>
                     )}
+                    <option value="__NEW__" className="font-bold text-blue-600">
+                      + Add New HSN Code...
+                    </option>
                   </select>
-                </div>
+                ) : (
+                  <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-lg space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">
+                        + New HSN Code Definition
+                      </span>
+                      <span className="text-[9px] text-blue-700 font-semibold bg-blue-100 px-1.5 py-0.5 rounded">
+                        Saves to HSN Master
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="col-span-1">
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
+                          HSN Code *
+                        </label>
+                        <input
+                          type="text"
+                          value={inlineHsnCode}
+                          onChange={(e) => setInlineHsnCode(e.target.value.replace(/\D/g, ""))}
+                          placeholder="e.g. 4819"
+                          className="w-full px-2 py-1.5 border border-blue-300 rounded-md bg-white font-mono text-xs font-bold text-slate-900"
+                          required={isAddingNewHsn}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
+                          GST Rate (%)
+                        </label>
+                        <select
+                          value={inlineHsnRate}
+                          onChange={(e) => setInlineHsnRate(e.target.value)}
+                          className="w-full px-2 py-1.5 border border-blue-300 rounded-md bg-white text-xs font-semibold text-slate-900"
+                        >
+                          <option value="18.000">18% (Standard Print / Paper)</option>
+                          <option value="12.000">12%</option>
+                          <option value="5.000">5%</option>
+                          <option value="28.000">28%</option>
+                          <option value="0.000">0% (Exempt / Nil)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">
+                        HSN Description / Category Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={inlineHsnDesc}
+                        onChange={(e) => setInlineHsnDesc(e.target.value)}
+                        placeholder="e.g. Cartons, Boxes & Packaging Cases"
+                        className="w-full px-2 py-1.5 border border-blue-300 rounded-md bg-white text-xs text-slate-900 font-medium"
+                        required={isAddingNewHsn}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1551,19 +1711,19 @@ export function AdminManualBillModal({
                     value={newTypePer}
                     onChange={(e) => setNewTypePer(e.target.value.toUpperCase())}
                     placeholder="PCS."
-                    className="w-full px-2.5 py-1.5 uppercase border border-slate-300 rounded-md"
+                    className="w-full px-2.5 py-1.5 uppercase border border-slate-300 rounded-md bg-white font-medium"
                   />
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
-                    Default Rate
+                    Default Rate (₹)
                   </label>
                   <input
                     type="number"
                     step="0.01"
                     value={newTypeRate}
                     onChange={(e) => setNewTypeRate(e.target.value)}
-                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md"
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md bg-white font-medium"
                   />
                 </div>
               </div>
@@ -1571,7 +1731,10 @@ export function AdminManualBillModal({
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
                 <button
                   type="button"
-                  onClick={() => setShowAddTypeModal(false)}
+                  onClick={() => {
+                    setShowAddTypeModal(false);
+                    setIsAddingNewHsn(false);
+                  }}
                   className="px-3 py-1.5 text-slate-600 hover:bg-slate-100 rounded-md font-medium"
                 >
                   Cancel
@@ -1579,9 +1742,10 @@ export function AdminManualBillModal({
                 <button
                   type="submit"
                   disabled={savingNewType}
-                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold disabled:opacity-50"
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold disabled:opacity-50 flex items-center gap-1.5"
                 >
-                  {savingNewType ? "Saving..." : "Save Type"}
+                  {savingNewType ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  {savingNewType ? "Saving..." : isAddingNewHsn ? "Save HSN & Type" : "Save Type"}
                 </button>
               </div>
             </form>
