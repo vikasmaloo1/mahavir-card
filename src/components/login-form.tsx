@@ -772,17 +772,28 @@ export function LoginForm() {
                   {(method === "phone" || isSignup) && (
                     <label className="block">
                       <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-600">Mobile Number</span>
-                      <div className="relative">
-                        <Smartphone size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <div className="relative flex items-center">
+                        <div className="pointer-events-none absolute left-3.5 flex items-center gap-1.5 text-slate-400 select-none">
+                          <Smartphone size={16} className="text-slate-400 shrink-0" />
+                          <span className="text-xs font-bold text-slate-700 border-r border-slate-200 pr-2">+91</span>
+                        </div>
                         <input
                           required
-                          inputMode="tel"
+                          type="tel"
+                          inputMode="numeric"
+                          maxLength={10}
+                          placeholder="98765 43210"
                           id={isSignup ? "signup-phone" : "signin-phone"}
                           name={isSignup ? "tel" : method === "phone" ? "username tel" : "tel"}
                           autoComplete={isSignup ? "tel" : "username tel"}
                           value={phoneNumber}
-                          onChange={(event) => setPhoneNumber(event.target.value)}
-                          className={`${fieldClass} pl-10`}
+                          onChange={(event) => {
+                            let raw = event.target.value.replace(/\D/g, "");
+                            if (raw.startsWith("91") && raw.length > 10) raw = raw.slice(2);
+                            if (raw.startsWith("0") && raw.length > 10) raw = raw.slice(1);
+                            setPhoneNumber(raw.slice(0, 10));
+                          }}
+                          className={`${fieldClass} pl-20 tracking-wider font-medium`}
                         />
                       </div>
                     </label>
