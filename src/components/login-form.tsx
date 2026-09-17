@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, LockKeyhole, Mail, PhoneCall, ShieldCheck, Smartphone, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, LockKeyhole, Mail, Pencil, PhoneCall, RotateCcw, ShieldCheck, Smartphone, UserRound } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { isValidIndianPhoneNumber, normalizePhoneNumber } from "@/lib/phone";
@@ -43,11 +43,14 @@ export function LoginForm() {
   const [city, setCity] = useState("");
   const [stateCode, setStateCode] = useState("GJ");
   const [error, setError] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   /* ── OTP verification state ── */
   const [signupStep, setSignupStep] = useState<SignupStep>("form");
   const [signupEmail, setSignupEmail] = useState("");
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [editingEmailValue, setEditingEmailValue] = useState("");
   const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [otpExpiresAt, setOtpExpiresAt] = useState(0);
@@ -73,38 +76,144 @@ export function LoginForm() {
     return () => clearInterval(interval);
   }, [otpExpiresAt]);
 
+  const verifyOtp = useCallback(async (digitsToVerify?: string[]) => {
+    const code = (digitsToVerify || otpDigits).join("");
+    if (code.length < 6) return;
+    setError("");
+    setInfoMessage("");
+    setLoading(true);
+    try {
+      const res = await authClient.emailOtp.verifyEmail({ email: signupEmail, otp: code });
+      if (res.error) throw new Error(res.error.message || "Invalid verification code. Please check and try again.");
+      // Email verified successfully — redirect
+      router.replace(isSafeNextPath(nextParam) ? nextParam : destinationForCustomerType(customerType));
+      router.refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Verification failed. Please try again.");
+      setOtpDigits(["", "", "", "", "", ""]);
+      otpRefs.current[0]?.focus();
+    } finally {
+      setLoading(false);
+    }
+  }, [otpDigits, signupEmail, nextParam, customerType, router]);
+
   const handleOtpChange = useCallback((index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
+    setError("");
     const digit = value.slice(-1);
     setOtpDigits((prev) => {
       const next = [...prev];
       next[index] = digit;
+      // If all 6 digits are now filled, auto verify
+      if (digit && next.every((d) => d.length === 1)) {
+        setTimeout(() => { void verifyOtp(next); }, 50);
+      }
       return next;
     });
     if (digit && index < 5) {
       otpRefs.current[index + 1]?.focus();
     }
-  }, []);
+  }, [verifyOtp]);
 
-  const handleOtpKeyDown = useCallback((index: number, key: string) => {
-    if (key === "Backspace" && !otpDigits[index] && index > 0) {
+  const handleOtpKeyDown = useCallback((index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace") {
+      if (!otpDigits[index] && index > 0) {
+        e.preventDefault();
+        otpRefs.current[index - 1]?.focus();
+        setOtpDigits((prev) => {
+          const next = [...prev];
+          next[index - 1] = "";
+          return next;
+        });
+      }
+    } else if (e.key === "ArrowLeft" && index > 0) {
+      e.preventDefault();
       otpRefs.current[index - 1]?.focus();
+    } else if (e.key === "ArrowRight" && index < 5) {
+      e.preventDefault();
+      otpRefs.current[index + 1]?.focus();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      void verifyOtp();
     }
-  }, [otpDigits]);
+  }, [otpDigits, verifyOtp]);
 
   const handleOtpPaste = useCallback((e: React.ClipboardEvent) => {
     e.preventDefault();
+    setError("");
     const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
     if (!pasted) return;
     const digits = pasted.split("");
-    setOtpDigits((prev) => {
-      const next = [...prev];
-      digits.forEach((d, i) => { next[i] = d; });
-      return next;
-    });
-    const focusIdx = Math.min(digits.length, 5);
-    otpRefs.current[focusIdx]?.focus();
-  }, []);
+    const nextDigits = ["", "", "", "", "", ""];
+    digits.forEach((d, i) => { nextDigits[i] = d; });
+    setOtpDigits(nextDigits);
+
+    if (pasted.length === 6) {
+      setTimeout(() => { void verifyOtp(nextDigits); }, 50);
+    } else {
+      const focusIdx = Math.min(digits.length, 5);
+      otpRefs.current[focusIdx]?.focus();
+    }
+  }, [verifyOtp]);
+
+  /* ── Allow user to update email address during OTP verification ── */
+  const handleUpdateEmailAndResend = useCallback(async () => {
+    const trimmed = editingEmailValue.trim();
+    if (!trimmed || !trimmed.includes("@")) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+    if (trimmed.toLowerCase() === signupEmail.toLowerCase()) {
+      setIsEditingEmail(false);
+      return;
+    }
+
+    setError("");
+    setInfoMessage("");
+    setLoading(true);
+
+    try {
+      const normalizedPhone = normalizePhoneNumber(phoneNumber);
+      // Attempt signup with the new email
+      const signup = await fetch("/api/auth/sign-up/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), email: trimmed, password }),
+      });
+      const result = await signup.json().catch(() => null);
+
+      // If user already exists (e.g. earlier unverified attempt), trigger OTP send directly
+      if (!signup.ok) {
+        const res = await authClient.emailOtp.sendVerificationOtp({
+          email: trimmed,
+          type: "email-verification",
+        });
+        if (res.error) throw new Error(res.error.message || messageFrom(result, "Could not update email"));
+      }
+
+      // Save/update profile for the new email
+      const selectedState = commerceStates.find(([code]) => code === stateCode);
+      await fetch("/api/account/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerType, contactName: name.trim(), companyName: companyName.trim() || null, phone: normalizedPhone, city: city.trim(), stateCode, state: selectedState?.[1] ?? "" }),
+      }).catch(() => null);
+
+      // Update state to new email
+      setEmail(trimmed);
+      setSignupEmail(trimmed);
+      setIsEditingEmail(false);
+      setOtpDigits(["", "", "", "", "", ""]);
+      setOtpExpiresAt(Date.now() + 900_000);
+      setResendCooldown(30);
+      setInfoMessage(`Verification code sent to ${trimmed}`);
+      setTimeout(() => { otpRefs.current[0]?.focus(); }, 100);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Failed to update email. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [editingEmailValue, signupEmail, phoneNumber, name, password, customerType, companyName, city, stateCode]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -273,79 +382,125 @@ export function LoginForm() {
             {isSignup && signupStep === "otp" ? (
               /* ── OTP Verification Screen ── */
               <div className="flex flex-col items-center text-center">
-                <div className="grid size-16 place-items-center rounded-2xl bg-[#edf4fb] border border-[#d5e3f1] mb-6">
-                  <ShieldCheck size={28} className="text-[#1e3a5f]" />
+                <div className="grid size-16 place-items-center rounded-2xl bg-[#edf4fb] border border-[#d5e3f1] mb-5">
+                  <ShieldCheck size={30} className="text-[#1e3a5f]" />
                 </div>
                 <h1 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
                   Verify Your Email
                 </h1>
-                <p className="mt-2 text-sm text-slate-600 max-w-sm">
-                  We sent a 6-digit code to{" "}
-                  <strong className="text-slate-900">{signupEmail}</strong>.
-                  <br />Enter it below to complete your registration.
-                </p>
+
+                {!isEditingEmail ? (
+                  <div className="mt-2 text-sm text-slate-600 max-w-md">
+                    <p>
+                      We sent a 6-digit code to{" "}
+                      <strong className="text-slate-900 font-bold">{signupEmail}</strong>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingEmailValue(signupEmail);
+                        setIsEditingEmail(true);
+                        setError("");
+                        setInfoMessage("");
+                      }}
+                      className="mt-1.5 inline-flex items-center gap-1 text-xs font-bold text-[#1e3a5f] hover:underline"
+                    >
+                      <Pencil size={12} /> Change email address
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-3 w-full max-w-sm rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-left shadow-xs">
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                      Enter Correct Email
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="email"
+                        value={editingEmailValue}
+                        onChange={(e) => setEditingEmailValue(e.target.value)}
+                        placeholder="you@example.com"
+                        className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium outline-none focus:border-[#1e3a5f] focus:ring-1 focus:ring-[#1e3a5f]"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            void handleUpdateEmailAndResend();
+                          } else if (e.key === "Escape") {
+                            setIsEditingEmail(false);
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        disabled={loading || !editingEmailValue.trim()}
+                        onClick={handleUpdateEmailAndResend}
+                        className="shrink-0 rounded-xl bg-[#1e3a5f] px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-[#152a45] disabled:opacity-50"
+                      >
+                        {loading ? "Saving..." : "Send Code"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingEmail(false)}
+                        className="shrink-0 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Status and Error Messages */}
+                {infoMessage && (
+                  <div role="status" className="mt-3 w-full max-w-sm rounded-xl border border-emerald-200 bg-emerald-50/90 p-2.5 text-xs text-emerald-900 flex items-center justify-center gap-1.5">
+                    <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                    <span>{infoMessage}</span>
+                  </div>
+                )}
+
+                {error && (
+                  <p role="alert" className="mt-3 w-full max-w-sm rounded-xl border border-red-200 bg-red-50/90 p-3 text-xs leading-relaxed text-red-900">
+                    {error}
+                  </p>
+                )}
 
                 {/* Timer */}
-                {timeLeft > 0 && (
+                {timeLeft > 0 ? (
                   <p className="mt-4 text-xs text-slate-500">
                     Code expires in{" "}
                     <span className="font-bold text-slate-900">
                       {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, "0")}
                     </span>
                   </p>
-                )}
-                {timeLeft === 0 && otpExpiresAt > 0 && (
+                ) : otpExpiresAt > 0 ? (
                   <p className="mt-4 text-xs text-red-600 font-semibold">
-                    Code expired. Please resend.
+                    Code expired. Please request a new code.
                   </p>
-                )}
+                ) : null}
 
                 {/* 6-digit OTP input */}
-                <div className="mt-6 flex items-center justify-center gap-2 sm:gap-3" onPaste={handleOtpPaste}>
+                <div className="mt-5 flex items-center justify-center gap-2 sm:gap-2.5" onPaste={handleOtpPaste}>
                   {otpDigits.map((digit, i) => (
                     <input
                       key={i}
                       ref={(el) => { otpRefs.current[i] = el; }}
                       type="text"
                       inputMode="numeric"
+                      pattern="[0-9]*"
                       maxLength={1}
                       value={digit}
                       onChange={(e) => handleOtpChange(i, e.target.value)}
-                      onKeyDown={(e) => handleOtpKeyDown(i, e.key)}
-                      className="size-12 sm:size-14 rounded-xl border-2 border-slate-200 bg-white text-center text-xl sm:text-2xl font-bold text-slate-900 outline-none transition focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/10"
+                      onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                      className="size-11 sm:size-13 rounded-xl border-2 border-slate-200 bg-white text-center text-xl sm:text-2xl font-bold text-slate-900 outline-none transition focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/15"
                       autoFocus={i === 0}
                     />
                   ))}
                 </div>
 
-                {error && (
-                  <p role="alert" className="mt-4 w-full max-w-sm rounded-xl border border-red-200 bg-red-50/70 p-3 text-xs leading-relaxed text-red-900">
-                    {error}
-                  </p>
-                )}
-
                 {/* Verify button */}
                 <button
                   type="button"
                   disabled={loading || otpDigits.some((d) => !d)}
-                  onClick={async () => {
-                    setError("");
-                    setLoading(true);
-                    try {
-                      const otp = otpDigits.join("");
-                      const res = await authClient.emailOtp.verifyEmail({ email: signupEmail, otp });
-                      if (res.error) throw new Error(res.error.message || "Invalid code. Please try again.");
-                      // Email verified — redirect
-                      router.replace(isSafeNextPath(nextParam) ? nextParam : destinationForCustomerType(customerType));
-                      router.refresh();
-                    } catch (caught) {
-                      setError(caught instanceof Error ? caught.message : "Verification failed. Please try again.");
-                      setOtpDigits(["", "", "", "", "", ""]);
-                      otpRefs.current[0]?.focus();
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
+                  onClick={() => verifyOtp()}
                   className="mt-6 flex w-full max-w-sm items-center justify-center gap-2 rounded-xl bg-[#1e3a5f] px-5 py-3.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#152a45] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {loading ? "Verifying..." : "Verify & Continue"}
@@ -363,6 +518,7 @@ export function LoginForm() {
                       className="font-bold text-[#1e3a5f] hover:underline"
                       onClick={async () => {
                         setError("");
+                        setInfoMessage("");
                         try {
                           const res = await authClient.emailOtp.sendVerificationOtp({
                             email: signupEmail,
@@ -372,13 +528,14 @@ export function LoginForm() {
                           setResendCooldown(30);
                           setOtpExpiresAt(Date.now() + 900_000);
                           setOtpDigits(["", "", "", "", "", ""]);
+                          setInfoMessage("A new verification code has been sent.");
                           otpRefs.current[0]?.focus();
                         } catch (caught) {
                           setError(caught instanceof Error ? caught.message : "Failed to resend. Try again.");
                         }
                       }}
                     >
-                      Resend
+                      Resend Code
                     </button>
                   )}
                 </div>
@@ -389,10 +546,11 @@ export function LoginForm() {
                   onClick={() => {
                     setSignupStep("form");
                     setError("");
+                    setInfoMessage("");
                   }}
                   className="mt-6 flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#1e3a5f] transition-colors"
                 >
-                  <ArrowLeft size={14} /> Back to sign up
+                  <ArrowLeft size={14} /> Back to sign up details
                 </button>
               </div>
             ) : (
