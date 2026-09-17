@@ -30,6 +30,7 @@ export function TaxInvoiceDocument({
   className = "",
   variant = "customer",
   letterPadMode,
+  showWatermark,
 }: {
   data: InvoiceData;
   className?: string;
@@ -37,8 +38,11 @@ export function TaxInvoiceDocument({
   variant?: "customer" | "admin";
   /** If true, leaves 35mm blank spacing at top and bottom for pre-printed letter pad stationery. Defaults to true for variant="admin". */
   letterPadMode?: boolean;
+  /** Explicitly toggle watermark logo. If omitted, automatically removed on letter pad mode and shown on plain paper. */
+  showWatermark?: boolean;
 }) {
   const isLetterPad = letterPadMode !== undefined ? letterPadMode : variant === "admin";
+  const shouldShowWatermark = showWatermark !== undefined ? showWatermark : !isLetterPad;
   const isLetterhead = isLetterPad;
   const isA5 = data.resolvedPageSize === "A5";
   const displayOrderNo = shortenOrderNumber(data.orderNumber);
@@ -90,6 +94,11 @@ export function TaxInvoiceDocument({
           .no-print {
             display: none !important;
           }
+          ${!shouldShowWatermark ? `
+          .watermark-emblem, img[alt="Watermark"] {
+            display: none !important;
+          }
+          ` : ""}
           .invoice-container {
             border: none !important;
             box-shadow: none !important;
@@ -290,18 +299,20 @@ export function TaxInvoiceDocument({
         {/* Itemized Table with Faded Watermark - Expanded to fill vertical space */}
         {/* No overflow-hidden here: the wrapper must never clip the tfoot totals (G.TOTAL). The filler row below is a small floor; the table's height:100% distributes any leftover space to it. */}
         <div className="relative my-0.5 border border-black flex-1 flex flex-col justify-between min-h-0">
-          {/* Faded Watermark Emblem in Background */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.06] overflow-hidden">
-            <div className="w-[50mm] h-[50mm] relative rounded-full overflow-hidden">
-              <Image
-                src="/images/mahavir-card-logo.jpeg"
-                alt="Watermark"
-                width={200}
-                height={200}
-                className="w-full h-full object-cover"
-              />
+          {/* Faded Watermark Emblem in Background (skipped on letter pad: pre-printed stationery already has logo/watermark) */}
+          {shouldShowWatermark ? (
+            <div className="watermark-emblem absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.06] overflow-hidden">
+              <div className="w-[50mm] h-[50mm] relative rounded-full overflow-hidden">
+                <Image
+                  src="/images/mahavir-card-logo.jpeg"
+                  alt="Watermark"
+                  width={200}
+                  height={200}
+                  className="w-full h-full object-cover"
+                />
+              </div>
             </div>
-          </div>
+          ) : null}
 
           {/* Table Structure */}
           <table className="w-full h-full border-collapse relative z-10 text-left flex-1" style={{ height: "100%" }}>

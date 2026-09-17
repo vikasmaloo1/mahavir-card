@@ -324,7 +324,7 @@ export function AdminBillsList() {
         setTimeout(() => {
           printInvoiceDocument("admin-bill-view-print-area", {
             pageSize: "A4",
-            letterPadMode: false,
+            letterPadMode,
           });
         }, 300);
       }
@@ -357,7 +357,7 @@ export function AdminBillsList() {
         setTimeout(() => {
           printInvoiceDocument("admin-bill-view-print-area", {
             pageSize: "A4",
-            letterPadMode: false,
+            letterPadMode,
           });
         }, 300);
       }
