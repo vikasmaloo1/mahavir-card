@@ -25,10 +25,11 @@ export function isQuoteExpired(quote: { validUntil: Date | string | null }) {
 export async function convertQuoteToOrder(quoteId: string): Promise<QuoteConversionResult> {
   const [quote] = await db.select().from(quotes).where(eq(quotes.id, quoteId)).limit(1);
   if (!quote) return { ok: false, reason: "NOT_FOUND" };
-  if (quote.status !== "CUSTOMER_APPROVED") return { ok: false, reason: "NOT_APPROVED" };
 
   const [existing] = await db.select().from(orders).where(eq(orders.quoteId, quoteId)).limit(1);
   if (existing) return { ok: true, order: existing, created: false };
+
+  if (quote.status !== "CUSTOMER_APPROVED") return { ok: false, reason: "NOT_APPROVED" };
 
   const items = await db.select().from(quoteItems).where(eq(quoteItems.quoteId, quoteId));
   if (!items.length) return { ok: false, reason: "EMPTY" };

@@ -43,6 +43,7 @@ async function main() {
         on ar."productId" = p.id and ar."isActive" = true
       where p."productReference" like 'RATE.xlsx/%'
         and p."isActive" = true
+        and ar."scopeKey" = 'PRODUCT'
       order by p."sortOrder", p.name
     `);
 

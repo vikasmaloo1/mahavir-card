@@ -86,7 +86,7 @@ function positive(value: unknown, label: string) {
 async function calculateBasePrice(productId: string, quantity: number, options: Record<string, unknown>, customerType: "B2C" | "B2B") {
   const rules = await db.select().from(pricingRules).where(and(eq(pricingRules.productId, productId), eq(pricingRules.isActive, true), or(eq(pricingRules.customerType, customerType), eq(pricingRules.customerType, "BOTH")))).orderBy(asc(pricingRules.createdAt));
   const requestedRuleId = typeof options.pricingRuleId === "string" ? options.pricingRuleId : undefined;
-  const matching = rules
+  let matching = rules
     .map((rule) => ({ rule, conditions: rule.conditions as RuleData, formula: rule.priceFormula as FormulaData }))
     .filter(({ rule, conditions }) => {
       if (requestedRuleId) return rule.id === requestedRuleId;
@@ -94,6 +94,19 @@ async function calculateBasePrice(productId: string, quantity: number, options: 
       return true;
     })
     .sort((a, b) => Math.abs((a.conditions.quantity ?? quantity) - quantity) - Math.abs((b.conditions.quantity ?? quantity) - quantity));
+
+  if (!matching.length && customerType === "B2B") {
+    const fallbackRules = await db.select().from(pricingRules).where(and(eq(pricingRules.productId, productId), eq(pricingRules.isActive, true), eq(pricingRules.customerType, "B2C"))).orderBy(asc(pricingRules.createdAt));
+    matching = fallbackRules
+      .map((rule) => ({ rule, conditions: rule.conditions as RuleData, formula: rule.priceFormula as FormulaData }))
+      .filter(({ rule, conditions }) => {
+        if (requestedRuleId) return rule.id === requestedRuleId;
+        if (options.specification) return !conditions.specification || conditions.specification === options.specification;
+        return true;
+      })
+      .sort((a, b) => Math.abs((a.conditions.quantity ?? quantity) - quantity) - Math.abs((b.conditions.quantity ?? quantity) - quantity));
+  }
+
   const selected = matching[0];
   if (selected?.rule.ruleType === "PER_SQ_INCH") {
     const width = positive(options.width, "Width");

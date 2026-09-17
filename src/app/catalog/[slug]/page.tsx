@@ -244,7 +244,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   };
 
   return (
-    <main className="mc-storefront min-h-screen bg-[#fcfbf9] text-slate-900">
+    <main className="mc-storefront min-h-screen bg-[#fcfbf9] text-slate-900 pb-24 sm:pb-0">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}

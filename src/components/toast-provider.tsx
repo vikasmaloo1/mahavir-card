@@ -91,7 +91,9 @@ function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => vo
   const [isInteracted, setIsInteracted] = useState(false);
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const onDismissRef = React.useRef(onDismiss);
-  onDismissRef.current = onDismiss;
+  useEffect(() => {
+    onDismissRef.current = onDismiss;
+  });
 
   // If toast has an action button (like "View basket →"), NEVER auto-dismiss!
   // It stays until the user explicitly clicks or dismisses.

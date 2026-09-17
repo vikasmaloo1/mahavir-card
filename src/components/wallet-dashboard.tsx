@@ -43,14 +43,15 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
   const ACTIVITY_PAGE_SIZE = 8;
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const transactions = data?.transactions;
   const sortedTransactions = useMemo(() => {
-    if (!data?.transactions) return [];
-    return [...data.transactions].sort((a, b) => {
+    if (!transactions) return [];
+    return [...transactions].sort((a, b) => {
       const timeA = new Date(a.createdAt).getTime();
       const timeB = new Date(b.createdAt).getTime();
       return timeB - timeA;
     });
-  }, [data?.transactions]);
+  }, [transactions]);
 
   const totalActivityPages = Math.max(1, Math.ceil(sortedTransactions.length / ACTIVITY_PAGE_SIZE));
   const paginatedTransactions = useMemo(() => {

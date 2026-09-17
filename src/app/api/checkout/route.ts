@@ -121,10 +121,11 @@ export async function POST(request: Request) {
       const sgstRate = input.address.stateCode === "GJ" ? "9.000" : "0.000";
       const igstRate = input.address.stateCode === "RJ" ? "18.000" : "0.000";
 
+      const orderStatus = input.paymentMethod === "CREDIT" ? "CONFIRMED" : "PENDING";
       const [order] = await tx.insert(orders).values({
         orderNumber,
         customerId: customer.id,
-        status: "PENDING",
+        status: orderStatus,
         subtotal: basket.summary.priceBeforeTax,
         taxableSubtotal: basket.summary.priceBeforeTax,
         tax: basket.summary.tax,

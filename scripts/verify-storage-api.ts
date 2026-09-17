@@ -4,7 +4,7 @@ import { config as loadEnv } from "dotenv";
 
 loadEnv({ path: ".env.local", quiet: true });
 
-const baseUrl = process.env.STORAGE_TEST_BASE_URL || "http://localhost:3001";
+const baseUrl = process.env.STORAGE_TEST_BASE_URL || process.env.BETTER_AUTH_URL || "http://localhost:3000";
 const trustedOrigin = process.env.BETTER_AUTH_URL || baseUrl;
 const email = process.env.INITIAL_ADMIN_EMAIL;
 const password = process.env.INITIAL_ADMIN_PASSWORD;
