@@ -85,17 +85,42 @@ export function LoginForm() {
     try {
       const res = await authClient.emailOtp.verifyEmail({ email: signupEmail, otp: code });
       if (res.error) throw new Error(res.error.message || "Invalid verification code. Please check and try again.");
+
+      // Establish active session if not already logged in
+      if (password) {
+        await authClient.signIn.email({ email: signupEmail, password, rememberMe: true }).catch(() => null);
+      }
+
+      // Save customer profile now that session is verified & active
+      if (phoneNumber) {
+        const normalizedPhone = normalizePhoneNumber(phoneNumber);
+        const selectedState = commerceStates.find(([code]) => code === stateCode);
+        await fetch("/api/account/profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            customerType,
+            contactName: name.trim(),
+            companyName: companyName.trim() || null,
+            phone: normalizedPhone,
+            city: city.trim(),
+            stateCode,
+            state: selectedState?.[1] ?? "",
+          }),
+        }).catch(() => null);
+      }
+
       // Email verified successfully — redirect
       router.replace(isSafeNextPath(nextParam) ? nextParam : destinationForCustomerType(customerType));
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Verification failed. Please try again.");
+      setError(caught instanceof Error ? caught.message : "Verification failed. Please check your code and try again.");
       setOtpDigits(["", "", "", "", "", ""]);
       otpRefs.current[0]?.focus();
     } finally {
       setLoading(false);
     }
-  }, [otpDigits, signupEmail, nextParam, customerType, router]);
+  }, [otpDigits, signupEmail, password, phoneNumber, name, companyName, city, stateCode, customerType, nextParam, router]);
 
   const handleOtpChange = useCallback((index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
@@ -173,7 +198,6 @@ export function LoginForm() {
     setLoading(true);
 
     try {
-      const normalizedPhone = normalizePhoneNumber(phoneNumber);
       // Attempt signup with the new email
       const signup = await fetch("/api/auth/sign-up/email", {
         method: "POST",
@@ -191,14 +215,6 @@ export function LoginForm() {
         if (res.error) throw new Error(res.error.message || messageFrom(result, "Could not update email"));
       }
 
-      // Save/update profile for the new email
-      const selectedState = commerceStates.find(([code]) => code === stateCode);
-      await fetch("/api/account/profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerType, contactName: name.trim(), companyName: companyName.trim() || null, phone: normalizedPhone, city: city.trim(), stateCode, state: selectedState?.[1] ?? "" }),
-      }).catch(() => null);
-
       // Update state to new email
       setEmail(trimmed);
       setSignupEmail(trimmed);
@@ -213,7 +229,7 @@ export function LoginForm() {
     } finally {
       setLoading(false);
     }
-  }, [editingEmailValue, signupEmail, phoneNumber, name, password, customerType, companyName, city, stateCode]);
+  }, [editingEmailValue, signupEmail, name, password]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -225,7 +241,6 @@ export function LoginForm() {
         if (!email.trim()) throw new Error("Email address is required for account verification");
         if (!isValidIndianPhoneNumber(phoneNumber)) throw new Error("Enter a valid 10-digit Indian mobile number");
 
-        const normalizedPhone = normalizePhoneNumber(phoneNumber);
         const finalEmail = email.trim();
 
         const signup = await fetch("/api/auth/sign-up/email", {
@@ -234,20 +249,19 @@ export function LoginForm() {
           body: JSON.stringify({ name: name.trim(), email: finalEmail, password }),
         });
         const result = await signup.json().catch(() => null);
-        if (!signup.ok) throw new Error(messageFrom(result, "Could not create the account"));
 
-        // Save profile (phone, customer type, city, state)
-        const selectedState = commerceStates.find(([code]) => code === stateCode);
-        const profileResponse = await fetch("/api/account/profile", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ customerType, contactName: name.trim(), companyName: companyName.trim() || null, phone: normalizedPhone, city: city.trim(), stateCode, state: selectedState?.[1] ?? "" }),
-        });
-        const profileResult = await profileResponse.json().catch(() => null);
-        if (!profileResponse.ok) throw new Error(messageFrom(profileResult, "Your account was created, but the profile could not be saved. Please try signing in and completing your profile."));
+        // If signup returned error, check if unverified account exists and trigger OTP
+        if (!signup.ok) {
+          const res = await authClient.emailOtp.sendVerificationOtp({
+            email: finalEmail,
+            type: "email-verification",
+          });
+          if (res.error) {
+            throw new Error(messageFrom(result, "Could not create account or send verification code"));
+          }
+        }
 
-        // OTP is auto-sent by better-auth (sendVerificationOnSignUp: true)
-        // Transition to OTP verification screen
+        // Transition to OTP verification screen (profile will be saved once OTP is verified)
         setSignupEmail(finalEmail);
         setOtpDigits(["", "", "", "", "", ""]);
         setOtpExpiresAt(Date.now() + 900_000); // 15 min
