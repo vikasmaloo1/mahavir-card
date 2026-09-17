@@ -1,4 +1,5 @@
 import { handleApiError, jsonError, jsonOk } from "@/lib/api";
+import { runAuthMaintenance } from "@/lib/auth-maintenance";
 import { isValidCronAuth } from "@/lib/cron-auth";
 import { runPendingArtworkReminders, runPendingPaymentReminders } from "@/lib/order-followup";
 import { runQuoteFollowups } from "@/lib/quote-followup";
@@ -15,13 +16,14 @@ export async function GET(request: Request) {
   try {
     if (!isValidCronAuth(request.headers.get("authorization"), process.env.CRON_SECRET)) return jsonError("Unauthorized", 401);
 
-    const [quoteResult, artworkResult, paymentResult] = await Promise.all([
+    const [quoteResult, artworkResult, paymentResult, authResult] = await Promise.all([
       runQuoteFollowups(),
       runPendingArtworkReminders(),
       runPendingPaymentReminders(),
+      runAuthMaintenance(),
     ]);
 
-    return jsonOk({ quotes: quoteResult, artwork: artworkResult, payments: paymentResult });
+    return jsonOk({ quotes: quoteResult, artwork: artworkResult, payments: paymentResult, auth: authResult });
   } catch (error) {
     return handleApiError(error);
   }

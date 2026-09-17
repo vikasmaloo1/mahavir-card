@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, CheckCircle2, LockKeyhole, Mail, Pencil, PhoneCall, RotateCcw, ShieldCheck, Smartphone, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, LockKeyhole, Mail, Pencil, PhoneCall, ShieldCheck, Smartphone, UserRound } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { isValidIndianPhoneNumber, normalizePhoneNumber } from "@/lib/phone";
@@ -21,6 +21,17 @@ function destinationForCustomerType(customerType: string | null | undefined) {
 
 type Method = "email" | "phone";
 type SignupStep = "form" | "otp";
+
+const EMPTY_OTP = ["", "", "", "", "", ""];
+const OTP_TTL_MS = 15 * 60 * 1000;
+const RESEND_COOLDOWN_SECONDS = 30;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function isUnverifiedError(payload: unknown) {
+  if (!payload || typeof payload !== "object") return false;
+  const value = payload as { code?: string; message?: string };
+  return value.code === "EMAIL_NOT_VERIFIED" || /not verified/i.test(value.message ?? "");
+}
 
 function messageFrom(payload: unknown, fallback: string) {
   if (!payload || typeof payload !== "object") return fallback;
@@ -51,10 +62,14 @@ export function LoginForm() {
   const [signupEmail, setSignupEmail] = useState("");
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [editingEmailValue, setEditingEmailValue] = useState("");
-  const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
+  const [otpDigits, setOtpDigits] = useState<string[]>(EMPTY_OTP);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [otpExpiresAt, setOtpExpiresAt] = useState(0);
+  const [resending, setResending] = useState(false);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  // Guards against a second verify firing while one is in flight (StrictMode double
+  // effects, Enter + auto-submit racing) — each extra call would burn an attempt.
+  const verifyInFlight = useRef(false);
 
   /* Resend cooldown timer */
   useEffect(() => {
@@ -67,18 +82,61 @@ export function LoginForm() {
   const [timeLeft, setTimeLeft] = useState(0);
   useEffect(() => {
     if (!otpExpiresAt) return;
-    const tick = () => {
-      const remaining = Math.max(0, Math.floor((otpExpiresAt - Date.now()) / 1000));
-      setTimeLeft(remaining);
-    };
+    const tick = () => setTimeLeft(Math.max(0, Math.floor((otpExpiresAt - Date.now()) / 1000)));
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
   }, [otpExpiresAt]);
 
+  const otpExpired = otpExpiresAt > 0 && timeLeft <= 0;
+
+  const resetOtpInputs = useCallback((focus = true) => {
+    setOtpDigits(EMPTY_OTP);
+    if (focus) setTimeout(() => otpRefs.current[0]?.focus(), 50);
+  }, []);
+
+  /** Opens the OTP screen for an address whose code has just been (re)sent. */
+  const enterOtpStep = useCallback((address: string, message: string) => {
+    setSignupEmail(address);
+    setEmail(address);
+    setIsEditingEmail(false);
+    setOtpExpiresAt(Date.now() + OTP_TTL_MS);
+    setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    setInfoMessage(message);
+    setError("");
+    setSignupStep("otp");
+    resetOtpInputs();
+  }, [resetOtpInputs]);
+
+  /** Asks the server to (re)send the verification code. Throws with a user-facing message. */
+  const requestOtp = useCallback(async (address: string) => {
+    const res = await authClient.emailOtp.sendVerificationOtp({ email: address, type: "email-verification" });
+    if (res.error) throw new Error(res.error.message || "Could not send the verification code. Please try again.");
+  }, []);
+
+  /** Where to land after a successful sign-in / verification. */
+  const finishSignIn = useCallback(async (fallbackType?: string | null) => {
+    if (isSafeNextPath(nextParam)) {
+      router.replace(nextParam);
+    } else {
+      // No explicit return-to: B2B goes straight to the product listing (fastest repeat-order
+      // path), B2C to the account overview. Determined from the customer record, not guessed.
+      const profileResponse = await fetch("/api/account/profile", { cache: "no-store" });
+      const profilePayload = await profileResponse.json().catch(() => null);
+      const resolvedType = profileResponse.ok && profilePayload?.success ? profilePayload.data?.customer?.customerType : null;
+      router.replace(destinationForCustomerType(resolvedType ?? fallbackType));
+    }
+    router.refresh();
+  }, [nextParam, router]);
+
   const verifyOtp = useCallback(async (digitsToVerify?: string[]) => {
     const code = (digitsToVerify || otpDigits).join("");
-    if (code.length < 6) return;
+    if (code.length < 6 || verifyInFlight.current) return;
+    if (otpExpired) {
+      setError("This code has expired. Request a new one below.");
+      return;
+    }
+    verifyInFlight.current = true;
     setError("");
     setInfoMessage("");
     setLoading(true);
@@ -86,59 +144,78 @@ export function LoginForm() {
       const res = await authClient.emailOtp.verifyEmail({ email: signupEmail, otp: code });
       if (res.error) throw new Error(res.error.message || "Invalid verification code. Please check and try again.");
 
-      // Establish active session if not already logged in
-      if (password) {
-        await authClient.signIn.email({ email: signupEmail, password, rememberMe: true }).catch(() => null);
+      // The server signs the user in as part of verification (autoSignInAfterVerification).
+      // Fall back to a password sign-in only if no session came back, and surface a real
+      // error rather than redirecting a logged-out user.
+      let session = (await authClient.getSession()).data;
+      if (!session && password) {
+        await authClient.signIn.email({ email: signupEmail, password, rememberMe: true });
+        session = (await authClient.getSession()).data;
+      }
+      if (!session) {
+        setSignupStep("form");
+        setIsSignup(false);
+        setMethod("email");
+        setError("Your email is verified, but this account already has a different password. Sign in with your existing password.");
+        return;
       }
 
-      // Save customer profile now that session is verified & active
-      if (phoneNumber) {
-        const normalizedPhone = normalizePhoneNumber(phoneNumber);
-        const selectedState = commerceStates.find(([code]) => code === stateCode);
-        await fetch("/api/account/profile", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            customerType,
-            contactName: name.trim(),
-            companyName: companyName.trim() || null,
-            phone: normalizedPhone,
-            city: city.trim(),
-            stateCode,
-            state: selectedState?.[1] ?? "",
-          }),
-        }).catch(() => null);
+      // Save the sign-up profile once, only for an account that doesn't have one yet — an
+      // existing customer re-verifying must not have their record overwritten by form defaults.
+      if (phoneNumber && name.trim()) {
+        const existing = await fetch("/api/account/profile", { cache: "no-store" }).then((r) => r.json()).catch(() => null);
+        if (!existing?.data?.customer) {
+          const selectedState = commerceStates.find(([code]) => code === stateCode);
+          const saved = await fetch("/api/account/profile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              customerType,
+              contactName: name.trim(),
+              companyName: companyName.trim() || null,
+              phone: normalizePhoneNumber(phoneNumber),
+              city: city.trim(),
+              stateCode,
+              state: selectedState?.[1] ?? "",
+            }),
+          });
+          // The account is verified and signed in either way; the profile can be completed
+          // from the account page, so a failure here must not strand the user.
+          if (!saved.ok) console.warn("Profile save after verification failed", saved.status);
+        }
       }
 
-      // Email verified successfully — redirect
-      router.replace(isSafeNextPath(nextParam) ? nextParam : destinationForCustomerType(customerType));
-      router.refresh();
+      await finishSignIn(customerType);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Verification failed. Please check your code and try again.");
-      setOtpDigits(["", "", "", "", "", ""]);
-      otpRefs.current[0]?.focus();
+      resetOtpInputs();
     } finally {
+      verifyInFlight.current = false;
       setLoading(false);
     }
-  }, [otpDigits, signupEmail, password, phoneNumber, name, companyName, city, stateCode, customerType, nextParam, router]);
+  }, [otpDigits, otpExpired, signupEmail, password, phoneNumber, name, companyName, city, stateCode, customerType, finishSignIn, resetOtpInputs]);
+
+  // Auto-submit lives outside the state updater so it runs exactly once per completed code.
+  const pendingAutoVerify = useRef<string[] | null>(null);
+  useEffect(() => {
+    if (!pendingAutoVerify.current) return;
+    const digits = pendingAutoVerify.current;
+    pendingAutoVerify.current = null;
+    void verifyOtp(digits);
+  }, [otpDigits, verifyOtp]);
 
   const handleOtpChange = useCallback((index: number, value: string) => {
-    if (!/^\d*$/.test(value)) return;
+    const digit = value.replace(/\D/g, "").slice(-1);
+    if (value && !digit) return;
     setError("");
-    const digit = value.slice(-1);
     setOtpDigits((prev) => {
       const next = [...prev];
       next[index] = digit;
-      // If all 6 digits are now filled, auto verify
-      if (digit && next.every((d) => d.length === 1)) {
-        setTimeout(() => { void verifyOtp(next); }, 50);
-      }
+      if (digit && next.every((d) => d.length === 1)) pendingAutoVerify.current = next;
       return next;
     });
-    if (digit && index < 5) {
-      otpRefs.current[index + 1]?.focus();
-    }
-  }, [verifyOtp]);
+    if (digit && index < 5) otpRefs.current[index + 1]?.focus();
+  }, []);
 
   const handleOtpKeyDown = useCallback((index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Backspace") {
@@ -168,68 +245,65 @@ export function LoginForm() {
     setError("");
     const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
     if (!pasted) return;
-    const digits = pasted.split("");
-    const nextDigits = ["", "", "", "", "", ""];
-    digits.forEach((d, i) => { nextDigits[i] = d; });
+    const nextDigits = [...EMPTY_OTP];
+    pasted.split("").forEach((d, i) => { nextDigits[i] = d; });
     setOtpDigits(nextDigits);
-
     if (pasted.length === 6) {
-      setTimeout(() => { void verifyOtp(nextDigits); }, 50);
+      pendingAutoVerify.current = nextDigits;
     } else {
-      const focusIdx = Math.min(digits.length, 5);
-      otpRefs.current[focusIdx]?.focus();
+      otpRefs.current[Math.min(pasted.length, 5)]?.focus();
     }
-  }, [verifyOtp]);
+  }, []);
+
+  const resendOtp = useCallback(async () => {
+    if (resending || resendCooldown > 0) return;
+    setResending(true);
+    setError("");
+    setInfoMessage("");
+    try {
+      await requestOtp(signupEmail);
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+      setOtpExpiresAt(Date.now() + OTP_TTL_MS);
+      setInfoMessage("A new verification code has been sent.");
+      resetOtpInputs();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Failed to resend. Try again.");
+    } finally {
+      setResending(false);
+    }
+  }, [resending, resendCooldown, requestOtp, signupEmail, resetOtpInputs]);
 
   /* ── Allow user to update email address during OTP verification ── */
   const handleUpdateEmailAndResend = useCallback(async () => {
-    const trimmed = editingEmailValue.trim();
-    if (!trimmed || !trimmed.includes("@")) {
+    const trimmed = editingEmailValue.trim().toLowerCase();
+    if (!EMAIL_PATTERN.test(trimmed)) {
       setError("Please enter a valid email address.");
       return;
     }
-    if (trimmed.toLowerCase() === signupEmail.toLowerCase()) {
+    if (trimmed === signupEmail.toLowerCase()) {
       setIsEditingEmail(false);
       return;
     }
-
     setError("");
     setInfoMessage("");
     setLoading(true);
-
     try {
-      // Attempt signup with the new email
+      // Re-run sign-up for the corrected address. For a brand-new address this creates the
+      // account and the server sends the first code; for an address that already has an
+      // account the server answers identically (no enumeration) and re-sends its code.
       const signup = await fetch("/api/auth/sign-up/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim(), email: trimmed, password }),
       });
-      const result = await signup.json().catch(() => null);
-
-      // If user already exists (e.g. earlier unverified attempt), trigger OTP send directly
-      if (!signup.ok) {
-        const res = await authClient.emailOtp.sendVerificationOtp({
-          email: trimmed,
-          type: "email-verification",
-        });
-        if (res.error) throw new Error(res.error.message || messageFrom(result, "Could not update email"));
-      }
-
-      // Update state to new email
-      setEmail(trimmed);
-      setSignupEmail(trimmed);
-      setIsEditingEmail(false);
-      setOtpDigits(["", "", "", "", "", ""]);
-      setOtpExpiresAt(Date.now() + 900_000);
-      setResendCooldown(30);
-      setInfoMessage(`Verification code sent to ${trimmed}`);
-      setTimeout(() => { otpRefs.current[0]?.focus(); }, 100);
+      if (!signup.ok) throw new Error(messageFrom(await signup.json().catch(() => null), "Could not update the email address"));
+      enterOtpStep(trimmed, "Verification code sent to " + trimmed);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Failed to update email. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [editingEmailValue, signupEmail, name, password]);
+  }, [editingEmailValue, signupEmail, name, password, enterOtpStep]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -238,43 +312,29 @@ export function LoginForm() {
 
     try {
       if (isSignup) {
-        if (!email.trim()) throw new Error("Email address is required for account verification");
+        const finalEmail = email.trim().toLowerCase();
+        if (!EMAIL_PATTERN.test(finalEmail)) throw new Error("Enter a valid email address for account verification");
         if (!isValidIndianPhoneNumber(phoneNumber)) throw new Error("Enter a valid 10-digit Indian mobile number");
 
-        const finalEmail = email.trim();
-
+        // With email verification required the server answers a duplicate address exactly like a
+        // fresh one (and re-sends that account's code), so a non-OK response here is a real
+        // validation failure — show it instead of opening the code screen for a nonexistent account.
         const signup = await fetch("/api/auth/sign-up/email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: name.trim(), email: finalEmail, password }),
         });
-        const result = await signup.json().catch(() => null);
+        if (!signup.ok) throw new Error(messageFrom(await signup.json().catch(() => null), "Could not create your account"));
 
-        // If signup returned error, check if unverified account exists and trigger OTP
-        if (!signup.ok) {
-          const res = await authClient.emailOtp.sendVerificationOtp({
-            email: finalEmail,
-            type: "email-verification",
-          });
-          if (res.error) {
-            throw new Error(messageFrom(result, "Could not create account or send verification code"));
-          }
-        }
-
-        // Transition to OTP verification screen (profile will be saved once OTP is verified)
-        setSignupEmail(finalEmail);
-        setOtpDigits(["", "", "", "", "", ""]);
-        setOtpExpiresAt(Date.now() + 900_000); // 15 min
-        setResendCooldown(30);
-        setSignupStep("otp");
-        setError("");
+        enterOtpStep(finalEmail, "We sent a 6-digit code to " + finalEmail);
         return;
       }
 
       if (method === "phone" && !isValidIndianPhoneNumber(phoneNumber)) throw new Error("Enter a valid 10-digit Indian mobile number");
       const endpoint = method === "email" ? "/api/auth/sign-in/email" : "/api/auth/sign-in/phone-number";
+      const signInEmail = email.trim().toLowerCase();
       const body = method === "email"
-        ? { email: email.trim(), password, rememberMe: true }
+        ? { email: signInEmail, password, rememberMe: true }
         : { phoneNumber: normalizePhoneNumber(phoneNumber), password, rememberMe: true };
       const response = await fetch(endpoint, {
         method: "POST",
@@ -282,19 +342,18 @@ export function LoginForm() {
         body: JSON.stringify(body),
       });
       const result = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(messageFrom(result, "Invalid login details"));
-
-      if (isSafeNextPath(nextParam)) {
-        router.replace(nextParam);
-      } else {
-        // No explicit return-to: send B2B straight to the product listing (fastest repeat-order path),
-        // B2C to the account overview. Determined from the customer record, not guessed.
-        const profileResponse = await fetch("/api/account/profile", { cache: "no-store" });
-        const profilePayload = await profileResponse.json().catch(() => null);
-        const customerType = profileResponse.ok && profilePayload?.success ? profilePayload.data?.customer?.customerType : null;
-        router.replace(destinationForCustomerType(customerType));
+      if (!response.ok) {
+        // Correct password on an account that never finished verifying: send the code and
+        // continue into verification instead of dead-ending on "Email not verified".
+        if (response.status === 403 && method === "email" && isUnverifiedError(result)) {
+          await requestOtp(signInEmail);
+          enterOtpStep(signInEmail, "Your email isn't verified yet. We sent a 6-digit code to " + signInEmail);
+          return;
+        }
+        throw new Error(messageFrom(result, "Invalid login details"));
       }
-      router.refresh();
+
+      await finishSignIn();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "We couldn't sign you in. Check your connection and try again.");
     } finally {
@@ -393,7 +452,7 @@ export function LoginForm() {
               </div>
             </div>
 
-            {isSignup && signupStep === "otp" ? (
+            {signupStep === "otp" ? (
               /* ── OTP Verification Screen ── */
               <div className="flex flex-col items-center text-center">
                 <div className="grid size-16 place-items-center rounded-2xl bg-[#edf4fb] border border-[#d5e3f1] mb-5">
@@ -447,7 +506,7 @@ export function LoginForm() {
                       <button
                         type="button"
                         disabled={loading || !editingEmailValue.trim()}
-                        onClick={handleUpdateEmailAndResend}
+                        onClick={() => void handleUpdateEmailAndResend()}
                         className="shrink-0 rounded-xl bg-[#1e3a5f] px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-[#152a45] disabled:opacity-50"
                       >
                         {loading ? "Saving..." : "Send Code"}
@@ -502,9 +561,12 @@ export function LoginForm() {
                       pattern="[0-9]*"
                       maxLength={1}
                       value={digit}
+                      disabled={loading || otpExpired}
+                      autoComplete={i === 0 ? "one-time-code" : "off"}
+                      aria-label={`Digit ${i + 1} of 6`}
                       onChange={(e) => handleOtpChange(i, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                      className="size-11 sm:size-13 rounded-xl border-2 border-slate-200 bg-white text-center text-xl sm:text-2xl font-bold text-slate-900 outline-none transition focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/15"
+                      className="size-11 sm:size-13 rounded-xl border-2 border-slate-200 bg-white text-center text-xl sm:text-2xl font-bold text-slate-900 outline-none transition focus:border-[#1e3a5f] focus:ring-2 focus:ring-[#1e3a5f]/15 disabled:bg-slate-50 disabled:text-slate-400"
                       autoFocus={i === 0}
                     />
                   ))}
@@ -513,7 +575,7 @@ export function LoginForm() {
                 {/* Verify button */}
                 <button
                   type="button"
-                  disabled={loading || otpDigits.some((d) => !d)}
+                  disabled={loading || otpExpired || otpDigits.some((d) => !d)}
                   onClick={() => verifyOtp()}
                   className="mt-6 flex w-full max-w-sm items-center justify-center gap-2 rounded-xl bg-[#1e3a5f] px-5 py-3.5 text-sm font-bold text-white shadow-xs transition hover:bg-[#152a45] disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -523,33 +585,17 @@ export function LoginForm() {
 
                 {/* Resend */}
                 <div className="mt-4 flex items-center gap-1 text-xs text-slate-500">
-                  <span>Didn't get the code?</span>
+                  <span>Didn&apos;t get the code?</span>
                   {resendCooldown > 0 ? (
                     <span className="font-semibold text-slate-400">Resend in {resendCooldown}s</span>
                   ) : (
                     <button
                       type="button"
-                      className="font-bold text-[#1e3a5f] hover:underline"
-                      onClick={async () => {
-                        setError("");
-                        setInfoMessage("");
-                        try {
-                          const res = await authClient.emailOtp.sendVerificationOtp({
-                            email: signupEmail,
-                            type: "email-verification",
-                          });
-                          if (res.error) throw new Error(res.error.message || "Could not resend code");
-                          setResendCooldown(30);
-                          setOtpExpiresAt(Date.now() + 900_000);
-                          setOtpDigits(["", "", "", "", "", ""]);
-                          setInfoMessage("A new verification code has been sent.");
-                          otpRefs.current[0]?.focus();
-                        } catch (caught) {
-                          setError(caught instanceof Error ? caught.message : "Failed to resend. Try again.");
-                        }
-                      }}
+                      disabled={resending || loading}
+                      className="font-bold text-[#1e3a5f] hover:underline disabled:opacity-50"
+                      onClick={() => void resendOtp()}
                     >
-                      Resend Code
+                      {resending ? "Sending..." : "Resend Code"}
                     </button>
                   )}
                 </div>
@@ -559,12 +605,13 @@ export function LoginForm() {
                   type="button"
                   onClick={() => {
                     setSignupStep("form");
+                    setOtpExpiresAt(0);
                     setError("");
                     setInfoMessage("");
                   }}
                   className="mt-6 flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#1e3a5f] transition-colors"
                 >
-                  <ArrowLeft size={14} /> Back to sign up details
+                  <ArrowLeft size={14} /> {isSignup ? "Back to sign up details" : "Back to sign in"}
                 </button>
               </div>
             ) : (

@@ -75,13 +75,33 @@ export const account = pgTable("account", {
   ...timestamps,
 });
 
-export const verification = pgTable("verification", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  identifier: text("identifier").notNull(),
-  value: text("value").notNull(),
-  expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
-  ...timestamps,
-});
+export const verification = pgTable(
+  "verification",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    ...timestamps,
+  },
+  // better-auth looks OTPs up by identifier on every send and verify.
+  (table) => [index("verification_identifier_idx").on(table.identifier)],
+);
+
+/**
+ * One row per OTP email requested. Backs the per-address send limit, which has to
+ * live in the database rather than process memory because each serverless
+ * instance would otherwise keep its own counter.
+ */
+export const emailOtpRequests = pgTable(
+  "email_otp_requests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    email: text("email").notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("email_otp_requests_email_created_idx").on(table.email, table.createdAt)],
+);
 
 export const customers = pgTable(
   "customers",

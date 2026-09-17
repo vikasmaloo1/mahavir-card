@@ -232,6 +232,13 @@
       "when": 1789197482198,
       "tag": "0032_b2b_credit_default",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1789673360911,
+      "tag": "0033_email_otp_hardening",
+      "breakpoints": true
     }
   ]
 }
