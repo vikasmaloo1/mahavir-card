@@ -27,7 +27,10 @@ export type CategoryListing = {
  * Public (logged-out, B2C) product listing for one category, rendered server-side so the
  * HTML that reaches crawlers already contains every product, price and image.
  */
-export async function getCategoryListing(categorySlug: string): Promise<CategoryListing | null> {
+export async function getCategoryListing(
+  categorySlug: string,
+  customerType: "B2C" | "B2B" | null = null,
+): Promise<CategoryListing | null> {
   const rows = await db
     .select({ product: products, categoryName: categories.name })
     .from(products)
@@ -38,22 +41,28 @@ export async function getCategoryListing(categorySlug: string): Promise<Category
   if (!rows.length) return null;
   const productIds = rows.map((row) => row.product.id);
 
+  const customerRuleFilter = customerType === "B2B"
+    ? or(eq(pricingRules.customerType, "B2B"), eq(pricingRules.customerType, "BOTH"))
+    : or(eq(pricingRules.customerType, "B2C"), eq(pricingRules.customerType, "BOTH"));
+
   const [rules, imageRows] = await Promise.all([
-    db
-      .select({
-        productId: pricingRules.productId,
-        variantId: pricingRules.variantId,
-        variantActive: productVariants.isActive,
-        conditions: pricingRules.conditions,
-        priceFormula: pricingRules.priceFormula,
-        productionTime: pricingRules.productionTime,
-        taxInclusive: pricingRules.taxInclusive,
-        isActive: pricingRules.isActive,
-      })
-      .from(pricingRules)
-      .leftJoin(productVariants, eq(pricingRules.variantId, productVariants.id))
-      .where(and(inArray(pricingRules.productId, productIds), eq(pricingRules.isActive, true), or(eq(pricingRules.customerType, "B2C"), eq(pricingRules.customerType, "BOTH"))))
-      .orderBy(asc(pricingRules.sortOrder)),
+    customerType
+      ? db
+          .select({
+            productId: pricingRules.productId,
+            variantId: pricingRules.variantId,
+            variantActive: productVariants.isActive,
+            conditions: pricingRules.conditions,
+            priceFormula: pricingRules.priceFormula,
+            productionTime: pricingRules.productionTime,
+            taxInclusive: pricingRules.taxInclusive,
+            isActive: pricingRules.isActive,
+          })
+          .from(pricingRules)
+          .leftJoin(productVariants, eq(pricingRules.variantId, productVariants.id))
+          .where(and(inArray(pricingRules.productId, productIds), eq(pricingRules.isActive, true), customerRuleFilter))
+          .orderBy(asc(pricingRules.sortOrder))
+      : Promise.resolve([]),
     db
       .select({ productId: productImages.productId, imageUrl: productImages.imageUrl, altText: productImages.altText, isPrimary: productImages.isPrimary })
       .from(productImages)
@@ -61,7 +70,7 @@ export async function getCategoryListing(categorySlug: string): Promise<Category
       .orderBy(asc(productImages.sortOrder)),
   ]);
 
-  const startingPrices = deriveStartingPriceMap(rows.map((row) => row.product), rules);
+  const startingPrices = customerType ? deriveStartingPriceMap(rows.map((row) => row.product), rules) : new Map();
   const primaryImage = new Map<string, { imageUrl: string; altText: string | null }>();
   for (const image of imageRows) {
     if (image.isPrimary || !primaryImage.has(image.productId)) primaryImage.set(image.productId, image);
@@ -71,10 +80,21 @@ export async function getCategoryListing(categorySlug: string): Promise<Category
     if (rule.productionTime && !productionTimeByProduct.has(rule.productId)) productionTimeByProduct.set(rule.productId, rule.productionTime);
   }
 
+  const unauthenticatedPrice: StartingPrice = {
+    startingPrice: null,
+    startingQuantity: null,
+    currency: "INR",
+    priceLabel: "Login to view price",
+    priceState: "LOGIN",
+    taxInclusive: null,
+  };
+
   const items: CategoryListingItem[] = rows.map(({ product, categoryName }) => {
     const image = primaryImage.get(product.id);
     return {
-      ...(startingPrices.get(product.id) ?? { startingPrice: null, startingQuantity: null, currency: "INR", priceLabel: "Contact us for pricing", priceState: "CONTACT", taxInclusive: null }),
+      ...(customerType
+        ? (startingPrices.get(product.id) ?? { startingPrice: null, startingQuantity: null, currency: "INR", priceLabel: "Contact us for pricing", priceState: "CONTACT", taxInclusive: null })
+        : unauthenticatedPrice),
       id: product.id,
       name: product.name,
       slug: product.slug,

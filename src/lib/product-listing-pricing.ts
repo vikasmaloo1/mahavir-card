@@ -75,7 +75,7 @@ export function deriveStartingPrice(product: ListingProduct, rules: ListingPrici
       if (unit !== "batch" && unit !== "piece") return [];
       if (unit === "piece" && quantity === null) return [];
       const displayAmount = unit === "piece" ? amount * quantity! : amount;
-      return Number.isFinite(displayAmount) && displayAmount > 0 ? [{ amount: displayAmount, quantity, label: `Base price ${formatInr(displayAmount)}${quantity ? ` / ${quantity.toLocaleString("en-IN")}` : ""}`, taxInclusive: rule.taxInclusive }] : [];
+      return Number.isFinite(displayAmount) && displayAmount > 0 ? [{ amount: displayAmount, quantity, label: `${formatInr(displayAmount)}${quantity ? ` / ${quantity.toLocaleString("en-IN")}` : ""}`, taxInclusive: rule.taxInclusive }] : [];
     }
     return [];
   });
@@ -103,6 +103,8 @@ export function conciseProductSpecification(name: string, description: string | 
     .replace(new RegExp(`^${escapedCategory ? `${escapedCategory}\\s*(?:[-:|\u00b7]\\s*)?` : "(?!)"}`, "i"), "")
     .replace(/\s*for (?:a )?reference batch of [\d,]+(?:\s+(?:cards|pieces|pcs|units))?\.?/gi, "")
     .replace(/\s*reference quantity:\s*[\d,]+\.?/gi, "")
+    .replace(/\s*(?:[-:|\u00b7]\s*)?minimum\s+charge\s+[₹\d,.]+\.?/gi, "")
+    .replace(/\s*(?:[-:|\u00b7]\s*)?(?:base|starting)\s+price\s+[₹\d,.]+\.?/gi, "")
     .replace(/\btearable\s*(?:[\u00b7\-|]\s*)?/gi, "")
     .trim()
     .replace(/^[,.;:\-\u00b7\s]+|[,;:\-\u00b7\s]+$/g, "");

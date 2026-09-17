@@ -327,34 +327,24 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
                 {product.description}
               </p>
 
-              <div className="mt-3 flex flex-wrap items-center gap-2.5 border-t border-slate-200/60 pt-2.5 text-xs">
-                <span className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Base Rate:</span>
-                {product.customerType ? (
-                  <>
-                    <strong className="text-sm sm:text-base text-slate-950">{product.priceLabel}</strong>
-                    {product.startingPrice && product.customerType !== "B2B" ? (
-                      <span className="text-slate-500 text-[11px]">
-                        {product.taxInclusive ? "(GST included)" : "(GST extra as applicable)"}
-                      </span>
-                    ) : null}
-                  </>
-                ) : (
-                  <Link
-                    href={`/login?next=${encodeURIComponent(`/catalog/${product.slug}`)}`}
-                    className="font-bold text-[#1e3a5f] hover:underline"
-                  >
-                    Login to view price &rarr;
-                  </Link>
-                )}
-              </div>
-              {!product.customerType ? (
-                <div className="mt-2.5 rounded-lg bg-[#edf4fb] border border-[#d5e3f1] p-2 text-[11px] text-[#1b365d] flex items-center justify-between gap-2">
+              {product.customerType ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2.5 border-t border-slate-200/60 pt-2.5 text-xs">
+                  <span className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Rate:</span>
+                  <strong className="text-sm sm:text-base text-slate-950">{product.priceLabel}</strong>
+                  {product.startingPrice && product.customerType !== "B2B" ? (
+                    <span className="text-slate-500 text-[11px]">
+                      {product.taxInclusive ? "(GST included)" : "(GST extra as applicable)"}
+                    </span>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="mt-3 rounded-lg bg-[#edf4fb] border border-[#d5e3f1] p-2.5 text-xs text-[#1b365d] flex items-center justify-between gap-2">
                   <span>Sign in to view rates and place orders</span>
                   <Link href={`/login?next=${encodeURIComponent(`/catalog/${product.slug}`)}`} className="font-bold text-[#1e3a5f] hover:underline shrink-0">
                     Login / Sign up &rarr;
                   </Link>
                 </div>
-              ) : null}
+              )}
             </div>
 
             {/* Contextual Category Promo */}

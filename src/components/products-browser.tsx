@@ -796,7 +796,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                                 className="inline-flex items-center gap-0.5 rounded bg-blue-50/90 px-1.5 py-0.5 text-[10.5px] font-semibold text-[#1e3a5f] border border-[#bfd3f5]"
                                 title={`Optional finishing: ${ad.name}`}
                               >
-                                +{ad.name}{ad.price && Number(ad.price) > 0 ? ` (+₹${Number(ad.price)})` : ""}
+                                +{ad.name}{isLoggedIn && ad.price && Number(ad.price) > 0 ? ` (+₹${Number(ad.price)})` : ""}
                               </span>
                             ))}
                           </div>
@@ -881,7 +881,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                   </div>
 
                   {/* Product Specification */}
-                  <ProductSpecification item={item} />
+                  <ProductSpecification item={item} isLoggedIn={isLoggedIn} />
 
                   {/* Price */}
                   <div>
@@ -922,7 +922,6 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                 </div>
               );
             })}
-
             {!isB2B && pagination.totalPages > 1 ? (
               <nav
                 aria-label="Product pages"
@@ -949,9 +948,9 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                 </button>
               </nav>
             ) : null}
-            {!isB2B ? (
+            {!isB2B && isLoggedIn ? (
               <p className="border-t border-[var(--mc-line)] pt-4 text-right text-xs font-medium text-[var(--mc-muted)]">
-                Base prices shown above are exclusive of GST. GST charged additionally as applicable.
+                Prices shown above are exclusive of GST. GST charged additionally as applicable.
               </p>
             ) : null}
           </section>
@@ -1476,7 +1475,7 @@ function ArtworkReplaceRow({
   );
 }
 
-function ProductSpecification({ item }: { item: Product }) {
+function ProductSpecification({ item, isLoggedIn = false }: { item: Product; isLoggedIn?: boolean }) {
   const artwork = item.artworkSummary;
   const isPremium = item.category?.slug === "premium-card" || item.slug.startsWith("premium-");
   const rawSpec =
@@ -1533,7 +1532,7 @@ function ProductSpecification({ item }: { item: Product }) {
               key={ad.id}
               className="inline-flex items-center gap-0.5 rounded bg-blue-50 px-1.5 py-0.5 text-[10.5px] font-semibold text-[#1e3a5f] border border-[#bfd3f5]"
             >
-              +{ad.name}{ad.price && Number(ad.price) > 0 ? ` (+₹${Number(ad.price)})` : ""}
+              +{ad.name}{isLoggedIn && ad.price && Number(ad.price) > 0 ? ` (+₹${Number(ad.price)})` : ""}
             </span>
           ))}
         </div>

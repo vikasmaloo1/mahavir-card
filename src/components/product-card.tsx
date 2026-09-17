@@ -38,8 +38,8 @@ export function ProductCard({ product }: { product: CatalogProduct & { priceLabe
         </div>
         <div className="mt-4 flex items-end justify-between border-t border-slate-100 pt-3">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Starting price</p>
-            {product.isLoggedIn !== false && product.priceLabel !== "Login to view price" ? (
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Price</p>
+            {Boolean(product.isLoggedIn) && product.priceLabel !== "Login to view price" ? (
               <>
                 <p className="mt-0.5 text-base font-bold text-slate-900">{product.priceLabel}</p>
                 {product.customerType !== "B2B" ? (

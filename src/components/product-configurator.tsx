@@ -382,7 +382,7 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
                         <input inputMode={field.type === "number" ? "decimal" : undefined} value={values[field.id] ?? field.defaultValue} onChange={(event) => update(field.id, event.target.value)} className="min-w-0 flex-1 px-3 py-1.5 text-sm outline-none" />
                         {field.suffix ? <span className="border-l border-[#c9d2df] px-2.5 py-1.5 text-xs text-[#607089] flex items-center">{field.suffix}</span> : null}
                       </div>
-                      {field.id === "bladeCount" ? <span className="mt-0.5 block text-[11px] font-semibold text-[#2457b8]">Blade: ₹50 / blade</span> : null}
+                      {field.id === "bladeCount" && product.customerType ? <span className="mt-0.5 block text-[11px] font-semibold text-[#2457b8]">Blade: ₹50 / blade</span> : null}
                     </div>
                   )}
                 </label>
@@ -433,7 +433,9 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
                       <input type="checkbox" checked={addonIds.includes(addon.addonId)} onChange={() => setAddonIds((current) => current.includes(addon.addonId) ? current.filter((id) => id !== addon.addonId) : [...current, addon.addonId])} className="size-3.5 accent-[#2457b8] rounded shrink-0" />
                       <strong className="truncate font-semibold text-[#162237]">{addon.name}</strong>
                     </div>
-                    <span className="font-bold text-[#2457b8] shrink-0 text-xs">{money(addon.displayPrice)}</span>
+                    {product.customerType && addon.displayPrice ? (
+                      <span className="font-bold text-[#2457b8] shrink-0 text-xs">{money(addon.displayPrice)}</span>
+                    ) : null}
                   </label>
                 ))}
               </div>
@@ -483,7 +485,7 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
                 </div>
                 {estimate.productPrice ? (
                   <div className="mt-2 rounded-lg bg-[#FAF5ED] border border-[#ede4d5] p-2.5 text-xs text-[#607089] space-y-1">
-                    <div className="flex justify-between"><span>Base price</span><strong className="text-[#162237]">{money(estimate.productPrice)}</strong></div>
+                    <div className="flex justify-between"><span>Printing</span><strong className="text-[#162237]">{money(estimate.productPrice)}</strong></div>
                     {estimate.blade ? (
                       <div className="flex justify-between text-[#162237]">
                         <span>Blade ({estimate.blade.count} &times; {money(estimate.blade.rate)})</span>

@@ -17,7 +17,7 @@ test("returns the lowest valid active base price and its quantity", () => {
   const result = deriveStartingPrice(product, [rule("350"), rule("250"), rule("500")]);
   assert.equal(result.startingPrice, 250);
   assert.equal(result.startingQuantity, 1000);
-  assert.equal(result.priceLabel, "Base price \u20b9250 / 1,000");
+  assert.equal(result.priceLabel, "\u20b9250 / 1,000");
 });
 
 test("ignores disabled, hidden, internal, zero, and invalid rules while allowing GST-exclusive prices", () => {
@@ -38,7 +38,7 @@ test("ignores disabled, hidden, internal, zero, and invalid rules while allowing
 test("converts a per-piece rule to the displayed reference-quantity total", () => {
   const result = deriveStartingPrice(product, [rule("0.5", { priceFormula: { amount: "0.5", unit: "piece" } })]);
   assert.equal(result.startingPrice, 500);
-  assert.equal(result.priceLabel, "Base price \u20b9500 / 1,000");
+  assert.equal(result.priceLabel, "\u20b9500 / 1,000");
 });
 
 test("quote-only and unpriced products never display zero", () => {
@@ -52,8 +52,8 @@ test("add-ons and delivery are not inputs to listing price derivation", () => {
 });
 
 test("rounds customer-facing starting prices to whole rupees", () => {
-  assert.equal(deriveStartingPrice(product, [rule("283.2")]).priceLabel, "Base price \u20b9283 / 1,000");
-  assert.equal(deriveStartingPrice(product, [rule("283.8")]).priceLabel, "Base price \u20b9284 / 1,000");
+  assert.equal(deriveStartingPrice(product, [rule("283.2")]).priceLabel, "\u20b9283 / 1,000");
+  assert.equal(deriveStartingPrice(product, [rule("283.8")]).priceLabel, "\u20b9284 / 1,000");
 });
 
 test("shows sticker rates in paise without turning them into quote-only products", () => {

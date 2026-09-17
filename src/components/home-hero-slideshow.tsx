@@ -90,7 +90,7 @@ const defaultHeroSlides: HeroSlide[] = [
     imageAlt: "Custom printed adhesive vinyl stickers, product labels, and retail packaging on studio podium",
     floatingBadgeTitle: "Stickers & Labels",
     floatingBadgeSubtitle: "Avery Adhesive · Square-Inch Calculator",
-    tag: "₹250 Min Charge",
+    tag: "Custom Sizing",
   },
 ];
 

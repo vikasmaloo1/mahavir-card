@@ -206,7 +206,7 @@ export async function GET(request: Request) {
     const productAddonsListMap = new Map<string, Array<{ id: string; name: string; price: string | null; isDefault: boolean }>>();
     for (const row of addonRows) {
       const list = productAddonsListMap.get(row.productId) ?? [];
-      list.push({ id: row.addonId, name: row.name, price: row.price, isDefault: row.isDefault });
+      list.push({ id: row.addonId, name: row.name, price: authenticated ? row.price : null, isDefault: row.isDefault });
       productAddonsListMap.set(row.productId, list);
     }
     const productionTimeMap = new Map<string, string>();

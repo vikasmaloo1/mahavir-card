@@ -60,8 +60,10 @@ export default async function CategoryLandingPage({ params }: { params: Promise<
     ? (await db.select({ customerType: customers.customerType }).from(customers).where(eq(customers.userId, session.user.id)).limit(1))[0]
     : undefined;
   const isB2B = customer?.customerType === "B2B";
+  const isLoggedIn = Boolean(session?.user?.id);
+  const customerType = isLoggedIn ? (isB2B ? "B2B" : "B2C") : null;
 
-  const listing = await getCategoryListing(page.category);
+  const listing = await getCategoryListing(page.category, customerType);
   const items = listing?.items ?? [];
   const url = `${SITE}/${page.path}`;
 
@@ -93,7 +95,7 @@ export default async function CategoryLandingPage({ params }: { params: Promise<
         sku: item.slug,
         category: listing?.categoryName ?? page.name,
         brand: { "@type": "Brand", name: "Mahavir Card" },
-        ...(item.startingPrice
+        ...(isLoggedIn && item.startingPrice
           ? {
               offers: {
                 "@type": "Offer",
@@ -130,7 +132,7 @@ export default async function CategoryLandingPage({ params }: { params: Promise<
           <h1 className="mt-2 max-w-3xl text-3xl font-bold leading-tight text-[var(--mc-ink)] sm:text-[2.35rem]">{page.h1}</h1>
           <p className="mt-3 max-w-2xl text-[15px] leading-7 text-[var(--mc-muted)]">{page.description}</p>
           <p className="mt-3 text-sm text-[var(--mc-muted)]">
-            {items.length} product{items.length === 1 ? "" : "s"} {!isB2B ? "· Base prices exclusive of GST " : ""}·{" "}
+            {items.length} product{items.length === 1 ? "" : "s"} {!isB2B && isLoggedIn ? "· Prices exclusive of GST " : ""}·{" "}
             <Link href={`/products?category=${page.category}`} className="font-semibold text-[var(--mc-accent)] hover:underline">Filter &amp; order online</Link>
           </p>
         </header>
@@ -147,7 +149,13 @@ export default async function CategoryLandingPage({ params }: { params: Promise<
                     <Link href={`/catalog/${item.slug}`} className="hover:text-[var(--mc-accent)]">{item.name}</Link>
                   </h2>
                   <p className="mt-1 text-sm leading-6 text-[var(--mc-muted)]">{item.specification}</p>
-                  <p className="mt-3 text-[15px] font-bold text-[var(--mc-ink)]">{item.priceLabel}</p>
+                  {isLoggedIn && item.priceLabel !== "Login to view price" ? (
+                    <p className="mt-3 text-[15px] font-bold text-[var(--mc-ink)]">{item.priceLabel}</p>
+                  ) : (
+                    <Link href={`/login?next=${encodeURIComponent(`/${page.path}`)}`} className="mt-3 block text-xs font-bold text-[var(--mc-accent)] hover:underline">
+                      Login to view price &rarr;
+                    </Link>
+                  )}
                   {item.productionTime ? (
                     <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--mc-muted)]"><Clock3 size={13} />{item.productionTime}</p>
                   ) : null}
