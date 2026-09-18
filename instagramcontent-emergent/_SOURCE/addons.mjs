@@ -7,14 +7,14 @@ const push = (folder, file, layout, data) => addons.push({ folder, file, layout,
    NOTE: uses placeholder generated print-craft photos (gen-billbook / gen-packing-slips /
    gen-packaging). Swap these for real Mahavir Card photos once available. */
 const P = '11-PACKAGING-SET';
-push(P,'post-01.png','hero',{img:'gen-packaging.jpg',scrim:'scrim-full',kicker:'Packaging & labels',size:110,
+push(P,'post-01.png','hero',{img:'gen-packaging2.jpg',scrim:'scrim-full',kicker:'Packaging & labels',size:110,
   title:'Boxes, bags<br>& labels.',sub:'Branded packaging, carrier bags and label rolls — printed and finished with your cards.',page:'On request'});
-push(P,'post-02.png','split',{img:'gen-billbook.jpg',side:'left',kicker:'Bill books & slips',size:74,
+push(P,'post-02.png','split',{img:'gen-billbook2.jpg',side:'left',kicker:'Bill books & slips',size:74,
   title:'Bill books,<br>packing slips.',
   body:'Numbered bill books, invoice books and packing slips — carbonless or single, bound the way your counter needs them. On request.',
   spec:[['Formats','Bill book · Slip pad'],['Binding','Stitched · Padded'],['Quote','Send qty & size']]});
-push(P,'story-01.png','story-photo',{img:'gen-packaging.jpg',pill:'On request',kicker:'Packaging',size:104,title:'Pack it<br>in your<br>brand.',tap:'Send requirement'});
-push(P,'story-02.png','story-photo',{img:'gen-packing-slips.jpg',kicker:'Business forms',size:100,title:'Packing<br>slips &<br>bill books.',sub:'Numbered, bound, ready for the counter.'});
+push(P,'story-01.png','story-photo',{img:'gen-packaging2.jpg',pill:'On request',kicker:'Packaging',size:104,title:'Pack it<br>in your<br>brand.',tap:'Send requirement'});
+push(P,'story-02.png','story-photo',{img:'gen-billbook2.jpg',kicker:'Business forms',size:100,title:'Packing<br>slips &<br>bill books.',sub:'Numbered, bound, ready for the counter.'});
 push(P,'story-03.png','story-type',{dark:true,kicker:'Custom quote',size:112,title:'Bill book?<br>Boxes?',sub:'Send size, quantity and binding — we\u2019ll quote it.',tap:'DM us'});
 
 /* ---------- 12 · FESTIVAL TEMPLATES (Ahmedabad calendar) ----------
