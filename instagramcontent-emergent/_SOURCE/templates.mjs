@@ -213,7 +213,27 @@ function reelCover(d){
     </div></div>`;
 }
 
-const MAP = { hero, poster, split, grid, macro, num, steps, web, cta,
+function festival(d){
+  const acc = d.accent || 'var(--brass)';
+  const fg = d.dark ? 'var(--paper)' : 'var(--ink)';
+  return `<div class="canvas ${d.dark?'dark':''} L-fest">${crops}
+    <div class="pad">
+      <div class="top" style="display:flex;justify-content:space-between;align-items:flex-start">${logo()}${reg()}</div>
+      <div style="margin:auto 0">
+        <div style="height:2px;width:120px;background:${acc};margin-bottom:34px"></div>
+        <div class="kicker" style="color:${acc}">${d.greeting||''}</div>
+        <h1 class="display" style="font-size:${d.size||150}px;margin-top:26px;color:${fg}">${d.title}</h1>
+        ${d.offer?`<p class="body" style="font-size:26px;line-height:1.5;margin-top:34px;max-width:820px;color:${fg}">${d.offer}</p>`:''}
+        <div style="margin-top:38px;display:flex;gap:14px;align-items:center">
+          <span style="width:10px;height:10px;border-radius:50%;background:${acc};display:inline-block"></span>
+          <span class="tag" style="color:${acc}">${d.tag||'Cards · Stationery · Packaging'}</span>
+        </div>
+      </div>
+      ${meta(d.page||'')}
+    </div></div>`;
+}
+
+const MAP = { hero, poster, split, grid, macro, num, steps, web, cta, festival,
   'story-type':storyType, 'story-photo':storyPhoto, 'story-poll':storyPoll, 'story-question':storyQuestion, 'reel-cover':reelCover };
 
 export function render(asset){

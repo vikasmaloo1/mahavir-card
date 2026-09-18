@@ -55,10 +55,13 @@ instagramcontent-emergent/
 ├── 08-CALENDAR/          CONTENT-CALENDAR-30DAY.md
 ├── 09-STRATEGY/          INSTAGRAM-GROWTH-PLAYBOOK.md
 ├── 10-README/            README-INSTAGRAM-CONTENT.md  (this file)
+├── 11-PACKAGING-SET/     post-01…02.png + story-01…03.png + README.md  (placeholder photos)
+├── 12-FESTIVAL/          diwali · uttarayan · navratri · holi · rakshabandhan · gujarati-new-year .png + README.md
+├── GRID-PREVIEW-FIRST-12.png   (mock profile grid of the first 12 posts)
 ├── LAUNCH-PRIORITY-10.md
 └── _SOURCE/              editable design source (see §11)
 ```
-**Totals:** 1 flagship carousel (12 pages) · 10 feed posts · 8 educational carousels (40 pages) · 8 reel covers + scripts · 20 stories · **90 rendered images** + 1 PDF booklet.
+**Totals:** 1 flagship carousel (12 pages) · 10 feed posts · 8 educational carousels (40 pages) · 8 reel covers + 2 script docs · 20 stories · 5 packaging assets · 6 festival templates · 1 grid preview · **107 rendered images** + 1 PDF booklet.
 
 **Sizes:** Feed & carousels 1080×1350 (4:5) · Stories & reel covers 1080×1920 (9:16), safe-zone aware.
 
@@ -100,7 +103,13 @@ Node dependencies are intentionally **not** committed. Install `puppeteer-core` 
 Before/after artwork fixes · "what happens to your file before it prints" · paper weight comparison Reel · packaging & bill books (once photographed) · festival/seasonal business-card offers · client spotlights (with permission) · GST-invoice/quote explainer · turnaround-time Reels · re-order reminders for regulars.
 
 ## 14. Manual review / to capture
-- **Reel footage** (8 reels) must be filmed at the press — scripts provided; covers rendered.
+- **Reel footage** (8 reels) must be filmed at the press — a one-day phone shot-list is in `04-REELS/REEL-FOOTAGE-SHOTLIST.md`; covers are rendered.
 - **Website screenshots** were captured live on build; re-run `build.mjs` before launch to refresh them.
-- **Bill books / packing slips / packaging** are referenced only as "on request" — add dedicated posts once real photos exist (not claimed as website categories).
+- **Packaging set** (`11-PACKAGING-SET/`) uses **placeholder generated photos** — replace with real Mahavir Card photos of your actual bill books / slips / packaging before posting.
+- **Festival templates** (`12-FESTIVAL/`) carry placeholder offer copy — confirm the actual offer/dates before posting; they're type-led so they stay on-brand.
 - Confirm current **MOQ/turnaround/pricing** on the live site before posting, in case they change.
+
+## 15. Add-ons
+- **Profile grid preview:** `GRID-PREVIEW-FIRST-12.png` — a mock of how the first 12 posts sit together on the profile. Regenerate with `_SOURCE/build-addons.mjs`.
+- **Reel footage kit:** `04-REELS/REEL-FOOTAGE-SHOTLIST.md` — film all 8 Reels in one session.
+- **Packaging & festival** assets are built from `_SOURCE/addons.mjs` (edit copy there) via `_SOURCE/build-addons.mjs`.
