@@ -27,3 +27,11 @@ Committed locally: db4359e "feat(marketing): create Mahavir Card Instagram launc
 - Reel footage to be filmed at the press (scripts + covers ready).
 - Add packaging / bill-book posts once real photos exist (currently "on request" only).
 - Refresh website screenshots before launch (re-run _SOURCE/build.mjs).
+
+## Update 2 (add-ons)
+- Reel Footage Kit: 04-REELS/REEL-FOOTAGE-SHOTLIST.md (one-day phone shoot plan).
+- Packaging Set: 11-PACKAGING-SET/ (2 feed + 3 stories; PLACEHOLDER generated photos — swap for real).
+- Festival templates: 12-FESTIVAL/ (Diwali, Gujarati New Year, Uttarayan, Holi, Rakshabandhan, Navratri; type-led, editable copy).
+- Grid preview: GRID-PREVIEW-FIRST-12.png (mock profile of first 12 posts).
+- Source: _SOURCE/addons.mjs + build-addons.mjs. Total now 107 images + PDF.
+- Committed locally: 1585c5b (not pushed).
