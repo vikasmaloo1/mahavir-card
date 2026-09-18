@@ -56,12 +56,14 @@ instagramcontent-emergent/
 ├── 09-STRATEGY/          INSTAGRAM-GROWTH-PLAYBOOK.md
 ├── 10-README/            README-INSTAGRAM-CONTENT.md  (this file)
 ├── 11-PACKAGING-SET/     post-01…02.png + story-01…03.png + README.md  (placeholder photos)
-├── 12-FESTIVAL/          diwali · uttarayan · navratri · holi · rakshabandhan · gujarati-new-year .png + README.md
-├── GRID-PREVIEW-FIRST-12.png   (mock profile grid of the first 12 posts)
+├── 12-FESTIVAL/          diwali · uttarayan · navratri · holi · rakshabandhan · gujarati-new-year .png + FESTIVAL-CAPTIONS.md + README.md
+├── 13-HIGHLIGHT-COVERS/  website · cards · premium · b2b · contact · stationery · stickers · faq .png + README.md
+├── GRID-PREVIEW-FIRST-12.png   (mock profile grid, posts 1–12)
+├── GRID-PREVIEW-13-24.png      (mock profile grid, posts 13–24)
 ├── LAUNCH-PRIORITY-10.md
 └── _SOURCE/              editable design source (see §11)
 ```
-**Totals:** 1 flagship carousel (12 pages) · 10 feed posts · 8 educational carousels (40 pages) · 8 reel covers + 2 script docs · 20 stories · 5 packaging assets · 6 festival templates · 1 grid preview · **107 rendered images** + 1 PDF booklet.
+**Totals:** 1 flagship carousel (12 pages) · 10 feed posts · 8 educational carousels (40 pages) · 8 reel covers + 2 script docs · 20 stories · 5 packaging assets · 6 festival templates + captions · 8 highlight covers · 2 grid previews · **116 rendered images** + 1 PDF booklet.
 
 **Sizes:** Feed & carousels 1080×1350 (4:5) · Stories & reel covers 1080×1920 (9:16), safe-zone aware.
 
@@ -110,6 +112,8 @@ Before/after artwork fixes · "what happens to your file before it prints" · pa
 - Confirm current **MOQ/turnaround/pricing** on the live site before posting, in case they change.
 
 ## 15. Add-ons
-- **Profile grid preview:** `GRID-PREVIEW-FIRST-12.png` — a mock of how the first 12 posts sit together on the profile. Regenerate with `_SOURCE/build-addons.mjs`.
+- **Profile grid previews:** `GRID-PREVIEW-FIRST-12.png` (posts 1–12) and `GRID-PREVIEW-13-24.png` (posts 13–24) — mocks of how the feed sits together. Regenerate with `_SOURCE/build-addons.mjs` and `_SOURCE/build-extra.mjs`.
 - **Reel footage kit:** `04-REELS/REEL-FOOTAGE-SHOTLIST.md` — film all 8 Reels in one session.
-- **Packaging & festival** assets are built from `_SOURCE/addons.mjs` (edit copy there) via `_SOURCE/build-addons.mjs`.
+- **Festival captions:** `12-FESTIVAL/FESTIVAL-CAPTIONS.md` — pre-written captions with this cycle's actual dates.
+- **Highlight covers:** `13-HIGHLIGHT-COVERS/` — 8 circle-safe icons in the house style.
+- **Packaging & festival** assets are built from `_SOURCE/addons.mjs`; **highlights & 13–24 grid** from `_SOURCE/build-extra.mjs`.
