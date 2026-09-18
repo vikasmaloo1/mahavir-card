@@ -2,13 +2,21 @@
 
 Instagram Story-Highlight cover icons in the house style — brass line icons on deep navy, with a subtle CMYK dot row and a circle guide so they look right after Instagram crops them to a circle. Icon-only (the Highlight title supplies the word).
 
-## Files (square 1080×1080)
-`website.png` · `cards.png` · `premium.png` · `b2b.png` · `contact.png` · `stationery.png` · `stickers.png` · `faq.png`
+## Files & order (numbered = left-to-right order on the profile)
+1. `1-printing.png` — **Printing**
+2. `2-visiting-cards.png` — **Visiting Cards**
+3. `3-premium-cards.png` — **Premium Cards**
+4. `4-brochures.png` — **Brochures**
+5. `5-stickers.png` — **Stickers**
+6. `6-stationery.png` — **Stationery**
+7. `7-work.png` — **Work / Behind the Scenes**
+8. `8-custom.png` — **Custom**
+9. `9-contact.png` — **Contact**
 
 ## How to set them
 1. Save each PNG to your phone.
-2. Create/edit a Highlight → **Edit cover** → choose the matching image.
-3. Name the Highlights: **Website · Cards · Premium · B2B · Contact · Stationery · Stickers · FAQ** (match the icon).
-4. Order them left-to-right the way you want visitors to read the profile (suggested: Website → Cards → Premium → Stationery → Stickers → B2B → FAQ → Contact).
+2. Create a Highlight → **Edit cover** → pick the matching numbered image.
+3. Name the Highlight with the word above.
+4. Instagram shows newest Highlight first — create them in **reverse** (Contact first, Printing last) so they end up reading 1→9 left-to-right.
 
-Regenerate or add icons in `_SOURCE/build-extra.mjs` (edit the `ICONS`/`COVERS` maps) and re-run it.
+Add/edit icons in `_SOURCE/build-extra.mjs` (`ICONS` + `COVERS`) and re-run it.

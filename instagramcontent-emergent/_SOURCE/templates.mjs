@@ -233,7 +233,70 @@ function festival(d){
     </div></div>`;
 }
 
-const MAP = { hero, poster, split, grid, macro, num, steps, web, cta, festival,
+function testimonial(d){
+  const fg = d.dark ? 'var(--paper)' : 'var(--ink)';
+  return `<div class="canvas ${d.dark?'dark':''}">${crops}
+    <div class="pad">
+      <div class="top" style="display:flex;justify-content:space-between;align-items:flex-start">${logo()}${reg()}</div>
+      <div style="margin:auto 0">
+        <div style="font-family:var(--serif);font-weight:600;font-size:200px;line-height:.55;height:110px;color:var(--brass)">&#8220;</div>
+        <div class="kicker" style="margin-top:24px">${d.kicker||'In their words'}</div>
+        <p style="font-family:var(--serif);font-weight:360;font-size:${d.size||62}px;line-height:1.22;letter-spacing:-.01em;margin-top:26px;color:${fg}">${d.quote}</p>
+        <div style="margin-top:44px;font-family:var(--mono);font-size:20px;letter-spacing:.06em;color:var(--slate)">${d.attrib}</div>
+      </div>
+      ${meta(d.page||'')}
+    </div></div>`;
+}
+function testimonialStory(d){
+  const fg = d.dark ? 'var(--paper)' : 'var(--ink)';
+  return `<div class="canvas story ${d.dark?'dark':''}">${crops}
+    <div class="pad">
+      <div class="top" style="display:flex;justify-content:space-between;align-items:flex-start">${logo()}${reg()}</div>
+      <div style="margin:auto 0">
+        ${d.pill?`<div class="badge-pill" style="margin-bottom:36px">${d.pill}</div>`:''}
+        <div style="font-family:var(--serif);font-weight:600;font-size:200px;line-height:.55;height:110px;color:var(--brass)">&#8220;</div>
+        <div class="kicker" style="margin-top:24px">${d.kicker||'Client feedback'}</div>
+        <p style="font-family:var(--serif);font-weight:360;font-size:${d.size||66}px;line-height:1.22;margin-top:26px;color:${fg}">${d.quote}</p>
+        <div style="margin-top:44px;font-family:var(--mono);font-size:22px;letter-spacing:.06em;color:var(--slate)">${d.attrib}</div>
+      </div>
+      ${d.tap?`<div class="tap" style="margin-bottom:16px;color:${fg}">${d.tap}<span class="arrow">&#8594;</span></div>`:''}
+      ${meta(d.page||'')}
+    </div></div>`;
+}
+const photoIcon = `<svg width="76" height="76" viewBox="0 0 24 24" fill="none" stroke="var(--brass)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.6"/><path d="M21 16l-5-5L6 20"/><path d="M12 4v-2M16 4v-2"/></svg>`;
+function weekly(d){
+  return `<div class="canvas">${crops}
+    <div class="pad">
+      <div class="top" style="display:flex;justify-content:space-between;align-items:flex-start">${logo()}${reg()}</div>
+      <div class="kicker" style="margin-top:34px">On the press · This week</div>
+      <h2 class="display" style="font-size:${d.size||74}px;margin-top:18px">${d.title||'On the press,<br>this week.'}</h2>
+      <div style="flex:1;margin:32px 0;border:2px dashed var(--brass);border-radius:16px;background:rgba(181,136,63,.06);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px">
+        ${photoIcon}
+        <div style="font-family:var(--mono);font-size:22px;letter-spacing:.22em;color:var(--brass)">ADD YOUR PHOTO OR VIDEO</div>
+        <div style="font-family:var(--mono);font-size:15px;letter-spacing:.14em;color:var(--slate)">1080 &times; 1350 &middot; 4:5</div>
+      </div>
+      <div style="font-family:var(--grot);font-size:22px;color:var(--slate)">[ One line: what you printed this week ]</div>
+      ${meta(d.page||'')}
+    </div></div>`;
+}
+function weeklyStory(d){
+  return `<div class="canvas story">${crops}
+    <div class="pad">
+      <div class="top" style="display:flex;justify-content:space-between;align-items:flex-start">${logo()}${reg()}</div>
+      <div class="kicker" style="margin-top:30px">On the press · This week</div>
+      <h2 class="display" style="font-size:${d.size||84}px;margin-top:18px">${d.title||'On the press,<br>this week.'}</h2>
+      <div style="flex:1;margin:36px 0;border:2px dashed var(--brass);border-radius:16px;background:rgba(181,136,63,.06);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">
+        ${photoIcon}
+        <div style="font-family:var(--mono);font-size:24px;letter-spacing:.22em;color:var(--brass)">ADD PHOTO / VIDEO</div>
+        <div style="font-family:var(--mono);font-size:16px;letter-spacing:.14em;color:var(--slate)">1080 &times; 1920 &middot; 9:16</div>
+      </div>
+      <div class="tap" style="margin-bottom:14px">Tap to see more<span class="arrow">&#8594;</span></div>
+      ${meta(d.page||'')}
+    </div></div>`;
+}
+
+const MAP = { hero, poster, split, grid, macro, num, steps, web, cta, festival, testimonial, weekly,
+  'testimonial-story':testimonialStory, 'weekly-story':weeklyStory,
   'story-type':storyType, 'story-photo':storyPhoto, 'story-poll':storyPoll, 'story-question':storyQuestion, 'reel-cover':reelCover };
 
 export function render(asset){

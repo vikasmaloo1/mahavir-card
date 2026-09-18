@@ -57,13 +57,15 @@ instagramcontent-emergent/
 ├── 10-README/            README-INSTAGRAM-CONTENT.md  (this file)
 ├── 11-PACKAGING-SET/     post-01…02.png + story-01…03.png + README.md  (placeholder photos)
 ├── 12-FESTIVAL/          diwali · uttarayan · navratri · holi · rakshabandhan · gujarati-new-year .png + FESTIVAL-CAPTIONS.md + README.md
-├── 13-HIGHLIGHT-COVERS/  website · cards · premium · b2b · contact · stationery · stickers · faq .png + README.md
+├── 13-HIGHLIGHT-COVERS/  1-printing … 9-contact .png (9, business order) + README.md
+├── 14-TESTIMONIAL-TEMPLATE/  empty quote-card templates (fill with real feedback) + README.md
+├── 15-WEEKLY-TEMPLATE/   "On the Press This Week" frames (add real photo/video) + README.md
 ├── GRID-PREVIEW-FIRST-12.png   (mock profile grid, posts 1–12)
 ├── GRID-PREVIEW-13-24.png      (mock profile grid, posts 13–24)
 ├── LAUNCH-PRIORITY-10.md
 └── _SOURCE/              editable design source (see §11)
 ```
-**Totals:** 1 flagship carousel (12 pages) · 10 feed posts · 8 educational carousels (40 pages) · 8 reel covers + 2 script docs · 20 stories · 5 packaging assets · 6 festival templates + captions · 8 highlight covers · 2 grid previews · **111 rendered images** + 1 PDF booklet.
+**Totals:** 1 flagship carousel (12 pages) · 10 feed posts · 8 educational carousels (40 pages) · 8 reel covers + 2 script docs · 20 stories · 5 packaging posts (typographic) · 6 festival templates + captions · 9 highlight covers · 3 testimonial templates · 2 weekly-post templates · 2 grid previews · **117 rendered images** + 1 PDF booklet.
 
 **Sizes:** Feed & carousels 1080×1350 (4:5) · Stories & reel covers 1080×1920 (9:16), safe-zone aware.
 
@@ -107,7 +109,9 @@ Before/after artwork fixes · "what happens to your file before it prints" · pa
 ## 14. Manual review / to capture
 - **Reel footage** (8 reels) must be filmed at the press — a one-day phone shot-list is in `04-REELS/REEL-FOOTAGE-SHOTLIST.md`; covers are rendered.
 - **Website screenshots** were captured live on build; re-run `build.mjs` before launch to refresh them.
-- **Packaging set** (`11-PACKAGING-SET/`) uses **placeholder generated photos** — replace with real Mahavir Card photos of your actual bill books / slips / packaging before posting.
+- **Packaging set** (`11-PACKAGING-SET/`) is **typographic only** — no product photos, because we don't have real photos of Mahavir Card packaging/bill books. Add photo-led versions once you have genuine photos.
+- **Testimonials** (`14-TESTIMONIAL-TEMPLATE/`) ship **empty** — fill only with real, permission-given customer feedback; never invent quotes.
+- **Weekly post** (`15-WEEKLY-TEMPLATE/`) has a placeholder frame — drop in a real photo/video of an actual job.
 - **Festival templates** (`12-FESTIVAL/`) carry placeholder offer copy — confirm the actual offer/dates before posting; they're type-led so they stay on-brand.
 - Confirm current **MOQ/turnaround/pricing** on the live site before posting, in case they change.
 
@@ -115,5 +119,6 @@ Before/after artwork fixes · "what happens to your file before it prints" · pa
 - **Profile grid previews:** `GRID-PREVIEW-FIRST-12.png` (posts 1–12) and `GRID-PREVIEW-13-24.png` (posts 13–24) — mocks of how the feed sits together. Regenerate with `_SOURCE/build-addons.mjs` and `_SOURCE/build-extra.mjs`.
 - **Reel footage kit:** `04-REELS/REEL-FOOTAGE-SHOTLIST.md` — film all 8 Reels in one session.
 - **Festival captions:** `12-FESTIVAL/FESTIVAL-CAPTIONS.md` — pre-written captions with this cycle's actual dates.
-- **Highlight covers:** `13-HIGHLIGHT-COVERS/` — 8 circle-safe icons in the house style.
-- **Packaging & festival** assets are built from `_SOURCE/addons.mjs`; **highlights & 13–24 grid** from `_SOURCE/build-extra.mjs`.
+- **Highlight covers:** `13-HIGHLIGHT-COVERS/` — 9 circle-safe icons in the house style, numbered in business order (Printing → Contact).
+- **Testimonial & weekly templates:** `14-TESTIMONIAL-TEMPLATE/` and `15-WEEKLY-TEMPLATE/` — empty, fill-in-yourself templates (real feedback / real photos only).
+- **Packaging, festival, testimonial & weekly** assets are built from `_SOURCE/addons.mjs`; **highlights & 13–24 grid** from `_SOURCE/build-extra.mjs`.

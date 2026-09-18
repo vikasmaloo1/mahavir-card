@@ -21,10 +21,15 @@ const ICONS = {
   stationery: `<rect x="22" y="30" width="56" height="40" rx="3"/><path d="M22 34 L50 56 L78 34"/>`,
   stickers: `<path d="M28 28 h44 v30 l-16 16 h-28 z"/><path d="M72 58 l-16 16 v-16 z"/><path d="M40 44 h20 M40 52 h12"/>`,
   faq: `<path d="M24 30 h52 a5 5 0 0 1 5 5 v24 a5 5 0 0 1 -5 5 h-28 l-14 12 v-12 h-10 a5 5 0 0 1 -5 -5 v-24 a5 5 0 0 1 5 -5 z"/><text x="50" y="55" font-size="26" font-family="Georgia,serif" text-anchor="middle" fill="${BRASS}" stroke="none">?</text>`,
+  printing: `<path d="M30 42 V28 h40 v14"/><rect x="20" y="42" width="60" height="26" rx="4"/><rect x="32" y="56" width="36" height="20"/><path d="M36 62 h28 M36 68 h20"/><circle cx="70" cy="51" r="2.6" fill="${BRASS}" stroke="none"/>`,
+  brochures: `<rect x="22" y="30" width="56" height="38" rx="2"/><line x1="40.7" y1="30" x2="40.7" y2="68"/><line x1="59.3" y1="30" x2="59.3" y2="68"/><path d="M28 40 h6 M65 40 h6"/>`,
+  work: `<circle cx="44" cy="44" r="15"/><line x1="55" y1="55" x2="70" y2="70"/><path d="M38 44 h12 M44 38 v12"/>`,
+  custom: `<path d="M50 26 l5 15 15 5 -15 5 -5 15 -5 -15 -15 -5 15 -5 z"/><path d="M74 30 l1.6 4.4 4.4 1.6 -4.4 1.6 -1.6 4.4 -1.6 -4.4 -4.4 -1.6 4.4 -1.6 z" fill="${BRASS}" stroke="none"/>`,
 };
 const COVERS = [
-  ['website','Website'],['cards','Cards'],['premium','Premium'],['b2b','B2B'],['contact','Contact'],
-  ['stationery','Stationery'],['stickers','Stickers'],['faq','FAQ'],
+  ['printing','1-printing'],['cards','2-visiting-cards'],['premium','3-premium-cards'],
+  ['brochures','4-brochures'],['stickers','5-stickers'],['stationery','6-stationery'],
+  ['work','7-work'],['custom','8-custom'],['contact','9-contact'],
 ];
 
 function coverHTML(key){
@@ -102,8 +107,9 @@ async function buildGrid(browser, list, title, out){
     args:['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--force-color-profile=srgb'] });
   const dir = path.join(ROOT, '13-HIGHLIGHT-COVERS');
   fs.mkdirSync(dir, { recursive:true });
+  fs.readdirSync(dir).filter(f=>f.endsWith('.png')).forEach(f=>fs.unlinkSync(path.join(dir,f)));
   console.log('> highlight covers…');
-  for (const [key,label] of COVERS){ const out = path.join(dir, key+'.png'); await renderCover(browser, key, out); console.log('  ', label, '→', path.basename(out)); }
+  for (const [key,fileBase] of COVERS){ const out = path.join(dir, fileBase+'.png'); await renderCover(browser, key, out); console.log('  ', fileBase+'.png'); }
   console.log('> grid preview 13–24…');
   await buildGrid(browser, GRID2, 'Profile grid preview · posts 13–24 · mahavircard.in', path.join(ROOT,'GRID-PREVIEW-13-24.png'));
   console.log('  GRID-PREVIEW-13-24.png');
