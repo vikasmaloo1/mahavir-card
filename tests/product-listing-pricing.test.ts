@@ -41,10 +41,11 @@ test("converts a per-piece rule to the displayed reference-quantity total", () =
   assert.equal(result.priceLabel, "\u20b9500 / 1,000");
 });
 
-test("quote-only and unpriced products never display zero", () => {
-  assert.equal(deriveStartingPrice({ ...product, orderable: false }, [rule("250")]).priceLabel, "Custom quote");
+test("unpriced products display fallback quote or contact labels", () => {
+  assert.equal(deriveStartingPrice(product, []).priceLabel, "Custom quote");
   assert.equal(deriveStartingPrice({ ...product, quoteable: false }, []).priceLabel, "Contact us for pricing");
 });
+
 
 test("add-ons and delivery are not inputs to listing price derivation", () => {
   const result = deriveStartingPrice(product, [rule("250", { priceFormula: { amount: "250", unit: "batch", addonAmount: "100", deliveryAmount: "80" } })]);

@@ -54,7 +54,6 @@ export function deriveStartingPrice(product: ListingProduct, rules: ListingPrici
     ? { startingPrice: null, startingQuantity: null, currency: "INR", priceLabel: "Custom quote", priceState: "CUSTOM_QUOTE", taxInclusive: null }
     : { startingPrice: null, startingQuantity: null, currency: "INR", priceLabel: "Contact us for pricing", priceState: "CONTACT", taxInclusive: null };
 
-  if (!product.orderable) return fallback;
 
   const candidates = rules.filter((rule) => rule.productId === product.id && isCustomerVisible(rule)).flatMap((rule) => {
     const amount = positiveNumber(rule.priceFormula.amount);
