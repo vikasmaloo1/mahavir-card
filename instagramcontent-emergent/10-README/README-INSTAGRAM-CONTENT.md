@@ -63,7 +63,7 @@ instagramcontent-emergent/
 ├── LAUNCH-PRIORITY-10.md
 └── _SOURCE/              editable design source (see §11)
 ```
-**Totals:** 1 flagship carousel (12 pages) · 10 feed posts · 8 educational carousels (40 pages) · 8 reel covers + 2 script docs · 20 stories · 5 packaging assets · 6 festival templates + captions · 8 highlight covers · 2 grid previews · **116 rendered images** + 1 PDF booklet.
+**Totals:** 1 flagship carousel (12 pages) · 10 feed posts · 8 educational carousels (40 pages) · 8 reel covers + 2 script docs · 20 stories · 5 packaging assets · 6 festival templates + captions · 8 highlight covers · 2 grid previews · **111 rendered images** + 1 PDF booklet.
 
 **Sizes:** Feed & carousels 1080×1350 (4:5) · Stories & reel covers 1080×1920 (9:16), safe-zone aware.
 
