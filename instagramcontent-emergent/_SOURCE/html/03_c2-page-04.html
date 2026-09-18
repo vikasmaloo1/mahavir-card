@@ -1,0 +1,241 @@
+<!doctype html><html><head><meta charset="utf-8"><style>/* ============================================================
+   MAHAVIR CARD — INSTAGRAM EDITORIAL DESIGN SYSTEM
+   Print-catalogue aesthetic for a 25-year Ahmedabad press.
+   Rendered to pixel-exact PNG by _SOURCE/build.mjs
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..600&family=Archivo:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root{
+  /* Core ink & paper */
+  --ink:#0E1B2E;          /* deep navy ink */
+  --ink-2:#152740;        /* raised navy */
+  --paper:#F1EADB;        /* warm ivory paper */
+  --paper-2:#E7DECB;      /* deeper paper */
+  --paper-soft:#F7F2E8;
+  --slate:#3C5670;        /* muted blue */
+  --slate-soft:#8296A9;
+  --brass:#B5883F;        /* restrained foil accent */
+  --brass-soft:#CBA55E;
+  --line:#C9BEA6;         /* hairline on paper */
+  --line-dark:rgba(241,234,219,.20);
+  /* CMYK registration micro-accents (used sparingly) */
+  --c:#1FA4D6; --m:#D4318A; --y:#EEC419; --k:#141414;
+
+  --serif:'Fraunces',Georgia,serif;
+  --grot:'Archivo','Helvetica Neue',sans-serif;
+  --mono:'IBM Plex Mono',monospace;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision;}
+
+/* ---------- CANVAS ---------- */
+.canvas{
+  position:relative;overflow:hidden;
+  width:1080px;height:1350px;            /* 4:5 feed / carousel */
+  background:var(--paper);color:var(--ink);
+  font-family:var(--grot);
+}
+.canvas.story{width:1080px;height:1920px;} /* 9:16 story / reel cover */
+
+/* paper grain + subtle vignette */
+.canvas::after{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:60;
+  background-image:
+    radial-gradient(120% 90% at 50% 0%, rgba(0,0,0,0) 60%, rgba(0,0,0,.05) 100%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/></svg>");
+  mix-blend-mode:multiply;
+}
+.canvas.dark::after{mix-blend-mode:overlay;opacity:.7;}
+.canvas.dark{background:var(--ink);color:var(--paper);}
+
+/* ---------- CROP MARKS (print registration motif) ---------- */
+.crop{position:absolute;z-index:40;width:34px;height:34px;pointer-events:none;opacity:.5;}
+.canvas.dark .crop i{background:var(--paper-soft);}
+.crop i{position:absolute;background:var(--ink);}
+.crop i.h{height:1.5px;width:34px;top:0;} .crop i.v{width:1.5px;height:34px;left:0;}
+.crop.tl{top:40px;left:40px;} .crop.tr{top:40px;right:40px;transform:scaleX(-1);}
+.crop.bl{bottom:40px;left:40px;transform:scaleY(-1);} .crop.br{bottom:40px;right:40px;transform:scale(-1,-1);}
+
+/* ---------- SHARED PARTS ---------- */
+.pad{position:absolute;inset:0;padding:96px;display:flex;flex-direction:column;z-index:30;}
+.story .pad{padding:120px 96px;}
+
+.kicker{font-family:var(--mono);font-size:19px;letter-spacing:.36em;text-transform:uppercase;color:var(--brass);display:flex;align-items:center;gap:14px;}
+.kicker::before{content:"";width:34px;height:1.5px;background:var(--brass);display:inline-block;}
+.kicker.plain::before{display:none;}
+
+.eyebrow{font-family:var(--mono);font-size:16px;letter-spacing:.34em;text-transform:uppercase;color:var(--slate);}
+.canvas.dark .eyebrow{color:var(--slate-soft);}
+
+.display{font-family:var(--serif);font-weight:340;line-height:.92;letter-spacing:-.02em;font-optical-sizing:auto;}
+.display .it{font-style:italic;font-weight:340;}
+.display b{font-weight:600;}
+
+.body{font-family:var(--grot);font-weight:400;line-height:1.5;color:var(--ink);opacity:.86;}
+.canvas.dark .body{color:var(--paper);opacity:.82;}
+
+.tag{font-family:var(--mono);font-size:16px;letter-spacing:.18em;text-transform:uppercase;color:var(--slate);}
+
+/* logo mark */
+.logomark{display:flex;align-items:center;gap:16px;}
+.logomark img{width:52px;height:52px;border-radius:50%;object-fit:cover;background:var(--ink);}
+.logomark .wm{display:flex;flex-direction:column;line-height:1;}
+.logomark .wm b{font-family:var(--serif);font-weight:600;font-size:26px;letter-spacing:.01em;}
+.logomark .wm span{font-family:var(--mono);font-size:12px;letter-spacing:.32em;text-transform:uppercase;color:var(--slate);margin-top:5px;}
+.canvas.dark .logomark .wm span{color:var(--slate-soft);}
+
+/* footer meta bar */
+.metabar{margin-top:auto;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;}
+.metabar .web{font-family:var(--mono);font-size:18px;letter-spacing:.14em;}
+.cmyk{display:flex;gap:0;height:10px;width:150px;border:1px solid rgba(0,0,0,.12);}
+.canvas.dark .cmyk{border-color:rgba(255,255,255,.18);}
+.cmyk span{flex:1;} .cmyk .s1{background:var(--c);} .cmyk .s2{background:var(--m);} .cmyk .s3{background:var(--y);} .cmyk .s4{background:var(--k);}
+
+.reg{width:40px;height:40px;position:relative;opacity:.65;}
+.reg::before,.reg::after{content:"";position:absolute;background:currentColor;}
+.reg::before{left:50%;top:0;width:1.5px;height:100%;transform:translateX(-50%);}
+.reg::after{top:50%;left:0;height:1.5px;width:100%;transform:translateY(-50%);}
+.reg b{position:absolute;inset:9px;border:1.5px solid currentColor;border-radius:50%;}
+
+.hair{height:1px;background:var(--line);width:100%;}
+.canvas.dark .hair{background:var(--line-dark);}
+
+.pageno{font-family:var(--mono);font-size:16px;letter-spacing:.2em;color:var(--slate);}
+.canvas.dark .pageno{color:var(--slate-soft);}
+
+/* ---------- PHOTO HELPERS ---------- */
+.photo{position:absolute;inset:0;z-index:0;}
+.photo img{width:100%;height:100%;object-fit:cover;display:block;}
+.scrim-b{position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(9,17,30,.15) 18%,rgba(9,17,30,.48) 46%,rgba(9,17,30,.92) 100%);}
+.scrim-full{position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(9,17,30,.55),rgba(9,17,30,.35) 45%,rgba(9,17,30,.72));}
+.scrim-l{position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(9,17,30,.85) 12%,rgba(9,17,30,.35) 48%,rgba(9,17,30,0) 78%);}
+
+/* ============================================================
+   LAYOUT: photoHero (full-bleed image + bottom lockup)
+   ============================================================ */
+.L-hero .pad{z-index:30;}
+.L-hero .top{display:flex;justify-content:space-between;align-items:flex-start;}
+.L-hero .stack{margin-top:auto;}
+.L-hero .display{color:var(--paper);}
+.L-hero .kicker{color:var(--brass-soft);}
+.L-hero .sub{color:var(--paper);opacity:.9;font-size:26px;line-height:1.45;max-width:760px;margin-top:26px;font-weight:400;}
+.L-hero .logomark .wm b{color:var(--paper);}
+.L-hero .logomark .wm span{color:rgba(241,234,219,.7);}
+/* legibility over photography */
+.canvas.dark .logomark .wm b,.canvas.dark .logomark .wm span{text-shadow:0 2px 16px rgba(0,0,0,.6);}
+.L-hero .display,.L-hero .kicker,.L-hero .sub,
+.reel-cover .display{text-shadow:0 2px 34px rgba(9,17,30,.5);}
+.story.dark .display,.story.dark .kicker,.story.dark .sub{text-shadow:0 2px 34px rgba(9,17,30,.55);}
+
+/* ============================================================
+   LAYOUT: typePoster (paper, type-dominant)
+   ============================================================ */
+.L-poster .pad{justify-content:flex-start;}
+.L-poster .top{display:flex;justify-content:space-between;align-items:flex-start;}
+.L-poster .center{margin:auto 0;}
+.L-poster .sub{font-size:26px;line-height:1.5;color:var(--ink);opacity:.8;max-width:760px;margin-top:34px;}
+
+/* ============================================================
+   LAYOUT: split (photo panel + type panel)
+   ============================================================ */
+.L-split{display:flex;}
+.L-split .imgcol{position:relative;width:52%;height:100%;overflow:hidden;}
+.L-split.right .imgcol{order:2;}
+.L-split .imgcol img{width:100%;height:100%;object-fit:cover;}
+.L-split .txtcol{width:48%;height:100%;padding:96px 76px;display:flex;flex-direction:column;position:relative;z-index:5;}
+.L-split .txtcol .display{margin-top:26px;}
+.L-split .txtcol .body{margin-top:28px;font-size:23px;}
+.L-split .spec{margin-top:34px;display:flex;flex-direction:column;gap:0;}
+.L-split .spec .row{display:flex;justify-content:space-between;gap:16px;padding:16px 0;border-top:1px solid var(--line);font-family:var(--mono);font-size:17px;letter-spacing:.06em;}
+.L-split .spec .row:last-child{border-bottom:1px solid var(--line);}
+.L-split .spec .row .k{color:var(--slate);text-transform:uppercase;letter-spacing:.14em;font-size:14px;}
+.canvas.dark .L-split .spec .row{border-color:var(--line-dark);}
+
+/* ============================================================
+   LAYOUT: contactSheet (product grid)
+   ============================================================ */
+.L-grid .pad{}
+.L-grid .head{display:flex;justify-content:space-between;align-items:flex-end;}
+.L-grid .grid{display:grid;grid-template-columns:1fr 1fr 1fr;grid-auto-rows:300px;gap:16px;margin-top:44px;}
+.L-grid .cell{position:relative;overflow:hidden;background:var(--ink);height:100%;}
+.L-grid .cell.wide{grid-column:span 2;}
+.L-grid .cell.tall{grid-row:span 2;}
+.L-grid .cell img{width:100%;height:100%;object-fit:cover;display:block;}
+.L-grid .cell .cap{position:absolute;left:0;right:0;bottom:0;padding:18px 20px;background:linear-gradient(180deg,transparent,rgba(9,17,30,.82));}
+.L-grid .cell .cap b{display:block;font-family:var(--serif);font-weight:600;color:var(--paper);font-size:24px;line-height:1;}
+.L-grid .cell .cap span{font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--brass-soft);}
+
+/* ============================================================
+   LAYOUT: macroDetail (big photo top + caption strip)
+   ============================================================ */
+.L-macro{display:flex;flex-direction:column;}
+.L-macro .imgwrap{position:relative;height:66%;overflow:hidden;}
+.L-macro .imgwrap>img{width:100%;height:100%;object-fit:cover;}
+.L-macro .imgwrap .badge{position:absolute;top:56px;left:56px;z-index:5;}
+.L-macro .strip{flex:1;padding:60px 76px;display:flex;flex-direction:column;justify-content:center;position:relative;}
+.L-macro .strip .display{margin-top:20px;}
+.L-macro .strip .foot{margin-top:auto;}
+
+/* ============================================================
+   LAYOUT: numeric (giant figure)
+   ============================================================ */
+.L-num .pad{justify-content:space-between;}
+.L-num .fig{font-family:var(--serif);font-weight:340;line-height:.82;letter-spacing:-.03em;}
+.L-num .fig .u{font-family:var(--grot);font-weight:600;letter-spacing:0;}
+.L-num .cap{font-size:27px;line-height:1.4;max-width:720px;opacity:.85;}
+
+/* ============================================================
+   LAYOUT: specCard / listSteps
+   ============================================================ */
+.L-steps .pad{}
+.L-steps .list{margin-top:52px;display:flex;flex-direction:column;gap:0;}
+.L-steps .step{display:flex;gap:34px;padding:30px 0;border-top:1px solid var(--line);}
+.L-steps .step:last-child{border-bottom:1px solid var(--line);}
+.canvas.dark .L-steps .step{border-color:var(--line-dark);}
+.L-steps .step .n{font-family:var(--mono);font-size:20px;color:var(--brass);min-width:54px;padding-top:6px;}
+.L-steps .step .h{font-family:var(--serif);font-weight:560;font-size:34px;line-height:1.05;}
+.L-steps .step .b{font-size:20px;line-height:1.45;opacity:.82;margin-top:8px;}
+
+/* ============================================================
+   LAYOUT: websiteFrame
+   ============================================================ */
+.L-web .pad{}
+.L-web .frame{margin-top:40px;border:1px solid var(--line);background:#fff;box-shadow:0 40px 80px -40px rgba(14,27,46,.45);overflow:hidden;}
+.L-web .frame .bar{height:52px;background:var(--paper-2);display:flex;align-items:center;padding:0 22px;gap:9px;border-bottom:1px solid var(--line);}
+.L-web .frame .bar i{width:13px;height:13px;border-radius:50%;background:var(--slate-soft);opacity:.6;}
+.L-web .frame .bar .url{margin-left:20px;font-family:var(--mono);font-size:15px;color:var(--slate);letter-spacing:.05em;}
+.L-web .frame img{width:100%;display:block;}
+.L-web .foot{margin-top:auto;}
+
+/* ============================================================
+   LAYOUT: quoteCTA (contact closing)
+   ============================================================ */
+.L-cta .pad{justify-content:space-between;}
+.L-cta .rows{display:flex;flex-direction:column;gap:0;margin-top:46px;}
+.L-cta .rows .r{display:flex;align-items:baseline;gap:26px;padding:26px 0;border-top:1px solid var(--line-dark);}
+.L-cta .rows .r:last-child{border-bottom:1px solid var(--line-dark);}
+.L-cta .rows .r .lab{font-family:var(--mono);font-size:15px;letter-spacing:.28em;text-transform:uppercase;color:var(--brass-soft);min-width:150px;}
+.L-cta .rows .r .val{font-family:var(--serif);font-weight:420;font-size:40px;color:var(--paper);}
+
+/* ---------- STORY-SPECIFIC ---------- */
+.story .kicker{font-size:22px;}
+.story .metabar{margin-top:40px;}
+.badge-pill{display:inline-flex;align-items:center;gap:12px;padding:14px 24px;border:1.5px solid var(--brass);border-radius:100px;font-family:var(--mono);font-size:18px;letter-spacing:.18em;text-transform:uppercase;color:var(--brass);}
+.canvas.dark .badge-pill{color:var(--brass-soft);border-color:var(--brass-soft);}
+.tap{display:inline-flex;align-items:center;gap:14px;font-family:var(--grot);font-weight:700;font-size:26px;color:var(--ink);}
+.canvas.dark .tap{color:var(--paper);}
+.tap .arrow{width:56px;height:56px;border-radius:50%;background:var(--brass);color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;}
+.poll{display:flex;gap:18px;margin-top:40px;}
+.poll .opt{flex:1;padding:30px 26px;border:1.5px solid var(--line-dark);background:rgba(255,255,255,.04);text-align:center;font-family:var(--serif);font-size:34px;font-weight:520;}
+.poll .opt.hot{background:var(--brass);color:#fff;border-color:var(--brass);}
+.qbox{margin-top:40px;padding:32px 30px;border:1.5px dashed var(--slate-soft);border-radius:16px;font-family:var(--grot);font-size:24px;color:var(--slate-soft);}
+</style></head><body style="margin:0"><div class="canvas dark L-num"><div class="crop tl"><i class="h"></i><i class="v"></i></div><div class="crop tr"><i class="h"></i><i class="v"></i></div><div class="crop bl"><i class="h"></i><i class="v"></i></div><div class="crop br"><i class="h"></i><i class="v"></i></div>
+    <div class="pad">
+      <div class="top" style="display:flex;justify-content:space-between;align-items:flex-start"><div class="logomark"><img src="../assets/logo.jpeg" alt=""><div class="wm"><b>Mahavir Card</b><span>Commercial Print · Ahmedabad</span></div></div><div class="reg"><b></b></div></div>
+      <div style="margin:auto 0">
+        <div class="kicker">CMYK</div>
+        <div class="fig" style="font-size:420px;color:var(--paper);margin:18px 0">K<span class="u" style="font-size:67.2px;color:var(--brass);display:block;margin-top:10px">the key plate</span></div>
+      </div>
+      <div><p class="cap">The 'K' in CMYK is the black key plate — it keeps text crisp and shadows deep.</p><div class="metabar"><div style="display:flex;flex-direction:column;gap:12px"><div class="cmyk"><span class="s1"></span><span class="s2"></span><span class="s3"></span><span class="s4"></span></div><span class="web">mahavircard.in</span></div><span class="pageno">04 / 05</span></div></div>
+    </div></div></body></html>
