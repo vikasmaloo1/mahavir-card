@@ -328,16 +328,16 @@ export function TaxInvoiceDocument({
           {/* Table Structure */}
           <table className="w-full h-full border-collapse relative z-10 text-left flex-1" style={{ height: "100%" }}>
             <thead>
-              <tr className="border-b border-black text-center font-bold text-[0.92em]">
-                <th className="py-1 px-1 border-r border-black w-[5%]">S.<br />No.</th>
-                <th className="py-1.5 px-2 border-r border-black w-[49%] text-center font-black tracking-wide text-[1.05em]">DESCRIPTION</th>
-                <th className="py-1 px-1 border-r border-black w-[11%]">HSN<br />CODE</th>
-                <th className="py-1 px-1 border-r border-black w-[9%]">QTY.</th>
-                <th className="py-1 px-1 border-r border-black w-[9%]">RATE</th>
-                <th className="py-1 px-1 border-r border-black w-[6%]">PER</th>
-                <th className="py-1 px-1.5 w-[11%] text-right">
-                  <div>AMOUNT</div>
-                  <div className="text-[0.8em] font-normal flex justify-between px-1">
+              <tr className="border-b-2 border-black text-center font-black text-[1.02em]">
+                <th className="py-1.5 px-1 border-r-2 border-black w-[5%]">S.<br />No.</th>
+                <th className="py-2 px-2 border-r-2 border-black w-[46%] text-center font-black tracking-wide text-[1.12em]">DESCRIPTION</th>
+                <th className="py-1.5 px-1 border-r-2 border-black w-[12%] font-black text-[1.08em]">HSN<br />CODE</th>
+                <th className="py-1.5 px-1 border-r-2 border-black w-[10%] font-black text-[1.08em]">QTY.</th>
+                <th className="py-1.5 px-1 border-r-2 border-black w-[11%] font-black text-[1.08em]">RATE</th>
+                <th className="py-1.5 px-1 border-r-2 border-black w-[6%] font-black text-[1.04em]">PER</th>
+                <th className="py-1.5 px-1.5 w-[12%] text-right font-black">
+                  <div className="text-[1.08em]">AMOUNT</div>
+                  <div className="text-[0.9em] font-bold flex justify-between px-1 text-gray-800">
                     <span>Rs.</span>
                     <span>Ps.</span>
                   </div>
@@ -346,26 +346,26 @@ export function TaxInvoiceDocument({
             </thead>
             <tbody style={{ height: "100%" }}>
               {data.items.map((item, idx) => (
-                <tr key={item.id || idx} className="align-top font-normal text-[0.95em]">
-                  <td className="py-2 px-1 border-r border-black text-center font-bold">
+                <tr key={item.id || idx} className="align-top font-bold text-[1.12em]">
+                  <td className="py-2.5 px-1 border-r-2 border-black text-center font-black text-[1.15em] text-black">
                     {idx + 1}
                   </td>
-                  <td className="py-2 px-2.5 border-r border-black font-extrabold text-[1.06em] uppercase tracking-tight text-black leading-snug">
+                  <td className="py-2.5 px-2.5 border-r-2 border-black font-black text-[1.20em] uppercase tracking-tight text-black leading-snug">
                     {item.description}
                   </td>
-                  <td className="py-2 px-1 border-r border-black text-center tabular-nums">
+                  <td className="py-2.5 px-1 border-r-2 border-black text-center tabular-nums font-black text-[1.18em] text-black">
                     {item.hsnCode}
                   </td>
-                  <td className="py-2 px-1 border-r border-black text-center tabular-nums font-bold text-[1.02em]">
+                  <td className="py-2.5 px-1 border-r-2 border-black text-center tabular-nums font-black text-[1.20em] text-black">
                     {item.quantity}
                   </td>
-                  <td className="py-2 px-1 border-r border-black text-right tabular-nums pr-1 font-semibold">
+                  <td className="py-2.5 px-1.5 border-r-2 border-black text-right tabular-nums pr-2 font-black text-[1.20em] text-black">
                     {formatNum(item.rate)}
                   </td>
-                  <td className="py-2 px-1 border-r border-black text-center uppercase font-semibold">
+                  <td className="py-2.5 px-1 border-r-2 border-black text-center uppercase font-black text-[1.12em] text-black">
                     {item.per}
                   </td>
-                  <td className="py-2 px-1.5 text-right tabular-nums font-black text-[1.02em]">
+                  <td className="py-2.5 px-2 text-right tabular-nums font-black text-[1.22em] text-black">
                     {formatNum(item.amount)}
                   </td>
                 </tr>
@@ -378,8 +378,8 @@ export function TaxInvoiceDocument({
                 }}
                 className="h-full"
               >
-                <td className="border-r border-black" />
-                <td className="border-r border-black">
+                <td className="border-r-2 border-black" />
+                <td className="border-r-2 border-black">
                   <div
                     style={{
                       // Floor only. Kept small on the letter pad layouts, where 70mm of the page is reserved
@@ -394,10 +394,10 @@ export function TaxInvoiceDocument({
                     }}
                   />
                 </td>
-                <td className="border-r border-black" />
-                <td className="border-r border-black" />
-                <td className="border-r border-black" />
-                <td className="border-r border-black" />
+                <td className="border-r-2 border-black" />
+                <td className="border-r-2 border-black" />
+                <td className="border-r-2 border-black" />
+                <td className="border-r-2 border-black" />
                 <td />
               </tr>
             </tbody>
@@ -405,24 +405,24 @@ export function TaxInvoiceDocument({
           {/* Subtotals & Taxes Footer inside Table */}
           <tfoot>
             {/* SUB TOTAL */}
-            <tr className="border-t border-black font-semibold">
-              <td colSpan={4} className="border-r border-black" />
-              <td colSpan={2} className="border-r border-black px-1.5 py-0.5 text-right font-bold uppercase">
+            <tr className="border-t-2 border-black font-black text-[1.12em]">
+              <td colSpan={4} className="border-r-2 border-black" />
+              <td colSpan={2} className="border-r-2 border-black px-2 py-1 text-right font-black uppercase text-black">
                 SUB TOTAL
               </td>
-              <td className="px-1.5 py-0.5 text-right tabular-nums font-bold">
+              <td className="px-2 py-1 text-right tabular-nums font-black text-[1.16em] text-black">
                 {formatNum(data.subtotal)}
               </td>
             </tr>
 
             {/* CGST */}
             {data.cgstAmount > 0 ? (
-              <tr className="border-t border-black">
-                <td colSpan={4} className="border-r border-black" />
-                <td colSpan={2} className="border-r border-black px-1.5 py-0.5 text-right font-medium">
+              <tr className="border-t border-black text-[1.08em]">
+                <td colSpan={4} className="border-r-2 border-black" />
+                <td colSpan={2} className="border-r-2 border-black px-2 py-1 text-right font-bold text-black">
                   OUTPUT CGST {data.cgstRate}%
                 </td>
-                <td className="px-1.5 py-0.5 text-right tabular-nums">
+                <td className="px-2 py-1 text-right tabular-nums font-black text-[1.14em] text-black">
                   {formatNum(data.cgstAmount)}
                 </td>
               </tr>
@@ -430,12 +430,12 @@ export function TaxInvoiceDocument({
 
             {/* SGST */}
             {data.sgstAmount > 0 ? (
-              <tr className="border-t border-black">
-                <td colSpan={4} className="border-r border-black" />
-                <td colSpan={2} className="border-r border-black px-1.5 py-0.5 text-right font-medium">
+              <tr className="border-t border-black text-[1.08em]">
+                <td colSpan={4} className="border-r-2 border-black" />
+                <td colSpan={2} className="border-r-2 border-black px-2 py-1 text-right font-bold text-black">
                   OUTPUT SGST {data.sgstRate}%
                 </td>
-                <td className="px-1.5 py-0.5 text-right tabular-nums">
+                <td className="px-2 py-1 text-right tabular-nums font-black text-[1.14em] text-black">
                   {formatNum(data.sgstAmount)}
                 </td>
               </tr>
@@ -443,37 +443,37 @@ export function TaxInvoiceDocument({
 
             {/* IGST */}
             {data.igstAmount > 0 ? (
-              <tr className="border-t border-black">
-                <td colSpan={4} className="border-r border-black" />
-                <td colSpan={2} className="border-r border-black px-1.5 py-0.5 text-right font-medium">
+              <tr className="border-t border-black text-[1.08em]">
+                <td colSpan={4} className="border-r-2 border-black" />
+                <td colSpan={2} className="border-r-2 border-black px-2 py-1 text-right font-bold text-black">
                   OUTPUT IGST {data.igstRate}%
                 </td>
-                <td className="px-1.5 py-0.5 text-right tabular-nums">
+                <td className="px-2 py-1 text-right tabular-nums font-black text-[1.14em] text-black">
                   {formatNum(data.igstAmount)}
                 </td>
               </tr>
             ) : null}
 
             {/* ROUND OFF */}
-            <tr className="border-t border-black">
-              <td colSpan={4} className="border-r border-black" />
-              <td colSpan={2} className="border-r border-black px-1.5 py-0.5 font-bold uppercase text-right">
+            <tr className="border-t border-black text-[1.08em]">
+              <td colSpan={4} className="border-r-2 border-black" />
+              <td colSpan={2} className="border-r-2 border-black px-2 py-1 font-bold uppercase text-right text-black">
                 ROUND OFF
               </td>
-              <td className="px-1.5 py-0.5 text-right tabular-nums">
+              <td className="px-2 py-1 text-right tabular-nums font-black text-[1.14em] text-black">
                 {data.roundOff !== 0 ? (data.roundOff > 0 ? `+${formatNum(data.roundOff)}` : formatNum(data.roundOff)) : ""}
               </td>
             </tr>
 
             {/* G.TOTAL */}
-            <tr className="border-t border-black">
+            <tr className="border-t-2 border-black">
               <td
                 colSpan={6}
-                className="border-r border-black px-3 py-1 font-black text-[1.12em] tracking-wider text-center uppercase"
+                className="border-r-2 border-black px-3 py-1.5 font-black text-[1.30em] tracking-wider text-center uppercase text-black"
               >
                 G.TOTAL
               </td>
-              <td className="px-1.5 py-1 text-right tabular-nums font-black text-[1.12em]">
+              <td className="px-2 py-1.5 text-right tabular-nums font-black text-[1.32em] text-black">
                 {formatNum(data.grandTotal)}
               </td>
             </tr>
@@ -482,9 +482,9 @@ export function TaxInvoiceDocument({
       </div>
 
       {/* Amount in Words */}
-      <div className="shrink-0 border-x border-b border-black py-1 px-2 font-bold text-[0.95em]">
-        <span>AMOUNT : </span>
-        <span className="font-semibold text-gray-900">{data.amountInWords}</span>
+      <div className="shrink-0 border-x-2 border-b-2 border-black py-1.5 px-3 font-bold text-[1.05em] text-black">
+        <span className="font-black">AMOUNT : </span>
+        <span className="font-bold text-gray-900">{data.amountInWords}</span>
       </div>
 
       {/* Legal Declaration, QR Code, and Signature Block */}
