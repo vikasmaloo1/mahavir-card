@@ -195,16 +195,16 @@ export function TaxInvoiceDocument({
         </header>
 
         {/* 2-Column Metadata Box */}
-        <div className="border border-black grid grid-cols-[54%_46%] text-[0.92em] mb-0.5 shrink-0">
+        <div className="border-2 border-black grid grid-cols-[55%_45%] text-[1.0em] mb-1 shrink-0">
           {/* Left Column: Seller (Mahavir Card) & Customer Details */}
-          <div className="flex flex-col justify-between border-r border-black p-1">
+          <div className="flex flex-col justify-between border-r-2 border-black p-2">
             <div>
               {/* Mahavir Card Seller Details */}
-              <div className="mb-1 pb-1 border-b border-black leading-tight text-[0.92em]">
-                <p className="font-black uppercase text-[1.08em] tracking-wide text-black">Mahavir Card</p>
-                <p className="text-gray-800 text-[0.88em]">5, Akshar Purushottam Flat, Sarangpur, Dolatkhana, Ahmedabad - 380001.</p>
-                <p className="text-gray-800 text-[0.88em]">GSTIN : <strong className="text-black font-extrabold">{data.sellerGstin}</strong></p>
-                <div className="flex flex-wrap items-center gap-x-2 text-[0.86em] text-gray-800 font-medium">
+              <div className="mb-2 pb-2 border-b border-black leading-snug">
+                <p className="font-black uppercase text-[1.22em] tracking-wide text-black">Mahavir Card</p>
+                <p className="text-gray-900 text-[0.96em] font-medium">5, Akshar Purushottam Flat, Sarangpur, Dolatkhana, Ahmedabad - 380001.</p>
+                <p className="text-gray-900 text-[0.96em]">GSTIN : <strong className="text-black font-black">{data.sellerGstin}</strong></p>
+                <div className="flex flex-wrap items-center gap-x-2 text-[0.92em] text-gray-800 font-semibold">
                   <span>www.mahavircard.in</span>
                   <span>·</span>
                   <span>mahavircard2011@gmail.com</span>
@@ -212,86 +212,97 @@ export function TaxInvoiceDocument({
               </div>
 
               {/* Customer Details */}
-              <div className="flex items-start gap-1">
-                <span className="font-bold shrink-0">M/s.</span>
-                <span className="font-bold shrink-0">:</span>
-                <span className="font-bold uppercase leading-tight text-[1.02em]">
+              <div className="flex items-baseline gap-1.5 text-black">
+                <span className="font-black text-[1.14em] shrink-0">M/s. :</span>
+                <span className="font-black uppercase tracking-wide text-[1.20em] leading-tight">
                   {data.customer.name}
                 </span>
-              </div>
-              {data.customer.companyName && data.customer.companyName !== data.customer.name ? (
-                <p className="pl-6 font-semibold uppercase text-gray-800 text-[0.95em]">
-                  {data.customer.companyName}
-                </p>
-              ) : null}
-              <div className="pl-6 text-gray-900 leading-tight space-y-0.2 mt-0.5 text-[0.95em]">
-                {data.customer.addressLine1 ? <p>{data.customer.addressLine1}</p> : null}
-                {data.customer.addressLine2 ? <p>{data.customer.addressLine2}</p> : null}
-                {data.customer.phone ? (
-                  <p className="font-medium">
-                    Mo, <span className="tabular-nums">{data.customer.phone}</span>
-                  </p>
+                {data.customer.companyName && data.customer.companyName !== data.customer.name ? (
+                  <span className="font-bold uppercase text-[1.02em] text-gray-800">
+                    ({data.customer.companyName})
+                  </span>
                 ) : null}
               </div>
+
+              {/* 2-Line Customer Address with City, Postal Code, State and Phone */}
+              <div className="pl-6 text-black mt-1 space-y-0.5">
+                {/* Line 1: Street Address / Area */}
+                <p className="text-[1.02em] font-semibold text-black leading-snug">
+                  {[data.customer.addressLine1, data.customer.addressLine2].filter(Boolean).join(", ") || (data.customer.city ? data.customer.city : "Ahmedabad")}
+                </p>
+                {/* Line 2: City - Pincode, State & Mobile */}
+                <p className="text-[1.02em] font-bold text-black leading-snug">
+                  {[
+                    [data.customer.city || "Ahmedabad", data.customer.postalCode ? `- ${data.customer.postalCode}` : ""].filter(Boolean).join(" "),
+                    data.customer.state || "Gujarat",
+                  ].filter(Boolean).join(", ")}
+                  {data.customer.phone ? (
+                    <span className="ml-2.5 font-bold text-gray-900">
+                      Mo, <span className="tabular-nums font-black">{data.customer.phone}</span>
+                    </span>
+                  ) : null}
+                </p>
+              </div>
             </div>
-            <div className="mt-1 pt-1 border-t border-black font-bold flex items-center gap-1">
-              <span>GSTIN No.: </span>
-              <span className="uppercase font-semibold tracking-wide">
+
+            <div className="mt-2 pt-1.5 border-t border-black font-black text-[1.04em] flex items-center gap-2 text-black">
+              <span>GSTIN No.:</span>
+              <span className="uppercase font-mono font-black tracking-wider text-[1.06em]">
                 {data.customer.gstin || "URP (UNREGISTERED)"}
               </span>
             </div>
           </div>
 
-          {/* Right Column: Invoice / Order / Terms Grid (Challan Removed) */}
-          <div className="divide-y divide-black">
+          {/* Right Column: Invoice / Order / Terms Grid */}
+          <div className="divide-y-2 divide-black">
             {/* Invoice No & Date */}
-            <div className="grid grid-cols-[60%_40%] divide-x divide-black p-1 items-center">
+            <div className="grid grid-cols-[58%_42%] divide-x-2 divide-black p-2 items-center">
               <div className="whitespace-nowrap overflow-hidden">
-                <span className="font-bold">INVOICE NO.: </span>
-                <span className="font-bold text-[1.02em] tabular-nums">{data.invoiceNumber}</span>
+                <span className="font-bold text-[0.98em]">INVOICE NO.: </span>
+                <span className="font-black text-[1.10em] tabular-nums">{data.invoiceNumber}</span>
               </div>
-              <div className="pl-1 whitespace-nowrap overflow-hidden">
-                <span className="font-bold">DT. </span>
-                <span className="tabular-nums">{data.invoiceDate}</span>
+              <div className="pl-2 whitespace-nowrap overflow-hidden">
+                <span className="font-bold text-[0.98em]">DT. </span>
+                <span className="font-bold text-[1.04em] tabular-nums">{data.invoiceDate}</span>
               </div>
             </div>
 
             {/* Chalan No & Date (if present) */}
             {data.challanNumber ? (
-              <div className="grid grid-cols-[60%_40%] divide-x divide-black p-1 items-center">
+              <div className="grid grid-cols-[58%_42%] divide-x-2 divide-black p-2 items-center">
                 <div className="whitespace-nowrap overflow-hidden">
-                  <span className="font-bold">CHALAN NO.: </span>
-                  <span className="font-bold text-[0.98em] tabular-nums">
+                  <span className="font-bold text-[0.98em]">CHALAN NO.: </span>
+                  <span className="font-black text-[1.06em] tabular-nums">
                     {data.challanNumber}
                   </span>
                 </div>
-                <div className="pl-1 whitespace-nowrap overflow-hidden">
-                  <span className="font-bold">DT. </span>
-                  <span className="tabular-nums">{data.challanDate || data.invoiceDate}</span>
+                <div className="pl-2 whitespace-nowrap overflow-hidden">
+                  <span className="font-bold text-[0.98em]">DT. </span>
+                  <span className="font-bold text-[1.04em] tabular-nums">{data.challanDate || data.invoiceDate}</span>
                 </div>
               </div>
             ) : null}
 
             {/* Order No & Date */}
             {displayOrderNo ? (
-              <div className="grid grid-cols-[60%_40%] divide-x divide-black p-1 items-center">
+              <div className="grid grid-cols-[58%_42%] divide-x-2 divide-black p-2 items-center">
                 <div className="whitespace-nowrap overflow-hidden">
-                  <span className="font-bold">ORDER NO.: </span>
-                  <span className="font-bold text-[0.98em] tabular-nums">
+                  <span className="font-bold text-[0.98em]">ORDER NO.: </span>
+                  <span className="font-bold text-[1.04em] tabular-nums">
                     {displayOrderNo}
                   </span>
                 </div>
-                <div className="pl-1 whitespace-nowrap overflow-hidden">
-                  <span className="font-bold">DT. </span>
-                  <span className="tabular-nums">{data.orderDate}</span>
+                <div className="pl-2 whitespace-nowrap overflow-hidden">
+                  <span className="font-bold text-[0.98em]">DT. </span>
+                  <span className="font-bold text-[1.04em] tabular-nums">{data.orderDate}</span>
                 </div>
               </div>
             ) : null}
 
             {/* Terms */}
-            <div className="p-1 whitespace-nowrap overflow-hidden">
-              <span className="font-bold">TERMS: </span>
-              <span className="font-medium">{data.terms || "Immediate"}</span>
+            <div className="p-2 whitespace-nowrap overflow-hidden">
+              <span className="font-bold text-[0.98em]">TERMS: </span>
+              <span className="font-black text-[1.04em]">{data.terms || "Immediate"}</span>
             </div>
           </div>
         </div>

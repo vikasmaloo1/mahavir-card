@@ -82,6 +82,44 @@ function formatDateDisplay(yyyyMmDd: string): string {
   return yyyyMmDd;
 }
 
+export const INDIAN_STATES: Array<{ name: string; code: string; tin: string }> = [
+  { name: "Gujarat", code: "GJ", tin: "24" },
+  { name: "Maharashtra", code: "MH", tin: "27" },
+  { name: "Rajasthan", code: "RJ", tin: "08" },
+  { name: "Madhya Pradesh", code: "MP", tin: "23" },
+  { name: "Delhi", code: "DL", tin: "07" },
+  { name: "Uttar Pradesh", code: "UP", tin: "09" },
+  { name: "Karnataka", code: "KA", tin: "29" },
+  { name: "Tamil Nadu", code: "TN", tin: "33" },
+  { name: "Telangana", code: "TS", tin: "36" },
+  { name: "Andhra Pradesh", code: "AP", tin: "37" },
+  { name: "West Bengal", code: "WB", tin: "19" },
+  { name: "Haryana", code: "HR", tin: "06" },
+  { name: "Punjab", code: "PB", tin: "03" },
+  { name: "Kerala", code: "KL", tin: "32" },
+  { name: "Bihar", code: "BR", tin: "10" },
+  { name: "Odisha", code: "OR", tin: "21" },
+  { name: "Assam", code: "AS", tin: "18" },
+  { name: "Chhattisgarh", code: "CG", tin: "22" },
+  { name: "Jharkhand", code: "JH", tin: "20" },
+  { name: "Uttarakhand", code: "UK", tin: "05" },
+  { name: "Himachal Pradesh", code: "HP", tin: "02" },
+  { name: "Jammu and Kashmir", code: "JK", tin: "01" },
+  { name: "Goa", code: "GA", tin: "30" },
+  { name: "Chandigarh", code: "CH", tin: "04" },
+  { name: "Daman and Diu / Dadra & Nagar Haveli", code: "DN", tin: "26" },
+  { name: "Puducherry", code: "PY", tin: "34" },
+  { name: "Tripura", code: "TR", tin: "16" },
+  { name: "Meghalaya", code: "ML", tin: "17" },
+  { name: "Manipur", code: "MN", tin: "14" },
+  { name: "Nagaland", code: "NL", tin: "13" },
+  { name: "Mizoram", code: "MZ", tin: "15" },
+  { name: "Sikkim", code: "SK", tin: "11" },
+  { name: "Arunachal Pradesh", code: "AR", tin: "12" },
+  { name: "Ladakh", code: "LA", tin: "38" },
+  { name: "Andaman and Nicobar Islands", code: "AN", tin: "35" },
+];
+
 export function AdminManualBillModal({
   onClose,
   onBillCreated,
@@ -401,6 +439,39 @@ export function AdminManualBillModal({
     setPostalCode("");
     setGstin("");
     setTaxType("INTRA_STATE");
+  }
+
+  function handleStateSelect(selectedStateName: string) {
+    setState(selectedStateName);
+    const matched = INDIAN_STATES.find((s) => s.name === selectedStateName);
+    if (matched) {
+      setStateCode(matched.code);
+      if (matched.code !== "GJ") {
+        setTaxType("INTER_STATE");
+      } else {
+        setTaxType("INTRA_STATE");
+      }
+    }
+  }
+
+  function handleGstinChange(val: string) {
+    const cleanGst = val.toUpperCase().trim();
+    setGstin(cleanGst);
+
+    // Auto-detect state if first 2 digits match Indian GST TIN code
+    if (cleanGst.length >= 2) {
+      const tinPrefix = cleanGst.slice(0, 2);
+      const matchedState = INDIAN_STATES.find((s) => s.tin === tinPrefix);
+      if (matchedState) {
+        setState(matchedState.name);
+        setStateCode(matchedState.code);
+        if (matchedState.code !== "GJ") {
+          setTaxType("INTER_STATE");
+        } else {
+          setTaxType("INTRA_STATE");
+        }
+      }
+    }
   }
 
   // Handle adding new item row
@@ -994,10 +1065,12 @@ export function AdminManualBillModal({
                       </div>
                       <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-600 mt-1">
                         {phone ? <span>Mo: <strong>{phone}</strong></span> : null}
-                        <span>City: <strong>{city}</strong>, {stateCode}</span>
+                        <span>
+                          Location: <strong>{city || "Ahmedabad"}</strong>{postalCode ? ` - ${postalCode}` : ""}, <strong>{state || "Gujarat"} ({stateCode || "GJ"})</strong>
+                        </span>
                         {addressLine1 ? (
                           <span>
-                            Address: <strong>{[addressLine1, addressLine2, postalCode].filter(Boolean).join(", ")}</strong>
+                            Address: <strong>{[addressLine1, addressLine2].filter(Boolean).join(", ")}</strong>
                           </span>
                         ) : null}
                         {gstin ? <span className="font-mono">GSTIN: <strong>{gstin}</strong></span> : null}
@@ -1192,9 +1265,9 @@ export function AdminManualBillModal({
                     <input
                       type="text"
                       value={gstin}
-                      onChange={(e) => setGstin(e.target.value.toUpperCase())}
+                      onChange={(e) => handleGstinChange(e.target.value)}
                       placeholder="e.g. 24AAAAA0000A1Z5"
-                      className="w-full px-2.5 py-1.5 text-xs uppercase bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-2.5 py-1.5 text-xs uppercase bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 font-mono font-bold"
                     />
                   </div>
 
@@ -1206,37 +1279,45 @@ export function AdminManualBillModal({
                       type="text"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g. Ahmedabad"
+                      className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 font-medium"
                     />
                   </div>
 
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                      State & Code
+                      Postal Code / PIN
                     </label>
-                    <div className="grid grid-cols-2 gap-1">
-                      <input
-                        type="text"
-                        value={state}
-                        onChange={(e) => setState(e.target.value)}
-                        className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md"
-                      />
-                      <input
-                        type="text"
-                        value={stateCode}
-                        onChange={(e) => {
-                          const code = e.target.value.toUpperCase();
-                          setStateCode(code);
-                          if (code && code !== "GJ") {
-                            setTaxType("INTER_STATE");
-                          } else {
-                            setTaxType("INTRA_STATE");
-                          }
-                        }}
-                        placeholder="GJ"
-                        className="w-full px-2.5 py-1.5 text-xs uppercase bg-white border border-slate-300 rounded-md"
-                      />
+                    <input
+                      type="text"
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(e.target.value)}
+                      placeholder="e.g. 380001"
+                      maxLength={6}
+                      className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 font-medium font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-semibold text-slate-600">
+                        State (GST)
+                      </label>
+                      <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                        Code: {stateCode || "GJ"}
+                      </span>
                     </div>
+                    <select
+                      value={state}
+                      onChange={(e) => handleStateSelect(e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 font-medium"
+                    >
+                      {INDIAN_STATES.map((s) => (
+                        <option key={s.code} value={s.name}>
+                          {s.name} ({s.code} - {s.tin})
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="flex items-center pt-5">
