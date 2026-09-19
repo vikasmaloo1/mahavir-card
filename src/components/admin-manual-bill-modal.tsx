@@ -120,6 +120,39 @@ export const INDIAN_STATES: Array<{ name: string; code: string; tin: string }> =
   { name: "Andaman and Nicobar Islands", code: "AN", tin: "35" },
 ];
 
+export function getTaxRateForHsn(
+  hsnCode: string,
+  hsnOptions: Array<{ code: string; description: string; gstRate: string }>,
+  description?: string
+): number {
+  const code = (hsnCode || "").trim();
+  const descLower = (description || "").toLowerCase();
+
+  // 1. Advertisement material, pamphlets, leaflets, flyers -> 5% GST
+  if (
+    code === "4911" ||
+    descLower.includes("advertis") ||
+    descLower.includes("pamphlet") ||
+    descLower.includes("flyer") ||
+    descLower.includes("leaflet") ||
+    descLower.includes("handbill")
+  ) {
+    return 5;
+  }
+
+  // 2. Lookup in HSN options master from DB
+  const found = hsnOptions.find((h) => h.code === code);
+  if (found && found.gstRate) {
+    const rateNum = parseFloat(found.gstRate);
+    if (!isNaN(rateNum) && rateNum > 0) {
+      return rateNum;
+    }
+  }
+
+  // 3. 95% of products are 18% GST (Visiting Cards 4909, Papers 4802, Stickers 4821, Books 4820, Synthetic Covers 4921)
+  return 18;
+}
+
 export function AdminManualBillModal({
   onClose,
   onBillCreated,
@@ -202,6 +235,23 @@ export function AdminManualBillModal({
   const [igstRate, setIgstRate] = useState<number>(18);
   const [deliveryCharge, setDeliveryCharge] = useState<number>(0);
   const [customRoundOff, setCustomRoundOff] = useState<number | null>(null);
+
+  // Helper to apply GST rate to CGST, SGST, IGST states
+  const applyGstRate = (rate: number) => {
+    const half = Number((rate / 2).toFixed(2));
+    setCgstRate(half);
+    setSgstRate(half);
+    setIgstRate(rate);
+  };
+
+  // Rule: "the first product i selected based on HSN TAX SHOULD BE THAT WAY COMES AUTOMATICALLY"
+  // The first product's HSN determines the whole bill's GST tax rate
+  const primaryHsn = items[0]?.hsnCode || "4909";
+  const primaryDesc = items[0]?.description || "";
+  const activeBillRate = useMemo(() => {
+    if (items.length === 0) return 18;
+    return getTaxRateForHsn(primaryHsn, hsnOptions, primaryDesc);
+  }, [primaryHsn, hsnOptions, primaryDesc]);
 
   async function loadCustomers(queryStr: string = "") {
     setLoadingCustomers(true);
@@ -477,18 +527,27 @@ export function AdminManualBillModal({
   // Handle adding new item row
   function handleAddItem() {
     const nextIdx = items.length + 1;
-    const defaultType = itemTypes[0];
+    // Pick preset type matching current activeBillRate (5% vs 18%)
+    const compatibleType = itemTypes.find((t) => {
+      const rate = getTaxRateForHsn(t.hsnCode, hsnOptions, t.name);
+      return rate === activeBillRate;
+    });
+
+    const fallbackHsn = activeBillRate === 5 ? "4911" : "4909";
+    const fallbackDesc = activeBillRate === 5 ? "ADVERTISEMENT / PAMPHLET / FLYER" : "VISITING CARDS (CARD & PREMIUM CARD)";
+    const fallbackType = activeBillRate === 5 ? "Advertisement / Pamphlet / Flyer" : (itemTypes[0]?.name || "Card & Premium Card");
+
     setItems([
       ...items,
       {
         id: `item-${Date.now()}-${nextIdx}`,
-        itemType: defaultType ? defaultType.name : "Custom Item",
-        description: defaultType ? defaultType.name.toUpperCase() : "PRINTING WORK",
-        hsnCode: defaultType ? defaultType.hsnCode : "4909",
+        itemType: compatibleType ? compatibleType.name : fallbackType,
+        description: compatibleType ? compatibleType.name.toUpperCase() : fallbackDesc,
+        hsnCode: compatibleType ? compatibleType.hsnCode : fallbackHsn,
         quantity: 1,
-        rate: defaultType?.defaultRate ? Number(defaultType.defaultRate) : 0,
-        per: defaultType ? defaultType.defaultPer : "PCS.",
-        amount: defaultType?.defaultRate ? Number(defaultType.defaultRate) : 0,
+        rate: compatibleType?.defaultRate ? Number(compatibleType.defaultRate) : 0,
+        per: compatibleType ? compatibleType.defaultPer : "PCS.",
+        amount: compatibleType?.defaultRate ? Number(compatibleType.defaultRate) : 0,
       },
     ]);
   }
@@ -499,6 +558,53 @@ export function AdminManualBillModal({
   }
 
   function handleItemChange(idx: number, field: keyof ItemRow, value: any) {
+    // If changing itemType, hsnCode, or description, validate GST rate uniformity
+    if (field === "itemType" || field === "hsnCode" || field === "description") {
+      let targetHsn = field === "hsnCode" ? String(value) : items[idx].hsnCode;
+      let targetDesc = field === "description" ? String(value) : items[idx].description;
+
+      if (field === "itemType") {
+        const foundType = itemTypes.find((t) => t.name === value);
+        if (foundType) {
+          targetHsn = foundType.hsnCode;
+          targetDesc = foundType.name.toUpperCase();
+        }
+      } else if (field === "description" && !targetHsn) {
+        targetHsn = defaultHsnForDescription(String(value));
+      }
+
+      const candidateRate = getTaxRateForHsn(targetHsn, hsnOptions, targetDesc);
+
+      // Rule: "the first product i selected based on HSN TAX SHOULD BE THAT WAY COMES AUTOMATICALLY"
+      if (idx === 0) {
+        // If there are other items in the bill, ensure they don't conflict
+        if (items.length > 1) {
+          const conflicting = items.slice(1).some((other) => {
+            const otherRate = getTaxRateForHsn(other.hsnCode, hsnOptions, other.description);
+            return otherRate !== candidateRate;
+          });
+          if (conflicting) {
+            alert(
+              `Cannot change first product to a ${candidateRate}% GST item because other items in this bill are ${activeBillRate}%.\n\nUnder GST regulations, no mixing of 5% and 18% products is allowed in a single bill.\n\nPlease remove conflicting items first or create a separate bill.`
+            );
+            return;
+          }
+        }
+        // Auto-update tax rate for the entire bill!
+        applyGstRate(candidateRate);
+      } else {
+        // Rule: "AND ONLY ONE TYPE OF TAX WILL BE THRE IN BILL. NO MIXING OF PRODUCTS OF 5 AND 18 %"
+        if (candidateRate !== activeBillRate) {
+          alert(
+            `Tax Rate Conflict!\n\nThis bill is locked to ${activeBillRate}% GST based on the first item (${items[0].description || items[0].hsnCode}).\n` +
+            `You cannot add a ${candidateRate}% GST product (${targetDesc || targetHsn}).\n\n` +
+            `Under GST rules, only ONE type of tax can be on a bill (no mixing of 5% and 18% products). Please create a separate bill for ${candidateRate}% items.`
+          );
+          return;
+        }
+      }
+    }
+
     setItems((prev) => {
       const updated = [...prev];
       const item = { ...updated[idx], [field]: value };
@@ -763,6 +869,18 @@ export function AdminManualBillModal({
     if (items.length === 0) {
       setError("Please add at least one line item");
       return;
+    }
+
+    // Validate GST rate uniformity across all items (no mixing of 5% and 18%)
+    const firstRate = getTaxRateForHsn(items[0].hsnCode, hsnOptions, items[0].description);
+    for (let i = 1; i < items.length; i++) {
+      const itemRate = getTaxRateForHsn(items[i].hsnCode, hsnOptions, items[i].description);
+      if (itemRate !== firstRate) {
+        setError(
+          `Cannot save bill: Mixed GST rates detected! Item #${i + 1} (${items[i].description || items[i].hsnCode}) is ${itemRate}%, but the bill is ${firstRate}%. Under GST rules, all items in a single bill must share the same tax rate.`
+        );
+        return;
+      }
     }
 
     setSaving(true);
@@ -1338,17 +1456,31 @@ export function AdminManualBillModal({
 
               {/* Items Section: Line items with Type, HSN, Qty, Rate, Per, Amount */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
-                      Line Items & HSN Codes
-                    </span>
-                    <span className="text-[11px] text-slate-500">
-                      (Cards: 4909, Papers: 4802, Stickers: 4821, Books: 4820, Synthetic Covers: 4921)
-                    </span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-2 gap-2">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                        Line Items & HSN Codes
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border flex items-center gap-1 ${
+                          activeBillRate === 5
+                            ? "bg-amber-100 text-amber-900 border-amber-300"
+                            : "bg-blue-100 text-blue-900 border-blue-300"
+                        }`}
+                      >
+                        <span>🔒</span>
+                        <span>
+                          GST Rate: {activeBillRate}% {activeBillRate === 5 ? "(5% Advertisement)" : "(18% Standard)"}
+                        </span>
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Auto-set by Item #1 (HSN {primaryHsn}). Single tax rate for entire bill. No mixing of 5% & 18% items.
+                    </p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <button
                       type="button"
                       onClick={() => setShowAddTypeModal(true)}
@@ -1361,7 +1493,7 @@ export function AdminManualBillModal({
                       onClick={handleAddItem}
                       className="px-2.5 py-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold rounded-md flex items-center gap-1 transition-colors"
                     >
-                      <Plus className="w-3.5 h-3.5" /> Add Item Row
+                      <Plus className="w-3.5 h-3.5" /> Add Item Row ({activeBillRate}%)
                     </button>
                   </div>
                 </div>
@@ -1374,20 +1506,29 @@ export function AdminManualBillModal({
                     >
                       {/* Item Type Preset */}
                       <div className="col-span-12 sm:col-span-3">
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">
-                          Type
-                        </label>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase">
+                            Type {idx === 0 ? "(Sets Bill Tax)" : ""}
+                          </label>
+                          <span className="text-[9px] font-bold text-blue-700">
+                            {getTaxRateForHsn(item.hsnCode, hsnOptions, item.description)}% GST
+                          </span>
+                        </div>
                         <select
                           value={item.itemType}
                           onChange={(e) => handleItemChange(idx, "itemType", e.target.value)}
                           className="w-full px-2 py-1 text-xs bg-white border border-slate-300 rounded-md font-medium"
                         >
                           <option value="">-- Custom Item --</option>
-                          {itemTypes.map((t) => (
-                            <option key={t.id} value={t.name}>
-                              {t.name} [{t.hsnCode}]
-                            </option>
-                          ))}
+                          {itemTypes.map((t) => {
+                            const tRate = getTaxRateForHsn(t.hsnCode, hsnOptions, t.name);
+                            const isConflict = idx > 0 && tRate !== activeBillRate;
+                            return (
+                              <option key={t.id} value={t.name} disabled={isConflict}>
+                                {t.name} [{t.hsnCode}] — {tRate}% GST{isConflict ? " (Locked: Mismatch)" : ""}
+                              </option>
+                            );
+                          })}
                         </select>
                       </div>
 
@@ -1421,18 +1562,22 @@ export function AdminManualBillModal({
                         />
                         <datalist id={`hsn-datalist-${idx}`}>
                           {hsnOptions.length > 0 ? (
-                            hsnOptions.map((h) => (
-                              <option key={h.code} value={h.code}>
-                                {h.code} - {h.description}
-                              </option>
-                            ))
+                            hsnOptions.map((h) => {
+                              const hRate = getTaxRateForHsn(h.code, hsnOptions, h.description);
+                              return (
+                                <option key={h.code} value={h.code}>
+                                  {h.code} - {h.description} ({hRate}% GST)
+                                </option>
+                              );
+                            })
                           ) : (
                             <>
-                              <option value="4909">4909 - Card & Premium Card</option>
-                              <option value="4802">4802 - Paper & Brochure</option>
-                              <option value="4821">4821 - Sticker & Labels</option>
-                              <option value="4820">4820 - Books (Diaries, Registers)</option>
-                              <option value="4921">4921 - Synthetic Covers</option>
+                              <option value="4909">4909 - Card & Premium Card (18% GST)</option>
+                              <option value="4802">4802 - Paper & Brochure (18% GST)</option>
+                              <option value="4821">4821 - Sticker & Labels (18% GST)</option>
+                              <option value="4820">4820 - Books (Diaries, Registers) (18% GST)</option>
+                              <option value="4921">4921 - Synthetic Covers (18% GST)</option>
+                              <option value="4911">4911 - Advertisement & Pamphlets (5% GST)</option>
                             </>
                           )}
                         </datalist>
@@ -1520,26 +1665,41 @@ export function AdminManualBillModal({
                     Quick HSN:
                   </span>
                   {[
-                    { code: "4909", label: "Cards (4909)" },
-                    { code: "4802", label: "Papers (4802)" },
-                    { code: "4821", label: "Stickers (4821)" },
-                    { code: "4820", label: "Books (4820)" },
-                    { code: "4921", label: "Synthetic Covers (4921)" },
-                  ].map((preset) => (
-                    <button
-                      key={preset.code}
-                      type="button"
-                      onClick={() => {
-                        if (items.length > 0) {
-                          handleItemChange(items.length - 1, "hsnCode", preset.code);
+                    { code: "4909", label: "Cards (4909 - 18%)", rate: 18 },
+                    { code: "4802", label: "Papers (4802 - 18%)", rate: 18 },
+                    { code: "4821", label: "Stickers (4821 - 18%)", rate: 18 },
+                    { code: "4820", label: "Books (4820 - 18%)", rate: 18 },
+                    { code: "4921", label: "Synthetic (4921 - 18%)", rate: 18 },
+                    { code: "4911", label: "Advertisement (4911 - 5%)", rate: 5 },
+                  ].map((preset) => {
+                    const isConflict = items.length > 1 && preset.rate !== activeBillRate;
+                    return (
+                      <button
+                        key={preset.code}
+                        type="button"
+                        disabled={isConflict}
+                        onClick={() => {
+                          if (items.length === 0) return;
+                          const targetIdx = items.length === 1 ? 0 : items.length - 1;
+                          handleItemChange(targetIdx, "hsnCode", preset.code);
+                        }}
+                        className={`px-2 py-0.5 border rounded font-medium transition-colors ${
+                          isConflict
+                            ? "bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed line-through"
+                            : preset.rate === 5
+                            ? "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100 font-bold"
+                            : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300"
+                        }`}
+                        title={
+                          isConflict
+                            ? `Cannot mix ${preset.rate}% HSN with ${activeBillRate}% bill`
+                            : `Apply HSN ${preset.code} (${preset.rate}% GST)`
                         }
-                      }}
-                      className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 border border-slate-200 rounded text-slate-700 font-medium transition-colors"
-                      title={`Apply HSN ${preset.code} to last row`}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
+                      >
+                        {preset.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1590,6 +1750,15 @@ export function AdminManualBillModal({
                         Exempt / Nil
                       </button>
                     </div>
+                  </div>
+
+                  <div className="flex items-center justify-between bg-slate-50 px-2.5 py-1.5 rounded-md border border-slate-200 text-[11px]">
+                    <span className="text-slate-700 font-medium">
+                      Applied GST: <strong>{activeBillRate}% ({activeBillRate === 5 ? "5% Advertisement" : "18% Standard"})</strong>
+                    </span>
+                    <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                      Auto-set from Item #1
+                    </span>
                   </div>
 
                   {taxType === "INTRA_STATE" ? (

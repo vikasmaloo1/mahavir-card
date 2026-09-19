@@ -27,26 +27,28 @@ async function ensureHsnMasterTable() {
       { code: "4821", description: "Sticker & Labels", rate: "18.000", sort: 3 },
       { code: "4820", description: "Books (Registers, notebooks, diaries, order books, receipt books)", rate: "18.000", sort: 4 },
       { code: "4921", description: "Synthetic Covers", rate: "18.000", sort: 5 },
+      { code: "4911", description: "Advertisement Material / Pamphlets / Leaflets / Flyers", rate: "5.000", sort: 6 },
     ];
 
     for (const item of defaults) {
       await db.execute(sql`
         INSERT INTO hsn_master ("code", "description", "gstRate", "sortOrder", "isActive")
         VALUES (${item.code}, ${item.description}, ${item.rate}, ${item.sort}, true)
-        ON CONFLICT ("code") DO NOTHING;
+        ON CONFLICT ("code") DO UPDATE SET "gstRate" = ${item.rate}, "description" = ${item.description};
       `);
     }
 
-    // Also ensure preset bill item types include Books and Synthetic Covers
+    // Also ensure preset bill item types include Books, Synthetic Covers, and Advertisement
     const presetItemTypes = [
       { name: "Books", hsn: "4820", per: "PCS.", sort: 9 },
       { name: "Synthetic Covers", hsn: "4921", per: "PCS.", sort: 10 },
+      { name: "Advertisement / Pamphlet / Flyer", hsn: "4911", per: "PCS.", sort: 11 },
     ];
     for (const pt of presetItemTypes) {
       await db.execute(sql`
         INSERT INTO bill_item_types ("name", "hsnCode", "defaultPer", "sortOrder", "isActive")
         VALUES (${pt.name}, ${pt.hsn}, ${pt.per}, ${pt.sort}, true)
-        ON CONFLICT ("name") DO NOTHING;
+        ON CONFLICT ("name") DO UPDATE SET "hsnCode" = ${pt.hsn};
       `);
     }
   } catch (err) {

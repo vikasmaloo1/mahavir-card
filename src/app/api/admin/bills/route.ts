@@ -100,6 +100,36 @@ export async function POST(request: Request) {
       };
     });
 
+    // Validate GST rate uniformity: no mixing of 5% (advertisement) and 18% products in the same bill
+    function getItemGstRate(hsnCode: string, desc: string): number {
+      const code = (hsnCode || "").trim();
+      const lower = (desc || "").toLowerCase();
+      if (
+        code === "4911" ||
+        lower.includes("advertis") ||
+        lower.includes("pamphlet") ||
+        lower.includes("flyer") ||
+        lower.includes("leaflet") ||
+        lower.includes("handbill")
+      ) {
+        return 5;
+      }
+      return 18;
+    }
+
+    if (sanitizedItems.length > 1) {
+      const firstRate = getItemGstRate(sanitizedItems[0].hsnCode, sanitizedItems[0].description);
+      for (let i = 1; i < sanitizedItems.length; i++) {
+        const itemRate = getItemGstRate(sanitizedItems[i].hsnCode, sanitizedItems[i].description);
+        if (itemRate !== firstRate) {
+          return jsonError(
+            `Cannot mix ${firstRate}% and ${itemRate}% GST products in the same bill. All items in a single bill must have the same tax rate.`,
+            400
+          );
+        }
+      }
+    }
+
     const subtotal = sanitizedItems.reduce((acc, it) => acc + it.amount, 0);
 
     // Tax calculation

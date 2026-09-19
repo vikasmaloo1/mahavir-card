@@ -19,6 +19,15 @@ export function determinePageSize(itemCount: number, mode: InvoiceSizeMode = "AU
 
 export function defaultHsnForDescription(desc: string): string {
   const lower = desc.toLowerCase();
+  if (
+    lower.includes("advertis") ||
+    lower.includes("pamphlet") ||
+    lower.includes("flyer") ||
+    lower.includes("leaflet") ||
+    lower.includes("handbill")
+  ) {
+    return "4911"; // Advertisement Material / Pamphlets / Flyers (5% GST)
+  }
   if (lower.includes("synthetic") || lower.includes("pvc cover")) {
     return "4921"; // Synthetic Covers
   }
@@ -43,10 +52,7 @@ export function defaultHsnForDescription(desc: string): string {
     lower.includes("art card") ||
     lower.includes("brochure") ||
     lower.includes("letterhead") ||
-    lower.includes("envelope") ||
-    lower.includes("leaflet") ||
-    lower.includes("flyer") ||
-    lower.includes("pamphlet")
+    lower.includes("envelope")
   ) {
     return "4802"; // Paper & cover & art card brochure
   }
