@@ -413,7 +413,7 @@ export function LoginForm() {
                   Precision Commercial Printing
                 </h2>
                 <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                  Access instant pricing, upload CDR artwork with automated pre-press guidelines, and track orders across Gujarat and Rajasthan.
+                  Access instant pricing, upload CDR artwork with automated pre-press guidelines, and track orders all over India.
                 </p>
               </div>
             </div>
@@ -599,6 +599,11 @@ export function LoginForm() {
                     </button>
                   )}
                 </div>
+
+                {/* Spam folder note */}
+                <p className="mt-2 text-[11px] text-slate-400">
+                  Can&apos;t find the email? Please check your <span className="font-medium text-slate-600">Spam / Junk</span> or <span className="font-medium text-slate-600">Promotions</span> folder.
+                </p>
 
                 {/* Back to form */}
                 <button

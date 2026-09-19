@@ -97,7 +97,7 @@ export default function HowItWorksPage() {
             <h2 className="text-xl font-bold text-slate-950">Delivery and pickup</h2>
           </div>
           <p className="mt-3 max-w-3xl text-[15px] leading-7 text-slate-700">
-            Orders dispatch by courier across Gujarat and Rajasthan, or can be collected directly from the Khadia Golwad facility in Ahmedabad. Delivery method and pricing
+            Orders dispatch by courier all over India, or can be collected directly from the Khadia Golwad facility in Ahmedabad. Delivery method and pricing
             are shown per product before checkout.
           </p>
         </section>

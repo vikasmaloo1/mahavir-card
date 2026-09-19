@@ -39,7 +39,7 @@ const defaultHeroSlides: HeroSlide[] = [
     imageAlt: "Ahmedabad commercial offset printing press workshop, gold foil cards and pantone guide",
     floatingBadgeTitle: "Ready to Print",
     floatingBadgeSubtitle: "Live Prices · Online Specs · CDR Proof",
-    tag: "Gujarat & Rajasthan",
+    tag: "All Over India",
   },
   {
     id: "hero-2",

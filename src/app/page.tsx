@@ -238,9 +238,9 @@ export default async function Home() {
 
               <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs hover:border-[#1e3a5f]/40 transition">
                 <MapPin size={24} className="text-[#1e3a5f]" />
-                <h3 className="mt-4 text-sm font-bold text-slate-900">Regional Dispatch</h3>
+                <h3 className="mt-4 text-sm font-bold text-slate-900">All-India Dispatch</h3>
                 <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
-                  Insured box packaging dispatched via scheduled couriers across Gujarat and Rajasthan, plus store pickup.
+                  Insured box packaging dispatched via scheduled couriers all over India, plus store pickup.
                 </p>
               </div>
             </div>

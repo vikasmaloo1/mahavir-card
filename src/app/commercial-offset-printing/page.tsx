@@ -143,8 +143,8 @@ export default function CommercialOffsetPrintingPage() {
             </div>
             <div className="rounded-xl border border-slate-200/90 bg-white p-5 shadow-xs">
               <Truck size={20} className="text-[#1e3a5f]" />
-              <p className="mt-3 font-bold text-slate-950">Regional Dispatch</p>
-              <p className="mt-1 text-sm text-slate-600">Insured courier dispatch across Gujarat and Rajasthan, plus counter pickup at the Ahmedabad facility.</p>
+              <p className="mt-3 font-bold text-slate-950">All-India Dispatch</p>
+              <p className="mt-1 text-sm text-slate-600">Insured courier dispatch all over India, plus counter pickup at the Ahmedabad facility.</p>
             </div>
           </div>
         </section>

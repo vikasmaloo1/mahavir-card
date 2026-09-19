@@ -12,7 +12,7 @@ import { categoryHref } from "@/lib/seo-categories";
 
 export const metadata: Metadata = {
   title: "About Us | Commercial Printing Press in Ahmedabad",
-  description: "Mahavir Card is a commercial offset printing press based in Khadia Golwad, Ahmedabad — printing visiting cards, brochures, letterheads and stickers for businesses across Gujarat and Rajasthan.",
+  description: "Mahavir Card is a commercial offset printing press based in Khadia Golwad, Ahmedabad — printing visiting cards, brochures, letterheads and stickers for businesses all over India.",
   alternates: {
     canonical: "/about",
   },
@@ -35,7 +35,7 @@ export default function AboutPage() {
         <MarketingHero
           eyebrow="About Mahavir Card"
           title="A commercial printing press in Ahmedabad, Gujarat"
-          description="Mahavir Card operates a commercial offset printing press from Khadia Golwad, Ahmedabad, taking orders online for both individual customers and businesses across Gujarat and Rajasthan."
+          description="Mahavir Card operates a commercial offset printing press from Khadia Golwad, Ahmedabad, taking orders online for both individual customers and businesses all over India."
           actions={[
             { label: "Browse Products", href: "/products" },
             { label: "Request a Quote", href: "/quote", variant: "secondary" },
@@ -46,7 +46,7 @@ export default function AboutPage() {
           <SectionEyebrow label="Who we are" />
           <h2 className="mt-3 text-2xl font-bold text-slate-950 sm:text-3xl">Who we are</h2>
           <p className="mt-3 max-w-3xl text-[15px] leading-7 text-slate-700">
-            Mahavir Card has been printing in Ahmedabad for over 25 years — nearly three decades — serving individual customers and businesses across Gujarat and Rajasthan.
+            Mahavir Card has been printing in Ahmedabad for over 25 years — nearly three decades — serving individual customers and businesses all over India.
           </p>
           <p className="mt-3 max-w-3xl text-[15px] leading-7 text-slate-700">
             The press prints visiting cards, brochures, letterheads, envelopes, leaflets and stickers on commercial offset equipment, taking orders directly online with
@@ -102,7 +102,7 @@ export default function AboutPage() {
             <h2 className="text-2xl font-bold text-slate-950">Our location</h2>
           </div>
           <p className="mt-3 max-w-3xl text-[15px] leading-7 text-slate-700">
-            The press and pickup counter are at Khadia Golwad, Opp. Jain Digamber Mandir, Ahmedabad – 380001. Orders dispatch by courier to Gujarat and Rajasthan, or can be
+            The press and pickup counter are at Khadia Golwad, Opp. Jain Digamber Mandir, Ahmedabad – 380001. Orders dispatch by courier all over India, or can be
             collected directly from the facility.
           </p>
           <Link href="/contact" className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#1e3a5f] hover:underline">
