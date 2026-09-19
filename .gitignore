@@ -44,3 +44,24 @@ next-env.d.ts
 # Instagram content drafts
 instagram-content/
 instagramcontent-gpt/
+
+# Generated / temporary files
+tmp/
+temp/
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Emergent runtime files
+.emergent/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+build/
+.next/

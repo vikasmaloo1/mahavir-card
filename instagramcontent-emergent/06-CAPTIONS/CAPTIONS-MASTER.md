@@ -190,6 +190,15 @@ Print-ready CDR (bleed, curves, 300 DPI), exact specs, ship-to details — plain
 **CTA:** Open a trade line — +91 94263 71150
 **Hashtags:** Set D → `#TradePrinter #B2BPrinting #PrintOutsourcing #Ahmedabad #MahavirCard`
 
+### C9 — Custom & bulk printing (explainer)
+**Format:** Carousel (5) · `03-CAROUSELS/c9-page-0X.png`
+**Caption:**
+Custom and bulk printing — most of what we actually do.
+
+If it isn't on the website, ask: packaging, boxes, labels, bill books, forms, odd sizes, special finishes, large runs. Send five things — product & quantity, size, material & finish, artwork status, delivery city & date — and we'll quote it from the press. Runs to 50,000+, with the same pre-press checks and insured dispatch. Save this for your next non-standard job.
+**CTA:** Email mahavircard2011@gmail.com or use mahavircard.in/quote
+**Hashtags:** `#CustomPrinting #BulkPrinting #CommercialPrinting #Ahmedabad #MahavirCard`
+
 ---
 
 ## REELS

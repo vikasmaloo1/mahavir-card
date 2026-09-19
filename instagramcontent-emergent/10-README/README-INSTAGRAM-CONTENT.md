@@ -47,7 +47,7 @@ Plain, human business language — a printer talking to a business owner. First 
 instagramcontent-emergent/
 ├── 01-LAUNCH-CAROUSEL/   page-01…12.png (1080×1350) + Mahavir-Card-Launch-Carousel.pdf
 ├── 02-FEED-POSTS/        post-01…10.png (1080×1350)
-├── 03-CAROUSELS/         c1…c8 × page-01…05.png (40 pages, 1080×1350)
+├── 03-CAROUSELS/         c1…c9 × page-01…05.png (45 pages, 1080×1350)
 ├── 04-REELS/             reel-01…08.png covers (1080×1920) + REEL-SCRIPTS.md
 ├── 05-STORIES/           story-01…20.png (1080×1920)
 ├── 06-CAPTIONS/          CAPTIONS-MASTER.md
@@ -65,7 +65,7 @@ instagramcontent-emergent/
 ├── LAUNCH-PRIORITY-10.md
 └── _SOURCE/              editable design source (see §11)
 ```
-**Totals:** 1 flagship carousel (12 pages) · 10 feed posts · 8 educational carousels (40 pages) · 8 reel covers + 2 script docs · 20 stories · 5 packaging posts (typographic) · 6 festival templates + captions · 9 highlight covers · 3 testimonial templates · 2 weekly-post templates · 2 grid previews · **117 rendered images** + 1 PDF booklet.
+**Totals:** 1 flagship carousel (12 pages) · 10 feed posts · 9 educational carousels (45 pages) · 8 reel covers + 2 script docs · 20 stories · 5 packaging posts (typographic) · 6 festival templates + captions · 9 highlight covers · 3 testimonial templates · 2 weekly-post templates + 1 worked example · 2 grid previews · **123 rendered images** + 1 PDF booklet.
 
 **Sizes:** Feed & carousels 1080×1350 (4:5) · Stories & reel covers 1080×1920 (9:16), safe-zone aware.
 

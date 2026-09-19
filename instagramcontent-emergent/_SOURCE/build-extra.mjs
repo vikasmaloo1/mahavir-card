@@ -27,9 +27,9 @@ const ICONS = {
   custom: `<path d="M50 26 l5 15 15 5 -15 5 -5 15 -5 -15 -15 -5 15 -5 z"/><path d="M74 30 l1.6 4.4 4.4 1.6 -4.4 1.6 -1.6 4.4 -1.6 -4.4 -4.4 -1.6 4.4 -1.6 z" fill="${BRASS}" stroke="none"/>`,
 };
 const COVERS = [
-  ['printing','1-printing'],['cards','2-visiting-cards'],['premium','3-premium-cards'],
-  ['brochures','4-brochures'],['stickers','5-stickers'],['stationery','6-stationery'],
-  ['work','7-work'],['custom','8-custom'],['contact','9-contact'],
+  ['printing','1-printing'],['work','2-work'],['cards','3-visiting-cards'],
+  ['premium','4-premium-cards'],['brochures','5-brochures'],['stickers','6-stickers'],
+  ['stationery','7-stationery'],['custom','8-custom'],['contact','9-contact'],
 ];
 
 function coverHTML(key){
@@ -102,6 +102,40 @@ async function buildGrid(browser, list, title, out){
   await p.close();
 }
 
+async function buildWeeklyExample(browser){
+  const css = fs.readFileSync(path.join(__dirname, 'design-system.css'), 'utf8');
+  const logo = `<div class="logomark"><img src="../assets/logo.jpeg"><div class="wm"><b>Mahavir Card</b><span>Commercial Print · Ahmedabad</span></div></div>`;
+  const cmyk = `<div class="cmyk"><span class="s1"></span><span class="s2"></span><span class="s3"></span><span class="s4"></span></div>`;
+  const pill = (t,bg,fg) => `<span style="background:${bg};color:${fg};font-family:var(--mono);font-size:15px;letter-spacing:.14em;padding:8px 14px;border-radius:8px">${t}</span>`;
+  const inner = `<div class="canvas">
+    <div class="crop tl"><i class="h"></i><i class="v"></i></div><div class="crop tr"><i class="h"></i><i class="v"></i></div><div class="crop bl"><i class="h"></i><i class="v"></i></div><div class="crop br"><i class="h"></i><i class="v"></i></div>
+    <div class="pad">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">${logo}<div class="reg"><b></b></div></div>
+      <div class="kicker" style="margin-top:34px">On the press · This week</div>
+      <h2 class="display" style="font-size:74px;margin-top:18px">On the press,<br>this week.</h2>
+      <div style="flex:1;margin:32px 0;border:2px dashed var(--brass);border-radius:16px;overflow:hidden;position:relative">
+        <img src="../assets/visiting-card-promo.jpg" style="width:100%;height:100%;object-fit:cover">
+        <div style="position:absolute;top:20px;left:20px">${pill('&#9312;&nbsp; YOUR PHOTO / VIDEO','rgba(14,27,46,.85)','var(--paper)')}</div>
+        <div style="position:absolute;top:20px;right:20px;background:var(--brass);color:#101010;font-family:var(--mono);font-size:16px;letter-spacing:.2em;padding:9px 18px;border-radius:100px;font-weight:600">EXAMPLE</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px">${pill('&#9313;','var(--brass)','#101010')}<span style="font-family:var(--grot);font-size:22px;color:var(--ink)">1,000 visiting cards · thermal matt · out for dispatch</span></div>
+      <div class="metabar" style="margin-top:auto"><div style="display:flex;flex-direction:column;gap:12px">${cmyk}<span class="web">mahavircard.in</span></div><span class="pageno">Example · replace with your own work</span></div>
+    </div></div>`;
+  const html = `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body style="margin:0">${inner}</body></html>`;
+  const htmlPath = path.join(HTML, '_weekly-example.html');
+  fs.writeFileSync(htmlPath, html);
+  const p = await browser.newPage();
+  await p.setViewport({ width:1080, height:1350, deviceScaleFactor:1 });
+  await p.goto('file://'+htmlPath, { waitUntil:'networkidle0', timeout:60000 });
+  try { await p.evaluate(async()=>{await document.fonts.ready;}); } catch {}
+  await new Promise(r=>setTimeout(r,350));
+  const el = await p.$('.canvas');
+  const out = path.join(ROOT, '15-WEEKLY-TEMPLATE', 'on-the-press-EXAMPLE.png');
+  await el.screenshot({ path: out });
+  await p.close();
+  return out;
+}
+
 (async () => {
   const browser = await puppeteer.launch({ executablePath: CHROME, headless:'new',
     args:['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--force-color-profile=srgb'] });
@@ -110,6 +144,8 @@ async function buildGrid(browser, list, title, out){
   fs.readdirSync(dir).filter(f=>f.endsWith('.png')).forEach(f=>fs.unlinkSync(path.join(dir,f)));
   console.log('> highlight covers…');
   for (const [key,fileBase] of COVERS){ const out = path.join(dir, fileBase+'.png'); await renderCover(browser, key, out); console.log('  ', fileBase+'.png'); }
+  console.log('> weekly worked example…');
+  await buildWeeklyExample(browser); console.log('  15-WEEKLY-TEMPLATE/on-the-press-EXAMPLE.png');
   console.log('> grid preview 13–24…');
   await buildGrid(browser, GRID2, 'Profile grid preview · posts 13–24 · mahavircard.in', path.join(ROOT,'GRID-PREVIEW-13-24.png'));
   console.log('  GRID-PREVIEW-13-24.png');

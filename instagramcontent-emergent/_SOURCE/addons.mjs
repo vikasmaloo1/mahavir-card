@@ -50,3 +50,22 @@ push(T,'testimonial-story.png','testimonial-story',{pill:'Client feedback',kicke
 const W = '15-WEEKLY-TEMPLATE';
 push(W,'on-the-press-feed.png','weekly',{title:'On the press,<br>this week.'});
 push(W,'on-the-press-story.png','weekly-story',{title:'On the press,<br>this week.'});
+
+/* ---------- 03 · CUSTOM & BULK PRINTING carousel (c9, saveable explainer) ---------- */
+const CX = '03-CAROUSELS';
+const cx = (id,pages)=>pages.forEach((p,i)=>push(CX,`${id}-page-${String(i+1).padStart(2,'0')}.png`,p.layout,{...p.data,page:`${String(i+1).padStart(2,'0')} / ${String(pages.length).padStart(2,'0')}`}));
+cx('c9',[
+  {layout:'poster',data:{kicker:'On request · Guide',size:104,title:'Custom &<br>bulk printing.',sub:'The jobs that aren\u2019t on the website \u2014 which is most of what we do.'}},
+  {layout:'steps',data:{kicker:'What counts as custom',title:'If it prints,<br>ask.',size:66,steps:[
+    {h:'Not in the catalogue',b:'Packaging, boxes, labels, bill books, forms.'},
+    {h:'Non-standard sizes & finishes',b:'Odd dimensions, special stocks, mixed finishes.'},
+    {h:'Large-volume runs',b:'From a few thousand to fifty thousand plus.'}]}},
+  {layout:'steps',data:{kicker:'For an accurate quote',title:'Send us five<br>things.',size:66,steps:[
+    {h:'Product & quantity'},
+    {h:'Size & finished dimensions'},
+    {h:'Paper / material & finish'},
+    {h:'Artwork status (ready .cdr, or design needed)'},
+    {h:'Delivery city & date'}]}},
+  {layout:'num',data:{dark:true,kicker:'Commercial capacity',fig:'50,000+',figsize:180,unit:'per run',cap:'From small batches to large commercial runs \u2014 same press, same pre-press checks, insured dispatch.'}},
+  {layout:'cta',data:{img:'premium-card-category.jpg',kicker:'One message is enough',size:112,title:'Tell us what<br>you need.',rows:[{lab:'Email',val:'mahavircard2011@gmail.com'},{lab:'Web',val:'mahavircard.in/quote'},{lab:'Call',val:'+91 94263 71150'}]}},
+]);
