@@ -125,6 +125,10 @@ export function AdminManualBillModal({
   const [gstin, setGstin] = useState("");
   const [saveAsNewCustomer, setSaveAsNewCustomer] = useState(true);
 
+  // Customer inline autocomplete suggestion state
+  const [activeSuggestionField, setActiveSuggestionField] = useState<"name" | "company" | null>(null);
+  const [typedQuery, setTypedQuery] = useState("");
+
   // Item Types & HSN Master Options
   const [itemTypes, setItemTypes] = useState<BillItemType[]>([]);
   const [hsnOptions, setHsnOptions] = useState<Array<{ code: string; description: string; gstRate: string }>>([]);
@@ -281,6 +285,41 @@ export function AdminManualBillModal({
     }, 250);
     return () => clearTimeout(timer);
   }, [customerSearchQuery, showCustomerPicker]);
+
+  // Dynamic autocomplete suggestions when typing in Customer Name or Company Name
+  const inlineCustomerSuggestions = useMemo(() => {
+    if (!activeSuggestionField || !typedQuery.trim() || typedQuery.trim().length < 1) return [];
+    const q = typedQuery.trim().toLowerCase();
+    return allCustomers
+      .filter((c) => {
+        const matchContact = c.contactName?.toLowerCase().includes(q);
+        const matchCompany = c.companyName?.toLowerCase().includes(q);
+        const matchPhone = c.phone?.toLowerCase().includes(q);
+        const matchGst = c.gstNumber?.toLowerCase().includes(q);
+        return matchContact || matchCompany || matchPhone || matchGst;
+      })
+      .slice(0, 8);
+  }, [activeSuggestionField, typedQuery, allCustomers]);
+
+  // Debounce background search if query is typed
+  useEffect(() => {
+    if (!typedQuery.trim() || typedQuery.trim().length < 2) return;
+    const timer = setTimeout(() => {
+      adminRequest<any>(`/api/admin/customers?query=${encodeURIComponent(typedQuery.trim())}&limit=20`)
+        .then((res) => {
+          const fetched = res?.items || res?.customers || [];
+          if (Array.isArray(fetched) && fetched.length > 0) {
+            setAllCustomers((prev) => {
+              const existingIds = new Set(prev.map((p) => p.id));
+              const newItems = fetched.filter((f: any) => !existingIds.has(f.id));
+              return [...prev, ...newItems];
+            });
+          }
+        })
+        .catch(() => {});
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [typedQuery]);
 
   const filteredCustomers = useMemo(() => {
     let list = allCustomers;
@@ -969,31 +1008,146 @@ export function AdminManualBillModal({
 
                 {/* Customer Details Inputs */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                      Customer Name *
-                    </label>
+                  <div className="relative">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-semibold text-slate-600">
+                        Customer Name *
+                      </label>
+                      {selectedCustomerId ? (
+                        <button
+                          type="button"
+                          onClick={handleClearCustomer}
+                          className="text-[10px] text-red-500 hover:text-red-700 font-semibold"
+                        >
+                          ✕ Reset
+                        </button>
+                      ) : null}
+                    </div>
                     <input
                       type="text"
                       value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
+                      onChange={(e) => {
+                        setCustomerName(e.target.value);
+                        setTypedQuery(e.target.value);
+                        setActiveSuggestionField("name");
+                      }}
+                      onFocus={() => {
+                        if (customerName) {
+                          setTypedQuery(customerName);
+                          setActiveSuggestionField("name");
+                        }
+                      }}
+                      onBlur={() => {
+                        setTimeout(() => setActiveSuggestionField(null), 250);
+                      }}
                       placeholder="e.g. Ramesh Patel"
-                      className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 font-medium"
                       required
+                      autoComplete="off"
                     />
+
+                    {/* Customer Name Autocomplete Suggestions */}
+                    {activeSuggestionField === "name" && inlineCustomerSuggestions.length > 0 && (
+                      <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-lg border border-blue-200 bg-white shadow-xl divide-y divide-slate-100">
+                        <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50/80 flex items-center justify-between">
+                          <span>Matching Customers ({inlineCustomerSuggestions.length})</span>
+                          <span className="text-[9px] font-normal text-slate-500">Click to autofill</span>
+                        </div>
+                        {inlineCustomerSuggestions.map((c) => (
+                          <div
+                            key={c.id}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleSelectCustomer(c);
+                              setActiveSuggestionField(null);
+                            }}
+                            className="px-3 py-2 text-left transition-colors hover:bg-blue-50 cursor-pointer flex items-center justify-between gap-2"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-bold text-slate-900 truncate">
+                                {c.contactName || c.companyName}
+                                {c.companyName && c.contactName && c.companyName !== c.contactName ? (
+                                  <span className="font-normal text-slate-500 ml-1.5">({c.companyName})</span>
+                                ) : null}
+                              </p>
+                              <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                                {c.phone ? <span>Mo: {c.phone}</span> : null}
+                                {c.city ? <span>• {c.city}</span> : null}
+                                {c.gstNumber ? <span className="font-mono text-blue-700 font-semibold">• GSTIN: {c.gstNumber}</span> : null}
+                              </div>
+                            </div>
+                            <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${c.customerType === "B2B" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
+                              {c.customerType || "B2C"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <div>
+                  <div className="relative">
                     <label className="block text-[11px] font-semibold text-slate-600 mb-1">
                       Company Name
                     </label>
                     <input
                       type="text"
                       value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
+                      onChange={(e) => {
+                        setCompanyName(e.target.value);
+                        setTypedQuery(e.target.value);
+                        setActiveSuggestionField("company");
+                      }}
+                      onFocus={() => {
+                        if (companyName) {
+                          setTypedQuery(companyName);
+                          setActiveSuggestionField("company");
+                        }
+                      }}
+                      onBlur={() => {
+                        setTimeout(() => setActiveSuggestionField(null), 250);
+                      }}
                       placeholder="e.g. Patel Enterprise"
-                      className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 font-medium"
+                      autoComplete="off"
                     />
+
+                    {/* Company Name Autocomplete Suggestions */}
+                    {activeSuggestionField === "company" && inlineCustomerSuggestions.length > 0 && (
+                      <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-lg border border-blue-200 bg-white shadow-xl divide-y divide-slate-100">
+                        <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50/80 flex items-center justify-between">
+                          <span>Matching Companies ({inlineCustomerSuggestions.length})</span>
+                          <span className="text-[9px] font-normal text-slate-500">Click to autofill</span>
+                        </div>
+                        {inlineCustomerSuggestions.map((c) => (
+                          <div
+                            key={c.id}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleSelectCustomer(c);
+                              setActiveSuggestionField(null);
+                            }}
+                            className="px-3 py-2 text-left transition-colors hover:bg-blue-50 cursor-pointer flex items-center justify-between gap-2"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-bold text-slate-900 truncate">
+                                {c.companyName || c.contactName}
+                                {c.contactName && c.companyName && c.contactName !== c.companyName ? (
+                                  <span className="font-normal text-slate-500 ml-1.5">({c.contactName})</span>
+                                ) : null}
+                              </p>
+                              <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                                {c.phone ? <span>Mo: {c.phone}</span> : null}
+                                {c.city ? <span>• {c.city}</span> : null}
+                                {c.gstNumber ? <span className="font-mono text-blue-700 font-semibold">• GSTIN: {c.gstNumber}</span> : null}
+                              </div>
+                            </div>
+                            <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${c.customerType === "B2B" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
+                              {c.customerType || "B2C"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div>

@@ -1,4 +1,4 @@
-﻿import { and, between, desc, eq, inArray, isNotNull, or } from "drizzle-orm";
+﻿import { and, between, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import { handleApiError } from "@/lib/api";
 import { db } from "@/lib/db/server";
@@ -17,14 +17,15 @@ function formatIndianDate(d: Date | string): string {
   return `${day}-${month}-${year}`;
 }
 
-function makeTitle(type: string, from: Date, to: Date): string {
+function makeTitle(sectionType: "SALE" | "PURCHASE", variant: string, from: Date, to: Date): string {
   const months = ["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
   const isSameMonth = from.getMonth() === to.getMonth() && from.getFullYear() === to.getFullYear();
   const periodStr = isSameMonth ? `${months[from.getMonth()]} ${from.getFullYear()}` : `${formatIndianDate(from)} TO ${formatIndianDate(to)}`;
-  if (type === "PURCHASE") {
+  
+  if (sectionType === "PURCHASE") {
     return `PURCHASE ${periodStr}`;
   }
-  return `SALE ${periodStr}(${type})`;
+  return `SALE ${periodStr}(${variant || "B2C"})`;
 }
 
 function getDateRange(period: string, dateFrom: string, dateTo: string): { from: Date; to: Date } {
@@ -77,12 +78,29 @@ function applyNumberCols(row: ExcelJS.Row, cols: number[]) {
   });
 }
 
+function applySheetColumnWidths(ws: ExcelJS.Worksheet) {
+  ws.getColumn(1).width = 14;  // DATE
+  ws.getColumn(2).width = 36;  // PARTY NAME
+  ws.getColumn(3).width = 10;  // QTY.
+  ws.getColumn(4).width = 12;  // BILL NO
+  ws.getColumn(5).width = 12;  // HSN CODE
+  ws.getColumn(6).width = 14;  // TAX VALUE
+  ws.getColumn(7).width = 12;  // C.GST / CGST
+  ws.getColumn(8).width = 12;  // SGST
+  ws.getColumn(9).width = 12;  // IGST
+  ws.getColumn(10).width = 10; // R OFF
+  ws.getColumn(11).width = 15; // TOTAL VALUE
+  ws.getColumn(12).width = 10; // RATE %
+  ws.getColumn(13).width = 22; // PARTY GSTIN
+}
+
 export async function GET(request: Request) {
   try {
     await requireRole(request, ["ADMIN"]);
     const { searchParams } = new URL(request.url);
 
-    const type = (searchParams.get("type") || "B2C").toUpperCase(); // B2C | B2B | PURCHASE
+    // type can be: "COMBINED" (default / sales+purchase in one tab), "B2C", "B2B", "PURCHASE"
+    const type = (searchParams.get("type") || "COMBINED").toUpperCase();
     const period = searchParams.get("period") || "monthly";
     const dateFrom = searchParams.get("dateFrom") || "";
     const dateTo = searchParams.get("dateTo") || "";
@@ -93,88 +111,15 @@ export async function GET(request: Request) {
     workbook.creator = "Mahavir Card Admin";
     workbook.created = new Date();
 
-    const titleText = makeTitle(type, from, to);
-
-    if (type === "PURCHASE") {
-      // ── PURCHASE SHEET ─────────────────────────────────────────────────────
-      const rows = await db.select().from(purchases)
-        .where(between(purchases.date, from, to))
-        .orderBy(desc(purchases.date));
-
-      const ws = workbook.addWorksheet("PURCHASE");
-      ws.properties.defaultColWidth = 16;
-
-      // Title row (Row 1) - Teal background matching user screenshot
-      ws.mergeCells("B1:E1");
-      const title = ws.getCell("B1");
-      title.value = titleText;
-      title.font = { bold: true, size: 12, color: { argb: "FFFFFFFF" } };
-      title.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF3EA7C1" } };
-      title.alignment = { horizontal: "center", vertical: "middle" };
-      ws.getRow(1).height = 28;
-
-      // Header row (Row 2) - Purple background matching user screenshot
-      const headers = ["DATE", "PARTY NAME", "BILL NO", "HSN CODE", "TAX VALUE", "CGST", "SGST", "IGST", "R OFF", "TOTAL VALUE", "RATE %", "PARTY GSTIN"];
-      const hRow = ws.addRow(headers);
-      hRow.eachCell((cell) => {
-        cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 9.5 };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF7C5A96" } };
-        cell.alignment = { horizontal: "center", vertical: "middle" };
-      });
-      ws.getRow(2).height = 24;
-
-      let sumTaxValue = 0, sumCgst = 0, sumSgst = 0, sumIgst = 0, sumRoundOff = 0, sumTotal = 0;
-
-      rows.forEach((r) => {
-        const tv = fmt(r.taxValue), cgst = fmt(r.cgstAmount), sgst = fmt(r.sgstAmount), igst = fmt(r.igstAmount), ro = fmt(r.roundOff), tot = fmt(r.totalValue);
-        sumTaxValue += tv; sumCgst += cgst; sumSgst += sgst; sumIgst += igst; sumRoundOff += ro; sumTotal += tot;
-        const gstRate = fmt(r.cgstRate) + fmt(r.sgstRate) + fmt(r.igstRate);
-
-        const dRow = ws.addRow([
-          formatIndianDate(r.date),
-          r.partyName,
-          r.billNo,
-          r.hsnCode,
-          tv,
-          cgst > 0 ? cgst : null,
-          sgst > 0 ? sgst : null,
-          igst > 0 ? igst : null,
-          ro !== 0 ? ro : null,
-          tot,
-          gstRate > 0 ? gstRate : null,
-          r.partyGstin || "",
-        ]);
-
-        dRow.eachCell((cell) => { cell.alignment = { vertical: "middle" }; });
-        applyNumberCols(dRow, [5, 6, 7, 8, 9, 10]);
-      });
-
-      // Red totals row at bottom
-      const totRow = ws.addRow(["", "", "", "TOTAL", sumTaxValue, sumCgst, sumSgst, sumIgst, sumRoundOff, sumTotal, "", ""]);
-      totRow.eachCell((cell, col) => {
-        cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFBA4D47" } };
-        cell.alignment = { horizontal: col >= 5 && col <= 10 ? "right" : "center", vertical: "middle" };
-        if (col >= 5 && col <= 10 && typeof cell.value === "number") cell.numFmt = "#,##0.00";
-      });
-      totRow.height = 24;
-
-      ws.getColumn(1).width = 14; ws.getColumn(2).width = 32; ws.getColumn(3).width = 12;
-      ws.getColumn(4).width = 12; ws.getColumn(5).width = 14; ws.getColumn(6).width = 12;
-      ws.getColumn(7).width = 12; ws.getColumn(8).width = 12; ws.getColumn(9).width = 10;
-      ws.getColumn(10).width = 15; ws.getColumn(11).width = 10; ws.getColumn(12).width = 22;
-
-    } else {
-      // ── SALES SHEET (B2C or B2B) ─────────────────────────────────────────
+    // ── Helper to render Sales Table onto a Worksheet ───────────────────────
+    async function renderSalesTable(ws: ExcelJS.Worksheet, saleVariant: "B2C" | "B2B") {
+      // 1. Fetch Manual Store Bills
       // Rule: "manually added store bills too show it in reports. store bills are b2c always"
-      // Therefore, in B2C: include ALL manual store bills from `bills` table + online B2C orders
-      // In B2B: include online B2B orders + store bills with registered corporate GSTIN
-      
       const allBills = await db.select().from(bills)
         .where(between(bills.invoiceDate, from, to))
         .orderBy(desc(bills.invoiceDate));
 
-      // Fetch online orders with invoices in date range
+      // 2. Fetch Store Orders Invoices
       const allOrders = await db
         .select({
           id: orders.id,
@@ -204,19 +149,17 @@ export async function GET(request: Request) {
         )
         .orderBy(desc(orders.invoiceDate));
 
-      // Fetch item counts for orders
       const orderIds = allOrders.map((o) => o.id);
       const orderItemsMap = new Map<string, { qty: number; hsnCode: string }>();
       if (orderIds.length > 0) {
         const items = await db.select().from(orderItems).where(inArray(orderItems.orderId, orderIds));
         for (const it of items) {
-          const prev = orderItemsMap.get(it.orderId) || { qty: 0, hsnCode: "4909" };
+          const prev = orderItemsMap.get(it.orderId) || { qty: 0, hsnCode: "4802" };
           prev.qty += Number(it.quantity || 0);
           orderItemsMap.set(it.orderId, prev);
         }
       }
 
-      // Unified Sales Row Structure
       type SaleRow = {
         date: Date;
         partyName: string;
@@ -235,12 +178,9 @@ export async function GET(request: Request) {
 
       const saleRows: SaleRow[] = [];
 
-      // 1. Process Manual Store Bills
       for (const b of allBills) {
         const hasGstin = Boolean(b.gstin && b.gstin.trim().length > 5);
-        // If B2C: include ALL store bills ("store bills are b2c always")
-        // If B2B: include store bills only if they have corporate GSTIN
-        if (type === "B2C" || (type === "B2B" && hasGstin)) {
+        if (saleVariant === "B2C" || (saleVariant === "B2B" && hasGstin)) {
           const items = Array.isArray(b.items) ? (b.items as Array<{ quantity?: number; hsnCode?: string }>) : [];
           const totalQty = items.reduce((s, it) => s + Number(it.quantity || 0), 0);
           const hsnCode = items.length > 0 ? (items[0].hsnCode || "4802") : "4802";
@@ -264,10 +204,9 @@ export async function GET(request: Request) {
         }
       }
 
-      // 2. Process Store Orders Invoices
       for (const o of allOrders) {
         const isB2B = o.customerType === "B2B" || Boolean(o.gstNumber && o.gstNumber.trim().length > 5);
-        if ((type === "B2C" && !isB2B) || (type === "B2B" && isB2B)) {
+        if ((saleVariant === "B2C" && !isB2B) || (saleVariant === "B2B" && isB2B)) {
           const itemMeta = orderItemsMap.get(o.id);
           const totalQty = itemMeta?.qty || null;
           const hsnCode = itemMeta?.hsnCode || "4802";
@@ -298,23 +237,20 @@ export async function GET(request: Request) {
         }
       }
 
-      // Sort rows by date descending
       saleRows.sort((a, b) => b.date.getTime() - a.date.getTime());
 
-      const sheetName = type === "B2B" ? "SALE B2B" : "SALE B2C";
-      const ws = workbook.addWorksheet(sheetName);
-      ws.properties.defaultColWidth = 16;
+      // Title row: e.g. SALE JUNE 2026(B2C)
+      const titleRow = ws.addRow([]);
+      const titleRowIdx = titleRow.number;
+      ws.mergeCells(`B${titleRowIdx}:G${titleRowIdx}`);
+      const titleCell = ws.getCell(`B${titleRowIdx}`);
+      titleCell.value = makeTitle("SALE", saleVariant, from, to);
+      titleCell.font = { bold: true, size: 12, color: { argb: "FFFFFFFF" } };
+      titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF3EA7C1" } };
+      titleCell.alignment = { horizontal: "center", vertical: "middle" };
+      titleRow.height = 28;
 
-      // Row 1: Merged title cell with cyan/teal background: SALE JUNE 2026(B2C)
-      ws.mergeCells("B1:G1");
-      const title = ws.getCell("B1");
-      title.value = titleText;
-      title.font = { bold: true, size: 12, color: { argb: "FFFFFFFF" } };
-      title.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF3EA7C1" } };
-      title.alignment = { horizontal: "center", vertical: "middle" };
-      ws.getRow(1).height = 28;
-
-      // Row 2: Header row with purple background matching user's Excel
+      // Header row
       const headers = ["DATE", "PARTY NAME", "QTY.", "BILL NO", "HSN CODE", "TAX VALUE", "C.GST", "SGST", "IGST", "R OFF", "TOTAL VALUE", "RATE %", "PARTY GSTIN"];
       const hRow = ws.addRow(headers);
       hRow.eachCell((cell) => {
@@ -322,7 +258,7 @@ export async function GET(request: Request) {
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF7C5A96" } };
         cell.alignment = { horizontal: "center", vertical: "middle" };
       });
-      ws.getRow(2).height = 24;
+      hRow.height = 24;
 
       let sumTaxValue = 0, sumCgst = 0, sumSgst = 0, sumIgst = 0, sumRoundOff = 0, sumTotal = 0;
 
@@ -354,7 +290,7 @@ export async function GET(request: Request) {
         applyNumberCols(dRow, [6, 7, 8, 9, 10, 11]);
       });
 
-      // Row totals: Coral red background at bottom
+      // Totals row: Coral Red
       const totRow = ws.addRow(["", "", "", "", "TOTAL", sumTaxValue, sumCgst, sumSgst, sumIgst, sumRoundOff, sumTotal, "", ""]);
       totRow.eachCell((cell, col) => {
         cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
@@ -363,26 +299,111 @@ export async function GET(request: Request) {
         if (col >= 6 && col <= 11 && typeof cell.value === "number") cell.numFmt = "#,##0.00";
       });
       totRow.height = 24;
+    }
 
-      ws.getColumn(1).width = 14;  // DATE
-      ws.getColumn(2).width = 36;  // PARTY NAME
-      ws.getColumn(3).width = 10;  // QTY.
-      ws.getColumn(4).width = 12;  // BILL NO
-      ws.getColumn(5).width = 12;  // HSN CODE
-      ws.getColumn(6).width = 14;  // TAX VALUE
-      ws.getColumn(7).width = 12;  // C.GST
-      ws.getColumn(8).width = 12;  // SGST
-      ws.getColumn(9).width = 12;  // IGST
-      ws.getColumn(10).width = 10; // R OFF
-      ws.getColumn(11).width = 15; // TOTAL VALUE
-      ws.getColumn(12).width = 10; // RATE %
-      ws.getColumn(13).width = 22; // PARTY GSTIN
+    // ── Helper to render Purchase Table onto a Worksheet ────────────────────
+    async function renderPurchaseTable(ws: ExcelJS.Worksheet) {
+      const rows = await db.select().from(purchases)
+        .where(between(purchases.date, from, to))
+        .orderBy(desc(purchases.date));
+
+      // Title row: PURCHASE [PERIOD]
+      const titleRow = ws.addRow([]);
+      const titleRowIdx = titleRow.number;
+      ws.mergeCells(`B${titleRowIdx}:E${titleRowIdx}`);
+      const titleCell = ws.getCell(`B${titleRowIdx}`);
+      titleCell.value = makeTitle("PURCHASE", "", from, to);
+      titleCell.font = { bold: true, size: 12, color: { argb: "FFFFFFFF" } };
+      titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF3EA7C1" } };
+      titleCell.alignment = { horizontal: "center", vertical: "middle" };
+      titleRow.height = 28;
+
+      // Header row
+      const headers = ["DATE", "PARTY NAME", "", "BILL NO", "HSN CODE", "TAX VALUE", "CGST", "SGST", "IGST", "R OFF", "TOTAL VALUE", "RATE %", "PARTY GSTIN"];
+      const hRow = ws.addRow(headers);
+      hRow.eachCell((cell, col) => {
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 9.5 };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF7C5A96" } };
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+      });
+      hRow.height = 24;
+
+      let sumTaxValue = 0, sumCgst = 0, sumSgst = 0, sumIgst = 0, sumRoundOff = 0, sumTotal = 0;
+
+      rows.forEach((r) => {
+        const tv = fmt(r.taxValue), cgst = fmt(r.cgstAmount), sgst = fmt(r.sgstAmount), igst = fmt(r.igstAmount), ro = fmt(r.roundOff), tot = fmt(r.totalValue);
+        sumTaxValue += tv; sumCgst += cgst; sumSgst += sgst; sumIgst += igst; sumRoundOff += ro; sumTotal += tot;
+        const gstRate = fmt(r.cgstRate) + fmt(r.sgstRate) + fmt(r.igstRate);
+
+        const dRow = ws.addRow([
+          formatIndianDate(r.date),
+          r.partyName,
+          r.qty ? Number(r.qty) : "",
+          r.billNo,
+          r.hsnCode,
+          tv,
+          cgst > 0 ? cgst : null,
+          sgst > 0 ? sgst : null,
+          igst > 0 ? igst : null,
+          ro !== 0 ? ro : null,
+          tot,
+          gstRate > 0 ? gstRate : null,
+          r.partyGstin || "",
+        ]);
+
+        dRow.eachCell((cell) => { cell.alignment = { vertical: "middle" }; });
+        applyNumberCols(dRow, [6, 7, 8, 9, 10, 11]);
+      });
+
+      // Totals row: Coral Red
+      const totRow = ws.addRow(["", "", "", "", "TOTAL", sumTaxValue, sumCgst, sumSgst, sumIgst, sumRoundOff, sumTotal, "", ""]);
+      totRow.eachCell((cell, col) => {
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFBA4D47" } };
+        cell.alignment = { horizontal: col >= 6 && col <= 11 ? "right" : "center", vertical: "middle" };
+        if (col >= 6 && col <= 11 && typeof cell.value === "number") cell.numFmt = "#,##0.00";
+      });
+      totRow.height = 24;
+    }
+
+    // ── Build Worksheet based on Type ───────────────────────────────────────
+    let filename = "";
+
+    if (type === "COMBINED") {
+      // User request: "sales and purchase report in one tab keeping space of 10 rows in them"
+      const ws = workbook.addWorksheet("SALE & PURCHASE");
+      applySheetColumnWidths(ws);
+
+      // 1. Render Sales (B2C includes all counter store bills + online orders)
+      await renderSalesTable(ws, "B2C");
+
+      // 2. Exactly 10 empty rows gap between Sales and Purchase
+      for (let i = 0; i < 10; i++) {
+        ws.addRow([]);
+      }
+
+      // 3. Render Purchase Table in the exact same tab
+      await renderPurchaseTable(ws);
+
+      filename = `SALE_AND_PURCHASE_${period}.xlsx`;
+
+    } else if (type === "PURCHASE") {
+      // Standalone Purchase tab
+      const ws = workbook.addWorksheet("PURCHASE");
+      applySheetColumnWidths(ws);
+      await renderPurchaseTable(ws);
+      filename = `PURCHASE_Report_${period}.xlsx`;
+
+    } else {
+      // Standalone B2C or B2B tab
+      const variant = type === "B2B" ? "B2B" : "B2C";
+      const ws = workbook.addWorksheet(`SALE ${variant}`);
+      applySheetColumnWidths(ws);
+      await renderSalesTable(ws, variant);
+      filename = `${variant}_Sale_Report_${period}.xlsx`;
     }
 
     const buffer = await workbook.xlsx.writeBuffer();
-    const safeType = type;
-    const safePeriod = period;
-    const filename = `${safeType}_Sale_Report_${safePeriod}.xlsx`;
 
     return new Response(buffer as ArrayBuffer, {
       status: 200,

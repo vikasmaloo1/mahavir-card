@@ -1,9 +1,9 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { ArrowRight, CalendarDays, CheckCircle2, Download, FileSpreadsheet, Loader2, Sparkles } from "lucide-react";
+import { CheckCircle2, Download, FileSpreadsheet, Layers, Loader2, Sparkles } from "lucide-react";
 
-type ReportType = "B2C" | "B2B" | "PURCHASE";
+type ReportType = "COMBINED" | "B2C" | "B2B" | "PURCHASE";
 type Period = "daily" | "weekly" | "monthly" | "custom";
 
 const MONTHS = [
@@ -37,7 +37,7 @@ function getWeekRange(dateStr: string): { dateFrom: string; dateTo: string } {
 
 export function AdminSalesReport() {
   const now = new Date();
-  const [reportType, setReportType] = useState<ReportType>("B2C");
+  const [reportType, setReportType] = useState<ReportType>("COMBINED");
   const [period, setPeriod] = useState<Period>("monthly");
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
@@ -100,10 +100,11 @@ export function AdminSalesReport() {
     ? `${new Date(dateFrom).toLocaleDateString("en-IN")} — ${new Date(dateTo).toLocaleDateString("en-IN")}`
     : "Select date range";
 
-  const themeColors = {
-    B2C: { bg: "#1A6E8E", hover: "#155a76", light: "#f0f8fb", border: "#cce4ef" },
-    B2B: { bg: "#7B3F8D", hover: "#6a3479", light: "#faf5fb", border: "#eedbf2" },
-    PURCHASE: { bg: "#2E7D32", hover: "#236527", light: "#f1f8f3", border: "#d0e9d4" },
+  const themeColors: Record<ReportType, { bg: string; hover: string; light: string; border: string; label: string }> = {
+    COMBINED: { bg: "#0F766E", hover: "#115E59", light: "#F0FDFA", border: "#99F6E4", label: "SALES + PURCHASE (1 TAB)" },
+    B2C: { bg: "#1A6E8E", hover: "#155A76", light: "#F0F8FB", border: "#CCE4EF", label: "SALE B2C (COUNTER & ONLINE)" },
+    B2B: { bg: "#7B3F8D", hover: "#6A3479", light: "#FAF5FB", border: "#EEDBF2", label: "SALE B2B (CORPORATE)" },
+    PURCHASE: { bg: "#2E7D32", hover: "#236527", light: "#F1F8F3", border: "#D0E9D4", label: "PURCHASE REGISTER" },
   };
 
   const activeTheme = themeColors[reportType];
@@ -114,35 +115,48 @@ export function AdminSalesReport() {
       <div>
         <h1 className="text-2xl font-bold text-[#162237]">Sales & Purchase Excel Reports</h1>
         <p className="mt-1 text-sm text-[#607089]">
-          Export official GST & accounting register format (.xlsx) with daily, weekly, or monthly filters
+          Export monthly or custom date range registers in exact official GST format (.xlsx)
         </p>
       </div>
 
       {/* Main Configuration Card */}
       <div className="rounded-2xl border border-[#d7dce5] bg-white p-6 shadow-sm space-y-6">
-        {/* Step 1: Report Type Tabs */}
+        {/* Step 1: Report Format Selector */}
         <div>
-          <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#607089]">
-            1. Select Report Category
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#607089]">
+              1. Choose Report Format
+            </label>
+            <span className="text-[11px] font-semibold text-[#0F766E] bg-[#F0FDFA] px-2 py-0.5 rounded-full border border-[#99F6E4]">
+              Sales + Purchase in 1 Tab Available
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
             {[
+              {
+                id: "COMBINED" as ReportType,
+                title: "Sales + Purchase",
+                subtitle: "Both in 1 tab (10 rows gap)",
+                color: "#0F766E",
+                badge: "Recommended",
+              },
               {
                 id: "B2C" as ReportType,
                 title: "Sale B2C",
-                subtitle: "Store Bills + Retail Orders",
+                subtitle: "Store bills + Retail",
                 color: "#1A6E8E",
               },
               {
                 id: "B2B" as ReportType,
                 title: "Sale B2B",
-                subtitle: "Registered GST Corporate",
+                subtitle: "GST corporate orders",
                 color: "#7B3F8D",
               },
               {
                 id: "PURCHASE" as ReportType,
-                title: "Purchase",
-                subtitle: "Raw Material & Vendors",
+                title: "Purchase Only",
+                subtitle: "Raw material & supplies",
                 color: "#2E7D32",
               },
             ].map((t) => {
@@ -152,7 +166,7 @@ export function AdminSalesReport() {
                   key={t.id}
                   type="button"
                   onClick={() => setReportType(t.id)}
-                  className={`flex flex-col items-start rounded-xl border-2 p-3.5 text-left transition-all ${
+                  className={`flex flex-col items-start justify-between rounded-xl border-2 p-3 text-left transition-all relative ${
                     isActive
                       ? "border-transparent text-white shadow-sm"
                       : "border-[#e2e8f0] bg-[#f8fafc] text-[#607089] hover:bg-[#f1f5f9] hover:border-[#cbd5e1]"
@@ -163,9 +177,15 @@ export function AdminSalesReport() {
                     <span className={`text-sm font-bold ${isActive ? "text-white" : "text-[#162237]"}`}>
                       {t.title}
                     </span>
-                    {isActive && <CheckCircle2 size={16} className="text-white" />}
+                    {isActive ? (
+                      <CheckCircle2 size={16} className="text-white shrink-0" />
+                    ) : t.badge ? (
+                      <span className="text-[9px] font-extrabold uppercase tracking-wide bg-[#0F766E]/10 text-[#0F766E] px-1.5 py-0.5 rounded">
+                        {t.badge}
+                      </span>
+                    ) : null}
                   </div>
-                  <span className={`text-xs mt-0.5 ${isActive ? "text-white/80" : "text-[#718096]"}`}>
+                  <span className={`text-xs mt-1.5 line-clamp-2 ${isActive ? "text-white/90" : "text-[#718096]"}`}>
                     {t.subtitle}
                   </span>
                 </button>
@@ -238,7 +258,7 @@ export function AdminSalesReport() {
                 </select>
               </div>
               <div className="pt-5 text-xs text-[#718096]">
-                Exports complete calendar month from 1st to 30th/31st
+                Exports complete calendar month (1st to 30th/31st)
               </div>
             </div>
           )}
@@ -307,13 +327,15 @@ export function AdminSalesReport() {
             <div className="flex items-center gap-2">
               <FileSpreadsheet size={18} style={{ color: activeTheme.bg }} />
               <p className="text-xs font-bold uppercase tracking-wide" style={{ color: activeTheme.bg }}>
-                {reportType === "B2C" ? "SALE B2C REGISTER" : reportType === "B2B" ? "SALE B2B REGISTER" : "PURCHASE REGISTER"}
+                {activeTheme.label}
               </p>
             </div>
             <p className="text-sm font-semibold text-[#162237]">{rangeLabel}</p>
             <p className="text-xs text-[#607089]">
-              {reportType === "B2C"
-                ? "Includes ALL manual store counter bills + online retail orders"
+              {reportType === "COMBINED"
+                ? "Includes Sales (all counter bills + online orders) and Purchase together in ONE worksheet with a 10-row gap"
+                : reportType === "B2C"
+                ? "Includes ALL manual counter store bills + online retail orders"
                 : reportType === "B2B"
                 ? "Includes corporate registered GST trade orders"
                 : "Includes all logged raw material & paper purchases"}
@@ -340,40 +362,43 @@ export function AdminSalesReport() {
           ) : (
             <>
               <Download size={18} />
-              Download {reportType === "B2C" ? "Sale B2C" : reportType === "B2B" ? "Sale B2B" : "Purchase"} Excel Report
+              Download {reportType === "COMBINED" ? "Sales + Purchase (1 Tab)" : reportType === "B2C" ? "Sale B2C" : reportType === "B2B" ? "Sale B2B" : "Purchase"} Excel Report
             </>
           )}
         </button>
       </div>
 
-      {/* Quick 1-Click Monthly Exports (Replacing the broken capsule buttons) */}
+      {/* Quick 1-Click Monthly Exports */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <Sparkles size={16} className="text-[#2457b8]" />
+          <Sparkles size={16} className="text-[#0F766E]" />
           <h2 className="text-xs font-bold uppercase tracking-wider text-[#607089]">
-            Quick 1-Click Exports (Current Month: {MONTHS[now.getMonth()]} {now.getFullYear()})
+            Quick 1-Click Monthly Exports ({MONTHS[now.getMonth()]} {now.getFullYear()})
           </h2>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             {
+              type: "COMBINED" as ReportType,
+              title: "Sales + Purchase",
+              desc: "1 Tab with 10 rows gap",
+              color: "#0F766E",
+              badge: "Complete Register",
+            },
+            {
               type: "B2C" as ReportType,
               title: "Sale B2C",
               desc: "Store Bills & Retail Orders",
               color: "#1A6E8E",
-            },
-            {
-              type: "B2B" as ReportType,
-              title: "Sale B2B",
-              desc: "GST Trade Orders",
-              color: "#7B3F8D",
+              badge: "Sales Only",
             },
             {
               type: "PURCHASE" as ReportType,
-              title: "Purchase",
-              desc: "Vendor Purchase Register",
+              title: "Purchase Register",
+              desc: "Raw Material & Vendors",
               color: "#2E7D32",
+              badge: "Purchase Only",
             },
           ].map((item) => {
             const isDownloading = directDownloadingType === item.type;
@@ -382,17 +407,20 @@ export function AdminSalesReport() {
                 key={item.type}
                 className="flex flex-col justify-between rounded-xl border border-[#d7dce5] bg-white p-4 shadow-sm transition-all hover:border-[#a0b8d0] hover:shadow-md"
               >
-                <div className="flex items-start gap-3">
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-xs font-extrabold shrink-0 shadow-sm"
-                    style={{ backgroundColor: item.color }}
-                  >
-                    {item.type === "PURCHASE" ? "PUR" : item.type}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-white text-xs font-extrabold shadow-sm"
+                      style={{ backgroundColor: item.color }}
+                    >
+                      {item.type === "COMBINED" ? "ALL" : item.type === "PURCHASE" ? "PUR" : item.type}
+                    </span>
+                    <span className="text-[10px] font-bold text-[#607089] bg-[#f1f5f9] px-2 py-0.5 rounded-full">
+                      {item.badge}
+                    </span>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-[#162237]">{item.title}</p>
-                    <p className="text-xs text-[#718096] truncate">{item.desc}</p>
-                  </div>
+                  <p className="text-sm font-bold text-[#162237]">{item.title}</p>
+                  <p className="text-xs text-[#718096] mt-0.5">{item.desc}</p>
                 </div>
 
                 <div className="mt-4 flex items-center gap-2 pt-3 border-t border-[#f1f5f9]">
@@ -412,7 +440,7 @@ export function AdminSalesReport() {
                     type="button"
                     disabled={isDownloading}
                     onClick={() => handleQuickDownload(item.type)}
-                    className="inline-flex items-center gap-1 rounded-lg py-1.5 px-3 text-xs font-bold text-white shadow-sm transition-colors hover:opacity-95 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-lg py-1.5 px-3 text-xs font-bold text-white shadow-sm transition-colors hover:opacity-95 disabled:opacity-50"
                     style={{ backgroundColor: item.color }}
                   >
                     {isDownloading ? (
