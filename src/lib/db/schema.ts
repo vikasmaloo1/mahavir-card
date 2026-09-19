@@ -1006,3 +1006,39 @@ export const hsnMaster = pgTable("hsn_master", {
   ...timestamps,
 });
 
+/**
+ * Manual purchase entries logged by admin — raw material, paper, ink, consumables, etc.
+ * Used to generate Purchase registers and GST input tax credit reports.
+ */
+export const purchases = pgTable(
+  "purchases",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    date: timestamp("date", { withTimezone: true }).notNull().defaultNow(),
+    partyName: text("partyName").notNull(),
+    partyGstin: text("partyGstin"),
+    billNo: text("billNo").notNull(),
+    hsnCode: text("hsnCode").notNull().default("4802"),
+    description: text("description"),
+    qty: numeric("qty", { precision: 12, scale: 3 }),
+    qtyUnit: text("qtyUnit").default("PCS"),
+    taxValue: numeric("taxValue", { precision: 12, scale: 2 }).notNull().default("0"),
+    taxType: text("taxType").notNull().default("INTRA_STATE"), // INTRA_STATE | INTER_STATE | EXEMPT
+    cgstRate: numeric("cgstRate", { precision: 6, scale: 3 }).notNull().default("9.000"),
+    cgstAmount: numeric("cgstAmount", { precision: 12, scale: 2 }).notNull().default("0"),
+    sgstRate: numeric("sgstRate", { precision: 6, scale: 3 }).notNull().default("9.000"),
+    sgstAmount: numeric("sgstAmount", { precision: 12, scale: 2 }).notNull().default("0"),
+    igstRate: numeric("igstRate", { precision: 6, scale: 3 }).notNull().default("0.000"),
+    igstAmount: numeric("igstAmount", { precision: 12, scale: 2 }).notNull().default("0"),
+    roundOff: numeric("roundOff", { precision: 12, scale: 2 }).notNull().default("0"),
+    totalValue: numeric("totalValue", { precision: 12, scale: 2 }).notNull().default("0"),
+    notes: text("notes"),
+    createdBy: uuid("createdBy").references(() => user.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (table) => [
+    index("purchases_date_idx").on(table.date),
+    index("purchases_party_gstin_idx").on(table.partyGstin),
+  ],
+);
+
