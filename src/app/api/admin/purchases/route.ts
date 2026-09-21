@@ -1,4 +1,4 @@
-﻿import { and, between, desc, eq, gte, ilike, lte, or, sql } from "drizzle-orm";
+import { and, between, desc, eq, gte, ilike, lte, or, sql } from "drizzle-orm";
 import { handleApiError, jsonError, jsonOk } from "@/lib/api";
 import { db } from "@/lib/db/server";
 import { purchases } from "@/lib/db/schema";
@@ -65,7 +65,9 @@ export async function POST(request: Request) {
     if (!partyName) return jsonError("Party name is required", 400);
     const billNo = String(body.billNo ?? "").trim();
     if (!billNo) return jsonError("Bill number is required", 400);
-    const taxValue = Number(body.taxValue ?? 0);
+    const items = Array.isArray(body.items) ? body.items : [];
+    const itemsTaxTotal = items.reduce((sum: number, it: any) => sum + Number(it.amount ?? (Number(it.quantity || 0) * Number(it.rate || 0))), 0);
+    const taxValue = Number(body.taxValue !== undefined && body.taxValue !== "" ? body.taxValue : itemsTaxTotal);
     if (isNaN(taxValue) || taxValue < 0) return jsonError("Tax value must be a non-negative number", 400);
 
     const taxType = String(body.taxType ?? "INTRA_STATE").toUpperCase();
@@ -77,18 +79,32 @@ export async function POST(request: Request) {
     const sgstAmount = Number(((taxValue * sgstRate) / 100).toFixed(2));
     const igstAmount = Number(((taxValue * igstRate) / 100).toFixed(2));
     const rawTotal = taxValue + cgstAmount + sgstAmount + igstAmount;
-    const roundOff = body.roundOff !== undefined ? Number(Number(body.roundOff).toFixed(2)) : Number((Math.round(rawTotal) - rawTotal).toFixed(2));
+    const roundOff = body.roundOff !== undefined && body.roundOff !== "" ? Number(Number(body.roundOff).toFixed(2)) : Number((Math.round(rawTotal) - rawTotal).toFixed(2));
     const totalValue = Number((rawTotal + roundOff).toFixed(2));
+
+    const firstItem = items[0] || {};
+    const primaryHsn = String(body.hsnCode || firstItem.hsnCode || "4802").trim();
+    const primaryDesc = body.description
+      ? String(body.description).trim()
+      : items.length > 0
+      ? items.map((it: any) => it.description?.trim()).filter(Boolean).join(", ")
+      : null;
+    const totalQty = body.qty !== undefined && body.qty !== ""
+      ? String(Number(body.qty).toFixed(3))
+      : items.length > 0
+      ? String(items.reduce((sum: number, it: any) => sum + Number(it.quantity || 0), 0).toFixed(3))
+      : null;
+    const primaryUnit = body.qtyUnit ? String(body.qtyUnit).trim().toUpperCase() : (firstItem.unit || "PCS");
 
     const [created] = await db.insert(purchases).values({
       date: body.date ? new Date(body.date) : new Date(),
       partyName,
       partyGstin: body.partyGstin ? String(body.partyGstin).trim().toUpperCase() : null,
       billNo,
-      hsnCode: String(body.hsnCode ?? "4802").trim(),
-      description: body.description ? String(body.description).trim() : null,
-      qty: body.qty !== undefined && body.qty !== "" ? String(Number(body.qty).toFixed(3)) : null,
-      qtyUnit: body.qtyUnit ? String(body.qtyUnit).trim().toUpperCase() : "PCS",
+      hsnCode: primaryHsn,
+      description: primaryDesc,
+      qty: totalQty,
+      qtyUnit: primaryUnit,
       taxValue: taxValue.toFixed(2),
       taxType,
       cgstRate: cgstRate.toFixed(3),
@@ -99,6 +115,7 @@ export async function POST(request: Request) {
       igstAmount: igstAmount.toFixed(2),
       roundOff: roundOff.toFixed(2),
       totalValue: totalValue.toFixed(2),
+      items,
       notes: body.notes ? String(body.notes).trim() : null,
       createdBy: session.user.id,
     }).returning();

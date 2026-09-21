@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -22,6 +22,8 @@ type Purchase = {
   igstAmount: string;
   roundOff: string;
   totalValue: string;
+  description?: string | null;
+  items?: any[] | null;
 };
 
 function fmt(v: string | null | undefined) { return Number(v ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -160,7 +162,14 @@ export function AdminPurchasesList() {
               return (
                 <tr key={r.id} className={`border-b border-[#f0f0f0] hover:bg-[#fdf7ff] ${i % 2 === 0 ? "bg-white" : "bg-[#faf5fb]"}`}>
                   <td className="whitespace-nowrap px-3 py-2 text-[#607089]">{new Date(r.date).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })}</td>
-                  <td className="px-3 py-2 font-medium text-[#162237]">{r.partyName}</td>
+                  <td className="px-3 py-2 font-medium text-[#162237]">
+                    <div>{r.partyName}</div>
+                    {r.description ? (
+                      <div className="text-[11px] text-slate-500 truncate max-w-xs">{r.description}</div>
+                    ) : r.items && r.items.length > 0 ? (
+                      <div className="text-[11px] text-[#7B3F8D] font-semibold">{r.items.length} items</div>
+                    ) : null}
+                  </td>
                   <td className="px-3 py-2 text-[#607089]">{r.billNo}</td>
                   <td className="px-3 py-2 text-[#607089]">{r.hsnCode}</td>
                   <td className="px-3 py-2 text-right font-mono text-[#162237]">{fmt(r.taxValue)}</td>

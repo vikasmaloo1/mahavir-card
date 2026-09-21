@@ -1033,6 +1033,19 @@ export const purchases = pgTable(
     roundOff: numeric("roundOff", { precision: 12, scale: 2 }).notNull().default("0"),
     totalValue: numeric("totalValue", { precision: 12, scale: 2 }).notNull().default("0"),
     notes: text("notes"),
+    items: jsonb("items")
+      .$type<
+        Array<{
+          id?: string;
+          description: string;
+          hsnCode: string;
+          quantity: number;
+          unit?: string;
+          rate: number;
+          amount: number;
+        }>
+      >()
+      .default([]),
     createdBy: uuid("createdBy").references(() => user.id, { onDelete: "set null" }),
     ...timestamps,
   },

@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { AdminPurchaseForm } from "@/components/admin-purchase-form";
 import { db } from "@/lib/db/server";
 import { purchases } from "@/lib/db/schema";
@@ -32,6 +32,7 @@ export default async function EditPurchasePage({ params }: { params: Promise<{ i
     igstRate: row.igstRate,
     roundOff: row.roundOff,
     notes: row.notes ?? null,
+    items: (row.items as any) ?? [],
   };
 
   return <AdminPurchaseForm initial={initial} />;
