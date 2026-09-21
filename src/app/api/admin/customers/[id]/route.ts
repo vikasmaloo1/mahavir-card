@@ -1,9 +1,9 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
 import { db } from "@/lib/db/server";
-import { addresses, customers, inquiries, notificationLog, orders, quotes, savedJobs, walletTransactions } from "@/lib/db/schema";
+import { addresses, bills, customers, inquiries, notificationLog, orderItems, orders, payments, quotes, savedJobs, walletTransactions } from "@/lib/db/schema";
 import { requireRole } from "@/lib/permissions";
 
 const customerUpdateSchema = z.object({
@@ -22,16 +22,53 @@ export async function GET(request: Request, ctx: RouteContext<"/api/admin/custom
     const { id } = await ctx.params;
     const [customer] = await db.select().from(customers).where(eq(customers.id, id)).limit(1);
     if (!customer) return jsonError("Customer not found", 404);
-    const [addressRows, orderRows, quoteRows, inquiryRows, walletRows, savedJobRows, notificationRows] = await Promise.all([
+    const [addressRows, orderRows, quoteRows, inquiryRows, walletRows, savedJobRows, notificationRows, billRows] = await Promise.all([
       db.select().from(addresses).where(eq(addresses.customerId, id)),
-      db.select().from(orders).where(eq(orders.customerId, id)),
+      db.select().from(orders).where(eq(orders.customerId, id)).orderBy(desc(orders.createdAt)),
       db.select().from(quotes).where(eq(quotes.customerId, id)),
       db.select().from(inquiries).where(eq(inquiries.customerId, id)),
       db.select().from(walletTransactions).where(eq(walletTransactions.customerId, id)).orderBy(desc(walletTransactions.createdAt)),
       db.select().from(savedJobs).where(eq(savedJobs.customerId, id)),
       db.select().from(notificationLog).where(eq(notificationLog.customerId, id)).orderBy(desc(notificationLog.createdAt)).limit(20),
+      db.select().from(bills).where(eq(bills.customerId, id)).orderBy(desc(bills.invoiceDate)),
     ]);
-    return jsonOk({ customer, addresses: addressRows, orders: orderRows, quotes: quoteRows, inquiries: inquiryRows, walletTransactions: walletRows, savedJobs: savedJobRows, notifications: notificationRows });
+
+    const orderIds = orderRows.map((o) => o.id);
+    let orderItemsRows: (typeof orderItems.$inferSelect)[] = [];
+    let paymentRows: (typeof payments.$inferSelect)[] = [];
+    if (orderIds.length > 0) {
+      [orderItemsRows, paymentRows] = await Promise.all([
+        db.select().from(orderItems).where(inArray(orderItems.orderId, orderIds)),
+        db.select().from(payments).where(inArray(payments.orderId, orderIds)),
+      ]);
+    }
+
+    const ordersWithDetails = orderRows.map((order) => {
+      const items = orderItemsRows.filter((item) => item.orderId === order.id);
+      const payment = paymentRows.find((p) => p.orderId === order.id) || null;
+      const jobNames = items
+        .map((i) => i.jobName?.trim())
+        .filter((name): name is string => Boolean(name && name.length > 0))
+        .join(", ");
+      return {
+        ...order,
+        items,
+        payment,
+        jobNames: jobNames || null,
+      };
+    });
+
+    return jsonOk({
+      customer,
+      addresses: addressRows,
+      orders: ordersWithDetails,
+      quotes: quoteRows,
+      inquiries: inquiryRows,
+      walletTransactions: walletRows,
+      savedJobs: savedJobRows,
+      notifications: notificationRows,
+      bills: billRows,
+    });
   } catch (error) { return error instanceof Response ? error : handleApiError(error); }
 }
 

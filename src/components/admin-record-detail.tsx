@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, CircleAlert, Download, FileText, MessageSquare, Plus, Printer, RefreshCw, Send, Trash2, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, CircleAlert, Download, FileSpreadsheet, FileText, MessageSquare, Plus, Printer, RefreshCw, Search, Send, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { adminRequest, formattedAmount, formattedDate } from "@/lib/admin-client";
@@ -437,10 +437,39 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showCreditModal, setShowCreditModal] = useState(false);
-  const [ledgerPage, setLedgerPage] = useState(1);
-  const LEDGER_PAGE_SIZE = 10;
+  const [statementTab, setStatementTab] = useState<"ALL" | "ORDERS" | "LEDGER">("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
+  const [activePage, setActivePage] = useState(1);
+  const PAGE_SIZE = 15;
 
   const rawTxList = rows(data.walletTransactions);
+  const orderList = rows(data.orders);
+
+  const balance = Number(customer.availableCredit ?? 0);
+  const hasLogin = Boolean(customer.userId);
+
+  // Map of orderNumber -> order
+  const orderNumberMap = useMemo(() => {
+    const map = new Map<string, Row>();
+    for (const ord of orderList) {
+      if (ord.orderNumber) {
+        map.set(String(ord.orderNumber).trim().toUpperCase(), ord);
+      }
+    }
+    return map;
+  }, [orderList]);
+
+  // Enriched orders with job names and items
+  const enrichedOrders = useMemo(() => {
+    return [...orderList].sort((a, b) => {
+      const timeA = new Date(String(a.createdAt || 0)).getTime();
+      const timeB = new Date(String(b.createdAt || 0)).getTime();
+      return timeB - timeA;
+    });
+  }, [orderList]);
+
+  // Sorted ledger transactions (latest first)
   const sortedTxList = useMemo(() => {
     return [...rawTxList].sort((a, b) => {
       const timeA = new Date(String(a.createdAt || 0)).getTime();
@@ -449,14 +478,208 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
     });
   }, [rawTxList]);
 
-  const totalLedgerPages = Math.max(1, Math.ceil(sortedTxList.length / LEDGER_PAGE_SIZE));
-  const paginatedTxList = useMemo(() => {
-    const start = (ledgerPage - 1) * LEDGER_PAGE_SIZE;
-    return sortedTxList.slice(start, start + LEDGER_PAGE_SIZE);
-  }, [sortedTxList, ledgerPage, LEDGER_PAGE_SIZE]);
+  // Set of order numbers already tracked in wallet transactions
+  const walletOrderNumbers = useMemo(() => {
+    const s = new Set<string>();
+    for (const tx of rawTxList) {
+      if (tx.reference) {
+        s.add(String(tx.reference).trim().toUpperCase());
+      }
+    }
+    return s;
+  }, [rawTxList]);
 
-  const balance = Number(customer.availableCredit ?? 0);
-  const hasLogin = Boolean(customer.userId);
+  // Unified statement merging wallet transactions and direct orders
+  const unifiedStatement = useMemo(() => {
+    const items: Array<{
+      id: string;
+      date: string;
+      type: "LEDGER" | "ORDER";
+      subType: string;
+      voucher: string;
+      jobName: string;
+      particulars: string;
+      debit: number;
+      credit: number;
+      balance: number | null;
+      notes: string;
+      rawOrder?: Row;
+      rawTx?: Row;
+    }> = [];
+
+    // 1. Add wallet transactions
+    for (const tx of rawTxList) {
+      const txType = String(tx.transactionType || "");
+      const txAmt = Number(tx.amount || 0);
+      const isCredit = ["ADMIN_CREDIT", "TOP_UP", "ORDER_CANCEL_CREDIT", "PAYMENT_CREDIT"].includes(txType);
+      const isDebit = ["ADMIN_DEBIT", "CREDIT_ORDER", "WALLET_ORDER", "ADMIN_ADJUSTMENT"].includes(txType);
+
+      const debit = isDebit ? txAmt : (txType === "ADMIN_ADJUSTMENT" && txAmt < 0 ? Math.abs(txAmt) : 0);
+      const credit = isCredit ? txAmt : (txType === "ADMIN_ADJUSTMENT" && txAmt > 0 ? txAmt : 0);
+
+      const refStr = String(tx.reference || "").trim().toUpperCase();
+      const matchedOrder = refStr ? orderNumberMap.get(refStr) : undefined;
+      const jobName = matchedOrder?.jobNames ? String(matchedOrder.jobNames) : "";
+
+      let particulars = "";
+      if (jobName) {
+        particulars = `Job: ${jobName} (${refStr})`;
+      } else if (txType === "ADMIN_CREDIT") {
+        particulars = "Payment / Deposit Received";
+      } else if (txType === "TOP_UP") {
+        particulars = "Storefront Top-Up";
+      } else if (txType === "ORDER_CANCEL_CREDIT") {
+        particulars = `Order Cancel Credit (${refStr})`;
+      } else if (txType === "CREDIT_ORDER" || txType === "WALLET_ORDER") {
+        particulars = `Order Placed (${refStr})`;
+      } else {
+        particulars = String(tx.notes || txType);
+      }
+
+      items.push({
+        id: String(tx.id || Math.random()),
+        date: String(tx.createdAt || ""),
+        type: "LEDGER",
+        subType: txType,
+        voucher: String(tx.reference || "-"),
+        jobName,
+        particulars,
+        debit,
+        credit,
+        balance: tx.balanceAfter !== null && tx.balanceAfter !== undefined ? Number(tx.balanceAfter) : null,
+        notes: String(tx.notes || ""),
+        rawTx: tx,
+      });
+    }
+
+    // 2. Add direct orders that did not flow through wallet transactions
+    for (const ord of orderList) {
+      const ordNum = String(ord.orderNumber || "").trim().toUpperCase();
+      if (ordNum && !walletOrderNumbers.has(ordNum)) {
+        const ordAmt = Number(ord.total || 0);
+        const ordPayment = ord.payment as Row | undefined;
+        const isPaid = ordPayment?.status === "PAID";
+        const jobName = ord.jobNames ? String(ord.jobNames) : "";
+
+        items.push({
+          id: String(ord.id || Math.random()),
+          date: String(ord.createdAt || ""),
+          type: "ORDER",
+          subType: String(ordPayment?.method || "DIRECT"),
+          voucher: ordNum,
+          jobName,
+          particulars: jobName ? `Job: ${jobName} (${ordNum})` : `Order #${ordNum}`,
+          debit: ordAmt,
+          credit: isPaid ? ordAmt : 0,
+          balance: null,
+          notes: `Status: ${String(ord.status || "PENDING")}`,
+          rawOrder: ord,
+        });
+      }
+    }
+
+    // Sort descending by date
+    return items.sort((a, b) => {
+      const timeA = new Date(a.date).getTime();
+      const timeB = new Date(b.date).getTime();
+      return timeB - timeA;
+    });
+  }, [rawTxList, orderList, orderNumberMap, walletOrderNumbers]);
+
+  // Filtered lists based on active tab and search query
+  const q = searchQuery.trim().toLowerCase();
+
+  const filteredStatement = useMemo(() => {
+    if (!q) return unifiedStatement;
+    return unifiedStatement.filter((item) =>
+      item.voucher.toLowerCase().includes(q) ||
+      item.jobName.toLowerCase().includes(q) ||
+      item.particulars.toLowerCase().includes(q) ||
+      item.notes.toLowerCase().includes(q) ||
+      item.subType.toLowerCase().includes(q)
+    );
+  }, [unifiedStatement, q]);
+
+  const filteredOrders = useMemo(() => {
+    if (!q) return enrichedOrders;
+    return enrichedOrders.filter((ord) => {
+      const ordNum = String(ord.orderNumber || "").toLowerCase();
+      const jobName = String(ord.jobNames || "").toLowerCase();
+      const invoiceNum = String(ord.invoiceNumber || "").toLowerCase();
+      const status = String(ord.status || "").toLowerCase();
+      const payment = ord.payment as Row | undefined;
+      const method = String(payment?.method || "").toLowerCase();
+      return ordNum.includes(q) || jobName.includes(q) || invoiceNum.includes(q) || status.includes(q) || method.includes(q);
+    });
+  }, [enrichedOrders, q]);
+
+  const filteredLedger = useMemo(() => {
+    if (!q) return sortedTxList;
+    return sortedTxList.filter((tx) => {
+      const ref = String(tx.reference || "").toLowerCase();
+      const notes = String(tx.notes || "").toLowerCase();
+      const type = String(tx.transactionType || "").toLowerCase();
+      return ref.includes(q) || notes.includes(q) || type.includes(q);
+    });
+  }, [sortedTxList, q]);
+
+  // Pagination for active tab
+  const activeListLength =
+    statementTab === "ALL"
+      ? filteredStatement.length
+      : statementTab === "ORDERS"
+      ? filteredOrders.length
+      : filteredLedger.length;
+
+  const totalPages = Math.max(1, Math.ceil(activeListLength / PAGE_SIZE));
+  const currentPage = Math.min(activePage, totalPages);
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+
+  const paginatedStatement = useMemo(() => filteredStatement.slice(startIndex, startIndex + PAGE_SIZE), [filteredStatement, startIndex]);
+  const paginatedOrders = useMemo(() => filteredOrders.slice(startIndex, startIndex + PAGE_SIZE), [filteredOrders, startIndex]);
+  const paginatedLedger = useMemo(() => filteredLedger.slice(startIndex, startIndex + PAGE_SIZE), [filteredLedger, startIndex]);
+
+  // Overall financial calculations
+  const totalOrdersAmount = orderList.reduce((acc, o) => acc + Number(o.total || 0), 0);
+  const totalCreditsAmount = rawTxList.reduce((acc, tx) => {
+    const t = String(tx.transactionType || "");
+    if (["ADMIN_CREDIT", "TOP_UP", "ORDER_CANCEL_CREDIT", "PAYMENT_CREDIT"].includes(t)) {
+      return acc + Number(tx.amount || 0);
+    }
+    return acc;
+  }, 0);
+
+  const handleDownloadExcel = async () => {
+    try {
+      setIsExporting(true);
+      const res = await fetch(`/api/admin/customers/${customer.id}/statement-excel`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Failed to generate Excel statement" }));
+        alert(err.error || "Failed to generate statement");
+        return;
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition");
+      let filename = `Statement_${String(customer.companyName || customer.contactName || "Customer").replace(/[^a-zA-Z0-9_\-]/g, "_")}.xlsx`;
+      if (disposition) {
+        const match = disposition.match(/filename="?([^"]+)"?/);
+        if (match?.[1]) filename = match[1];
+      }
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error("Excel download error", err);
+      alert("Error downloading Excel statement. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="mt-6 space-y-6">
@@ -638,89 +861,392 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
         ]}
       />
 
-      {/* Wallet / Balance Ledger Transactions */}
-      <section className="border border-[#d7dce5] bg-white p-4 sm:p-6">
-        <div className="flex items-center justify-between gap-4 border-b border-[#e1e6ee] pb-3">
-          <h2 className="font-bold text-[#162237]">Balance & Credit Ledger</h2>
-          <span className="text-xs font-semibold text-[#607089]">
-            {sortedTxList.length} transactions
-          </span>
+      {/* Comprehensive Balance, Credit & Order Statement */}
+      <section className="border border-[#d7dce5] bg-white p-4 sm:p-6 shadow-xs">
+        {/* Header with Title and Download Excel Button */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e1e6ee] pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold text-[#162237]">Balance, Credit &amp; Order Statement</h2>
+              <span className="rounded bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-700 border border-blue-200">
+                Customer Ledger
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-[#607089]">
+              Complete chronological ledger with orders, print job names, payments, and running balance.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              disabled={isExporting}
+              onClick={handleDownloadExcel}
+              className="inline-flex items-center gap-2 rounded bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:opacity-50 transition-colors shadow-xs"
+              title="Download full Excel statement workbook to send to customer"
+            >
+              <FileSpreadsheet size={15} />
+              {isExporting ? "Generating Excel..." : "Download Statement (.xlsx)"}
+            </button>
+          </div>
         </div>
-        {sortedTxList.length ? (
-          <>
-            <HorizontalScrollContainer className="mt-4">
+
+        {/* Statement Overview Metrics */}
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="rounded border border-[#e1e6ee] bg-[#f8fafc] p-2.5">
+            <span className="text-[11px] font-bold text-[#607089] uppercase tracking-wider">Total Orders</span>
+            <p className="mt-0.5 text-sm font-bold text-[#162237]">{orderList.length} Orders</p>
+            <p className="text-[11px] text-[#607089]">{formattedAmount(totalOrdersAmount)} total</p>
+          </div>
+          <div className="rounded border border-[#e1e6ee] bg-[#f8fafc] p-2.5">
+            <span className="text-[11px] font-bold text-[#607089] uppercase tracking-wider">Payments / Credits</span>
+            <p className="mt-0.5 text-sm font-bold text-emerald-700">{formattedAmount(totalCreditsAmount)}</p>
+            <p className="text-[11px] text-[#607089]">{rawTxList.length} transactions</p>
+          </div>
+          <div className="rounded border border-[#e1e6ee] bg-[#f8fafc] p-2.5">
+            <span className="text-[11px] font-bold text-[#607089] uppercase tracking-wider">Credit Terms</span>
+            <p className="mt-0.5 text-sm font-bold text-[#162237]">{Number(customer.paymentTermsDays || 0)} Days</p>
+            <p className="text-[11px] text-[#607089]">Limit: {formattedAmount(customer.creditLimit || 0)}</p>
+          </div>
+          <div className="rounded border border-[#e1e6ee] bg-[#f8fafc] p-2.5">
+            <span className="text-[11px] font-bold text-[#607089] uppercase tracking-wider">Available Balance</span>
+            <p className={`mt-0.5 text-sm font-bold tabular-nums ${balance < 0 ? "text-red-600" : "text-emerald-700"}`}>
+              {formattedAmount(balance)}
+            </p>
+            <p className="text-[11px] text-[#607089]">{balance < 0 ? "Dues Pending" : "Net Balance"}</p>
+          </div>
+        </div>
+
+        {/* Filter Tabs & Search Bar */}
+        <div className="mt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#e1e6ee] pb-3">
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setStatementTab("ALL");
+                setActivePage(1);
+              }}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${
+                statementTab === "ALL"
+                  ? "bg-[#1e293b] text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              All Activity
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${statementTab === "ALL" ? "bg-slate-700 text-slate-200" : "bg-white text-slate-600 border border-slate-300"}`}>
+                {unifiedStatement.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setStatementTab("ORDERS");
+                setActivePage(1);
+              }}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${
+                statementTab === "ORDERS"
+                  ? "bg-[#0f766e] text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              Orders &amp; Jobs
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${statementTab === "ORDERS" ? "bg-teal-900 text-teal-200" : "bg-white text-slate-600 border border-slate-300"}`}>
+                {enrichedOrders.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setStatementTab("LEDGER");
+                setActivePage(1);
+              }}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${
+                statementTab === "LEDGER"
+                  ? "bg-[#4338ca] text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              Payments &amp; Ledger
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${statementTab === "LEDGER" ? "bg-indigo-900 text-indigo-200" : "bg-white text-slate-600 border border-slate-300"}`}>
+                {sortedTxList.length}
+              </span>
+            </button>
+          </div>
+
+          <div className="relative min-w-[220px] sm:w-72">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setActivePage(1);
+              }}
+              placeholder="Search job, order #, ref, notes..."
+              className="w-full pl-8 pr-3 py-1.5 rounded border border-[#c9d2df] text-xs text-[#1e293b] placeholder-slate-400 focus:border-[#2457b8] focus:outline-hidden"
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+              >
+                ✕
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Tab 1: All Statement View */}
+        {statementTab === "ALL" ? (
+          filteredStatement.length ? (
+            <HorizontalScrollContainer className="mt-3">
               <table className="min-w-full text-left text-xs">
                 <thead className="border-b border-[#e1e6ee] bg-[#f8fafc] text-[#52647e]">
                   <tr>
-                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Date & Time</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Date &amp; Time</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Voucher / Ref #</th>
                     <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Type</th>
-                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Amount</th>
-                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Before</th>
-                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">After</th>
-                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Reference</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Particulars / Job Name</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider text-right">Debit (Charges)</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider text-right">Credit (Payments)</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider text-right">Running Balance</th>
                     <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Notes</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#e8ecf2]">
-                  {paginatedTxList.map((tx, idx) => (
-                    <tr key={text(tx.id || idx)} className="hover:bg-slate-50/50">
-                      <td className="px-3 py-2.5 whitespace-nowrap text-slate-600">{formatDateTime(tx.createdAt)}</td>
-                      <td className="px-3 py-2.5 whitespace-nowrap font-bold">
-                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-800 border border-slate-200">
-                          {text(tx.transactionType)}
+                  {paginatedStatement.map((st) => (
+                    <tr key={st.id} className="hover:bg-slate-50/60">
+                      <td className="px-3 py-2.5 whitespace-nowrap text-slate-600">{formatDateTime(st.date)}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap font-mono font-semibold text-slate-700">
+                        {st.voucher !== "-" && orderNumberMap.has(st.voucher.toUpperCase()) ? (
+                          <Link
+                            href={`/admin/orders/${orderNumberMap.get(st.voucher.toUpperCase())?.id}`}
+                            className="text-blue-600 hover:underline inline-flex items-center gap-1 font-bold"
+                          >
+                            {st.voucher}
+                          </Link>
+                        ) : (
+                          st.voucher
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold border ${
+                          st.subType === "ADMIN_CREDIT" || st.subType === "PAYMENT_CREDIT" || st.subType === "TOP_UP"
+                            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                            : st.subType === "CREDIT_ORDER" || st.subType === "WALLET_ORDER"
+                            ? "bg-blue-50 text-blue-800 border-blue-200"
+                            : "bg-slate-100 text-slate-800 border-slate-200"
+                        }`}>
+                          {st.subType}
                         </span>
                       </td>
-                      <td className="px-3 py-2.5 whitespace-nowrap font-bold tabular-nums">
-                        {formattedAmount(tx.amount)}
+                      <td className="px-3 py-2.5 font-medium text-[#162237] max-w-xs">
+                        {st.jobName ? (
+                          <div>
+                            <span className="font-bold text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded text-[11px]">
+                              {st.jobName}
+                            </span>
+                            <p className="text-[11px] text-slate-500 mt-0.5 truncate">{st.particulars}</p>
+                          </div>
+                        ) : (
+                          <span>{st.particulars}</span>
+                        )}
                       </td>
-                      <td className="px-3 py-2.5 whitespace-nowrap text-slate-500 tabular-nums">
-                        {tx.balanceBefore !== null && tx.balanceBefore !== undefined ? formattedAmount(tx.balanceBefore) : "-"}
+                      <td className="px-3 py-2.5 whitespace-nowrap text-right font-bold text-red-600 tabular-nums">
+                        {st.debit > 0 ? formattedAmount(st.debit) : "-"}
                       </td>
-                      <td className="px-3 py-2.5 whitespace-nowrap font-bold text-slate-800 tabular-nums">
-                        {tx.balanceAfter !== null && tx.balanceAfter !== undefined ? formattedAmount(tx.balanceAfter) : "-"}
+                      <td className="px-3 py-2.5 whitespace-nowrap text-right font-bold text-emerald-700 tabular-nums">
+                        {st.credit > 0 ? formattedAmount(st.credit) : "-"}
                       </td>
-                      <td className="px-3 py-2.5 font-mono text-slate-600">{text(tx.reference)}</td>
-                      <td className="px-3 py-2.5 text-slate-700 max-w-xs truncate" title={text(tx.notes)}>{text(tx.notes)}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap text-right font-bold text-[#162237] tabular-nums">
+                        {st.balance !== null ? formattedAmount(st.balance) : "-"}
+                      </td>
+                      <td className="px-3 py-2.5 text-slate-600 max-w-[200px] truncate" title={st.notes}>
+                        {st.notes || "-"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </HorizontalScrollContainer>
+          ) : (
+            <p className="mt-4 text-center py-6 text-sm text-[#607089]">No statement records found matching your search.</p>
+          )
+        ) : null}
 
-            {totalLedgerPages > 1 ? (
-              <div className="mt-4 flex items-center justify-between border-t border-[#e1e6ee] pt-3 text-xs">
-                <span className="text-[#607089] font-medium">
-                  Page {ledgerPage} of {totalLedgerPages} · Showing {paginatedTxList.length} of {sortedTxList.length} transactions
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    disabled={ledgerPage <= 1}
-                    onClick={() => setLedgerPage((p) => Math.max(1, p - 1))}
-                    className="inline-flex items-center gap-1 rounded border border-[#c9d2df] bg-white px-2.5 py-1 font-semibold text-[#1e293b] hover:bg-slate-100 disabled:opacity-40"
-                  >
-                    <ChevronLeft size={14} /> Prev
-                  </button>
-                  <button
-                    type="button"
-                    disabled={ledgerPage >= totalLedgerPages}
-                    onClick={() => setLedgerPage((p) => Math.min(totalLedgerPages, p + 1))}
-                    className="inline-flex items-center gap-1 rounded border border-[#c9d2df] bg-white px-2.5 py-1 font-semibold text-[#1e293b] hover:bg-slate-100 disabled:opacity-40"
-                  >
-                    Next <ChevronRight size={14} />
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </>
-        ) : (
-          <p className="mt-4 text-sm text-[#607089]">No ledger activity recorded yet.</p>
-        )}
+        {/* Tab 2: Orders & Jobs View */}
+        {statementTab === "ORDERS" ? (
+          filteredOrders.length ? (
+            <HorizontalScrollContainer className="mt-3">
+              <table className="min-w-full text-left text-xs">
+                <thead className="border-b border-[#e1e6ee] bg-[#f0fdfa] text-teal-900">
+                  <tr>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Date</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Order #</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Job Name</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Items / Description</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider text-right">Qty</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider text-right">Total Amount</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Payment</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Order Status</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Tax Invoice #</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#e8ecf2]">
+                  {paginatedOrders.map((ord) => {
+                    const items = (ord.items as Row[]) || [];
+                    const payment = ord.payment as Row | undefined;
+                    const totalQty = items.reduce((acc, it) => acc + (Number(it.quantity) || 0), 0);
+                    const jobName = ord.jobNames ? String(ord.jobNames) : "";
+
+                    return (
+                      <tr key={String(ord.id)} className="hover:bg-teal-50/30">
+                        <td className="px-3 py-2.5 whitespace-nowrap text-slate-600">{formattedDate(ord.createdAt)}</td>
+                        <td className="px-3 py-2.5 whitespace-nowrap font-mono font-bold text-blue-600">
+                          <Link href={`/admin/orders/${ord.id}`} className="hover:underline">
+                            {text(ord.orderNumber)}
+                          </Link>
+                        </td>
+                        <td className="px-3 py-2.5 max-w-[220px]">
+                          {jobName ? (
+                            <span className="font-bold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded text-[11px] inline-block">
+                              {jobName}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 italic">No job name</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 text-slate-700 max-w-xs">
+                          {items.length > 0 ? (
+                            items.map((it, idx) => (
+                              <div key={idx} className="truncate">
+                                {String(it.description || "Print Item")}
+                              </div>
+                            ))
+                          ) : (
+                            <span>Print Order</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-right font-semibold text-slate-700 tabular-nums">
+                          {totalQty > 0 ? totalQty.toLocaleString("en-IN") : "-"}
+                        </td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-right font-bold text-slate-900 tabular-nums">
+                          {formattedAmount(ord.total)}
+                        </td>
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          <span className={`rounded px-2 py-0.5 text-[10px] font-bold border ${
+                            payment?.status === "PAID"
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                              : "bg-amber-50 text-amber-800 border-amber-200"
+                          }`}>
+                            {payment?.method ? `${String(payment.method)} · ` : ""}{String(payment?.status || (ord.status === "DELIVERED" ? "PAID" : "PENDING"))}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-800 border border-slate-200">
+                            {text(ord.status)}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 whitespace-nowrap font-mono text-slate-600">
+                          {text(ord.invoiceNumber || ord.chalanNumber)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </HorizontalScrollContainer>
+          ) : (
+            <p className="mt-4 text-center py-6 text-sm text-[#607089]">No orders found matching your search.</p>
+          )
+        ) : null}
+
+        {/* Tab 3: Payments & Ledger View */}
+        {statementTab === "LEDGER" ? (
+          filteredLedger.length ? (
+            <HorizontalScrollContainer className="mt-3">
+              <table className="min-w-full text-left text-xs">
+                <thead className="border-b border-[#e1e6ee] bg-[#eef2ff] text-indigo-900">
+                  <tr>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Date &amp; Time</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Transaction Type</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider text-right">Amount</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider text-right">Balance Before</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider text-right">Balance After</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Reference / UTR</th>
+                    <th className="px-3 py-2.5 font-bold uppercase tracking-wider">Notes</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#e8ecf2]">
+                  {paginatedLedger.map((tx, idx) => {
+                    const isCredit = ["ADMIN_CREDIT", "TOP_UP", "ORDER_CANCEL_CREDIT", "PAYMENT_CREDIT"].includes(String(tx.transactionType));
+                    return (
+                      <tr key={text(tx.id || idx)} className="hover:bg-indigo-50/30">
+                        <td className="px-3 py-2.5 whitespace-nowrap text-slate-600">{formatDateTime(tx.createdAt)}</td>
+                        <td className="px-3 py-2.5 whitespace-nowrap font-bold">
+                          <span className={`rounded px-1.5 py-0.5 text-[11px] border ${
+                            isCredit
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                              : "bg-blue-50 text-blue-800 border-blue-200"
+                          }`}>
+                            {text(tx.transactionType)}
+                          </span>
+                        </td>
+                        <td className={`px-3 py-2.5 whitespace-nowrap text-right font-bold tabular-nums ${isCredit ? "text-emerald-700" : "text-red-600"}`}>
+                          {isCredit ? `+${formattedAmount(tx.amount)}` : `-${formattedAmount(tx.amount)}`}
+                        </td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-right text-slate-500 tabular-nums">
+                          {tx.balanceBefore !== null && tx.balanceBefore !== undefined ? formattedAmount(tx.balanceBefore) : "-"}
+                        </td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-right font-bold text-slate-900 tabular-nums">
+                          {tx.balanceAfter !== null && tx.balanceAfter !== undefined ? formattedAmount(tx.balanceAfter) : "-"}
+                        </td>
+                        <td className="px-3 py-2.5 font-mono text-slate-600">{text(tx.reference)}</td>
+                        <td className="px-3 py-2.5 text-slate-700 max-w-xs truncate" title={text(tx.notes)}>{text(tx.notes)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </HorizontalScrollContainer>
+          ) : (
+            <p className="mt-4 text-center py-6 text-sm text-[#607089]">No ledger transactions found matching your search.</p>
+          )
+        ) : null}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 ? (
+          <div className="mt-4 flex items-center justify-between border-t border-[#e1e6ee] pt-3 text-xs">
+            <span className="text-[#607089] font-medium">
+              Page {currentPage} of {totalPages} · Showing {Math.min(PAGE_SIZE, activeListLength - startIndex)} of {activeListLength} items
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setActivePage((p) => Math.max(1, p - 1))}
+                className="inline-flex items-center gap-1 rounded border border-[#c9d2df] bg-white px-2.5 py-1 font-semibold text-[#1e293b] hover:bg-slate-100 disabled:opacity-40"
+              >
+                <ChevronLeft size={14} /> Prev
+              </button>
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setActivePage((p) => Math.min(totalPages, p + 1))}
+                className="inline-flex items-center gap-1 rounded border border-[#c9d2df] bg-white px-2.5 py-1 font-semibold text-[#1e293b] hover:bg-slate-100 disabled:opacity-40"
+              >
+                Next <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        ) : null}
       </section>
 
-      {/* Addresses, Orders, Quotes, Inquiries */}
+      {/* Addresses, Quotes, Inquiries */}
       <Rows title="Addresses" items={rows(data.addresses)} fields={["type", "line1", "line2", "city", "state", "postalCode", "isDefault"]} />
-      <Rows title="Orders" items={rows(data.orders)} fields={["orderNumber", "status", "total", "createdAt"]} link="orders" />
       <Rows title="Quotes" items={rows(data.quotes)} fields={["quoteNumber", "status", "total", "createdAt"]} link="quotes" />
       <Rows title="Inquiries" items={rows(data.inquiries)} fields={["subject", "status", "createdAt"]} link="inquiries" />
 
