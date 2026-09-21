@@ -649,10 +649,11 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
     return acc;
   }, 0);
 
-  const handleDownloadExcel = async () => {
+  const handleDownloadExcel = async (tabParam?: string) => {
     try {
       setIsExporting(true);
-      const res = await fetch(`/api/admin/customers/${customer.id}/statement-excel`);
+      const targetTab = tabParam || (statementTab === "ORDERS" ? "ORDERS" : statementTab === "LEDGER" ? "LEDGER" : "STATEMENT");
+      const res = await fetch(`/api/admin/customers/${customer.id}/statement-excel?tab=${targetTab}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Failed to generate Excel statement" }));
         alert(err.error || "Failed to generate statement");
@@ -877,16 +878,41 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {/* Download Active Section Sheet */}
             <button
               type="button"
               disabled={isExporting}
-              onClick={handleDownloadExcel}
-              className="inline-flex items-center gap-2 rounded bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:opacity-50 transition-colors shadow-xs"
-              title="Download full Excel statement workbook to send to customer"
+              onClick={() => handleDownloadExcel()}
+              className={`inline-flex items-center gap-2 rounded px-3.5 py-2 text-xs font-bold text-white transition-colors shadow-xs disabled:opacity-50 ${
+                statementTab === "ORDERS"
+                  ? "bg-[#0f766e] hover:bg-[#115e59]"
+                  : statementTab === "LEDGER"
+                  ? "bg-[#4338ca] hover:bg-[#3730a3]"
+                  : "bg-emerald-700 hover:bg-emerald-800"
+              }`}
+              title={`Download only the ${statementTab === "ORDERS" ? "Orders & Jobs" : statementTab === "LEDGER" ? "Payments & Ledger" : "Activity Statement"} Excel sheet`}
             >
               <FileSpreadsheet size={15} />
-              {isExporting ? "Generating Excel..." : "Download Statement (.xlsx)"}
+              {isExporting
+                ? "Generating Excel..."
+                : statementTab === "ORDERS"
+                ? "Download Orders Sheet (.xlsx)"
+                : statementTab === "LEDGER"
+                ? "Download Ledger Sheet (.xlsx)"
+                : "Download Activity Sheet (.xlsx)"}
+            </button>
+
+            {/* Complete Workbook (All 3 Sheets) Button */}
+            <button
+              type="button"
+              disabled={isExporting}
+              onClick={() => handleDownloadExcel("ALL")}
+              className="inline-flex items-center gap-1.5 rounded border border-[#c9d2df] bg-white px-3 py-2 text-xs font-semibold text-[#1e293b] hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-xs"
+              title="Download complete workbook with all 3 sheets (Statement + Orders + Ledger)"
+            >
+              <Download size={14} className="text-slate-500" />
+              All 3 Sheets (.xlsx)
             </button>
           </div>
         </div>
