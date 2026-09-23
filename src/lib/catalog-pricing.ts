@@ -1,4 +1,17 @@
-import type { CatalogPriceMode } from "@/lib/catalog-model";
+export type CatalogPriceMode = "RANGE" | "RETAIL" | "B2B" | "SHOWROOM";
+
+export const CATALOG_PRICE_MODES: readonly CatalogPriceMode[] = ["RANGE", "RETAIL", "B2B", "SHOWROOM"] as const;
+
+export function isCatalogPriceMode(value: unknown): value is CatalogPriceMode {
+  return typeof value === "string" && (CATALOG_PRICE_MODES as readonly string[]).includes(value);
+}
+
+export const CATALOG_MODE_LABELS: Record<CatalogPriceMode, string> = {
+  RANGE: "All Rates · Trade & Retail Range",
+  RETAIL: "Standard Retail Rates",
+  B2B: "Trade Wholesale Rates",
+  SHOWROOM: "Showroom Display · Enquire for Pricing",
+};
 
 /** The subset of a product needed to derive display pricing. */
 export type PricedProduct = {

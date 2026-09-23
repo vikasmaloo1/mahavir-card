@@ -25,11 +25,12 @@ test("OTP email carries the code in subject, text and html, and only digits", ()
   const content = otpEmailContent("482913", "email-verification");
   assert.match(content.subject, /^482913 /);
   assert.match(content.text, /Your code: 482913/);
-  assert.match(content.html, />482913</);
+  // The template wraps the digits across lines, so normalise whitespace before matching.
+  assert.match(content.html.replace(/\s+/g, " "), /> ?482913 ?</);
   assert.match(content.text, /15 minutes/);
   const hostile = otpEmailContent("12<b>34</b>56", "sign-in");
   assert.doesNotMatch(hostile.html, /<b>/);
-  assert.match(hostile.html, />123456</);
+  assert.match(hostile.html.replace(/\s+/g, " "), /> ?123456 ?</);
 });
 
 test("OTP email copy differs per purpose", () => {

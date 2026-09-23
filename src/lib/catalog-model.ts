@@ -17,20 +17,14 @@ import { rateCatalog } from "@/lib/rate-catalog";
  * PDF export both build from this, so they can never drift apart.
  */
 
-export type CatalogPriceMode = "RANGE" | "RETAIL" | "B2B" | "SHOWROOM";
-
-export const CATALOG_PRICE_MODES: readonly CatalogPriceMode[] = ["RANGE", "RETAIL", "B2B", "SHOWROOM"] as const;
-
-export function isCatalogPriceMode(value: unknown): value is CatalogPriceMode {
-  return typeof value === "string" && (CATALOG_PRICE_MODES as readonly string[]).includes(value);
-}
-
-export const CATALOG_MODE_LABELS: Record<CatalogPriceMode, string> = {
-  RANGE: "All Rates · Trade & Retail Range",
-  RETAIL: "Standard Retail Rates",
-  B2B: "Trade Wholesale Rates",
-  SHOWROOM: "Showroom Display · Enquire for Pricing",
-};
+// The mode primitives live in catalog-pricing (no server-only deps) so client components and
+// tests can use them; re-exported here because this module is the catalogue entry point.
+export {
+  CATALOG_MODE_LABELS,
+  CATALOG_PRICE_MODES,
+  isCatalogPriceMode,
+  type CatalogPriceMode,
+} from "@/lib/catalog-pricing";
 
 export type CatalogProduct = {
   id: string;

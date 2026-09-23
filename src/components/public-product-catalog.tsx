@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { stripPriceText } from "@/lib/catalog-pricing";
 import {
   Printer,
   Download,
@@ -732,7 +733,8 @@ export function PublicProductCatalog({
                               </h3>
                               {product.shortDescription && (
                                 <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-                                  {product.shortDescription}
+                                  {/* Some descriptions embed a figure ("minimum charge Rs 250"); showroom mode must not show it. */}
+                                  {priceMode === "SHOWROOM" ? stripPriceText(product.shortDescription) : product.shortDescription}
                                 </p>
                               )}
                             </div>

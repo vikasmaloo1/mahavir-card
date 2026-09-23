@@ -47,6 +47,7 @@ type Fonts = { regular: PDFFont; bold: PDFFont };
 function ascii(value: string) {
   return value
     .replace(/[₹]/g, "Rs ")
+    .replace(/[×✕✖]/g, "x")
     .replace(/[–—]/g, "-")
     .replace(/[’‘]/g, "'")
     .replace(/[“”]/g, '"')

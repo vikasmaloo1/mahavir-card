@@ -34,7 +34,8 @@
     "test:phase5": "node --conditions=react-server --import tsx --test tests/phase5-followup.test.ts",
     "test:financial-qa": "node --env-file=.env.local --conditions=react-server --import tsx --test tests/live-financial-qa.test.ts",
     "test:offline": "node --import tsx --test tests/admin-offline-customer-order.test.ts",
-    "test:email-otp": "node --import tsx --test tests/email-otp.test.ts"
+    "test:email-otp": "node --import tsx --test tests/email-otp.test.ts",
+    "test:catalog-pdf": "node --import tsx --test tests/catalog-pdf.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1118.0",
