@@ -42,48 +42,6 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const productSlugImageMap: Record<string, string> = {
-  "nt-single": "/images/products/nt-single.jpg",
-  "nt-front-back": "/images/products/nt-front-back.jpg",
-  "tearable-single-side": "/images/products/tearable-single.jpg",
-  "tearable-front-back-without-lamination": "/images/products/tearable-unlam.jpg",
-  "tearable-front-back-with-lamination": "/images/products/tearable-fb-lam.jpg",
-  "400-gsm-thermal-matt-single-front-back": "/images/products/thermal-matt-400.jpg",
-  "350-gsm-thermal-matt-texture": "/images/products/textured-card-350.jpg",
-  "400-gsm-thermal-matt-single-side-uv": "/images/products/thermal-single-uv.jpg",
-  "400-gsm-thermal-matt-front-back-uv": "/images/products/thermal-fb-uv.jpg",
-  "premium-400-gsm-velvet": "/images/products/round-corner-card.jpg",
-  "premium-400-gsm-velvet-single-side-uv": "/images/products/spot-uv-closeup.jpg",
-  "premium-400-gsm-velvet-front-back-uv": "/images/products/velvet-raised-uv-macro.jpg",
-  "premium-400-gsm-velvet-single-side-foil": "/images/products/velvet-single-foil.jpg",
-  "premium-400-gsm-velvet-front-back-foil": "/images/products/velvet-gold-foil-pair.jpg",
-  "premium-400-gsm-dripoff-front-back": "/images/products/dripoff-hybrid-card.jpg",
-  "art-card-single-side": "/images/products/art-card.jpg",
-  "art-card-both-side": "/images/products/art-card-both-side.jpg",
-  "art-card-both-side-lamination": "/images/products/art-card-lamination.jpg",
-  "letterhead-100-alabaster": "/images/products/letterhead-100-alabaster.jpg",
-  "letterhead-80-gsm-ss-finish": "/images/products/letterhead-80-gsm-ss.jpg",
-  "letterhead-100-gsm-ss-finish": "/images/products/letterhead-100-ss.jpg",
-  "letterhead-100-alabaster-front-back": "/images/products/alabaster-stationery.jpg",
-  "envelope-100-alabaster": "/images/products/alabaster-envelope-100.jpg",
-  "envelope-80-gsm-ss-finish": "/images/products/envelope-80-ss.jpg",
-  "envelope-100-gsm-ss-finish": "/images/products/envelope-100-ss.jpg",
-  "cover-a4-130-gsm-art-paper": "/images/products/a4-art-paper-cover.jpg",
-  "brochure-a4-single-side": "/images/products/trifold-brochure.jpg",
-  "brochure-a4-both-side-without-lamination": "/images/products/brochure-unlaminated-matte.jpg",
-  "brochure-a4-both-side-lamination": "/images/products/trifold-brochure-open.jpg",
-  "brochure-a8-250-tearable-single-side": "/images/products/a8-mini-brochure.jpg",
-  "brochure-a8-250-tearable-front-back": "/images/products/brochure-a8-pocket.jpg",
-  "brochure-a8-250-lamination-front-back": "/images/products/brochure-a8-pocket.jpg",
-  "leaflet-a4-130-gsm-single-side": "/images/products/flyer-130-art-paper.jpg",
-  "leaflet-a4-130-gsm-front-back": "/images/products/leaflet.jpg",
-  "leaflet-a4-170-gsm-single-or-front-back": "/images/products/flyer-170-art-paper.jpg",
-  "sticker-without-lamination": "/images/products/diecut-stickers.jpg",
-  "sticker-with-lamination": "/images/products/sticker-sheet-kisscut.jpg",
-  "avery-sticker-without-lamination": "/images/products/avery-vinyl-sticker.jpg",
-  "avery-sticker-with-lamination": "/images/products/diecut-stickers.jpg",
-};
-
 export default async function PublicCatalogPage() {
   let settingsRow: typeof businessSettings.$inferSelect | undefined;
   let dbProductsWithCat: Array<{
@@ -130,10 +88,16 @@ export default async function PublicCatalogPage() {
     dbProductBySlug.set(item.product.slug, item);
   }
 
-  // Primary image lookup map by productId
+  // Primary image lookup map by productId:
+  // Priority 1: image with isPrimary = true. If not present, the first image ordered by sortOrder.
   const primaryImageByProductId = new Map<string, string>();
   for (const img of dbImages) {
-    if (!primaryImageByProductId.has(img.productId) || img.isPrimary) {
+    if (img.isPrimary) {
+      primaryImageByProductId.set(img.productId, img.imageUrl);
+    }
+  }
+  for (const img of dbImages) {
+    if (!primaryImageByProductId.has(img.productId)) {
       primaryImageByProductId.set(img.productId, img.imageUrl);
     }
   }
@@ -144,8 +108,8 @@ export default async function PublicCatalogPage() {
       const dbEntry = dbProductBySlug.get(item.slug);
       const dbProduct = dbEntry?.product;
 
-      // Determine the product image:
-      let imageUrl = productSlugImageMap[item.slug] || "/images/home-hero-printing.jpg";
+      // Determine 1st photo of each product (Priority 1 from DB productImages)
+      let imageUrl = "/images/home-hero-printing.jpg";
       if (dbProduct) {
         const uploadedImg = primaryImageByProductId.get(dbProduct.id);
         if (uploadedImg) {

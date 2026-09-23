@@ -130,7 +130,7 @@ const customCommercialServices = [
   {
     title: "3. Carbonless Bill Books, Challans & Receipt Vouchers",
     subtitle: "Duplicate · Triplicate · Quadruplicate Book Sets · Numbered",
-    image: "/images/products/receipt-books-ad.jpg",
+    image: "/images/products/letterhead-envelope-duo.jpg",
     icon: Receipt,
     specs: [
       "Paper Grade: 55-60 GSM high-sensitivity self-copy paper (White, Pink, Yellow, Green, Blue) — clean and smudge-free.",
@@ -195,7 +195,7 @@ const customCommercialServices = [
   {
     title: "8. Security Vouchers, Coupons & Barcoded Passes",
     subtitle: "Gift Vouchers · Event Entry Passes · Loyalty Discount Coupons",
-    image: "/images/products/security-vouchers-ad.jpg",
+    image: "/images/products/gold-edge-luxury-card.jpg",
     icon: ShieldCheck,
     specs: [
       "Security Technology: Variable data alphanumeric serials, 1D/2D QR barcodes, and anti-counterfeiting guilloche patterns.",
@@ -248,12 +248,12 @@ export function PublicProductCatalog({
 
   return (
     <div className="min-h-screen bg-[#f1f5f9] text-[#0f172a] font-sans antialiased selection:bg-[#09192e] selection:text-white print:bg-white print:text-black">
-      {/* PRINT STYLES: CLEAN A4 FORMATTING WITH ZERO CLUTTER */}
+      {/* PRINT STYLES: CLEAN A4 FORMATTING WITH REPEATING HEADERS & FOOTERS */}
       <style jsx global>{`
         @media print {
           @page {
             size: A4 portrait;
-            margin: 10mm 10mm 12mm 10mm;
+            margin: 10mm 8mm 12mm 8mm;
           }
           body,
           html {
@@ -268,22 +268,46 @@ export function PublicProductCatalog({
           .no-print {
             display: none !important;
           }
-          .print-container {
+          .print-page-table {
+            display: table !important;
             width: 100% !important;
-            max-width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            box-shadow: none !important;
-            border: none !important;
+            border-collapse: collapse !important;
+          }
+          .print-page-thead {
+            display: table-header-group !important;
+          }
+          .print-page-tfoot {
+            display: table-footer-group !important;
+          }
+          .print-page-tbody {
+            display: table-row-group !important;
           }
           .page-break-inside-avoid {
             break-inside: avoid !important;
             page-break-inside: avoid !important;
           }
+          .page-break-after-avoid {
+            break-after: avoid !important;
+            page-break-after: avoid !important;
+          }
           .print-grid-cols-2 {
             display: grid !important;
             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
             gap: 10px !important;
+          }
+        }
+        @media screen {
+          .print-page-table {
+            display: block;
+            width: 100%;
+          }
+          .print-page-thead,
+          .print-page-tfoot {
+            display: none;
+          }
+          .print-page-tbody {
+            display: block;
+            width: 100%;
           }
         }
       `}</style>
@@ -377,9 +401,9 @@ export function PublicProductCatalog({
                     ? "bg-[#09192e] text-white shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
-                title="Display standard price ranges (e.g. ₹240 - ₹270 / 1000 pcs)"
+                title="Display comprehensive view with Trade, Retail & Price Ranges"
               >
-                🏷️ Price Ranges
+                🏷️ All Rates &amp; Range
               </button>
               <button
                 type="button"
@@ -536,57 +560,98 @@ export function PublicProductCatalog({
 
       {/* MAIN PRINT / DOCUMENT CONTAINER */}
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 print:p-0 print:m-0 print:max-w-none">
-        {/* PRINT ONLY HEADER */}
-        <div className="hidden print:block mb-6 border-b-2 border-[#09192e] pb-4">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative w-12 h-12 rounded border border-slate-300 overflow-hidden bg-white shrink-0">
-                <Image
-                  src="/api/branding/assets/logo.primary/file"
-                  alt="Mahavir Card Logo"
-                  fill
-                  className="object-contain"
-                  unoptimized
-                />
-              </div>
-              <div>
-                <h1 className="text-xl font-black text-[#09192e] leading-tight">
-                  {business.name}
-                </h1>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
-                  {business.tagline}
-                </p>
-                <p className="text-[10px] text-slate-500 mt-0.5">
-                  {business.address}, {business.city} - {business.postalCode} ({business.state})
-                </p>
-              </div>
-            </div>
+        <table className="print-page-table w-full border-collapse">
+          {/* REPEATING HEADER ON EVERY PRINT/PDF PAGE */}
+          <thead className="print-page-thead">
+            <tr>
+              <th className="font-normal text-left pb-4 border-b-2 border-[#09192e]">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-12 h-12 rounded border border-slate-300 overflow-hidden bg-white shrink-0">
+                      <Image
+                        src="/api/branding/assets/logo.primary/file"
+                        alt="Mahavir Card Logo"
+                        fill
+                        className="object-contain"
+                        unoptimized
+                      />
+                    </div>
+                    <div>
+                      <h1 className="text-xl font-black text-[#09192e] leading-tight">
+                        {business.name}
+                      </h1>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                        {business.tagline}
+                      </p>
+                      <p className="text-[9px] text-slate-500 mt-0.5">
+                        {business.address}, {business.city} - {business.postalCode} ({business.state})
+                      </p>
+                    </div>
+                  </div>
 
-            <div className="text-right text-[10px] space-y-0.5">
-              <div className="inline-block bg-[#09192e] text-white text-[9px] font-bold px-2 py-0.5 rounded">
-                GSTIN: {business.gstin}
-              </div>
-              <p className="text-slate-800 font-bold pt-0.5">
-                📞 {business.whatsappPhone} / {business.primaryPhone}
-              </p>
-              <p className="text-slate-600">
-                ✉️ {business.email} · 🌐 {business.website}
-              </p>
-            </div>
-          </div>
+                  <div className="text-right text-[9px] space-y-0.5">
+                    <div className="inline-block bg-[#09192e] text-white text-[9px] font-bold px-2 py-0.5 rounded">
+                      GSTIN: {business.gstin}
+                    </div>
+                    <p className="text-[#09192e] font-extrabold text-[10px] pt-0.5">
+                      Direct Helpline: {business.whatsappPhone}
+                    </p>
+                    <p className="text-slate-600">
+                      📞 {business.primaryPhone} · ✉️ {business.email}
+                    </p>
+                    <p className="text-slate-500 font-mono">
+                      🌐 {business.website}
+                    </p>
+                  </div>
+                </div>
 
-          <div className="mt-2 pt-2 border-t border-slate-200 flex items-center justify-between text-[10px]">
-            <span className="font-extrabold uppercase text-[#09192e]">
-              ★ Official Rate Catalogue ({priceMode === "RANGE" ? "Price Ranges" : priceMode === "B2B" ? "B2B Wholesale" : priceMode === "RETAIL" ? "Standard Retail" : "Showroom Collection"})
-            </span>
-            <span className="text-slate-500">
-              Helpline: {business.whatsappPhone}
-            </span>
-          </div>
-        </div>
+                <div className="mt-2 pt-1.5 border-t border-slate-200 flex items-center justify-between text-[9px]">
+                  <span className="font-extrabold uppercase text-[#09192e] tracking-wider">
+                    ★ OFFICIAL COMMERCIAL PRINTING &amp; RATE CATALOGUE (2026 EDITION)
+                  </span>
+                  <span className="font-bold text-slate-600">
+                    CATALOGUE MODE:{" "}
+                    <strong className="text-[#09192e]">
+                      {priceMode === "RANGE"
+                        ? "ALL RATES & PRICE RANGES (WHOLESALE + RETAIL)"
+                        : priceMode === "B2B"
+                        ? "TRADE WHOLESALE B2B RATES"
+                        : priceMode === "RETAIL"
+                        ? "STANDARD RETAIL RATES"
+                        : "SHOWROOM DISPLAY (EXCLUSIVE)"}
+                    </strong>
+                  </span>
+                </div>
+              </th>
+            </tr>
+          </thead>
 
-        {/* CATEGORIES SECTIONS WITH REAL PRODUCT PHOTOS & PRICE RANGES */}
-        <div className="space-y-12 print:space-y-8">
+          {/* REPEATING FOOTER ON EVERY PRINT/PDF PAGE */}
+          <tfoot className="print-page-tfoot">
+            <tr>
+              <td className="pt-2.5 pb-1 border-t-2 border-[#09192e] text-[9px] text-slate-600">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="font-black text-[#09192e]">{business.name}</span>
+                    <span className="mx-1.5 text-slate-400">|</span>
+                    <span>Ahmedabad Commercial Offset Hub</span>
+                    <span className="mx-1.5 text-slate-400">|</span>
+                    <span>Helpline &amp; WhatsApp: <strong className="text-[#09192e]">{business.whatsappPhone}</strong> / {business.primaryPhone}</span>
+                  </div>
+                  <div className="text-right font-semibold text-slate-500">
+                    Standard Batches: 1,000 pcs · CorelDRAW (.CDR) in curves · CMYK 300+ DPI
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tfoot>
+
+          {/* DOCUMENT BODY */}
+          <tbody className="print-page-tbody">
+            <tr>
+              <td className="p-0 border-0 align-top">
+                {/* CATEGORIES SECTIONS WITH REAL PRODUCT PHOTOS & PRICE RANGES */}
+                <div className="space-y-12 print:space-y-8">
           {filteredCategories.map((category) => {
             return (
               <section
@@ -612,61 +677,22 @@ export function PublicProductCatalog({
                 {/* Product Grid: 2 per row in print & medium screen, 3 per row on xl */}
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 print-grid-cols-2 print:gap-3">
                   {category.products.map((product) => {
-                    // Compute Price Range or specific rate
-                    let priceString = "";
-                    let priceSubLabel = "";
+                    const isPerSqInch = product.ruleType === "PER_SQ_INCH";
+                    const retailRate = product.ratePerSqInch ?? 0;
+                    const b2bRate = product.b2bRatePerSqInch ?? retailRate;
+                    const unit = product.rateUnit === "PAISE" ? "paise" : "₹";
+                    const minRate = Math.min(retailRate, b2bRate);
+                    const maxRate = Math.max(retailRate, b2bRate);
 
-                    if (product.ruleType === "PER_SQ_INCH") {
-                      const retailRate = product.ratePerSqInch ?? 0;
-                      const b2bRate = product.b2bRatePerSqInch ?? retailRate;
-                      const unit = product.rateUnit === "PAISE" ? "paise" : "₹";
-                      const minRate = Math.min(retailRate, b2bRate);
-                      const maxRate = Math.max(retailRate, b2bRate);
+                    const retailAmt = product.amount ?? 0;
+                    const b2bAmt = product.b2bAmount ?? retailAmt;
+                    const minAmt = Math.min(retailAmt, b2bAmt);
+                    const maxAmt = Math.max(retailAmt, b2bAmt);
+                    const qty = product.referenceQuantity || 1000;
 
-                      if (priceMode === "SHOWROOM") {
-                        priceString = "Available on Order";
-                        priceSubLabel = "Custom Sq.Inch Area";
-                      } else if (priceMode === "B2B") {
-                        priceString = `${unit === "₹" ? "₹" : ""}${b2bRate} ${unit === "paise" ? "paise" : ""} / sq.in`;
-                        priceSubLabel = "Trade B2B Rate";
-                      } else if (priceMode === "RETAIL") {
-                        priceString = `${unit === "₹" ? "₹" : ""}${retailRate} ${unit === "paise" ? "paise" : ""} / sq.in`;
-                        priceSubLabel = "Standard Retail";
-                      } else {
-                        // RANGE mode
-                        if (minRate === maxRate) {
-                          priceString = `${unit === "₹" ? "₹" : ""}${minRate} ${unit === "paise" ? "paise" : ""} / sq.in`;
-                        } else {
-                          priceString = `${minRate} – ${maxRate} ${unit} / sq.in`;
-                        }
-                        priceSubLabel = "Price Range (Trade - Retail)";
-                      }
-                    } else {
-                      const retailAmt = product.amount ?? 0;
-                      const b2bAmt = product.b2bAmount ?? retailAmt;
-                      const minAmt = Math.min(retailAmt, b2bAmt);
-                      const maxAmt = Math.max(retailAmt, b2bAmt);
-                      const qty = product.referenceQuantity || 1000;
-
-                      if (priceMode === "SHOWROOM") {
-                        priceString = "Available on Order";
-                        priceSubLabel = `${qty.toLocaleString("en-IN")} pcs batch`;
-                      } else if (priceMode === "B2B") {
-                        priceString = `₹${b2bAmt.toLocaleString("en-IN")}`;
-                        priceSubLabel = `Trade Rate / ${qty.toLocaleString("en-IN")} pcs`;
-                      } else if (priceMode === "RETAIL") {
-                        priceString = `₹${retailAmt.toLocaleString("en-IN")}`;
-                        priceSubLabel = `Retail Rate / ${qty.toLocaleString("en-IN")} pcs`;
-                      } else {
-                        // RANGE mode
-                        if (minAmt === maxAmt) {
-                          priceString = `₹${minAmt.toLocaleString("en-IN")}`;
-                        } else {
-                          priceString = `₹${minAmt.toLocaleString("en-IN")} – ₹${maxAmt.toLocaleString("en-IN")}`;
-                        }
-                        priceSubLabel = `Per ${qty.toLocaleString("en-IN")} pcs batch`;
-                      }
-                    }
+                    const priceSubLabel = isPerSqInch
+                      ? "Custom Sq.Inch Area"
+                      : `${qty.toLocaleString("en-IN")} pcs batch`;
 
                     return (
                       <div
@@ -732,26 +758,122 @@ export function PublicProductCatalog({
 
                         {/* PRICE & ACTION BAR */}
                         <div className="p-4 pt-3 border-t border-slate-100 bg-slate-50/70">
-                          <div className="flex items-end justify-between gap-2">
-                            <div>
-                              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 block">
-                                {priceSubLabel}
-                              </span>
-                              <span className="text-lg font-black text-[#09192e] tracking-tight">
-                                {priceString}
-                              </span>
+                          {priceMode === "SHOWROOM" ? (
+                            <div className="flex items-center justify-between gap-2">
+                              <div>
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded border border-amber-200 uppercase tracking-wider">
+                                  ★ Showroom Display
+                                </span>
+                                <p className="text-xs text-slate-600 mt-1 font-medium">
+                                  {isPerSqInch ? "Custom area pricing" : `${qty.toLocaleString("en-IN")} pcs standard batch`} · Inquire for quotation
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleShareWhatsApp(product.name)}
+                                className="no-print inline-flex items-center gap-1 bg-[#25d366] hover:bg-[#20ba5a] text-[#09192e] px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs shrink-0"
+                                title="Inquire on WhatsApp"
+                              >
+                                <MessageCircle size={13} /> Order / Inquire
+                              </button>
                             </div>
+                          ) : priceMode === "B2B" ? (
+                            <div className="flex items-end justify-between gap-2">
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded border border-emerald-200">
+                                    💼 Trade Wholesale
+                                  </span>
+                                  <span className="text-[10px] text-slate-500">{priceSubLabel}</span>
+                                </div>
+                                <div className="text-xl font-black text-[#09192e] tracking-tight mt-1">
+                                  {isPerSqInch
+                                    ? `${unit === "₹" ? "₹" : ""}${b2bRate} ${unit === "paise" ? "paise" : ""} / sq.in`
+                                    : `₹${b2bAmt.toLocaleString("en-IN")}`}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleShareWhatsApp(product.name)}
+                                className="no-print inline-flex items-center gap-1 bg-[#25d366] hover:bg-[#20ba5a] text-[#09192e] px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs shrink-0"
+                                title="Order on WhatsApp"
+                              >
+                                <MessageCircle size={13} /> Order / Inquire
+                              </button>
+                            </div>
+                          ) : priceMode === "RETAIL" ? (
+                            <div className="flex items-end justify-between gap-2">
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] uppercase font-bold tracking-wider text-blue-800 bg-blue-100/90 px-1.5 py-0.5 rounded border border-blue-200">
+                                    🏪 Standard Retail
+                                  </span>
+                                  <span className="text-[10px] text-slate-500">{priceSubLabel}</span>
+                                </div>
+                                <div className="text-xl font-black text-[#09192e] tracking-tight mt-1">
+                                  {isPerSqInch
+                                    ? `${unit === "₹" ? "₹" : ""}${retailRate} ${unit === "paise" ? "paise" : ""} / sq.in`
+                                    : `₹${retailAmt.toLocaleString("en-IN")}`}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleShareWhatsApp(product.name)}
+                                className="no-print inline-flex items-center gap-1 bg-[#25d366] hover:bg-[#20ba5a] text-[#09192e] px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs shrink-0"
+                                title="Order on WhatsApp"
+                              >
+                                <MessageCircle size={13} /> Order / Inquire
+                              </button>
+                            </div>
+                          ) : (
+                            /* RANGE MODE: Comprehensive view showing Range, B2B wholesale, and Retail */
+                            <div className="space-y-2">
+                              <div className="flex items-end justify-between gap-2">
+                                <div>
+                                  <span className="text-[10px] uppercase font-extrabold tracking-wider text-slate-500 block">
+                                    Price Range ({priceSubLabel})
+                                  </span>
+                                  <span className="text-lg font-black text-[#09192e] tracking-tight">
+                                    {isPerSqInch
+                                      ? minRate === maxRate
+                                        ? `${unit === "₹" ? "₹" : ""}${minRate} ${unit === "paise" ? "paise" : ""} / sq.in`
+                                        : `${minRate} – ${maxRate} ${unit} / sq.in`
+                                      : minAmt === maxAmt
+                                      ? `₹${minAmt.toLocaleString("en-IN")}`
+                                      : `₹${minAmt.toLocaleString("en-IN")} – ₹${maxAmt.toLocaleString("en-IN")}`}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleShareWhatsApp(product.name)}
+                                  className="no-print inline-flex items-center gap-1 bg-[#25d366] hover:bg-[#20ba5a] text-[#09192e] px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs shrink-0"
+                                  title="Order on WhatsApp"
+                                >
+                                  <MessageCircle size={13} /> Order
+                                </button>
+                              </div>
 
-                            {/* Inquire on WhatsApp Button */}
-                            <button
-                              type="button"
-                              onClick={() => handleShareWhatsApp(product.name)}
-                              className="no-print inline-flex items-center gap-1 bg-[#25d366] hover:bg-[#20ba5a] text-[#09192e] px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs shrink-0"
-                              title="Ask quote for this product on WhatsApp"
-                            >
-                              <MessageCircle size={13} /> Order / Inquire
-                            </button>
-                          </div>
+                              {/* Trade vs Retail Rates Breakdown Badges */}
+                              <div className="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-slate-200/80 text-[11px]">
+                                <div className="bg-emerald-50/90 border border-emerald-200/80 rounded px-2 py-1 text-emerald-950">
+                                  <span className="block text-[9px] uppercase font-extrabold text-emerald-700">💼 Trade B2B</span>
+                                  <span className="font-black text-xs">
+                                    {isPerSqInch
+                                      ? `${unit === "₹" ? "₹" : ""}${b2bRate} ${unit === "paise" ? "paise" : ""}/in²`
+                                      : `₹${b2bAmt.toLocaleString("en-IN")}`}
+                                  </span>
+                                </div>
+                                <div className="bg-blue-50/90 border border-blue-200/80 rounded px-2 py-1 text-blue-950">
+                                  <span className="block text-[9px] uppercase font-extrabold text-blue-700">🏪 Retail</span>
+                                  <span className="font-black text-xs">
+                                    {isPerSqInch
+                                      ? `${unit === "₹" ? "₹" : ""}${retailRate} ${unit === "paise" ? "paise" : ""}/in²`
+                                      : `₹${retailAmt.toLocaleString("en-IN")}`}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -892,7 +1014,11 @@ export function PublicProductCatalog({
             </div>
           </section>
         </div>
-      </main>
+      </td>
+    </tr>
+  </tbody>
+</table>
+</main>
 
       {/* FLOATING WHATSAPP BUTTON FOR CLIENT MOBILE USERS */}
       <aside className="no-print fixed bottom-5 right-5 z-40" aria-label="WhatsApp quick contact">
@@ -909,19 +1035,6 @@ export function PublicProductCatalog({
           <span className="sm:hidden">WhatsApp</span>
         </a>
       </aside>
-
-      {/* DOCUMENT FOOTER FOR PRINT */}
-      <footer className="hidden print:block mt-8 pt-3 border-t-2 border-[#09192e] text-[9px] text-slate-600">
-        <div className="flex justify-between items-center">
-          <div>
-            <p className="font-bold text-[#09192e]">Mahavir Card · Ahmedabad Commercial Offset Printing</p>
-            <p>Direct Press &amp; Artwork Helpline: {business.whatsappPhone} / {business.primaryPhone} · {business.email}</p>
-          </div>
-          <div className="text-right font-mono">
-            mahavircard.in
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
