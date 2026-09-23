@@ -173,7 +173,9 @@ function drawFooters(ctx: Ctx) {
       thickness: 0.6,
       color: LINE,
     });
-    drawText(page, `${ctx.business.website}  |  ${ctx.business.primaryPhone}`, MARGIN, CONTENT_BOTTOM - 20, regular, 7, SLATE);
+    // Both numbers ride the repeating footer so any single page is enough to call from.
+    const footerContact = `${ctx.business.website}  |  ${ctx.business.primaryPhone}  |  ${ctx.business.whatsappPhone}`;
+    drawText(page, footerContact, MARGIN, CONTENT_BOTTOM - 20, regular, 7, SLATE);
     drawCentered(page, `GSTIN ${ctx.business.gstin}`, PAGE_W / 2, CONTENT_BOTTOM - 20, regular, 7, SLATE);
     drawRight(page, `Page ${index + 1} of ${total}`, PAGE_W - MARGIN, CONTENT_BOTTOM - 20, bold, 7, INK);
   });
