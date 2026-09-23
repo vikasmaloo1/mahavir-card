@@ -21,6 +21,10 @@ import { buildPriceView, stripPriceText } from "@/lib/catalog-pricing";
  * screenshots the browser — both this and /catalog render from the same CatalogModel.
  */
 
+// Card height is shared by the renderer and the row-pagination maths so a card is never
+// started in a space it cannot fully occupy.
+const CARD_H = 196;
+
 // A4 portrait, 72pt per inch.
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
@@ -239,8 +243,8 @@ function drawCover(ctx: Ctx, model: CatalogModel) {
 /** One product card. Returns the height consumed. */
 function drawProductCard(ctx: Ctx, page: PDFPage, product: CatalogProduct, x: number, top: number, width: number) {
   const { regular, bold } = ctx.fonts;
-  const imageH = 96;
-  const cardH = 214;
+  const imageH = 86;
+  const cardH = CARD_H;
   const y = top - cardH;
 
   page.drawRectangle({ x, y, width, height: cardH, color: WHITE, borderColor: LINE, borderWidth: 0.8 });
@@ -299,28 +303,28 @@ function drawProductCard(ctx: Ctx, page: PDFPage, product: CatalogProduct, x: nu
 
   // Price panel, pinned to the card foot so every card aligns.
   const view = buildPriceView(product, ctx.mode);
-  const panelY = y + 8;
-  const panelH = 44;
+  const panelY = y + 7;
+  const panelH = 38;
   page.drawRectangle({ x: x + pad, y: panelY, width: innerW, height: panelH, color: LIGHT });
 
   if (view.primary) {
-    drawText(page, (view.primaryLabel ?? "").toUpperCase(), x + pad + 7, panelY + panelH - 12, bold, 6.3, SLATE);
-    drawText(page, view.primary, x + pad + 7, panelY + panelH - 27, bold, 11.5, INK);
+    drawText(page, (view.primaryLabel ?? "").toUpperCase(), x + pad + 7, panelY + panelH - 11, bold, 6.3, SLATE);
+    drawText(page, view.primary, x + pad + 7, panelY + panelH - 25, bold, 11, INK);
     if (view.breakdown.length) {
       const parts = view.breakdown.map((row) => `${row.label} ${row.value}`).join("   |   ");
-      drawText(page, fit(parts, regular, 6.4, innerW - 14), x + pad + 7, panelY + 7, regular, 6.4, SLATE);
+      drawText(page, fit(parts, regular, 6.4, innerW - 14), x + pad + 6, panelY + 6, regular, 6.4, SLATE);
     } else {
-      drawText(page, fit(view.batchLabel, regular, 6.4, innerW - 14), x + pad + 7, panelY + 7, regular, 6.4, SLATE);
+      drawText(page, fit(view.batchLabel, regular, 6.4, innerW - 14), x + pad + 6, panelY + 6, regular, 6.4, SLATE);
     }
   } else {
     // Showroom: no monetary value exists on the view object at all.
-    drawText(page, "SHOWROOM DISPLAY", x + pad + 7, panelY + panelH - 12, bold, 6.3, GOLD);
-    drawText(page, "ENQUIRE FOR PRICING", x + pad + 7, panelY + panelH - 27, bold, 10.5, INK);
-    drawText(page, fit(view.batchLabel, regular, 6.4, innerW - 14), x + pad + 7, panelY + 7, regular, 6.4, SLATE);
+    drawText(page, "SHOWROOM DISPLAY", x + pad + 7, panelY + panelH - 11, bold, 6.3, GOLD);
+    drawText(page, "ENQUIRE FOR PRICING", x + pad + 7, panelY + panelH - 25, bold, 10, INK);
+    drawText(page, fit(view.batchLabel, regular, 6.4, innerW - 14), x + pad + 6, panelY + 6, regular, 6.4, SLATE);
   }
 
   if (view.bladeNote) {
-    drawRight(page, fit(view.bladeNote, regular, 6.2, innerW / 2), x + width - pad - 7, panelY + panelH + 5, regular, 6.2, SLATE);
+    drawRight(page, fit(view.bladeNote, regular, 6.2, innerW / 2), x + width - pad - 4, panelY + panelH + 4, regular, 6.2, SLATE);
   }
 
   return cardH;
@@ -331,8 +335,8 @@ function drawCategory(ctx: Ctx, category: CatalogCategory, startPage: PDFPage | 
   const columns = 2;
   const gutter = 16;
   const cardW = (PAGE_W - MARGIN * 2 - gutter * (columns - 1)) / columns;
-  const cardH = 214;
-  const rowGap = 14;
+  const cardH = CARD_H;
+  const rowGap = 13;
 
   let page = startPage ?? newPage(ctx, category.name);
   let cursor = CONTENT_TOP - 6;
