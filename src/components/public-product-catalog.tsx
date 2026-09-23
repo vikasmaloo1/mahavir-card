@@ -468,11 +468,20 @@ export function PublicProductCatalog({
 
             {/* Direct Booklet Download */}
             <a
-              href="/mahavir-card-catalogue.pdf"
-              download="Mahavir-Card-Complete-Catalogue.pdf"
+              href={
+                priceMode === "SHOWROOM"
+                  ? "/mahavir-card-showroom-catalogue.pdf"
+                  : "/mahavir-card-rate-catalogue.pdf"
+              }
+              download={
+                priceMode === "SHOWROOM"
+                  ? "Mahavir-Card-Showroom-Catalogue.pdf"
+                  : "Mahavir-Card-Rate-Catalogue.pdf"
+              }
               className="inline-flex items-center gap-1.5 bg-[#c59b27] hover:bg-[#b0871e] text-[#09192e] px-3.5 py-1.5 rounded-lg text-xs font-black shadow-xs transition-all"
             >
-              <Download size={14} /> Full Booklet PDF
+              <Download size={14} />{" "}
+              {priceMode === "SHOWROOM" ? "Showroom PDF (No Prices)" : "Full Booklet PDF"}
             </a>
 
             {/* Share Link */}
@@ -521,11 +530,22 @@ export function PublicProductCatalog({
                   <Phone size={16} /> Call: {business.whatsappPhone}
                 </a>
                 <a
-                  href="/mahavir-card-catalogue.pdf"
-                  download="Mahavir-Card-Complete-Catalogue.pdf"
+                  href={
+                    priceMode === "SHOWROOM"
+                      ? "/mahavir-card-showroom-catalogue.pdf"
+                      : "/mahavir-card-rate-catalogue.pdf"
+                  }
+                  download={
+                    priceMode === "SHOWROOM"
+                      ? "Mahavir-Card-Showroom-Catalogue.pdf"
+                      : "Mahavir-Card-Rate-Catalogue.pdf"
+                  }
                   className="inline-flex items-center gap-2 text-slate-300 hover:text-white underline underline-offset-4 text-xs font-semibold py-1"
                 >
-                  <Download size={14} /> Download 12-Page Illustrated Booklet (.PDF)
+                  <Download size={14} />{" "}
+                  {priceMode === "SHOWROOM"
+                    ? "Download Showroom Catalogue (No Prices .PDF)"
+                    : "Download 12-Page Illustrated Booklet (.PDF)"}
                 </a>
               </div>
             </div>
@@ -749,7 +769,9 @@ export function PublicProductCatalog({
                               )}
                               {product.bladeCharge && (
                                 <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-medium">
-                                  Half Blade: ₹{product.bladeCharge}
+                                  {priceMode === "SHOWROOM"
+                                    ? "Half Blade Supported"
+                                    : `Half Blade: ₹${product.bladeCharge}`}
                                 </span>
                               )}
                             </div>
