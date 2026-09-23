@@ -3,6 +3,7 @@ import "server-only";
 import { and, asc, eq, inArray } from "drizzle-orm";
 
 import { b2bRateOverrides } from "@/lib/b2b-rate-catalog";
+import { catalogCustomServices, type CatalogCustomService } from "@/lib/catalog-custom-services";
 import { db } from "@/lib/db/server";
 import {
   businessSettings,
@@ -19,6 +20,8 @@ import { rateCatalog } from "@/lib/rate-catalog";
 
 // The mode primitives live in catalog-pricing (no server-only deps) so client components and
 // tests can use them; re-exported here because this module is the catalogue entry point.
+export type { CatalogCustomService };
+
 export {
   CATALOG_MODE_LABELS,
   CATALOG_PRICE_MODES,
@@ -77,6 +80,8 @@ export type CatalogModel = {
   categories: CatalogCategory[];
   businessInfo: CatalogBusinessInfo;
   totalProducts: number;
+  /** Quote-based commercial work shown after the rated products, in every mode. */
+  customServices: CatalogCustomService[];
   /** Products that had no real photo — surfaced so missing imagery is reported, not faked. */
   productsWithoutImages: string[];
 };
@@ -201,6 +206,7 @@ export async function getCatalogModel(): Promise<CatalogModel> {
   return {
     categories,
     businessInfo,
+    customServices: catalogCustomServices,
     totalProducts: categories.reduce((sum, category) => sum + category.products.length, 0),
     productsWithoutImages,
   };

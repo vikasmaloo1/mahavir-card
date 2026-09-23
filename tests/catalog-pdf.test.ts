@@ -8,6 +8,7 @@ import {
   stripPriceText,
   type PricedProduct,
 } from "../src/lib/catalog-pricing";
+import { catalogCustomServices } from "../src/lib/catalog-custom-services";
 import { rateCatalog } from "../src/lib/rate-catalog";
 
 const batchProduct: PricedProduct = {
@@ -86,4 +87,19 @@ test("no catalogue description leaks a price once sanitised for showroom", () =>
 test("catalogue mode parsing rejects anything unexpected", () => {
   for (const mode of CATALOG_PRICE_MODES) assert.equal(isCatalogPriceMode(mode), true);
   for (const bad of ["range", "", "ADMIN", null, undefined, 1]) assert.equal(isCatalogPriceMode(bad), false);
+});
+
+test("custom services are complete and carry no pricing in any mode", () => {
+  assert.equal(catalogCustomServices.length, 8);
+  const keys = new Set(catalogCustomServices.map((s) => s.key));
+  assert.equal(keys.size, 8, "keys are unique so the icon map cannot collide");
+
+  for (const service of catalogCustomServices) {
+    assert.ok(service.title && service.subtitle && service.sizes && service.turnaround, `${service.key} is complete`);
+    assert.equal(service.specs.length, 3, `${service.key} has its three spec lines`);
+    assert.match(service.image, /^\/images\//, `${service.key} points at a local asset`);
+    // These are quoted per specification, so no mode needs to suppress anything.
+    const text = [service.title, service.subtitle, service.sizes, service.turnaround, ...service.specs].join(" ");
+    assert.doesNotMatch(text, MONEY, `${service.key} must not carry a price`);
+  }
 });

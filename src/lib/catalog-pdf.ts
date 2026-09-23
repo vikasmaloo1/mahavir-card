@@ -9,6 +9,7 @@ import {
   CATALOG_MODE_LABELS,
   type CatalogBusinessInfo,
   type CatalogCategory,
+  type CatalogCustomService,
   type CatalogModel,
   type CatalogPriceMode,
   type CatalogProduct,
@@ -367,6 +368,86 @@ function drawCategory(ctx: Ctx, category: CatalogCategory, startPage: PDFPage | 
   return { page, cursor };
 }
 
+/**
+ * Custom / commercial work, laid out as full-width rows because each entry carries three
+ * specification lines that will not fit a product-card column. These items are quoted per
+ * specification, so they are identical in every mode — there is no price to suppress.
+ */
+const SERVICE_H = 126;
+
+function drawCustomServiceRow(ctx: Ctx, page: PDFPage, service: CatalogCustomService, top: number) {
+  const { regular, bold } = ctx.fonts;
+  const width = PAGE_W - MARGIN * 2;
+  const y = top - SERVICE_H;
+  const imageW = 148;
+
+  page.drawRectangle({ x: MARGIN, y, width, height: SERVICE_H, color: WHITE, borderColor: LINE, borderWidth: 0.8 });
+
+  const image = ctx.images.get(service.image);
+  page.drawRectangle({ x: MARGIN, y, width: imageW, height: SERVICE_H, color: LIGHT });
+  if (image) {
+    const { w, h, dx, dy } = containRect(image, imageW, SERVICE_H);
+    page.drawImage(image, { x: MARGIN + dx, y: y + dy, width: w, height: h });
+  } else {
+    drawCentered(page, "PHOTOGRAPH ON REQUEST", MARGIN + imageW / 2, y + SERVICE_H / 2, regular, 7, SLATE);
+  }
+  page.drawLine({ start: { x: MARGIN + imageW, y }, end: { x: MARGIN + imageW, y: top }, thickness: 0.8, color: LINE });
+
+  const textX = MARGIN + imageW + 12;
+  const innerW = width - imageW - 24;
+  let cursor = top - 16;
+
+  drawText(page, fit(service.title, bold, 10, innerW), textX, cursor, bold, 10, INK);
+  cursor -= 11;
+  drawText(page, fit(service.subtitle, regular, 7, innerW), textX, cursor, regular, 7, GOLD);
+  cursor -= 13;
+
+  for (const spec of service.specs) {
+    const lines = wrap(spec, regular, 7, innerW - 8, 2);
+    page.drawCircle({ x: textX + 2, y: cursor + 2.5, size: 1.4, color: GOLD });
+    lines.forEach((line, i) => drawText(page, line, textX + 8, cursor - i * 8.5, regular, 7, SLATE));
+    cursor -= lines.length * 8.5 + 2.5;
+  }
+
+  // Footer chips: sizes, turnaround, and the quote CTA that replaces a rate.
+  const chipY = y + 8;
+  let chipX = textX;
+  for (const chip of [service.sizes, service.turnaround]) {
+    const label = fit(chip, regular, 6.4, innerW / 2);
+    const chipW = regular.widthOfTextAtSize(label, 6.4) + 10;
+    if (chipX + chipW > MARGIN + width - 12) break;
+    page.drawRectangle({ x: chipX, y: chipY - 3, width: chipW, height: 12, color: LIGHT });
+    drawText(page, label, chipX + 5, chipY, regular, 6.4, SLATE);
+    chipX += chipW + 5;
+  }
+  drawRight(page, "ENQUIRE FOR CUSTOM SPEC QUOTE", MARGIN + width - 12, chipY, bold, 6.4, GOLD);
+
+  return SERVICE_H;
+}
+
+function drawCustomServices(ctx: Ctx, services: CatalogCustomService[]) {
+  const { regular, bold } = ctx.fonts;
+  const section = "Custom & Specialty Print Solutions";
+  let page = newPage(ctx, section);
+  let cursor = CONTENT_TOP - 6;
+
+  page.drawRectangle({ x: MARGIN, y: cursor - 34, width: PAGE_W - MARGIN * 2, height: 34, color: INK });
+  page.drawRectangle({ x: MARGIN, y: cursor - 34, width: 4, height: 34, color: GOLD });
+  drawText(page, section.toUpperCase(), MARGIN + 14, cursor - 15, bold, 13, WHITE);
+  drawRight(page, `${services.length} solutions`, PAGE_W - MARGIN - 12, cursor - 15, regular, 8, GOLD);
+  drawText(page, "Quoted per specification - share your requirement for a costing", MARGIN + 14, cursor - 27, regular, 7, rgb(0.72, 0.77, 0.83));
+  cursor -= 34 + 14;
+
+  for (const service of services) {
+    if (cursor - SERVICE_H < CONTENT_BOTTOM) {
+      page = newPage(ctx, `${section} (cont.)`);
+      cursor = CONTENT_TOP - 6;
+    }
+    drawCustomServiceRow(ctx, page, service, cursor);
+    cursor -= SERVICE_H + 12;
+  }
+}
+
 function drawClosing(ctx: Ctx, model: CatalogModel) {
   const page = newPage(ctx, "Artwork & Contact");
   const { regular, bold } = ctx.fonts;
@@ -448,6 +529,7 @@ export async function generateCatalogPdf(model: CatalogModel, mode: CatalogPrice
   const imageUrls = [
     "/images/mahavir-card-logo.jpeg",
     ...model.categories.flatMap((category) => category.products.map((product) => product.imageUrl)),
+    ...model.customServices.map((service) => service.image),
   ];
   const images = await loadImages(pdf, imageUrls);
 
@@ -458,6 +540,7 @@ export async function generateCatalogPdf(model: CatalogModel, mode: CatalogPrice
     if (!category.products.length) continue;
     drawCategory(ctx, category, null);
   }
+  if (model.customServices.length) drawCustomServices(ctx, model.customServices);
   drawClosing(ctx, model);
   drawFooters(ctx);
 
