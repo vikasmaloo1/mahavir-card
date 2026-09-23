@@ -57,6 +57,7 @@ ENV_SS_100 = get_b64("public/images/products/envelope-100-ss.jpg")
 COVER_A4 = get_b64("public/images/products/a4-art-paper-cover.jpg")
 
 # Brochures
+EXEC_BOND = get_b64("public/images/products/executive-bond-100-gsm.jpg")
 BROCH_A4_S = get_b64("public/images/products/brochure-unlaminated-matte.jpg")
 BROCH_A4_FB = get_b64("public/images/products/brochure-unlaminated-matte.jpg")
 BROCH_A4_LAM = get_b64("public/images/products/trifold-brochure-open.jpg")
@@ -633,10 +634,10 @@ def generate_catalogue_html(is_showroom):
 
     # Page 7: Marketing Brochures
     p7_cards = [
+        render_product_card("Executive Bond 100 GSM", "100 GSM luxury Executive Bond paper with smooth texture for corporate profiles & brochures.", EXEC_BOND, ["100 GSM Bond", "Executive Finish", "8.5 × 11.25 in", "3-4 Days"], is_showroom, "₹1,800", "₹1,700", "₹1,700 – ₹1,800"),
         render_product_card("250 GSM A4 Single Side Brochure", "Single-sided 4-color offset flyer on 250 GSM coated art card.", BROCH_A4_S, ["250 GSM Art Card", "Single Side", "8.5 × 11.25 in", "4-5 Days"], is_showroom, "₹2,800", "₹2,600", "₹2,600 – ₹2,800"),
         render_product_card("250 GSM A4 Both Side Unlaminated", "Dual-side print on 250 GSM art card without lamination, bi-fold/tri-fold ready.", BROCH_A4_FB, ["250 GSM Art Card", "Both Side Print", "Crease Friendly", "4-5 Days"], is_showroom, "₹3,300", "₹3,000", "₹3,000 – ₹3,300"),
         render_product_card("250 GSM A4 Both Side Laminated", "Dual-side print with full thermal lamination for premium product catalogues.", BROCH_A4_LAM, ["250 GSM Board", "Dual Laminated", "Tear Proof", "5-7 Days"], is_showroom, "₹3,800", "₹3,500", "₹3,500 – ₹3,800"),
-        render_product_card("250 GSM A8 Tearable Single Side", "Pocket sized mini-brochure (8.5 × 5.5 in) on 250 GSM card.", BROCH_A8_S, ["250 GSM Art Card", "A8 Pocket Size", "Single Side", "4-5 Days"], is_showroom, "₹1,400", "₹1,300", "₹1,300 – ₹1,400"),
         render_product_card("250 GSM A8 Tearable Front-Back", "Pocket-sized brochure with full 4-color printing on front and back.", BROCH_A8_FB, ["250 GSM Art Card", "A8 Pocket Size", "Front & Back", "4-5 Days"], is_showroom, "₹1,650", "₹1,500", "₹1,500 – ₹1,650"),
         render_product_card("250 GSM A8 Lamination Front-Back", "Pocket brochure with dual-side thermal lamination for durable menu cards & guides.", BROCH_A8_LAM, ["250 GSM Board", "Dual Laminated", "A8 Size", "4-5 Days"], is_showroom, "₹1,900", "₹1,800", "₹1,800 – ₹1,900"),
     ]

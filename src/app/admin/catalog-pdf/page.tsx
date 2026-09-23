@@ -60,6 +60,7 @@ const productSlugImageMap: Record<string, string> = {
   "brochure-a8-250-tearable-single-side": "/images/products/a8-mini-brochure.jpg",
   "brochure-a8-250-tearable-front-back": "/images/products/brochure-a8-pocket.jpg",
   "brochure-a8-250-lamination-front-back": "/images/products/trifold-brochure.jpg",
+  "executive-bond-100-gsm": "/images/products/executive-bond-100-gsm.jpg",
   "leaflet-a4-130-gsm-single-side": "/images/products/flyer-130-art-paper.jpg",
   "leaflet-a4-130-gsm-front-back": "/images/products/leaflet.jpg",
   "leaflet-a4-170-gsm-single-or-front-back": "/images/products/flyer-170-art-paper.jpg",

@@ -102,10 +102,14 @@ export const rateCatalog: RateCatalogCategory[] = [
       fixed("brochure-a8-250-tearable-single-side", "250 GSM A8 Tearable Single Side", 1300, "4-5 working days", "8.5 × 5.5 in"),
       fixed("brochure-a8-250-tearable-front-back", "250 GSM A8 Tearable Front Back", 1500, "4-5 working days", "8.5 × 5.5 in"),
       fixed("brochure-a8-250-lamination-front-back", "250 GSM A8 Lamination Front Back", 1800, "4-5 working days", "8.5 × 5.5 in"),
+      fixed("executive-bond-100-gsm", "Executive Bond 100 GSM", 1700, "3-4 working days", "8.5 × 11.25 in"),
     ].map((item) => ({
       ...item,
       quoteable: false,
-      shortDescription: `${item.name} · 250 GSM Art Card · ${item.size}`,
+      shortDescription:
+        item.slug === "executive-bond-100-gsm"
+          ? "Executive Bond 100 GSM · Premium Bond Paper · 8.5 × 11.25 in"
+          : `${item.name} · 250 GSM Art Card · ${item.size}`,
     })),
   },
   {

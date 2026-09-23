@@ -47,6 +47,7 @@ export const b2bRateOverrides: Record<string, { amount?: number; ratePerSqInch?:
   "brochure-a8-250-tearable-single-side": { amount: 1400 },
   "brochure-a8-250-tearable-front-back": { amount: 1650 },
   "brochure-a8-250-lamination-front-back": { amount: 1900 },
+  "executive-bond-100-gsm": { amount: 1800 },
 
   // Leaflet
   "leaflet-a4-130-gsm-single-side": { amount: 1800 },

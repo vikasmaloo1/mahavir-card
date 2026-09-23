@@ -466,22 +466,13 @@ export function PublicProductCatalog({
               <Printer size={14} /> Print / Save PDF
             </button>
 
-            {/* Direct Booklet Download */}
+            {/* Catalogue PDF, generated live from the same data for the selected mode */}
             <a
-              href={
-                priceMode === "SHOWROOM"
-                  ? "/mahavir-card-showroom-catalogue.pdf"
-                  : "/mahavir-card-rate-catalogue.pdf"
-              }
-              download={
-                priceMode === "SHOWROOM"
-                  ? "Mahavir-Card-Showroom-Catalogue.pdf"
-                  : "Mahavir-Card-Rate-Catalogue.pdf"
-              }
+              href={`/api/catalog/pdf?mode=${priceMode}`}
               className="inline-flex items-center gap-1.5 bg-[#c59b27] hover:bg-[#b0871e] text-[#09192e] px-3.5 py-1.5 rounded-lg text-xs font-black shadow-xs transition-all"
             >
               <Download size={14} />{" "}
-              {priceMode === "SHOWROOM" ? "Showroom PDF (No Prices)" : "Full Booklet PDF"}
+              {priceMode === "SHOWROOM" ? "Showroom PDF (No Prices)" : "Download Catalogue PDF"}
             </a>
 
             {/* Share Link */}
@@ -530,22 +521,13 @@ export function PublicProductCatalog({
                   <Phone size={16} /> Call: {business.whatsappPhone}
                 </a>
                 <a
-                  href={
-                    priceMode === "SHOWROOM"
-                      ? "/mahavir-card-showroom-catalogue.pdf"
-                      : "/mahavir-card-rate-catalogue.pdf"
-                  }
-                  download={
-                    priceMode === "SHOWROOM"
-                      ? "Mahavir-Card-Showroom-Catalogue.pdf"
-                      : "Mahavir-Card-Rate-Catalogue.pdf"
-                  }
+                  href={`/api/catalog/pdf?mode=${priceMode}`}
                   className="inline-flex items-center gap-2 text-slate-300 hover:text-white underline underline-offset-4 text-xs font-semibold py-1"
                 >
                   <Download size={14} />{" "}
                   {priceMode === "SHOWROOM"
                     ? "Download Showroom Catalogue (No Prices .PDF)"
-                    : "Download 12-Page Illustrated Booklet (.PDF)"}
+                    : "Download Full Product Catalogue (.PDF)"}
                 </a>
               </div>
             </div>
