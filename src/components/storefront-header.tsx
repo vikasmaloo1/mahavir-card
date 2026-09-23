@@ -45,10 +45,10 @@ export async function StorefrontHeader() {
   }
 
   const navigation = session ? [
-    ["Home", "/"], ["Order now", "/products"], ["Order status", "/account#orders"],
+    ["Home", "/"], ["Order now", "/products"], ["Catalogue", "/catalog"], ["Order status", "/account#orders"],
     ["Wallet / balance", "/account/wallet"], ["Account", "/account"],
   ] : [
-    ["Home", "/"], ["Order now", "/products"], ["Request quote", "/quote"],
+    ["Home", "/"], ["Order now", "/products"], ["Catalogue", "/catalog"], ["Request quote", "/quote"],
   ];
   return (
     <header className="sticky top-0 z-30 border-b border-[var(--mc-line)] border-t-[3px] border-t-[var(--mc-accent)] bg-[var(--mc-paper)]/95 shadow-[0_8px_28px_rgba(16,33,63,0.05)] backdrop-blur">

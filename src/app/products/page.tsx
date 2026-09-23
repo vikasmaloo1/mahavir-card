@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ProductsBrowser } from "@/components/products-browser";
 import { CustomerNotices } from "@/components/customer-notices";
 import { PromotionalBanner } from "@/components/promotional-banner";
@@ -99,6 +100,25 @@ export default async function ProductsPage({ searchParams }: PageProps<"/product
           <PromotionalBanner placement="CATALOG_TOP" />
         </div>
       ) : null}
+      <div className="mx-auto max-w-[1440px] px-4 pt-4 lg:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#cbd5e1] bg-gradient-to-r from-[#09192e] to-[#132c50] p-4 text-white shadow-xs">
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-[#c59b27] text-[#09192e] font-black text-lg shrink-0">
+              📖
+            </span>
+            <div>
+              <p className="text-sm font-extrabold text-white">Looking for the complete rate list &amp; product photos?</p>
+              <p className="text-xs text-slate-300">Browse live price ranges, authentic finishes &amp; download PDF catalogue · Helpline: +91 79847 52154</p>
+            </div>
+          </div>
+          <Link
+            href="/catalog"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#c59b27] px-4 py-2 text-xs font-black text-[#09192e] hover:bg-[#b0871e] transition-all shadow-xs shrink-0"
+          >
+            View &amp; Download Catalogue &rarr;
+          </Link>
+        </div>
+      </div>
       <Suspense fallback={<main className="min-h-screen p-8 text-sm text-[var(--mc-muted)]">Loading products...</main>}>
         <ProductsBrowser key={canonicalParams.toString()} initialFilters={initialFilters} isB2B={isB2B} walletBalance={isB2B ? customer?.availableCredit ?? null : null} isLoggedIn={isLoggedIn} />
       </Suspense>

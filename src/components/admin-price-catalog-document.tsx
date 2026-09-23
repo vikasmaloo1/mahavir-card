@@ -81,7 +81,7 @@ const defaultBusinessInfo: BusinessInfo = {
   city: "Ahmedabad",
   state: "Gujarat",
   postalCode: "380001",
-  phone: "+91 94263 71150",
+  phone: "+91 79847 52154 / +91 94263 71150",
   email: "mahavircard2011@gmail.com",
   website: "www.mahavircard.in",
   gstin: "24AIUPJ2271L1ZV",
@@ -134,7 +134,7 @@ export function AdminPriceCatalogDocument({
 }: AdminPriceCatalogDocumentProps) {
   const business = { ...defaultBusinessInfo, ...propBusiness };
 
-  const [priceMode, setPriceMode] = useState<"BOTH" | "RETAIL" | "B2B">("BOTH");
+  const [priceMode, setPriceMode] = useState<"BOTH" | "RETAIL" | "B2B" | "RANGE">("BOTH");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [showQuotable, setShowQuotable] = useState<boolean>(true);
 
@@ -161,6 +161,14 @@ export function AdminPriceCatalogDocument({
             >
               <ArrowLeft size={14} /> Back to Products
             </Link>
+            <Link
+              href="/catalog"
+              target="_blank"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#c59b27] hover:text-[#0f223d] border border-[#ecd9b5] px-2.5 py-1.5 rounded bg-[#fcf6ea] hover:bg-[#f8eed8]"
+              title="Open public client-ready catalogue"
+            >
+              <BookOpen size={14} /> Client Catalogue (Public)
+            </Link>
             <div className="h-4 w-px bg-[#cbd5e1] hidden sm:block" />
             <div>
               <h1 className="text-sm font-bold text-[#0f223d] leading-tight">
@@ -175,6 +183,17 @@ export function AdminPriceCatalogDocument({
           <div className="flex flex-wrap items-center gap-2">
             {/* Price Mode Selector */}
             <div className="flex items-center rounded border border-[#cbd5e1] bg-[#f8fafc] p-0.5 text-xs font-medium">
+              <button
+                type="button"
+                onClick={() => setPriceMode("RANGE")}
+                className={`px-2.5 py-1 rounded transition-colors ${
+                  priceMode === "RANGE"
+                    ? "bg-[#0f223d] text-white font-bold"
+                    : "text-[#475569] hover:text-black"
+                }`}
+              >
+                Price Ranges
+              </button>
               <button
                 type="button"
                 onClick={() => setPriceMode("BOTH")}
@@ -396,7 +415,7 @@ export function AdminPriceCatalogDocument({
                       Khadia Golwad, Ahmedabad
                     </p>
                     <p className="text-[8.5px] text-[#94a3b8] mt-0.5">
-                      Direct WhatsApp: +91 94263 71150
+                      Direct WhatsApp: +91 79847 52154 / +91 94263 71150
                     </p>
                   </div>
                 </div>
@@ -446,38 +465,61 @@ export function AdminPriceCatalogDocument({
                             return (
                               <div
                                 key={p.slug}
-                                className="border-2 border-[#cbd5e1] rounded-sm p-4 bg-white flex flex-col justify-between page-break-inside-avoid shadow-xs hover:border-[#0f223d] transition-colors"
+                                className="border-2 border-[#cbd5e1] rounded-sm p-3.5 bg-white flex flex-col justify-between page-break-inside-avoid shadow-xs hover:border-[#0f223d] transition-colors"
                               >
-                                <div>
-                                  {/* PRODUCT NAME: SIZED BIG & BOLD */}
-                                  <h3 className="text-[14px] sm:text-[15px] font-black uppercase text-[#0f223d] leading-snug tracking-tight">
-                                    {p.name}
-                                  </h3>
-
-                                  {/* IF QUANTITY DIFFERS FROM CATEGORY BASE (e.g. 1000 in Premium Card), DISPLAY IN BRACKET */}
-                                  {isDifferentQty && (
-                                    <div className="text-[12px] font-black text-[#0f223d] mt-0.5">
-                                      ({p.referenceQuantity?.toLocaleString("en-IN")} Qty)
+                                <div className="flex gap-3">
+                                  {/* PRODUCT PHOTO */}
+                                  {p.imageUrl && (
+                                    <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded border border-[#cbd5e1] overflow-hidden bg-slate-100 shrink-0">
+                                      <Image
+                                        src={p.imageUrl}
+                                        alt={p.name}
+                                        fill
+                                        className="object-cover"
+                                        unoptimized
+                                      />
                                     </div>
                                   )}
 
-                                  {/* ADD-ON IN BRACKETS UNDER PRODUCT NAME */}
-                                  {addonNote && (
-                                    <div className="text-[11.5px] font-bold text-[#b45309] mt-1 italic">
-                                      {addonNote}
-                                    </div>
-                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    {/* PRODUCT NAME: SIZED BIG & BOLD */}
+                                    <h3 className="text-[13px] sm:text-[14px] font-black uppercase text-[#0f223d] leading-snug tracking-tight">
+                                      {p.name}
+                                    </h3>
 
-                                  {/* Optional Size */}
-                                  {p.size && (
-                                    <div className="text-[11px] text-[#475569] font-medium mt-1">
-                                      Size: <strong className="text-[#1e293b]">{p.size}</strong>
-                                    </div>
-                                  )}
+                                    {/* IF QUANTITY DIFFERS FROM CATEGORY BASE */}
+                                    {isDifferentQty && (
+                                      <div className="text-[11.5px] font-black text-[#0f223d] mt-0.5">
+                                        ({p.referenceQuantity?.toLocaleString("en-IN")} Qty)
+                                      </div>
+                                    )}
+
+                                    {/* ADD-ON IN BRACKETS UNDER PRODUCT NAME */}
+                                    {addonNote && (
+                                      <div className="text-[11px] font-bold text-[#b45309] mt-0.5 italic">
+                                        {addonNote}
+                                      </div>
+                                    )}
+
+                                    {/* Optional Size */}
+                                    {p.size && (
+                                      <div className="text-[10.5px] text-[#475569] font-medium mt-0.5">
+                                        Size: <strong className="text-[#1e293b]">{p.size}</strong>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
 
-                                {/* PRICE: INCREASED SIZE, SIMPLY WRITE "Rate", NO QTY LABEL */}
-                                <div className="mt-3.5 pt-2.5 border-t border-[#e2e8f0]">
+                                {/* PRICE: INCREASED SIZE */}
+                                <div className="mt-3 pt-2 border-t border-[#e2e8f0]">
+                                  {priceMode === "RANGE" && (
+                                    <div className="text-[16px] sm:text-[18px] font-black text-[#0f223d]">
+                                      {p.ruleType === "PER_SQ_INCH"
+                                        ? `Range: ${Math.min(p.ratePerSqInch ?? 0, p.b2bRatePerSqInch ?? p.ratePerSqInch ?? 0)} – ${Math.max(p.ratePerSqInch ?? 0, p.b2bRatePerSqInch ?? p.ratePerSqInch ?? 0)} ${p.rateUnit === "PAISE" ? "paise" : "₹"} / sq.in`
+                                        : `Range: ₹${Math.min(p.amount ?? 0, p.b2bAmount ?? p.amount ?? 0).toLocaleString("en-IN")} – ₹${Math.max(p.amount ?? 0, p.b2bAmount ?? p.amount ?? 0).toLocaleString("en-IN")}`}
+                                    </div>
+                                  )}
+
                                   {priceMode === "B2B" && (
                                     <div className="text-[18px] sm:text-[20px] font-black text-[#0f223d]">
                                       Rate: ₹{tradeRate}
@@ -491,7 +533,7 @@ export function AdminPriceCatalogDocument({
                                   )}
 
                                   {priceMode === "BOTH" && (
-                                    <div className="flex items-baseline justify-between gap-2 text-[15px] sm:text-[16px] font-black">
+                                    <div className="flex items-baseline justify-between gap-2 text-[14px] sm:text-[15px] font-black">
                                       <span className="text-[#0f223d]">
                                         Retail: ₹{retailRate}
                                       </span>
@@ -521,7 +563,7 @@ export function AdminPriceCatalogDocument({
                           On-Demand Quotable Fabrication & Publications
                         </h2>
                         <p className="text-[10px] text-[#64748b] mt-0.5">
-                          Direct Quote Line: +91 94263 71150 · mahavircard2011@gmail.com
+                          Direct Quote Line: +91 79847 52154 / +91 94263 71150 · mahavircard2011@gmail.com
                         </p>
                       </div>
 
@@ -730,7 +772,7 @@ export function AdminPriceCatalogDocument({
                         <p className="font-bold text-[#0f223d]">Artwork & File Uploads:</p>
                         <p>Web: mahavircard.in</p>
                         <p>Email: mahavircard2011@gmail.com</p>
-                        <p>WhatsApp: +91 94263 71150</p>
+                        <p>WhatsApp: +91 79847 52154</p>
                       </div>
                     </div>
                   </section>

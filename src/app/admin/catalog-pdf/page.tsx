@@ -197,7 +197,7 @@ export default async function AdminCatalogPdfPage() {
     city: settingsRow?.city || "Ahmedabad",
     state: settingsRow?.state || "Gujarat",
     postalCode: settingsRow?.postalCode || "380001",
-    phone: settingsRow?.phone || "+91 94263 71150",
+    phone: "+91 79847 52154 / " + (settingsRow?.phone || "+91 94263 71150"),
     email: settingsRow?.email || "mahavircard2011@gmail.com",
     website: "www.mahavircard.in",
     gstin: settingsRow?.gstNumber || "24AIUPJ2271L1ZV",
