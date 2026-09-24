@@ -30,6 +30,7 @@ import {
   FolderOpen,
   ShieldCheck,
   Info,
+  Upload,
 } from "lucide-react";
 
 export type PublicCatalogProduct = {
@@ -682,62 +683,93 @@ export function PublicProductCatalog({
                                   {isPerSqInch ? "Custom area pricing" : `${qty.toLocaleString("en-IN")} pcs standard batch`} · Inquire for quotation
                                 </p>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => handleShareWhatsApp(product.name)}
-                                className="no-print inline-flex items-center gap-1 bg-[#25d366] hover:bg-[#20ba5a] text-[#09192e] px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs shrink-0"
-                                title="Inquire on WhatsApp"
-                              >
-                                <MessageCircle size={13} /> Order / Inquire
-                              </button>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <Link
+                                  href={`/catalog/${product.slug}`}
+                                  className="no-print inline-flex items-center gap-1 bg-[#09192e] hover:bg-[#152e4d] text-white px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs"
+                                  title="Upload CorelDRAW (.CDR) Artwork & Order"
+                                >
+                                  <Upload size={13} /> Upload Artwork
+                                </Link>
+                                <button
+                                  type="button"
+                                  onClick={() => handleShareWhatsApp(product.name)}
+                                  className="no-print inline-flex items-center gap-1 bg-[#25d366] hover:bg-[#20ba5a] text-[#09192e] px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs"
+                                  title="Inquire on WhatsApp"
+                                >
+                                  <MessageCircle size={13} /> WhatsApp
+                                </button>
+                              </div>
                             </div>
                           ) : priceMode === "B2B" ? (
-                            <div className="flex items-end justify-between gap-2">
-                              <div>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded border border-emerald-200">
-                                    💼 Trade Wholesale
-                                  </span>
-                                  <span className="text-[10px] text-slate-500">{priceSubLabel}</span>
+                            <div className="space-y-2.5">
+                              <div className="flex items-end justify-between gap-2">
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded border border-emerald-200">
+                                      💼 Trade Wholesale
+                                    </span>
+                                    <span className="text-[10px] text-slate-500">{priceSubLabel}</span>
+                                  </div>
+                                  <div className="text-xl font-black text-[#09192e] tracking-tight mt-1">
+                                    {isPerSqInch
+                                      ? `${unit === "₹" ? "₹" : ""}${b2bRate} ${unit === "paise" ? "paise" : ""} / sq.in`
+                                      : `₹${b2bAmt.toLocaleString("en-IN")}`}
+                                  </div>
                                 </div>
-                                <div className="text-xl font-black text-[#09192e] tracking-tight mt-1">
-                                  {isPerSqInch
-                                    ? `${unit === "₹" ? "₹" : ""}${b2bRate} ${unit === "paise" ? "paise" : ""} / sq.in`
-                                    : `₹${b2bAmt.toLocaleString("en-IN")}`}
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <Link
+                                    href={`/catalog/${product.slug}`}
+                                    className="no-print inline-flex items-center gap-1 bg-[#09192e] hover:bg-[#152e4d] text-white px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs"
+                                    title="Upload CorelDRAW (.CDR) Artwork & Order"
+                                  >
+                                    <Upload size={13} /> Upload Artwork
+                                  </Link>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleShareWhatsApp(product.name)}
+                                    className="no-print inline-flex items-center gap-1 bg-[#25d366] hover:bg-[#20ba5a] text-[#09192e] px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs"
+                                    title="Order on WhatsApp"
+                                  >
+                                    <MessageCircle size={13} /> WhatsApp
+                                  </button>
                                 </div>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => handleShareWhatsApp(product.name)}
-                                className="no-print inline-flex items-center gap-1 bg-[#25d366] hover:bg-[#20ba5a] text-[#09192e] px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs shrink-0"
-                                title="Order on WhatsApp"
-                              >
-                                <MessageCircle size={13} /> Order / Inquire
-                              </button>
                             </div>
                           ) : priceMode === "RETAIL" ? (
-                            <div className="flex items-end justify-between gap-2">
-                              <div>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[10px] uppercase font-bold tracking-wider text-blue-800 bg-blue-100/90 px-1.5 py-0.5 rounded border border-blue-200">
-                                    🏪 Standard Retail
-                                  </span>
-                                  <span className="text-[10px] text-slate-500">{priceSubLabel}</span>
+                            <div className="space-y-2.5">
+                              <div className="flex items-end justify-between gap-2">
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] uppercase font-bold tracking-wider text-blue-800 bg-blue-100/90 px-1.5 py-0.5 rounded border border-blue-200">
+                                      🏪 Standard Retail
+                                    </span>
+                                    <span className="text-[10px] text-slate-500">{priceSubLabel}</span>
+                                  </div>
+                                  <div className="text-xl font-black text-[#09192e] tracking-tight mt-1">
+                                    {isPerSqInch
+                                      ? `${unit === "₹" ? "₹" : ""}${retailRate} ${unit === "paise" ? "paise" : ""} / sq.in`
+                                      : `₹${retailAmt.toLocaleString("en-IN")}`}
+                                  </div>
                                 </div>
-                                <div className="text-xl font-black text-[#09192e] tracking-tight mt-1">
-                                  {isPerSqInch
-                                    ? `${unit === "₹" ? "₹" : ""}${retailRate} ${unit === "paise" ? "paise" : ""} / sq.in`
-                                    : `₹${retailAmt.toLocaleString("en-IN")}`}
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <Link
+                                    href={`/catalog/${product.slug}`}
+                                    className="no-print inline-flex items-center gap-1 bg-[#09192e] hover:bg-[#152e4d] text-white px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs"
+                                    title="Upload CorelDRAW (.CDR) Artwork & Order"
+                                  >
+                                    <Upload size={13} /> Upload Artwork
+                                  </Link>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleShareWhatsApp(product.name)}
+                                    className="no-print inline-flex items-center gap-1 bg-[#25d366] hover:bg-[#20ba5a] text-[#09192e] px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs"
+                                    title="Order on WhatsApp"
+                                  >
+                                    <MessageCircle size={13} /> WhatsApp
+                                  </button>
                                 </div>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => handleShareWhatsApp(product.name)}
-                                className="no-print inline-flex items-center gap-1 bg-[#25d366] hover:bg-[#20ba5a] text-[#09192e] px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs shrink-0"
-                                title="Order on WhatsApp"
-                              >
-                                <MessageCircle size={13} /> Order / Inquire
-                              </button>
                             </div>
                           ) : (
                             /* RANGE MODE: Comprehensive view showing Range, B2B wholesale, and Retail */
@@ -757,14 +789,23 @@ export function PublicProductCatalog({
                                       : `₹${minAmt.toLocaleString("en-IN")} – ₹${maxAmt.toLocaleString("en-IN")}`}
                                   </span>
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={() => handleShareWhatsApp(product.name)}
-                                  className="no-print inline-flex items-center gap-1 bg-[#25d366] hover:bg-[#20ba5a] text-[#09192e] px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs shrink-0"
-                                  title="Order on WhatsApp"
-                                >
-                                  <MessageCircle size={13} /> Order
-                                </button>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <Link
+                                    href={`/catalog/${product.slug}`}
+                                    className="no-print inline-flex items-center gap-1 bg-[#09192e] hover:bg-[#152e4d] text-white px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs"
+                                    title="Upload CorelDRAW (.CDR) Artwork & Order"
+                                  >
+                                    <Upload size={13} /> Upload Artwork
+                                  </Link>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleShareWhatsApp(product.name)}
+                                    className="no-print inline-flex items-center gap-1 bg-[#25d366] hover:bg-[#20ba5a] text-[#09192e] px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs"
+                                    title="Order on WhatsApp"
+                                  >
+                                    <MessageCircle size={13} /> WhatsApp
+                                  </button>
+                                </div>
                               </div>
 
                               {/* Trade vs Retail Rates Breakdown Badges */}

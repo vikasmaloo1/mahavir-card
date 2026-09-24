@@ -155,7 +155,7 @@ async function main() {
 
       await db.update(artworkRequirements).set({ isActive: false, updatedAt: new Date() }).where(eq(artworkRequirements.productId, productId));
       await db.insert(artworkRequirements).values({
-        id: requirementId, productId, pricingRuleId: ruleId, scopeKey: `PRICING_RULE:${ruleId}`,
+        id: requirementId, productId, pricingRuleId: null, scopeKey: "PRODUCT",
         artworkRequired: true, acceptedFormats: ["CDR"], maxFileSize: 100, maxFiles: uploadSlots.length,
         designWidth: item.artwork.design?.[0]?.toString() ?? null, designHeight: item.artwork.design?.[1]?.toString() ?? null,
         designUnit: "mm", safeAreaWidth: item.artwork.safe?.[0]?.toString() ?? null,
@@ -172,7 +172,7 @@ async function main() {
         ].filter(Boolean).join(" "),
         notes: item.minimumArea ? `THIS JOB BIG SIZE ONLY (MINIMUM SQ. INCH ${item.minimumArea}).` : `Imported from RATE.xlsx Sheet ${categoryIndex + 1}.`, isActive: true,
       }).onConflictDoUpdate({ target: artworkRequirements.id, set: {
-        productId, pricingRuleId: ruleId, scopeKey: `PRICING_RULE:${ruleId}`, artworkRequired: true, acceptedFormats: ["CDR"], maxFileSize: 100,
+        productId, pricingRuleId: null, scopeKey: "PRODUCT", artworkRequired: true, acceptedFormats: ["CDR"], maxFileSize: 100,
         maxFiles: uploadSlots.length, designWidth: item.artwork.design?.[0]?.toString() ?? null,
         designHeight: item.artwork.design?.[1]?.toString() ?? null, designUnit: "mm", safeAreaWidth: item.artwork.safe?.[0]?.toString() ?? null,
         safeAreaHeight: item.artwork.safe?.[1]?.toString() ?? null, finalWidth: item.artwork.final?.[0]?.toString() ?? null,

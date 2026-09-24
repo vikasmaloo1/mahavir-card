@@ -1677,7 +1677,11 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
     };
   }, [details, isSquareInch, item.id, quantity, ruleId, selectedAddonIds, width, height, bladeCount]);
 
-  const requirement = details?.artworkRequirements.find((row) => row.pricingRuleId === ruleId) ?? details?.artworkRequirements.find((row) => !row.pricingRuleId) ?? null;
+  const requirement = details?.artworkRequirements.find((row) => row.pricingRuleId === ruleId)
+    ?? details?.artworkRequirements.find((row) => !row.pricingRuleId)
+    ?? details?.artworkRequirements.find((row) => (row as { scopeKey?: string }).scopeKey === "PRODUCT")
+    ?? details?.artworkRequirements[0]
+    ?? null;
   const slots = requirement?.slots?.length ? requirement.slots : [];
   const requiredKeys = requirement?.artworkRequired ? (slots.length ? slots.filter((slot) => slot.required).map((slot) => slot.slotKey) : ["MAIN"]) : [];
   const artworkReady = requiredKeys.every((key) => Boolean(artworks[key]));

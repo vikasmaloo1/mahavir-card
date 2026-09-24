@@ -43,7 +43,15 @@ type CartKind = "PURCHASE" | "QUOTE";
 type EditableCartItem = { id: string; quantity: number; jobName: string | null; configuration: Record<string, unknown> };
 
 const money = formatInr;
-function requirementFor(details: ProductDetails | null, ruleId: string | null) { return details?.artworkRequirements.find((rule) => rule.pricingRuleId === ruleId) ?? details?.artworkRequirements.find((rule) => !rule.pricingRuleId) ?? null; }
+
+function requirementFor(details: ProductDetails | null, ruleId: string | null) {
+  if (!details?.artworkRequirements?.length) return null;
+  return details.artworkRequirements.find((rule) => rule.pricingRuleId === ruleId)
+      ?? details.artworkRequirements.find((rule) => !rule.pricingRuleId)
+      ?? details.artworkRequirements.find((rule) => (rule as { scopeKey?: string }).scopeKey === "PRODUCT")
+      ?? details.artworkRequirements[0]
+      ?? null;
+}
 
 export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE", templateName }: { product: CatalogProduct & { customerType?: "B2C" | "B2B" | null; priceLabel?: string }; editItemId?: string; editKind?: CartKind; templateName?: string }) {
   const router = useRouter();

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 
 import { db } from "@/lib/db/server";
 import { artworkRequirements, artworkSlots } from "@/lib/db/schema";
@@ -10,8 +10,10 @@ export async function resolveArtworkRequirement(productId: string, pricingRuleId
     const [specific] = await db.select().from(artworkRequirements).where(and(eq(artworkRequirements.productId, productId), eq(artworkRequirements.pricingRuleId, pricingRuleId), eq(artworkRequirements.isActive, true))).limit(1);
     if (specific) return specific;
   }
-  const [productDefault] = await db.select().from(artworkRequirements).where(and(eq(artworkRequirements.productId, productId), eq(artworkRequirements.scopeKey, "PRODUCT"), eq(artworkRequirements.isActive, true))).limit(1);
-  return productDefault ?? null;
+  const [productDefault] = await db.select().from(artworkRequirements).where(and(eq(artworkRequirements.productId, productId), or(isNull(artworkRequirements.pricingRuleId), eq(artworkRequirements.scopeKey, "PRODUCT")), eq(artworkRequirements.isActive, true))).limit(1);
+  if (productDefault) return productDefault;
+  const [anyActive] = await db.select().from(artworkRequirements).where(and(eq(artworkRequirements.productId, productId), eq(artworkRequirements.isActive, true))).limit(1);
+  return anyActive ?? null;
 }
 
 export async function resolveArtworkRequirementWithSlots(productId: string, pricingRuleId?: string | null) {
