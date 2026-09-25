@@ -20,7 +20,7 @@ export type TaxCalculationResult = {
   igstAmount: string;
   taxType: TaxJurisdiction;
   taxRate: string;
-  customerState: "GJ" | "RJ";
+  customerState: string;
   stateName: string;
   unroundedTotal: string;
   roundOff: string;
@@ -63,20 +63,19 @@ export function roundPaisaAdjustment(amount: number): {
 }
 
 /**
- * Resolves the state code to an allowed commerce state (defaulting to GJ)
+ * Resolves the state code (defaulting to GJ)
  */
-export function resolveCommerceState(stateCode?: string | null): "GJ" | "RJ" {
+export function resolveCommerceState(stateCode?: string | null): string {
   if (!stateCode) return "GJ";
   const normalized = stateCode.trim().toUpperCase();
-  if (normalized === "RJ" || normalized === "RAJASTHAN") return "RJ";
-  return "GJ";
+  return normalized || "GJ";
 }
 
 /**
  * Central tax calculation service for Mahavir Card.
  * Rules:
  * - Gujarat (GJ) -> Intra-state: CGST (taxRate/2)% + SGST (taxRate/2)%, IGST = 0
- * - Rajasthan (RJ) -> Inter-state: IGST (taxRate)%, CGST = 0, SGST = 0
+ * - Other States -> Inter-state: IGST (taxRate)%, CGST = 0, SGST = 0
  * - If taxableSubtotal <= 0 -> all tax components = 0.00
  * - Grand total applies commercial round-off:
  *   fractional paisa < 0.50 rounds down to lower whole rupee;
@@ -92,18 +91,19 @@ export function calculateTax({
   const safeRate = Number.isFinite(taxRate) && taxRate >= 0 ? taxRate : 18;
   const customerState = resolveCommerceState(stateCode);
   const stateName = indiaStateName(customerState) ?? "Gujarat";
+  const isIntraState = customerState === "GJ";
 
   if (safeSubtotal === 0) {
     return {
       taxableSubtotal: "0.00",
       taxAmount: "0.00",
-      cgstRate: customerState === "GJ" ? safeRate / 2 : 0,
+      cgstRate: isIntraState ? safeRate / 2 : 0,
       cgstAmount: "0.00",
-      sgstRate: customerState === "GJ" ? safeRate / 2 : 0,
+      sgstRate: isIntraState ? safeRate / 2 : 0,
       sgstAmount: "0.00",
-      igstRate: customerState === "RJ" ? safeRate : 0,
+      igstRate: !isIntraState ? safeRate : 0,
       igstAmount: "0.00",
-      taxType: customerState === "GJ" ? "INTRA_STATE" : "INTER_STATE",
+      taxType: isIntraState ? "INTRA_STATE" : "INTER_STATE",
       taxRate: safeRate.toFixed(3),
       customerState,
       stateName,
@@ -146,8 +146,6 @@ export function calculateTax({
     netAmount = roundMoney(safeSubtotal);
     taxTotal = roundMoney((netAmount * safeRate) / 100);
   }
-
-  const isIntraState = customerState === "GJ";
   const taxType: TaxJurisdiction = isIntraState ? "INTRA_STATE" : "INTER_STATE";
 
   let cgstRate = 0;

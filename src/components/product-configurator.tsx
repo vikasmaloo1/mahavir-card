@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Check, Minus, Plus, ShoppingBag, AlertCircle } from "lucide-react";
+import { ArrowRight, Check, Minus, Plus, ShoppingBag, AlertCircle, Truck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -9,7 +9,7 @@ import { ArtworkUploader, type ArtworkRequirement, type UploadedArtwork } from "
 import { ProductImage } from "@/components/product-image";
 import type { CatalogProduct } from "@/lib/catalog";
 import { formatInr, formatRoundOff } from "@/lib/formatting";
-import { commerceStates } from "@/lib/india-states";
+import { commerceStates, isOutsideGujRaj } from "@/lib/india-states";
 import { isSpecialQuantityProduct, normalizeProductQuantity, stepProductQuantity } from "@/lib/quantity-helper";
 import { RequirementQuoteModal, type RequirementContext } from "@/components/requirement-quote-modal";
 import { cachedFetchJson } from "@/lib/client-fetch-cache";
@@ -422,12 +422,23 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
           ) : null}
 
           {delivery?.method && delivery.method !== "PICKUP" ? (
-            <label className="block">
-              <span className="mb-1 block text-xs font-bold text-[#263753]">Delivery state {profileStateCode && delivery.stateCode === profileStateCode ? <span className="font-normal text-[#8b9bb5]">(from your profile)</span> : null}</span>
-              <select value={delivery.stateCode} onChange={(event) => setDelivery({ ...delivery, stateCode: event.target.value })} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-1.5 text-sm outline-none">
-                {commerceStates.map(([code, state]) => <option key={code} value={code}>{state}</option>)}
-              </select>
-            </label>
+            <div className="space-y-1.5">
+              <label className="block">
+                <span className="mb-1 block text-xs font-bold text-[#263753]">Delivery state {profileStateCode && delivery.stateCode === profileStateCode ? <span className="font-normal text-[#8b9bb5]">(from your profile)</span> : null}</span>
+                <select value={delivery.stateCode} onChange={(event) => setDelivery({ ...delivery, stateCode: event.target.value })} className="w-full rounded-lg border border-[#c9d2df] bg-white px-3 py-1.5 text-sm outline-none">
+                  {commerceStates.map(([code, state]) => <option key={code} value={code}>{state}</option>)}
+                </select>
+              </label>
+              {delivery.method === "COURIER" && isOutsideGujRaj(delivery.stateCode) ? (
+                <div className="rounded-lg border border-blue-200 bg-blue-50/90 p-2.5 text-xs text-blue-900 flex items-start gap-2">
+                  <Truck className="size-4 shrink-0 text-blue-600 mt-0.5" />
+                  <div>
+                    <strong className="block font-bold text-blue-950">Courier charge will be applicable extra as per weight per kg</strong>
+                    <span className="text-[11px] text-blue-700">For delivery outside Gujarat &amp; Rajasthan, parcel courier charges are determined as per parcel weight and billed at actuals upon dispatch.</span>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           ) : null}
 
           {/* Add-ons in compact 2-column or list */}
@@ -509,7 +520,17 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
                       ))
                     ) : null}
                     {Number(estimate.locationSurcharge?.amount || 0) > 0 ? <div className="flex justify-between"><span>{estimate.locationSurcharge?.label ?? "Location charge"}</span><strong className="text-[#162237]">{money(estimate.locationSurcharge?.amount)}</strong></div> : null}
-                    {Number(estimate.delivery?.price || 0) > 0 ? <div className="flex justify-between"><span>Courier</span><strong className="text-[#162237]">{money(estimate.delivery?.price)}</strong></div> : null}
+                    {Number(estimate.delivery?.price || 0) > 0 ? (
+                      <div className="flex justify-between">
+                        <span>Courier {isOutsideGujRaj(delivery?.stateCode) ? "(Base)" : ""}</span>
+                        <strong className="text-[#162237]">{money(estimate.delivery?.price)}</strong>
+                      </div>
+                    ) : delivery?.method === "COURIER" && isOutsideGujRaj(delivery?.stateCode) ? (
+                      <div className="flex justify-between text-xs text-blue-800">
+                        <span>Courier dispatch</span>
+                        <strong className="font-semibold text-blue-900">Extra as per weight / kg</strong>
+                      </div>
+                    ) : null}
                     {estimate.taxRate && Number(estimate.taxRate) > 0 && estimate.priceBeforeTax && product.customerType !== "B2B" ? (
                       <div className="border-t border-[#e2e7ef] pt-1 mt-1 space-y-1">
                         <div className="flex justify-between"><span>Taxable subtotal</span><strong className="text-[#162237]">{money(estimate.priceBeforeTax)}</strong></div>
@@ -622,11 +643,18 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
           ) : editItemId ? (
             <button type="button" onClick={() => void add(editKind)} disabled={editKind === "PURCHASE" && !directReady} className="flex w-full items-center justify-center gap-2 rounded-full bg-[#2457b8] px-4 py-2.5 sm:py-3 text-sm font-bold text-white shadow-sm hover:bg-[#1a4494] transition-colors disabled:cursor-not-allowed disabled:bg-[#9bb6e8]"><Check size={15} />Update {editKind === "QUOTE" ? "quote" : "purchase"} basket</button>
           ) : (
-            <div className="grid gap-2 sm:grid-cols-2 pt-1">
-              <button type="button" onClick={() => void add("PURCHASE", true)} disabled={!directReady || isAdding} className="flex items-center justify-center gap-1.5 rounded-full bg-[#2457b8] px-4 py-2.5 sm:py-3 text-sm font-bold text-white shadow-sm hover:bg-[#1a4494] transition-colors disabled:cursor-not-allowed disabled:bg-[#9bb6e8]">Buy now <ArrowRight size={15} /></button>
-              <button
-                type="button"
-                onClick={() => void add("PURCHASE")}
+            <div className="space-y-2 pt-1">
+              {delivery?.method === "COURIER" && isOutsideGujRaj(delivery?.stateCode) ? (
+                <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-900">
+                  <Truck className="size-4 shrink-0 text-blue-600" />
+                  <span>Courier charge will be applicable extra as per weight per kg</span>
+                </div>
+              ) : null}
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button type="button" onClick={() => void add("PURCHASE", true)} disabled={!directReady || isAdding} className="flex items-center justify-center gap-1.5 rounded-full bg-[#2457b8] px-4 py-2.5 sm:py-3 text-sm font-bold text-white shadow-sm hover:bg-[#1a4494] transition-colors disabled:cursor-not-allowed disabled:bg-[#9bb6e8]">Buy now <ArrowRight size={15} /></button>
+                <button
+                  type="button"
+                  onClick={() => void add("PURCHASE")}
                 disabled={!directReady || isAdding}
                 className={`flex items-center justify-center gap-1.5 rounded-full border px-4 py-2.5 sm:py-3 text-sm font-bold transition-all disabled:cursor-not-allowed ${
                   justAdded
@@ -649,7 +677,8 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
                 )}
               </button>
             </div>
-          )}
+          </div>
+        )}
           {status === "cart" ? <a href="/cart" className="block text-center text-xs sm:text-sm font-bold text-[#2457b8] hover:underline">View purchase basket &rarr;</a> : null}
           <button
             type="button"
@@ -719,6 +748,9 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
                 <p className="text-lg font-bold text-[var(--mc-ink)]">
                   {isCalculating ? <span className="text-sm font-medium animate-pulse text-[var(--mc-muted)]">...</span> : estimate.calculatedAmount ? money(estimate.calculatedAmount) : "—"}
                 </p>
+                {delivery?.method === "COURIER" && isOutsideGujRaj(delivery?.stateCode) ? (
+                  <p className="text-[10px] font-semibold text-blue-700 leading-tight">+ Courier extra by wt</p>
+                ) : null}
               </div>
               <div className="flex items-center gap-2">
                 <button

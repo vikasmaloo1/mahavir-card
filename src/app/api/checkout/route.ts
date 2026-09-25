@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   try {
     const session = await requireUser(request);
     const input = await readBody(request, checkoutSchema);
-    if (!isCommerceStateCode(input.address.stateCode) || indiaStateName(input.address.stateCode) !== input.address.state) return jsonError("Select Gujarat or Rajasthan", 422);
+    if (!isCommerceStateCode(input.address.stateCode) || indiaStateName(input.address.stateCode) !== input.address.state) return jsonError("Select a valid Indian state", 422);
     const basket = await getOwnedCart(session.user.id, "PURCHASE", input.address.stateCode, input.address.city);
     if (!basket.id || !basket.items.length) return jsonError("Your purchase basket is empty", 422);
     if (basket.summary.hasUnavailableItems) return jsonError("One or more basket items must be updated before checkout", 422);

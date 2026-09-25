@@ -12,8 +12,8 @@ export const indiaStates = [
 ] as const;
 
 export type IndiaStateCode = typeof indiaStates[number][0];
-export const commerceStates = [["GJ", "Gujarat"], ["RJ", "Rajasthan"]] as const;
-export type CommerceStateCode = typeof commerceStates[number][0];
+export const commerceStates = indiaStates;
+export type CommerceStateCode = IndiaStateCode;
 
 export function indiaStateName(code: string) {
   return indiaStates.find(([candidate]) => candidate === code.toUpperCase())?.[1] ?? null;
@@ -24,8 +24,16 @@ export function isIndiaStateCode(code: string): code is IndiaStateCode {
 }
 
 export function isCommerceStateCode(code: string): code is CommerceStateCode {
-  return commerceStates.some(([candidate]) => candidate === code.toUpperCase());
+  return isIndiaStateCode(code);
 }
+
+export function isOutsideGujRaj(stateCode?: string | null): boolean {
+  if (!stateCode) return false;
+  const upper = stateCode.trim().toUpperCase();
+  return upper !== "GJ" && upper !== "RJ" && upper !== "*";
+}
+
+export const COURIER_EXTRA_WEIGHT_NOTICE = "Courier charge will be applicable extra as per weight per kg";
 
 export function normalizedCity(value: string) {
   return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("en-IN");
@@ -33,7 +41,7 @@ export function normalizedCity(value: string) {
 
 // Major cities / district headquarters — used as autocomplete suggestions on address
 // forms, not an enforced enum. Customers in smaller towns can still type freely.
-export const citiesByState: Record<CommerceStateCode, string[]> = {
+export const citiesByState: Partial<Record<string, string[]>> = {
   GJ: [
     "Ahmedabad", "Amreli", "Anand", "Bharuch", "Bhavnagar", "Bhuj", "Botad", "Dahod",
     "Deesa", "Gandhidham", "Gandhinagar", "Godhra", "Himatnagar", "Jamnagar", "Junagadh",
@@ -50,5 +58,5 @@ export const citiesByState: Record<CommerceStateCode, string[]> = {
 };
 
 export function citiesForState(stateCode: string): string[] {
-  return citiesByState[stateCode.toUpperCase() as CommerceStateCode] ?? [];
+  return citiesByState[stateCode.toUpperCase()] ?? [];
 }

@@ -21,7 +21,8 @@ export type CalculatedPrice = {
   blade?: { count: number; rate: string; amount: string } | null;
   addonTotal: string;
   addons: Array<{ addonId: string; name: string; price: string; pricingType: string }>;
-  delivery: { method: string | null; stateCode: string | null; price: string };
+  delivery: { method: string | null; stateCode: string | null; price: string; notice?: string | null };
+  deliveryNotice?: string | null;
   locationSurcharge: { amount: string; label: string | null };
   taxInclusive: boolean;
   taxableSubtotal?: string | null;
@@ -34,7 +35,7 @@ export type CalculatedPrice = {
   igstRate?: number;
   taxType?: TaxJurisdiction;
   taxJurisdictionState: string | null;
-  customerState?: "GJ" | "RJ";
+  customerState?: string;
   stateName?: string;
   priceBeforeTax: string | null;
   taxRate: string | null;
@@ -239,14 +240,28 @@ export async function calculateProductPrice(productId: string, rawQuantity: numb
     return { addonId: addon.addonId, name: addon.name, pricingType: addon.pricingType, price, taxInclusive: addon.taxInclusive };
   });
   const addonTotal = selectedAddons.reduce((total, addon) => total + Number(addon.price), 0);
-  let delivery = { method: null as string | null, stateCode: null as string | null, price: "0.00", taxInclusive: true };
+  let delivery = { method: null as string | null, stateCode: null as string | null, price: "0.00", taxInclusive: true, notice: null as string | null };
   if (input.delivery) {
     const stateCode = input.delivery.stateCode?.trim().toUpperCase() || "*";
     const rules = await db.select().from(productDeliveryRules).where(and(eq(productDeliveryRules.productId, productId), eq(productDeliveryRules.deliveryMethod, input.delivery.method), eq(productDeliveryRules.isActive, true))).orderBy(asc(productDeliveryRules.sortOrder));
     const rule = rules.find((candidate) => candidate.stateCode.toUpperCase() === stateCode) ?? rules.find((candidate) => candidate.stateCode === "*");
-    if (!rule) throw new PricingValidationError("This delivery option is not available for the selected state");
-    const deliveryMultiplier = rule.deliveryMethod === "COURIER" ? Math.max(1, Math.ceil(quantity / (product.referenceQuantity || 1000))) : 1;
-    delivery = { method: rule.deliveryMethod, stateCode, price: money(Number(rule.price) * deliveryMultiplier), taxInclusive: rule.taxInclusive };
+    const isInterstateCourier = input.delivery.method === "COURIER" && stateCode !== "GJ" && stateCode !== "RJ";
+    if (!rule) {
+      if (isInterstateCourier) {
+        delivery = { method: "COURIER", stateCode, price: "0.00", taxInclusive: true, notice: "Courier charge will be applicable extra as per weight per kg" };
+      } else {
+        throw new PricingValidationError("This delivery option is not available for the selected state");
+      }
+    } else {
+      const deliveryMultiplier = rule.deliveryMethod === "COURIER" ? Math.max(1, Math.ceil(quantity / (product.referenceQuantity || 1000))) : 1;
+      delivery = {
+        method: rule.deliveryMethod,
+        stateCode,
+        price: money(Number(rule.price) * deliveryMultiplier),
+        taxInclusive: rule.taxInclusive,
+        notice: isInterstateCourier ? "Courier charge will be applicable extra as per weight per kg" : null,
+      };
+    }
   }
   const taxRate = base.taxRate;
   const allTaxInclusive = product.pricesTaxInclusive && base.taxInclusive && selectedAddons.every((addon) => addon.taxInclusive) && delivery.taxInclusive && surcharge.taxInclusive;
@@ -258,7 +273,8 @@ export async function calculateProductPrice(productId: string, rawQuantity: numb
       productPrice: null,
       addonTotal: money(addonTotal),
       addons: selectedAddons.map((addon) => ({ addonId: addon.addonId, name: addon.name, price: addon.price, pricingType: addon.pricingType })),
-      delivery: { method: delivery.method, stateCode: delivery.stateCode, price: delivery.price },
+      delivery: { method: delivery.method, stateCode: delivery.stateCode, price: delivery.price, notice: delivery.notice },
+      deliveryNotice: delivery.notice,
       locationSurcharge: { amount: money(surcharge.amount), label: surcharge.label },
       taxInclusive: allTaxInclusive,
       taxableSubtotal: null,
@@ -331,7 +347,8 @@ export async function calculateProductPrice(productId: string, rawQuantity: numb
     blade: bladeLineItem,
     addonTotal: money(totalAddonAmount),
     addons: allAddons,
-    delivery: { method: delivery.method, stateCode: delivery.stateCode, price: money(taxableComponent(Number(delivery.price), delivery.taxInclusive, rate).net) },
+    delivery: { method: delivery.method, stateCode: delivery.stateCode, price: money(taxableComponent(Number(delivery.price), delivery.taxInclusive, rate).net), notice: delivery.notice },
+    deliveryNotice: delivery.notice,
     locationSurcharge: { amount: money(taxableComponent(surcharge.amount, surcharge.taxInclusive, rate).net), label: surcharge.label },
     taxInclusive: allTaxInclusive,
     taxableSubtotal: taxResult.taxableSubtotal,

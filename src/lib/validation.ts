@@ -391,7 +391,7 @@ export const customerProfileUpdateSchema = z.object({
   phone: z.string().trim().min(10).max(20),
   city: z.string().trim().min(2).max(100),
   state: z.string().trim().min(2).max(100),
-  stateCode: z.enum(["GJ", "RJ"]),
+  stateCode: z.string().trim().min(2).max(3).toUpperCase(),
   gstNumber: z.string().trim().toUpperCase().regex(/^[0-9A-Z]{15}$/, "Enter a valid 15-character GSTIN").nullable().optional().or(z.literal("")),
   address: z.object({
     line1: z.string().trim().min(3).max(200),

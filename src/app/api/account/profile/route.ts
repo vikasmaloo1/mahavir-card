@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     const session = await requireUser(request);
     const input = await readBody(request, customerOnboardingSchema);
     if (!isCommerceStateCode(input.stateCode) || indiaStateName(input.stateCode) !== input.state) {
-      return jsonError("Select Gujarat or Rajasthan", 422);
+      return jsonError("Select a valid Indian state", 422);
     }
     if (input.customerType === "B2B" && !input.companyName) return jsonError("Company name is required for B2B accounts", 422);
 
@@ -78,7 +78,7 @@ export async function PATCH(request: Request) {
   try {
     const session = await requireUser(request);
     const input = await readBody(request, customerProfileUpdateSchema);
-    if (!isCommerceStateCode(input.stateCode) || indiaStateName(input.stateCode) !== input.state) return jsonError("Select Gujarat or Rajasthan", 422);
+    if (!isCommerceStateCode(input.stateCode) || indiaStateName(input.stateCode) !== input.state) return jsonError("Select a valid Indian state", 422);
     const [existing] = await db.select().from(customers).where(eq(customers.userId, session.user.id)).limit(1);
     if (!existing) return jsonError("Complete account signup before editing your profile", 404);
     const targetCustomerType = input.customerType ?? existing.customerType;

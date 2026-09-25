@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, LockKeyhole, Mail, Pencil, PhoneCa
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { isValidIndianPhoneNumber, normalizePhoneNumber } from "@/lib/phone";
-import { commerceStates } from "@/lib/india-states";
+import { commerceStates, isOutsideGujRaj } from "@/lib/india-states";
 import { authClient } from "@/lib/auth-client";
 
 function isSafeNextPath(value: string | null): value is string {
@@ -795,6 +795,11 @@ export function LoginForm() {
                               </option>
                             ))}
                           </select>
+                          {isOutsideGujRaj(stateCode) ? (
+                            <span className="mt-1 block text-[11px] font-medium text-amber-700">
+                              Note: Courier charge will be applicable extra as per weight per kg.
+                            </span>
+                          ) : null}
                         </label>
                       </div>
                     </>

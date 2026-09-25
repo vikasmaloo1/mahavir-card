@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Minus, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, Minus, Pencil, Plus, Trash2, Truck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { ProductImage } from "@/components/product-image";
@@ -10,6 +10,7 @@ import { formatInr, formatRoundOff } from "@/lib/formatting";
 import { stepProductQuantity, MAX_ORDER_QUANTITY } from "@/lib/quantity-helper";
 import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import { showToast } from "@/components/toast-provider";
+import { isOutsideGujRaj } from "@/lib/india-states";
 
 type Item = {
   id: string;
@@ -31,6 +32,30 @@ export function PurchaseCart() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState("");
+  const [userStateCode, setUserStateCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/account/summary", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((payload) => {
+        if (payload?.success) {
+          const code = payload.data?.customer?.stateCode ?? payload.data?.addresses?.find((a: any) => a.isDefault)?.stateCode;
+          if (code) setUserStateCode(code);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const hasInterstateNotice = Boolean(
+    (userStateCode && isOutsideGujRaj(userStateCode)) ||
+    data.items.some((item) => {
+      const delivery = (item.configuration as any)?.delivery;
+      const snapDelivery = item.pricingSnapshot?.delivery as any;
+      const stateCode = delivery?.stateCode || snapDelivery?.stateCode;
+      const method = delivery?.method || snapDelivery?.method;
+      return method === "COURIER" && isOutsideGujRaj(stateCode);
+    })
+  );
 
   const load = useCallback(async () => {
     try {
@@ -155,7 +180,12 @@ export function PurchaseCart() {
                       </span>
                     ) : null}
                     {item.pricingSnapshot.delivery?.method ? (
-                      <span>Delivery: {item.pricingSnapshot.delivery.method.replaceAll("_", " ")}</span>
+                      <span className="flex items-center gap-1.5">
+                        <span>Delivery: {item.pricingSnapshot.delivery.method.replaceAll("_", " ")}</span>
+                        {item.pricingSnapshot.delivery.method === "COURIER" && (isOutsideGujRaj((item.configuration as any)?.delivery?.stateCode) || isOutsideGujRaj(userStateCode)) ? (
+                          <span className="text-[11px] font-semibold text-blue-700">(Courier extra by weight per kg)</span>
+                        ) : null}
+                      </span>
                     ) : null}
                   </div>
                 ) : null}
@@ -284,6 +314,12 @@ export function PurchaseCart() {
       </div>
       {data.summary.taxInclusive && Number(data.summary.tax) > 0 ? (
         <p className="mt-3 text-[11px] text-slate-400">Total includes all applicable GST/taxes.</p>
+      ) : null}
+      {hasInterstateNotice ? (
+        <div className="mt-4 flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-200 p-3 text-xs font-semibold text-blue-900">
+          <Truck className="size-4 shrink-0 text-blue-600" />
+          <span>Courier charge will be applicable extra as per weight per kg</span>
+        </div>
       ) : null}
       <Link
         href="/checkout"

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, FileUp, RefreshCw, Search, ShoppingBag, SlidersHorizontal, Sparkles, X, WalletCards, Zap } from "lucide-react";
+import { ArrowRight, Check, FileUp, RefreshCw, Search, ShoppingBag, SlidersHorizontal, Sparkles, X, WalletCards, Zap, Truck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ProductImage } from "@/components/product-image";
@@ -13,6 +13,7 @@ import { normalizeProductQuantity, stepProductQuantity, MAX_ORDER_QUANTITY, isSp
 import { ArtworkUploader, type ArtworkRequirement, type UploadedArtwork } from "@/components/artwork-uploader";
 import { showToast } from "@/components/toast-provider";
 import { HorizontalScrollContainer } from "@/components/horizontal-scroll-container";
+import { isOutsideGujRaj } from "@/lib/india-states";
 
 type ProductDetail = {
   pricingRules: Array<{
@@ -147,6 +148,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
   const [orderHistoryPage, setOrderHistoryPage] = useState(1);
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [customerCompanyName, setCustomerCompanyName] = useState<string | null>(null);
+  const [customerStateCode, setCustomerStateCode] = useState<string | null>(null);
   const [cartProductIds, setCartProductIds] = useState<Set<string>>(new Set());
   const [miniCartItems, setMiniCartItems] = useState<MiniCartItem[]>([]);
   const [miniCartBusyId, setMiniCartBusyId] = useState<string | null>(null);
@@ -282,6 +284,12 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
           setOrderHistory(payload.data.orders ?? []);
           if (payload.data.customer?.companyName) {
             setCustomerCompanyName(payload.data.customer.companyName);
+          }
+          if (payload.data.customer?.stateCode) {
+            setCustomerStateCode(payload.data.customer.stateCode);
+          } else if (payload.data.addresses?.length) {
+            const defaultAddr = payload.data.addresses.find((a: any) => a.isDefault) ?? payload.data.addresses[0];
+            if (defaultAddr?.stateCode) setCustomerStateCode(defaultAddr.stateCode);
           }
         }
       })
@@ -832,7 +840,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                     </div>
                     {isExpanded ? (
                       <div className="border-t-2 border-[var(--mc-accent)]/20 bg-[#f8fbfe] p-4 sm:p-6 shadow-inner transition-all">
-                        <InlineOrderPanel item={item} onAdded={() => { setExpandedId(null); setAddedProductIds((prev) => new Set([...prev, item.id])); refreshCartProductIds(); }} />
+                        <InlineOrderPanel item={item} customerStateCode={customerStateCode} onAdded={() => { setExpandedId(null); setAddedProductIds((prev) => new Set([...prev, item.id])); refreshCartProductIds(); }} />
                       </div>
                     ) : null}
                   </div>
@@ -916,7 +924,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                 </article>
                 {isExpanded ? (
                   <div className="border-t border-[var(--mc-line)] p-4">
-                    <InlineOrderPanel item={item} onAdded={() => { setExpandedId(null); setAddedProductIds((prev) => new Set([...prev, item.id])); refreshCartProductIds(); }} />
+                    <InlineOrderPanel item={item} customerStateCode={customerStateCode} onAdded={() => { setExpandedId(null); setAddedProductIds((prev) => new Set([...prev, item.id])); refreshCartProductIds(); }} />
                   </div>
                 ) : null}
                 </div>
@@ -1550,7 +1558,7 @@ function ProductSpecification({ item, isLoggedIn = false }: { item: Product; isL
  * upload, and Add to basket / Buy now. "Details" still links to the full
  * product page for anyone who wants finer control (add-ons, delivery, etc).
  */
-function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => void }) {
+function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product; onAdded: () => void; customerStateCode?: string | null }) {
   const router = useRouter();
   const [details, setDetails] = useState<ProductDetail | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(true);
@@ -2033,6 +2041,13 @@ function InlineOrderPanel({ item, onAdded }: { item: Product; onAdded: () => voi
       {!artworkReady && requirement?.artworkRequired ? (
         <div className="rounded-lg bg-amber-50 p-3 text-xs font-medium text-amber-800 border border-amber-200">
           Please upload your CorelDRAW (.cdr) artwork file above to enable adding to basket.
+        </div>
+      ) : null}
+
+      {isOutsideGujRaj(customerStateCode) ? (
+        <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-900">
+          <Truck className="size-4 shrink-0 text-blue-600" />
+          <span>Courier charge will be applicable extra as per weight per kg</span>
         </div>
       ) : null}
 

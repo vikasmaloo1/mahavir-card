@@ -3,7 +3,7 @@
 import { CheckCircle2, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { citiesForState, commerceStates, indiaStateName } from "@/lib/india-states";
+import { citiesForState, commerceStates, indiaStateName, isOutsideGujRaj } from "@/lib/india-states";
 import { showToast } from "@/components/toast-provider";
 
 type ProfilePayload = {
@@ -106,7 +106,17 @@ export function CustomerProfileForm() {
       <Field label="Phone" value={form.phone} onChange={update("phone")} required />
       <label className="block text-sm font-semibold text-[var(--mc-ink)]">Email<input value={data.user.email} disabled className={fieldClass + " bg-[var(--mc-surface)] text-[var(--mc-muted)] cursor-not-allowed"} /><span className="mt-1 block text-xs font-normal text-[var(--mc-muted)]">Email is linked to your login.</span></label>
       <label className="block text-sm font-semibold text-[var(--mc-ink)]">City<input required list="profile-city-options" value={form.city} onChange={update("city")} className={fieldClass} /><datalist id="profile-city-options">{citiesForState(form.stateCode).map((city) => <option key={city} value={city} />)}</datalist></label>
-      <label className="block text-sm font-semibold text-[var(--mc-ink)]">State<select value={form.stateCode} onChange={update("stateCode")} className={fieldClass}>{commerceStates.map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select></label>
+      <label className="block text-sm font-semibold text-[var(--mc-ink)]">
+        State
+        <select value={form.stateCode} onChange={update("stateCode")} className={fieldClass}>
+          {commerceStates.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+        </select>
+        {isOutsideGujRaj(form.stateCode) ? (
+          <span className="mt-1 block text-xs font-normal text-amber-700">
+            Note: Courier charge will be applicable extra as per weight per kg for delivery outside Gujarat &amp; Rajasthan.
+          </span>
+        ) : null}
+      </label>
       <label className="block text-sm font-semibold text-[var(--mc-ink)] sm:col-span-2">GSTIN <span className="font-normal text-[var(--mc-muted)]">(optional)</span><input value={form.gstNumber} onChange={update("gstNumber")} maxLength={15} className={fieldClass} placeholder="15-character GSTIN" /></label>
     </div></section>
     <section className="rounded-xl border border-[var(--mc-line)] bg-white p-5 sm:p-6 shadow-sm"><h2 className="font-bold text-lg text-[var(--mc-ink)]">Default delivery address</h2><p className="mt-1 text-sm text-[var(--mc-muted)]">Optional now; it can also be completed during checkout.</p><div className="mt-5 grid gap-4 sm:grid-cols-2">
