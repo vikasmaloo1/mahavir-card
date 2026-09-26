@@ -5,7 +5,13 @@ import Image from "next/image";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { catalogCustomServices } from "@/lib/catalog-custom-services";
-import { stripPriceText } from "@/lib/catalog-pricing";
+import {
+  buildPriceView,
+  CATALOG_MODE_SHORT_LABELS,
+  stripPriceText,
+  type CatalogPriceMode,
+  type CatalogRate,
+} from "@/lib/catalog-pricing";
 import {
   Printer,
   Download,
@@ -41,14 +47,6 @@ export type PublicCatalogProduct = {
   categoryName: string;
   shortDescription?: string;
   productionTime?: string;
-  referenceQuantity?: number;
-  referenceWeight?: number;
-  ruleType: "FIXED_PER_REFERENCE_QUANTITY" | "FIXED" | "PER_SQ_INCH";
-  amount?: number;
-  ratePerSqInch?: number;
-  rateUnit?: "RUPEES" | "PAISE";
-  b2bAmount?: number;
-  b2bRatePerSqInch?: number;
   size?: string;
   imageUrl: string;
   finishBadges?: string[];
@@ -56,11 +54,11 @@ export type PublicCatalogProduct = {
     code: string;
     name: string;
     amount: number;
-    referenceQuantity?: number;
   };
-  bladeCharge?: number;
-  minimumArea?: number;
-  minimumCharge?: number;
+  /** B2C rate (tax-exclusive), or null when the product has no active retail rule. */
+  retail: CatalogRate | null;
+  /** B2B rate (tax-inclusive), or null when the product has no active trade rule. */
+  trade: CatalogRate | null;
 };
 
 export type PublicCatalogCategory = {
@@ -98,9 +96,24 @@ const defaultBusinessInfo: PublicCatalogBusinessInfo = {
   gstin: "24AIUPJ2271L1ZV",
 };
 
+const MODE_ICONS: Record<CatalogPriceMode, string> = {
+  B2B: "💼",
+  RETAIL: "🏪",
+  SHOWROOM: "👁️",
+};
+
+const MODE_HINTS: Record<CatalogPriceMode, string> = {
+  B2B: "Display B2B wholesale trade rates",
+  RETAIL: "Display standard retail rates",
+  SHOWROOM: "Hide every rate to present cleanly to walk-in customers",
+};
+
 interface PublicProductCatalogProps {
   categories: PublicCatalogCategory[];
   businessInfo?: Partial<PublicCatalogBusinessInfo>;
+  /** Editions this viewer may see; the switcher renders only these. */
+  allowedModes: CatalogPriceMode[];
+  defaultMode: CatalogPriceMode;
 }
 
 // Icons stay here (client-only components); the copy itself lives in the shared data module
@@ -120,10 +133,12 @@ const customCommercialServices = catalogCustomServices;
 export function PublicProductCatalog({
   categories,
   businessInfo: propBusiness,
+  allowedModes,
+  defaultMode,
 }: PublicProductCatalogProps) {
   const business = { ...defaultBusinessInfo, ...propBusiness };
 
-  const [priceMode, setPriceMode] = useState<"RANGE" | "RETAIL" | "B2B" | "SHOWROOM">("RANGE");
+  const [priceMode, setPriceMode] = useState<CatalogPriceMode>(defaultMode);
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -301,57 +316,29 @@ export function PublicProductCatalog({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Price Display Selector */}
-            <div className="flex items-center rounded-lg border border-slate-200 bg-slate-100 p-1 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setPriceMode("RANGE")}
-                className={`px-2.5 py-1 rounded-md transition-all ${
-                  priceMode === "RANGE"
-                    ? "bg-[#09192e] text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-                title="Display comprehensive view with Trade, Retail & Price Ranges"
-              >
-                🏷️ All Rates &amp; Range
-              </button>
-              <button
-                type="button"
-                onClick={() => setPriceMode("B2B")}
-                className={`px-2.5 py-1 rounded-md transition-all ${
-                  priceMode === "B2B"
-                    ? "bg-[#09192e] text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-                title="Display B2B wholesale trade prices"
-              >
-                💼 Trade Wholesale
-              </button>
-              <button
-                type="button"
-                onClick={() => setPriceMode("RETAIL")}
-                className={`px-2.5 py-1 rounded-md transition-all ${
-                  priceMode === "RETAIL"
-                    ? "bg-[#09192e] text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-                title="Display standard retail rates"
-              >
-                🏪 Standard Retail
-              </button>
-              <button
-                type="button"
-                onClick={() => setPriceMode("SHOWROOM")}
-                className={`px-2.5 py-1 rounded-md transition-all ${
-                  priceMode === "SHOWROOM"
-                    ? "bg-[#09192e] text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-                title="Hide prices to present cleanly to clients/retail customers"
-              >
-                👁️ Showroom (No Prices)
-              </button>
-            </div>
+            {/* Price Display Selector - only the editions this viewer may see */}
+            {allowedModes.length > 1 && (
+              <div className="flex items-center rounded-lg border border-slate-200 bg-slate-100 p-1 text-xs font-semibold">
+                {allowedModes.map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setPriceMode(mode)}
+                    className={`px-2.5 py-1 rounded-md transition-all ${
+                      priceMode === mode ? "bg-[#09192e] text-white shadow-xs" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                    title={MODE_HINTS[mode]}
+                  >
+                    {MODE_ICONS[mode]} {CATALOG_MODE_SHORT_LABELS[mode]}
+                  </button>
+                ))}
+              </div>
+            )}
+            {allowedModes.length === 1 && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-700">
+                {MODE_ICONS[priceMode]} {CATALOG_MODE_SHORT_LABELS[priceMode]}
+              </span>
+            )}
 
             {/* Category Filter */}
             <select
@@ -524,12 +511,10 @@ export function PublicProductCatalog({
                   <span className="font-bold text-slate-600">
                     CATALOGUE MODE:{" "}
                     <strong className="text-[#09192e]">
-                      {priceMode === "RANGE"
-                        ? "ALL RATES & PRICE RANGES (WHOLESALE + RETAIL)"
-                        : priceMode === "B2B"
+                      {priceMode === "B2B"
                         ? "TRADE WHOLESALE B2B RATES"
                         : priceMode === "RETAIL"
-                        ? "STANDARD RETAIL RATES"
+                        ? "STANDARD RETAIL RATES (GST EXTRA)"
                         : "SHOWROOM DISPLAY (EXCLUSIVE)"}
                     </strong>
                   </span>
@@ -589,22 +574,10 @@ export function PublicProductCatalog({
                 {/* Product Grid: 2 per row in print & medium screen, 3 per row on xl */}
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 print-grid-cols-2 print:gap-3">
                   {category.products.map((product) => {
-                    const isPerSqInch = product.ruleType === "PER_SQ_INCH";
-                    const retailRate = product.ratePerSqInch ?? 0;
-                    const b2bRate = product.b2bRatePerSqInch ?? retailRate;
-                    const unit = product.rateUnit === "PAISE" ? "paise" : "₹";
-                    const minRate = Math.min(retailRate, b2bRate);
-                    const maxRate = Math.max(retailRate, b2bRate);
-
-                    const retailAmt = product.amount ?? 0;
-                    const b2bAmt = product.b2bAmount ?? retailAmt;
-                    const minAmt = Math.min(retailAmt, b2bAmt);
-                    const maxAmt = Math.max(retailAmt, b2bAmt);
-                    const qty = product.referenceQuantity || 1000;
-
-                    const priceSubLabel = isPerSqInch
-                      ? "Custom Sq.Inch Area"
-                      : `${qty.toLocaleString("en-IN")} pcs batch`;
+                    // Same builder the PDF uses, so the page and the download can never
+                    // show a different rate — or leak one in showroom mode.
+                    const view = buildPriceView(product, priceMode);
+                    const priceSubLabel = view.batchLabel;
 
                     return (
                       <div
@@ -622,11 +595,9 @@ export function PublicProductCatalog({
                               className="object-cover group-hover:scale-105 transition-transform duration-300"
                               unoptimized
                             />
-                            {product.referenceQuantity && (
-                              <div className="absolute top-2.5 left-2.5 bg-[#09192e]/90 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs">
-                                {product.referenceQuantity.toLocaleString("en-IN")} Qty Batch
-                              </div>
-                            )}
+                            <div className="absolute top-2.5 left-2.5 bg-[#09192e]/90 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs">
+                              {view.batchLabel}
+                            </div>
                             {product.productionTime && (
                               <div className="absolute bottom-2.5 right-2.5 bg-white/95 backdrop-blur-xs text-[#09192e] text-[10px] font-semibold px-2 py-0.5 rounded shadow-xs flex items-center gap-1">
                                 <Clock size={11} className="text-[#c59b27]" /> {product.productionTime}
@@ -660,11 +631,9 @@ export function PublicProductCatalog({
                                   + {product.addon.name} Available
                                 </span>
                               )}
-                              {product.bladeCharge && (
+                              {view.bladeNote && (
                                 <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-medium">
-                                  {priceMode === "SHOWROOM"
-                                    ? "Half Blade Supported"
-                                    : `Half Blade: ₹${product.bladeCharge}`}
+                                  {view.bladeNote}
                                 </span>
                               )}
                             </div>
@@ -680,7 +649,7 @@ export function PublicProductCatalog({
                                   ★ Showroom Display
                                 </span>
                                 <p className="text-xs text-slate-600 mt-1 font-medium">
-                                  {isPerSqInch ? "Custom area pricing" : `${qty.toLocaleString("en-IN")} pcs standard batch`} · Inquire for quotation
+                                  {view.batchLabel} · Inquire for quotation
                                 </p>
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
@@ -712,44 +681,7 @@ export function PublicProductCatalog({
                                     <span className="text-[10px] text-slate-500">{priceSubLabel}</span>
                                   </div>
                                   <div className="text-xl font-black text-[#09192e] tracking-tight mt-1">
-                                    {isPerSqInch
-                                      ? `${unit === "₹" ? "₹" : ""}${b2bRate} ${unit === "paise" ? "paise" : ""} / sq.in`
-                                      : `₹${b2bAmt.toLocaleString("en-IN")}`}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  <Link
-                                    href={`/catalog/${product.slug}`}
-                                    className="no-print inline-flex items-center gap-1 bg-[#09192e] hover:bg-[#152e4d] text-white px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs"
-                                    title="Upload CorelDRAW (.CDR) Artwork & Order"
-                                  >
-                                    <Upload size={13} /> Upload Artwork
-                                  </Link>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleShareWhatsApp(product.name)}
-                                    className="no-print inline-flex items-center gap-1 bg-[#25d366] hover:bg-[#20ba5a] text-[#09192e] px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs"
-                                    title="Order on WhatsApp"
-                                  >
-                                    <MessageCircle size={13} /> WhatsApp
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          ) : priceMode === "RETAIL" ? (
-                            <div className="space-y-2.5">
-                              <div className="flex items-end justify-between gap-2">
-                                <div>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-[10px] uppercase font-bold tracking-wider text-blue-800 bg-blue-100/90 px-1.5 py-0.5 rounded border border-blue-200">
-                                      🏪 Standard Retail
-                                    </span>
-                                    <span className="text-[10px] text-slate-500">{priceSubLabel}</span>
-                                  </div>
-                                  <div className="text-xl font-black text-[#09192e] tracking-tight mt-1">
-                                    {isPerSqInch
-                                      ? `${unit === "₹" ? "₹" : ""}${retailRate} ${unit === "paise" ? "paise" : ""} / sq.in`
-                                      : `₹${retailAmt.toLocaleString("en-IN")}`}
+                                    {view.primary ?? view.enquiryNote}
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-1.5 shrink-0">
@@ -772,22 +704,21 @@ export function PublicProductCatalog({
                               </div>
                             </div>
                           ) : (
-                            /* RANGE MODE: Comprehensive view showing Range, B2B wholesale, and Retail */
-                            <div className="space-y-2">
+                            <div className="space-y-2.5">
                               <div className="flex items-end justify-between gap-2">
                                 <div>
-                                  <span className="text-[10px] uppercase font-extrabold tracking-wider text-slate-500 block">
-                                    Price Range ({priceSubLabel})
-                                  </span>
-                                  <span className="text-lg font-black text-[#09192e] tracking-tight">
-                                    {isPerSqInch
-                                      ? minRate === maxRate
-                                        ? `${unit === "₹" ? "₹" : ""}${minRate} ${unit === "paise" ? "paise" : ""} / sq.in`
-                                        : `${minRate} – ${maxRate} ${unit} / sq.in`
-                                      : minAmt === maxAmt
-                                      ? `₹${minAmt.toLocaleString("en-IN")}`
-                                      : `₹${minAmt.toLocaleString("en-IN")} – ₹${maxAmt.toLocaleString("en-IN")}`}
-                                  </span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] uppercase font-bold tracking-wider text-blue-800 bg-blue-100/90 px-1.5 py-0.5 rounded border border-blue-200">
+                                      🏪 Standard Retail
+                                    </span>
+                                    <span className="text-[10px] text-slate-500">{priceSubLabel}</span>
+                                  </div>
+                                  <div className="text-xl font-black text-[#09192e] tracking-tight mt-1">
+                                    {view.primary ?? view.enquiryNote}
+                                  </div>
+                                  {view.taxNote && (
+                                    <p className="text-[11px] font-semibold text-amber-800 mt-0.5">{view.taxNote}</p>
+                                  )}
                                 </div>
                                 <div className="flex items-center gap-1.5 shrink-0">
                                   <Link
@@ -805,26 +736,6 @@ export function PublicProductCatalog({
                                   >
                                     <MessageCircle size={13} /> WhatsApp
                                   </button>
-                                </div>
-                              </div>
-
-                              {/* Trade vs Retail Rates Breakdown Badges */}
-                              <div className="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-slate-200/80 text-[11px]">
-                                <div className="bg-emerald-50/90 border border-emerald-200/80 rounded px-2 py-1 text-emerald-950">
-                                  <span className="block text-[9px] uppercase font-extrabold text-emerald-700">💼 Trade B2B</span>
-                                  <span className="font-black text-xs">
-                                    {isPerSqInch
-                                      ? `${unit === "₹" ? "₹" : ""}${b2bRate} ${unit === "paise" ? "paise" : ""}/in²`
-                                      : `₹${b2bAmt.toLocaleString("en-IN")}`}
-                                  </span>
-                                </div>
-                                <div className="bg-blue-50/90 border border-blue-200/80 rounded px-2 py-1 text-blue-950">
-                                  <span className="block text-[9px] uppercase font-extrabold text-blue-700">🏪 Retail</span>
-                                  <span className="font-black text-xs">
-                                    {isPerSqInch
-                                      ? `${unit === "₹" ? "₹" : ""}${retailRate} ${unit === "paise" ? "paise" : ""}/in²`
-                                      : `₹${retailAmt.toLocaleString("en-IN")}`}
-                                  </span>
                                 </div>
                               </div>
                             </div>

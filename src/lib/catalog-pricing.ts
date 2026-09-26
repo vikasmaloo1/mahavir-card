@@ -1,28 +1,53 @@
-export type CatalogPriceMode = "RANGE" | "RETAIL" | "B2B" | "SHOWROOM";
+/**
+ * Catalogue price modes and the display model derived from them.
+ *
+ * Client-safe on purpose (no server-only imports): the browser catalogue, the PDF export
+ * and the tests all build price text through these functions, so none of them can drift.
+ */
 
-export const CATALOG_PRICE_MODES: readonly CatalogPriceMode[] = ["RANGE", "RETAIL", "B2B", "SHOWROOM"] as const;
+export type CatalogPriceMode = "RETAIL" | "B2B" | "SHOWROOM";
+
+export const CATALOG_PRICE_MODES: readonly CatalogPriceMode[] = ["RETAIL", "B2B", "SHOWROOM"] as const;
 
 export function isCatalogPriceMode(value: unknown): value is CatalogPriceMode {
   return typeof value === "string" && (CATALOG_PRICE_MODES as readonly string[]).includes(value);
 }
 
 export const CATALOG_MODE_LABELS: Record<CatalogPriceMode, string> = {
-  RANGE: "All Rates · Trade & Retail Range",
   RETAIL: "Standard Retail Rates",
   B2B: "Trade Wholesale Rates",
   SHOWROOM: "Showroom Display · Enquire for Pricing",
 };
 
-/** The subset of a product needed to derive display pricing. */
+/** Short label for the mode switcher in the browser UI. */
+export const CATALOG_MODE_SHORT_LABELS: Record<CatalogPriceMode, string> = {
+  RETAIL: "Standard Retail",
+  B2B: "Trade Wholesale",
+  SHOWROOM: "Showroom Display",
+};
+
+/**
+ * One segment's rate, read straight from that segment's active pricing rule in the database.
+ * Retail rules are tax-exclusive (18% GST added on top); trade rules are tax-inclusive at 0%.
+ */
+export type CatalogRate = {
+  ruleType: "FIXED" | "FIXED_PER_REFERENCE_QUANTITY" | "PER_SQ_INCH";
+  amount: number | null;
+  ratePerSqInch: number | null;
+  rateUnit: "RUPEES" | "PAISE";
+  referenceQuantity: number;
+  bladeCharge: number | null;
+  minimumCharge: number | null;
+  taxInclusive: boolean;
+  taxRatePercent: number;
+};
+
+/** The subset of a catalogue product needed to derive display pricing. */
 export type PricedProduct = {
-  ruleType: "FIXED_PER_REFERENCE_QUANTITY" | "FIXED" | "PER_SQ_INCH";
-  amount?: number;
-  ratePerSqInch?: number;
-  rateUnit?: "RUPEES" | "PAISE";
-  b2bAmount?: number;
-  b2bRatePerSqInch?: number;
-  referenceQuantity?: number;
-  bladeCharge?: number;
+  /** B2C rate, or null when the product has no retail rule. */
+  retail: CatalogRate | null;
+  /** B2B rate, or null when the product has no trade rule. */
+  trade: CatalogRate | null;
 };
 
 /**
@@ -37,8 +62,10 @@ export type CatalogPriceView = {
   /** Headline price string, or null when the mode carries no pricing. */
   primary: string | null;
   primaryLabel: string | null;
-  /** Secondary breakdown rows (trade / retail), empty when the mode carries no pricing. */
-  breakdown: Array<{ label: string; value: string }>;
+  /** GST wording. Retail rates exclude GST and say so; trade rates are inclusive and say nothing. */
+  taxNote: string | null;
+  /** Minimum billing note for area-priced jobs. */
+  minimumNote: string | null;
   /** Call-to-action shown in place of a price. */
   enquiryNote: string | null;
   /** Blade surcharge text; drops the amount in showroom mode. */
@@ -66,78 +93,87 @@ function inr(value: number) {
   return `Rs ${value.toLocaleString("en-IN")}`;
 }
 
-function rateText(rate: number, unit: "RUPEES" | "PAISE" | undefined) {
+function rateText(rate: number, unit: "RUPEES" | "PAISE") {
   return unit === "PAISE" ? `${rate} paise / sq.in` : `Rs ${rate} / sq.in`;
 }
 
-export function buildPriceView(product: PricedProduct, mode: CatalogPriceMode): CatalogPriceView {
-  const isPerSqInch = product.ruleType === "PER_SQ_INCH";
-  const qty = product.referenceQuantity || 1000;
-  const batchLabel = isPerSqInch ? "Custom sq.inch area" : `${qty.toLocaleString("en-IN")} pcs batch`;
+/**
+ * GST wording for a rate. Retail rules are stored tax-exclusive at 18%, so the catalogue
+ * must say the tax is added; trade rules are stored tax-inclusive at 0%, so they say nothing.
+ */
+function taxNoteFor(rate: CatalogRate): string | null {
+  if (rate.taxInclusive || rate.taxRatePercent <= 0) return null;
+  const percent = Number.isInteger(rate.taxRatePercent) ? rate.taxRatePercent : Number(rate.taxRatePercent.toFixed(2));
+  return `+ ${percent}% GST applicable`;
+}
 
-  // Showroom: return before any monetary value is read, so no price can reach the renderer.
+function batchLabelFor(ruleType: string, referenceQuantity: number) {
+  return ruleType === "PER_SQ_INCH"
+    ? "Custom sq.inch area"
+    : `${referenceQuantity.toLocaleString("en-IN")} pcs batch`;
+}
+
+export function buildPriceView(product: PricedProduct, mode: CatalogPriceMode): CatalogPriceView {
+  // Showroom returns before any monetary field is read, so no price can reach the renderer.
+  // Only the rule type and batch size are consulted, and neither is a price.
   if (mode === "SHOWROOM") {
+    const shape = product.retail ?? product.trade;
     return {
-      batchLabel,
+      batchLabel: shape ? batchLabelFor(shape.ruleType, shape.referenceQuantity) : "Made to order",
       primary: null,
       primaryLabel: null,
-      breakdown: [],
+      taxNote: null,
+      minimumNote: null,
       enquiryNote: "Showroom display - enquire for pricing",
-      bladeNote: product.bladeCharge ? "Half blade supported" : null,
+      bladeNote: shape?.bladeCharge ? "Half blade supported" : null,
     };
   }
 
-  const retailRate = product.ratePerSqInch ?? 0;
-  const tradeRate = product.b2bRatePerSqInch ?? retailRate;
-  const retailAmount = product.amount ?? 0;
-  const tradeAmount = product.b2bAmount ?? retailAmount;
-  const bladeNote = product.bladeCharge ? `Half blade: ${inr(product.bladeCharge)}` : null;
-
-  if (mode === "B2B") {
+  const rate = mode === "B2B" ? product.trade : product.retail;
+  if (!rate) {
     return {
-      batchLabel,
-      primary: isPerSqInch ? rateText(tradeRate, product.rateUnit) : inr(tradeAmount),
-      primaryLabel: "Trade wholesale",
-      breakdown: [],
-      enquiryNote: null,
-      bladeNote,
+      batchLabel: "Made to order",
+      primary: null,
+      primaryLabel: null,
+      taxNote: null,
+      minimumNote: null,
+      enquiryNote: "Rate on request",
+      bladeNote: null,
     };
   }
 
-  if (mode === "RETAIL") {
-    return {
-      batchLabel,
-      primary: isPerSqInch ? rateText(retailRate, product.rateUnit) : inr(retailAmount),
-      primaryLabel: "Standard retail",
-      breakdown: [],
-      enquiryNote: null,
-      bladeNote,
-    };
-  }
-
-  // RANGE: trade-to-retail span plus the two individual rates.
-  const minRate = Math.min(retailRate, tradeRate);
-  const maxRate = Math.max(retailRate, tradeRate);
-  const minAmount = Math.min(retailAmount, tradeAmount);
-  const maxAmount = Math.max(retailAmount, tradeAmount);
-
+  const isPerSqInch = rate.ruleType === "PER_SQ_INCH";
   const primary = isPerSqInch
-    ? minRate === maxRate
-      ? rateText(minRate, product.rateUnit)
-      : `${minRate} - ${maxRate} ${product.rateUnit === "PAISE" ? "paise" : "Rs"} / sq.in`
-    : minAmount === maxAmount
-      ? inr(minAmount)
-      : `${inr(minAmount)} - ${inr(maxAmount)}`;
+    ? rate.ratePerSqInch !== null
+      ? rateText(rate.ratePerSqInch, rate.rateUnit)
+      : null
+    : rate.amount !== null
+      ? inr(rate.amount)
+      : null;
 
   return {
-    batchLabel,
+    batchLabel: batchLabelFor(rate.ruleType, rate.referenceQuantity),
     primary,
-    primaryLabel: "Price range",
-    breakdown: [
-      { label: "Trade", value: isPerSqInch ? rateText(tradeRate, product.rateUnit) : inr(tradeAmount) },
-      { label: "Retail", value: isPerSqInch ? rateText(retailRate, product.rateUnit) : inr(retailAmount) },
-    ],
-    enquiryNote: null,
-    bladeNote,
+    primaryLabel: mode === "B2B" ? "Trade wholesale" : "Standard retail",
+    taxNote: primary ? taxNoteFor(rate) : null,
+    minimumNote: rate.minimumCharge ? `Minimum billing ${inr(rate.minimumCharge)}` : null,
+    enquiryNote: primary ? null : "Rate on request",
+    bladeNote: rate.bladeCharge ? `Half blade: ${inr(rate.bladeCharge)}` : null,
   };
+}
+
+/**
+ * Narrows a requested mode to one the viewer is actually allowed to see. This is the check
+ * that stops a retail account fetching the trade edition by editing the query string, so it
+ * falls back to the viewer's default rather than honouring anything unrecognised.
+ */
+export function resolveCatalogMode(
+  allowedModes: readonly CatalogPriceMode[],
+  defaultMode: CatalogPriceMode,
+  requested: string | null | undefined,
+): CatalogPriceMode {
+  if (!allowedModes.length) return defaultMode;
+  const safeDefault = allowedModes.includes(defaultMode) ? defaultMode : allowedModes[0];
+  if (typeof requested !== "string") return safeDefault;
+  return (allowedModes as readonly string[]).includes(requested) ? (requested as CatalogPriceMode) : safeDefault;
 }

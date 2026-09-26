@@ -314,12 +314,10 @@ function drawProductCard(ctx: Ctx, page: PDFPage, product: CatalogProduct, x: nu
   if (view.primary) {
     drawText(page, (view.primaryLabel ?? "").toUpperCase(), x + pad + 7, panelY + panelH - 11, bold, 6.3, SLATE);
     drawText(page, view.primary, x + pad + 7, panelY + panelH - 25, bold, 11, INK);
-    if (view.breakdown.length) {
-      const parts = view.breakdown.map((row) => `${row.label} ${row.value}`).join("   |   ");
-      drawText(page, fit(parts, regular, 6.4, innerW - 14), x + pad + 6, panelY + 6, regular, 6.4, SLATE);
-    } else {
-      drawText(page, fit(view.batchLabel, regular, 6.4, innerW - 14), x + pad + 6, panelY + 6, regular, 6.4, SLATE);
-    }
+    // Retail rates are tax-exclusive so they carry the GST line; trade rates are inclusive
+    // and taxNote is null for them, leaving the batch context in its place.
+    const footNote = view.taxNote ?? view.minimumNote ?? view.batchLabel;
+    drawText(page, fit(footNote, regular, 6.4, innerW - 14), x + pad + 6, panelY + 6, regular, 6.4, view.taxNote ? INK : SLATE);
   } else {
     // Showroom: no monetary value exists on the view object at all.
     drawText(page, "SHOWROOM DISPLAY", x + pad + 7, panelY + panelH - 11, bold, 6.3, GOLD);
@@ -492,10 +490,14 @@ function drawClosing(ctx: Ctx, model: CatalogModel) {
   contact.forEach((line, i) => drawText(page, line, MARGIN + 18, cursor - 48 - i * 13, regular, 9, rgb(0.8, 0.84, 0.89)));
 
   cursor -= 148;
+  // Retail rules are stored tax-exclusive at 18%; trade rules are tax-inclusive, so the
+  // trade edition must not imply that GST is added on top.
   const note =
     ctx.mode === "SHOWROOM"
       ? "This showroom edition lists products and specifications only. Contact us for current rates and quotations."
-      : "Rates shown are current at the time of printing and exclude GST unless stated otherwise.";
+      : ctx.mode === "B2B"
+        ? "Trade wholesale rates are current at the time of printing and are inclusive of applicable tax."
+        : "Retail rates are current at the time of printing and are exclusive of GST. 18% GST is applicable on the rates shown.";
   wrap(note, regular, 8, PAGE_W - MARGIN * 2, 2).forEach((line, i) =>
     drawText(page, line, MARGIN, cursor - i * 11, regular, 8, SLATE),
   );

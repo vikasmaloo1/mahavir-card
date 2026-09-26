@@ -36,8 +36,8 @@ const nextConfig: NextConfig = {
       ...legacyCategoryRedirects,
       // The old static catalogue files were generated offline from a hardcoded product list and
       // are gone; point any link that still exists at the live, data-driven export.
-      { source: "/mahavir-card-catalogue.pdf", destination: "/api/catalog/pdf?mode=RANGE", permanent: true },
-      { source: "/mahavir-card-rate-catalogue.pdf", destination: "/api/catalog/pdf?mode=RANGE", permanent: true },
+      { source: "/mahavir-card-catalogue.pdf", destination: "/api/catalog/pdf?mode=RETAIL", permanent: true },
+      { source: "/mahavir-card-rate-catalogue.pdf", destination: "/api/catalog/pdf?mode=RETAIL", permanent: true },
       { source: "/mahavir-card-showroom-catalogue.pdf", destination: "/api/catalog/pdf?mode=SHOWROOM", permanent: true },
       {
         source: "/catalogue",
