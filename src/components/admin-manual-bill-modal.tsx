@@ -2,10 +2,13 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  AlertCircle,
   Building,
   Check,
+  CheckCircle2,
   Eye,
   Layers,
+  Loader2,
   Plus,
   Printer,
   RefreshCw,
@@ -195,6 +198,31 @@ export function AdminManualBillModal({
   const [postalCode, setPostalCode] = useState("");
   const [gstin, setGstin] = useState("");
   const [saveAsNewCustomer, setSaveAsNewCustomer] = useState(true);
+
+  // GST Verification & business autofill state
+  const [gstLoading, setGstLoading] = useState(false);
+  const [gstError, setGstError] = useState("");
+  const [gstVerifiedData, setGstVerifiedData] = useState<{
+    valid: boolean;
+    error?: string;
+    tradeName?: string;
+    legalName?: string;
+    state?: string;
+    stateCode?: string;
+    tin?: string;
+    pan?: string;
+    entityType?: string;
+    status?: string;
+    statusAlert?: string;
+    addressLine1?: string;
+    addressLine2?: string;
+    city?: string;
+    postalCode?: string;
+    source?: string;
+    message?: string;
+    isGujarat?: boolean;
+    suggestedTaxType?: "INTRA_STATE" | "INTER_STATE";
+  } | null>(null);
 
   // Customer inline autocomplete suggestion state
   const [activeSuggestionField, setActiveSuggestionField] = useState<"name" | "company" | null>(null);
@@ -504,9 +532,76 @@ export function AdminManualBillModal({
     }
   }
 
+  const lookupAndAutofillGst = async (gstToLookup?: string) => {
+    const targetGst = (gstToLookup !== undefined ? gstToLookup : gstin).trim().toUpperCase();
+    if (!targetGst) {
+      setGstError("Please enter a 15-digit GST number.");
+      return;
+    }
+    if (targetGst.length !== 15) {
+      const msg = `GST number must be exactly 15 characters (currently ${targetGst.length}).`;
+      setGstError(msg);
+      alert(`⚠️ Invalid GST Number: ${msg}`);
+      return;
+    }
+
+    setGstLoading(true);
+    setGstError("");
+    try {
+      const res = await fetch(`/api/admin/gst-lookup?gstin=${encodeURIComponent(targetGst)}`);
+      const json = await res.json();
+      if (!json.success || !json.data?.valid) {
+        const errorMsg = json.data?.error || json.error?.message || "Invalid GST number or business not found.";
+        setGstError(errorMsg);
+        setGstVerifiedData(null);
+        alert(`❌ Invalid GST Number!\n\n${errorMsg}`);
+        return;
+      }
+
+      const d = json.data;
+      setGstVerifiedData(d);
+      setGstError("");
+
+      // Autofill Company Name & Customer Name
+      if (d.tradeName) {
+        setCompanyName(d.tradeName);
+      } else if (d.legalName) {
+        setCompanyName(d.legalName);
+      }
+
+      if (d.legalName) {
+        if (!customerName || customerName === "Walk-In Customer") {
+          setCustomerName(d.legalName);
+        }
+      } else if (d.tradeName && (!customerName || customerName === "Walk-In Customer")) {
+        setCustomerName(d.tradeName);
+      }
+
+      // Autofill Address Details
+      if (d.addressLine1) setAddressLine1(d.addressLine1);
+      if (d.addressLine2) setAddressLine2(d.addressLine2);
+      if (d.city) setCity(d.city);
+      if (d.postalCode) setPostalCode(d.postalCode);
+      if (d.state) setState(d.state);
+      if (d.stateCode) setStateCode(d.stateCode);
+
+      // Auto-set Tax Jurisdiction
+      if (d.isGujarat) {
+        setTaxType("INTRA_STATE");
+      } else {
+        setTaxType("INTER_STATE");
+      }
+    } catch {
+      setGstError("Network error while verifying GST. Please try again.");
+    } finally {
+      setGstLoading(false);
+    }
+  };
+
   function handleGstinChange(val: string) {
-    const cleanGst = val.toUpperCase().trim();
+    const cleanGst = val.toUpperCase().replace(/[^0-9A-Z]/g, "");
     setGstin(cleanGst);
+    setGstError("");
 
     // Auto-detect state if first 2 digits match Indian GST TIN code
     if (cleanGst.length >= 2) {
@@ -521,6 +616,12 @@ export function AdminManualBillModal({
           setTaxType("INTRA_STATE");
         }
       }
+    }
+
+    if (cleanGst.length === 15) {
+      lookupAndAutofillGst(cleanGst);
+    } else {
+      setGstVerifiedData(null);
     }
   }
 
@@ -1376,17 +1477,116 @@ export function AdminManualBillModal({
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                      GSTIN (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={gstin}
-                      onChange={(e) => handleGstinChange(e.target.value)}
-                      placeholder="e.g. 24AAAAA0000A1Z5"
-                      className="w-full px-2.5 py-1.5 text-xs uppercase bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 font-mono font-bold"
-                    />
+                  <div className="sm:col-span-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-semibold text-slate-600">
+                        GSTIN (Buyer Tax Identification)
+                      </label>
+                      {gstin.trim().length === 15 && (
+                        <button
+                          type="button"
+                          onClick={() => lookupAndAutofillGst()}
+                          disabled={gstLoading}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 cursor-pointer disabled:opacity-50"
+                        >
+                          {gstLoading ? (
+                            <>
+                              <Loader2 size={12} className="animate-spin" /> Verifying...
+                            </>
+                          ) : (
+                            <>
+                              <Search size={12} /> Verify & Autofill Details
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={gstin}
+                        onChange={(e) => handleGstinChange(e.target.value)}
+                        placeholder="e.g. 24AIUPJ2271L1ZV"
+                        maxLength={15}
+                        className={`w-full px-2.5 py-2 text-xs uppercase bg-white border rounded-md font-mono font-bold tracking-wider focus:outline-hidden focus:ring-2 ${
+                          gstError
+                            ? "border-red-400 bg-red-50/20 text-red-900 focus:ring-red-400"
+                            : gstVerifiedData
+                            ? "border-emerald-400 bg-emerald-50/20 text-emerald-950 focus:ring-emerald-400"
+                            : "border-slate-300 focus:ring-blue-500 text-slate-800"
+                        }`}
+                      />
+                      {gstLoading && (
+                        <div className="absolute right-3 top-2.5 text-blue-600">
+                          <Loader2 size={16} className="animate-spin" />
+                        </div>
+                      )}
+                      {gstVerifiedData && !gstLoading && (
+                        <div className="absolute right-3 top-2.5 text-emerald-600">
+                          <CheckCircle2 size={16} />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Invalid GST Alert Message */}
+                    {gstError && (
+                      <div className="mt-2 rounded-lg bg-red-50 border border-red-200 p-2.5 text-xs text-red-700 flex items-start gap-2 shadow-xs animate-in fade-in">
+                        <AlertCircle size={15} className="text-red-600 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-bold">Invalid GST Number: </span>
+                          <span>{gstError}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Verified Taxpayer & Autofilled Business Card */}
+                    {gstVerifiedData && (
+                      <div className="mt-2.5 rounded-lg border border-emerald-200 bg-emerald-50/80 p-3 text-xs text-emerald-950 space-y-1.5 shadow-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-emerald-900 flex items-center gap-1.5">
+                            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
+                            {gstVerifiedData.tradeName || "Verified Taxpayer Details"}
+                          </span>
+                          <span className="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-300">
+                            {gstVerifiedData.status || "Active"} · {gstVerifiedData.entityType || "Business"}
+                          </span>
+                        </div>
+
+                        {gstVerifiedData.legalName && gstVerifiedData.legalName !== gstVerifiedData.tradeName && (
+                          <div className="text-slate-600 text-[11px]">
+                            Legal Name: <strong className="text-slate-800">{gstVerifiedData.legalName}</strong>
+                          </div>
+                        )}
+
+                        <div className="text-slate-600 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] pt-0.5">
+                          <span>📍 {gstVerifiedData.state} ({gstVerifiedData.stateCode})</span>
+                          {gstVerifiedData.city && <span>· City: {gstVerifiedData.city}</span>}
+                          {gstVerifiedData.postalCode && <span>· PIN: {gstVerifiedData.postalCode}</span>}
+                        </div>
+
+                        {gstVerifiedData.addressLine1 && (
+                          <div className="text-[11px] text-slate-500 italic">
+                            {gstVerifiedData.addressLine1}{gstVerifiedData.addressLine2 ? `, ${gstVerifiedData.addressLine2}` : ""}
+                          </div>
+                        )}
+
+                        {gstVerifiedData.statusAlert && (
+                          <div className="rounded bg-amber-100 border border-amber-300 p-1.5 text-[11px] text-amber-900 font-semibold flex items-center gap-1.5">
+                            <AlertCircle size={13} className="shrink-0 text-amber-700" />
+                            {gstVerifiedData.statusAlert}
+                          </div>
+                        )}
+
+                        <div className="pt-1 border-t border-emerald-200/80 flex items-center justify-between text-[11px]">
+                          <span className="text-emerald-800 font-semibold">
+                            ✓ Tax Type auto-switched to: {gstVerifiedData.isGujarat ? "Intra-State Gujarat (CGST + SGST)" : "Inter-State (IGST 18%)"}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            PAN: {gstVerifiedData.pan}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Check, Edit3, Eye, Printer, RefreshCw, X } from "lucide-react";
+import { Check, Edit3, Eye, Printer, RefreshCw, X, AlertCircle, CheckCircle2, Loader2, Search } from "lucide-react";
 
 import { adminRequest } from "@/lib/admin-client";
 import { TaxInvoiceDocument } from "@/components/tax-invoice-document";
@@ -61,6 +61,65 @@ export function AdminInvoiceManagerModal({
   const [bankName, setBankName] = useState("BANK OF BARODA");
   const [accountNumber, setAccountNumber] = useState("03280200003947");
   const [ifscCode, setIfscCode] = useState("BARB0GANAHM");
+
+  // Buyer GST Verification state
+  const [gstLoading, setGstLoading] = useState(false);
+  const [gstError, setGstError] = useState("");
+  const [gstVerifiedData, setGstVerifiedData] = useState<{
+    tradeName?: string;
+    legalName?: string;
+    state?: string;
+    stateCode?: string;
+    status?: string;
+    statusAlert?: string;
+    entityType?: string;
+    isGujarat?: boolean;
+  } | null>(null);
+
+  const handleVerifyBuyerGst = async (gst?: string) => {
+    const raw = (gst !== undefined ? gst : buyerGstin).trim().toUpperCase();
+    if (!raw) return;
+    if (raw.length !== 15) {
+      const msg = `GST number must be 15 characters (currently ${raw.length}).`;
+      setGstError(msg);
+      alert(`⚠️ Invalid GST Number: ${msg}`);
+      return;
+    }
+
+    setGstLoading(true);
+    setGstError("");
+    try {
+      const res = await fetch(`/api/admin/gst-lookup?gstin=${encodeURIComponent(raw)}`);
+      const json = await res.json();
+      if (!json.success || !json.data?.valid) {
+        const errorMsg = json.data?.error || json.error?.message || "Invalid GST number or not found.";
+        setGstError(errorMsg);
+        setGstVerifiedData(null);
+        alert(`❌ Invalid GST Number!\n\n${errorMsg}`);
+        return;
+      }
+
+      const d = json.data;
+      setGstVerifiedData(d);
+      setGstError("");
+
+      if (d.tradeName && (!customerName || customerName.length <= 3)) {
+        setCustomerName(d.tradeName);
+      }
+      if (d.addressLine1 && !addressLine1) {
+        setAddressLine1(d.addressLine1);
+      }
+      if (d.isGujarat) {
+        setTaxScheme("INTRA_STATE");
+      } else {
+        setTaxScheme("INTER_STATE");
+      }
+    } catch {
+      setGstError("Network error checking GST");
+    } finally {
+      setGstLoading(false);
+    }
+  };
 
   async function load() {
     setLoading(true);
@@ -554,14 +613,73 @@ export function AdminInvoiceManagerModal({
                       />
                     </div>
                     <div>
-                      <label className="block font-semibold text-gray-700">Buyer GSTIN</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. 24DAFPS... or blank"
-                        value={buyerGstin}
-                        onChange={(e) => setBuyerGstin(e.target.value)}
-                        className="mt-1 w-full rounded border border-[#c9d2df] px-2 py-1 font-mono"
-                      />
+                      <div className="flex items-center justify-between">
+                        <label className="block font-semibold text-gray-700">Buyer GSTIN</label>
+                        {buyerGstin.trim().length === 15 && (
+                          <button
+                            type="button"
+                            onClick={() => handleVerifyBuyerGst()}
+                            disabled={gstLoading}
+                            className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer disabled:opacity-50"
+                          >
+                            {gstLoading ? "Verifying..." : "Verify & Autofill"}
+                          </button>
+                        )}
+                      </div>
+                      <div className="relative mt-1">
+                        <input
+                          type="text"
+                          placeholder="e.g. 24AIUPJ2271L1ZV or blank"
+                          maxLength={15}
+                          value={buyerGstin}
+                          onChange={(e) => {
+                            const val = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, "");
+                            setBuyerGstin(val);
+                            setGstError("");
+                            if (val.length === 15) {
+                              handleVerifyBuyerGst(val);
+                            } else {
+                              setGstVerifiedData(null);
+                            }
+                          }}
+                          className={`w-full rounded border px-2 py-1 font-mono uppercase text-xs ${
+                            gstError
+                              ? "border-red-400 bg-red-50 text-red-900"
+                              : gstVerifiedData
+                              ? "border-emerald-400 bg-emerald-50 text-emerald-950"
+                              : "border-[#c9d2df]"
+                          }`}
+                        />
+                        {gstLoading && (
+                          <div className="absolute right-2 top-1.5 text-blue-600">
+                            <Loader2 size={13} className="animate-spin" />
+                          </div>
+                        )}
+                        {gstVerifiedData && !gstLoading && (
+                          <div className="absolute right-2 top-1.5 text-emerald-600">
+                            <CheckCircle2 size={13} />
+                          </div>
+                        )}
+                      </div>
+
+                      {gstError && (
+                        <div className="mt-1 rounded bg-red-50 border border-red-200 p-1.5 text-[11px] text-red-700 flex items-start gap-1">
+                          <AlertCircle size={13} className="shrink-0 mt-0.5 text-red-600" />
+                          <span><strong>Invalid GST:</strong> {gstError}</span>
+                        </div>
+                      )}
+
+                      {gstVerifiedData && (
+                        <div className="mt-1 rounded bg-emerald-50 border border-emerald-200 p-1.5 text-[11px] text-emerald-900">
+                          <div className="font-bold flex items-center justify-between">
+                            <span>✓ {gstVerifiedData.tradeName || "Verified Taxpayer"}</span>
+                            <span className="text-[10px] bg-emerald-100 px-1 rounded">{gstVerifiedData.status || "Active"}</span>
+                          </div>
+                          <div className="text-[10px] text-emerald-700">
+                            {gstVerifiedData.state} · Tax auto-set: {gstVerifiedData.isGujarat ? "Intra-State (CGST+SGST)" : "Inter-State (IGST)"}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
