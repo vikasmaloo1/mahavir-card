@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { buildProductOffer } from "@/lib/product-schema";
 import { ArrowRight, Clock3, FileUp, ShieldCheck } from "lucide-react";
 import { and, asc, eq, or } from "drizzle-orm";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -182,6 +183,11 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   };
   const promo = categoryPromo[product.categorySlug];
 
+  // Google requires a Product to carry offers, review or aggregateRating. Rates are only
+  // shown to signed-in accounts, so when there is no price this page emits no Product node at
+  // all rather than an invalid one; the breadcrumb below is unaffected.
+  const productOffer = buildProductOffer(product.slug, product.startingPrice, { priceValidUntil: "2027-12-31" });
+
   const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -194,22 +200,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
       "@type": "Brand",
       name: "Mahavir Card",
     },
-    ...(product.startingPrice
-      ? {
-          offers: {
-            "@type": "Offer",
-            url: `https://mahavircard.in/catalog/${product.slug}`,
-            priceCurrency: "INR",
-            price: String(product.startingPrice),
-            priceValidUntil: "2027-12-31",
-            availability: "https://schema.org/InStock",
-            seller: {
-              "@type": "Organization",
-              name: "Mahavir Card",
-            },
-          },
-        }
-      : {}),
+    offers: productOffer,
   };
 
   const breadcrumbJsonLd = {
@@ -245,10 +236,12 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
 
   return (
     <main className="mc-storefront min-h-screen bg-[#fcfbf9] text-slate-900 pb-24 sm:pb-0">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
-      />
+      {productOffer && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+        />
+      )}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}

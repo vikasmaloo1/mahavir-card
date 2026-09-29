@@ -6,6 +6,7 @@ import { ArrowRight, Clock3 } from "lucide-react";
 import { CategoryCopy } from "@/components/category-copy";
 import { CustomerNotices } from "@/components/customer-notices";
 import { ProductImage } from "@/components/product-image";
+import { buildListItem, buildProductOffer } from "@/lib/product-schema";
 import { StorefrontFooter } from "@/components/storefront-footer";
 import { StorefrontHeader } from "@/components/storefront-header";
 import { categoryCopy } from "@/content/category-copy";
@@ -83,32 +84,20 @@ export default async function CategoryLandingPage({ params }: { params: Promise<
     name: page.h1,
     url,
     numberOfItems: items.length,
-    itemListElement: items.map((item, index) => ({
-      "@type": "ListItem",
-      position: index + 1,
-      item: {
-        "@type": "Product",
-        name: item.name,
-        url: `${SITE}/catalog/${item.slug}`,
-        image: `${SITE}${item.imageUrl}`,
-        description: item.specification,
-        sku: item.slug,
-        category: listing?.categoryName ?? page.name,
-        brand: { "@type": "Brand", name: "Mahavir Card" },
-        ...(isLoggedIn && item.startingPrice
-          ? {
-              offers: {
-                "@type": "Offer",
-                url: `${SITE}/catalog/${item.slug}`,
-                priceCurrency: "INR",
-                price: item.startingPrice.toFixed(2),
-                availability: "https://schema.org/InStock",
-                seller: { "@type": "Organization", name: "Mahavir Card" },
-              },
-            }
-          : {}),
-      },
-    })),
+    // No offer means no Product node: see src/lib/product-schema.ts for why.
+    itemListElement: items.map((item, index) =>
+      buildListItem(
+        {
+          name: item.name,
+          slug: item.slug,
+          imageUrl: item.imageUrl,
+          specification: item.specification,
+          categoryName: listing?.categoryName ?? page.name,
+        },
+        index + 1,
+        isLoggedIn ? buildProductOffer(item.slug, item.startingPrice) : null,
+      ),
+    ),
   };
 
   return (
