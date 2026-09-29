@@ -188,8 +188,8 @@ export function AdminSalesReport() {
 
   const themeColors: Record<ReportType, { bg: string; hover: string; light: string; border: string; label: string }> = {
     COMBINED: { bg: "#0F766E", hover: "#115E59", light: "#F0FDFA", border: "#99F6E4", label: "SALES + PURCHASE (1 TAB)" },
-    B2C: { bg: "#1A6E8E", hover: "#155A76", light: "#F0F8FB", border: "#CCE4EF", label: "SALE B2C (COUNTER & ONLINE)" },
-    B2B: { bg: "#7B3F8D", hover: "#6A3479", light: "#FAF5FB", border: "#EEDBF2", label: "SALE B2B (CORPORATE)" },
+    B2C: { bg: "#1A6E8E", hover: "#155A76", light: "#F0F8FB", border: "#CCE4EF", label: "SALE B2C (WITH GST)" },
+    B2B: { bg: "#7B3F8D", hover: "#6A3479", light: "#FAF5FB", border: "#EEDBF2", label: "SALE B2B (NO GST)" },
     PURCHASE: { bg: "#2E7D32", hover: "#236527", light: "#F1F8F3", border: "#D0E9D4", label: "PURCHASE REGISTER" },
   };
 
@@ -271,13 +271,13 @@ export function AdminSalesReport() {
               {
                 id: "B2C" as ReportType,
                 title: "Sale B2C",
-                subtitle: "Store bills + Retail",
+                subtitle: "With GST (GSTIN orders)",
                 color: "#1A6E8E",
               },
               {
                 id: "B2B" as ReportType,
                 title: "Sale B2B",
-                subtitle: "GST corporate orders",
+                subtitle: "Bills with No GST",
                 color: "#7B3F8D",
               },
               {

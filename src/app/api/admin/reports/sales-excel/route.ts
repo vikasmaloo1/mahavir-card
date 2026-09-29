@@ -1,4 +1,4 @@
-﻿import { and, asc, between, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, asc, between, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import { handleApiError } from "@/lib/api";
 import { db } from "@/lib/db/server";
@@ -125,8 +125,12 @@ export async function GET(request: Request) {
 
     const { from, to } = getDateRange(period, dateFrom, dateTo);
 
-    // ── 1. FETCH AND BUILD SALES DATA (B2C includes all counter store bills) ──
-    const saleVariant = type === "B2B" ? "B2B" : "B2C";
+    // ── 1. FETCH AND BUILD SALES DATA ──
+    // User definition:
+    // B2B = Bills with NO GST ("b2b means no gst orders, bills with no gst should be there")
+    // B2C = Bills WITH GST (registered corporate/retail with GSTIN)
+    // COMBINED = Both (all sales bills)
+    const saleVariant = type === "B2B" ? "B2B" : type === "B2C" ? "B2C" : "ALL";
 
     const allBills = await db.select().from(bills)
       .where(between(bills.invoiceDate, from, to))
@@ -174,10 +178,15 @@ export async function GET(request: Request) {
 
     const saleRows: UnifiedReportRow[] = [];
 
-    // Manual Store Bills (store bills are always B2C)
+    // Manual Store Bills
     for (const b of allBills) {
       const hasGstin = Boolean(b.gstin && b.gstin.trim().length > 5);
-      if (saleVariant === "B2C" || (saleVariant === "B2B" && hasGstin)) {
+      const includeInReport =
+        type === "COMBINED" ||
+        (type === "B2B" && !hasGstin) ||
+        (type === "B2C" && hasGstin);
+
+      if (includeInReport) {
         const items = Array.isArray(b.items) ? (b.items as Array<{ quantity?: number; hsnCode?: string }>) : [];
         const totalQty = items.reduce((s, it) => s + Number(it.quantity || 0), 0);
         const hsnCode = items.length > 0 ? (items[0].hsnCode || "4802") : "4802";
@@ -203,8 +212,13 @@ export async function GET(request: Request) {
 
     // Online Store Orders
     for (const o of allOrders) {
-      const isB2B = o.customerType === "B2B" || Boolean(o.gstNumber && o.gstNumber.trim().length > 5);
-      if ((saleVariant === "B2C" && !isB2B) || (saleVariant === "B2B" && isB2B)) {
+      const hasGstin = Boolean(o.gstNumber && o.gstNumber.trim().length > 5);
+      const includeInReport =
+        type === "COMBINED" ||
+        (type === "B2B" && !hasGstin) ||
+        (type === "B2C" && hasGstin);
+
+      if (includeInReport) {
         const itemMeta = orderItemsMap.get(o.id);
         const totalQty = itemMeta?.qty || null;
         const hsnCode = itemMeta?.hsnCode || "4802";

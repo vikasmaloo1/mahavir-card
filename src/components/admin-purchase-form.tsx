@@ -21,6 +21,31 @@ type PartySuggestion = {
   gstin: string;
   phone?: string;
   city?: string;
+  state?: string;
+  stateCode?: string;
+  taxType?: string;
+  cgstRate?: string;
+  sgstRate?: string;
+  igstRate?: string;
+  gstRate?: string;
+  hsnCode?: string;
+  description?: string;
+  qty?: number;
+  qtyUnit?: string;
+  taxValue?: number;
+  totalValue?: number;
+  items?: Array<{
+    id?: string;
+    description: string;
+    hsnCode: string;
+    quantity: number;
+    unit?: string;
+    rate: number;
+    amount: number;
+  }>;
+  lastBillNo?: string;
+  lastDate?: string;
+  notes?: string;
   source: "SUPPLIER" | "CUSTOMER";
 };
 
@@ -130,27 +155,27 @@ export function AdminPurchaseForm({ initial }: PurchaseFormProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // Debounced search for suppliers / parties
-  useEffect(() => {
-    if (!partyName.trim() || partyName.trim().length < 2) {
-      setSuggestions([]);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setLoadingSuggestions(true);
-      try {
-        const res = await fetch(`/api/admin/purchases/parties?query=${encodeURIComponent(partyName.trim())}`);
-        const json = await res.json();
-        if (json.success && Array.isArray(json.data.suggestions)) {
-          setSuggestions(json.data.suggestions);
-        }
-      } catch (err) {
-        console.error("Failed to fetch party suggestions", err);
-      } finally {
-        setLoadingSuggestions(false);
+  // Search for suppliers / parties
+  const loadPartySuggestions = async (q: string) => {
+    setLoadingSuggestions(true);
+    try {
+      const queryParam = q.trim().length >= 1 ? `?query=${encodeURIComponent(q.trim())}` : "";
+      const res = await fetch(`/api/admin/purchases/parties${queryParam}`);
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data.suggestions)) {
+        setSuggestions(json.data.suggestions);
       }
-    }, 200);
+    } catch (err) {
+      console.error("Failed to fetch party suggestions", err);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadPartySuggestions(partyName);
+    }, 150);
 
     return () => clearTimeout(timer);
   }, [partyName]);
@@ -242,12 +267,48 @@ export function AdminPurchaseForm({ initial }: PurchaseFormProps) {
     }
   };
 
+  const [autofillNotice, setAutofillNotice] = useState<string>("");
+
   const handleSelectSuggestion = (sug: PartySuggestion) => {
     setPartyName(sug.name);
+
     if (sug.gstin) {
       setPartyGstin(sug.gstin);
       handleVerifyGst(sug.gstin);
     }
+
+    if (sug.taxType) {
+      setTaxType(sug.taxType);
+    }
+
+    if (sug.gstRate) {
+      setGstRate(sug.gstRate);
+    }
+
+    if (sug.notes && !notes) {
+      setNotes(sug.notes);
+    }
+
+    // Autofill items from previous purchase records
+    if (Array.isArray(sug.items) && sug.items.length > 0) {
+      setItems(
+        sug.items.map((it, idx) => ({
+          id: `item-${Date.now()}-${idx + 1}`,
+          description: it.description || "",
+          hsnCode: it.hsnCode || "4802",
+          quantity: it.quantity ?? 1,
+          unit: it.unit || "PCS",
+          rate: it.rate ?? 0,
+          amount: it.amount ?? (Number(it.quantity || 1) * Number(it.rate || 0)),
+        }))
+      );
+      setAutofillNotice(
+        `✓ Autofilled ${sug.items.length} item(s), GSTIN & tax settings from previous purchase record (Bill #${sug.lastBillNo || ""})`
+      );
+    } else {
+      setAutofillNotice(`✓ Autofilled supplier details for ${sug.name}`);
+    }
+
     setShowSuggestions(false);
   };
 
@@ -416,6 +477,22 @@ export function AdminPurchaseForm({ initial }: PurchaseFormProps) {
         </div>
       )}
 
+      {autofillNotice && (
+        <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800 font-medium flex items-center justify-between shadow-xs animate-in fade-in">
+          <span className="flex items-center gap-2">
+            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+            <span>{autofillNotice}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setAutofillNotice("")}
+            className="text-emerald-700 hover:text-emerald-950 font-bold ml-2 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Section 1: Party & Bill Information */}
         <div className="rounded-xl border border-[#d7dce5] bg-white p-5 shadow-xs space-y-4">
@@ -423,7 +500,7 @@ export function AdminPurchaseForm({ initial }: PurchaseFormProps) {
             <h2 className="text-sm font-bold text-[#7B3F8D] uppercase tracking-wider">
               Supplier / Party Information
             </h2>
-            <span className="text-xs text-[#607089]">Autocomplete enabled</span>
+            <span className="text-xs text-[#607089]">Click any previous supplier to autofill past items &amp; tax</span>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -455,14 +532,17 @@ export function AdminPurchaseForm({ initial }: PurchaseFormProps) {
               <input
                 type="text"
                 required
-                placeholder="Type to search supplier or customer..."
+                placeholder="Type to search previous supplier or vendor..."
                 value={partyName}
                 onChange={(e) => {
                   setPartyName(e.target.value);
                   setShowSuggestions(true);
                 }}
                 onFocus={() => {
-                  if (suggestions.length > 0) setShowSuggestions(true);
+                  setShowSuggestions(true);
+                  if (suggestions.length === 0) {
+                    loadPartySuggestions(partyName);
+                  }
                 }}
                 className={inputCls}
                 autoComplete="off"
@@ -470,42 +550,81 @@ export function AdminPurchaseForm({ initial }: PurchaseFormProps) {
 
               {/* Suggestions Dropdown */}
               {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute z-30 left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-lg border border-[#c9d2df] bg-white shadow-lg">
+                <div className="absolute z-30 left-0 right-0 mt-1 max-h-72 overflow-y-auto rounded-lg border border-[#c9d2df] bg-white shadow-xl divide-y divide-slate-100">
                   <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                     <span>Matching Suppliers &amp; Parties ({suggestions.length})</span>
-                    {loadingSuggestions && <span>Searching...</span>}
+                    <span className="text-[10px] text-purple-700 font-semibold">Click to autofill old records</span>
                   </div>
                   <ul className="divide-y divide-slate-100">
                     {suggestions.map((sug, idx) => (
                       <li
                         key={idx}
                         onClick={() => handleSelectSuggestion(sug)}
-                        className="px-3 py-2.5 hover:bg-purple-50/70 cursor-pointer flex items-center justify-between transition-colors text-xs"
+                        className="px-3.5 py-3 hover:bg-purple-50/80 cursor-pointer flex items-start justify-between transition-colors text-xs gap-3"
                       >
-                        <div className="min-w-0 pr-2">
+                        <div className="min-w-0 flex-1 space-y-1">
                           <div className="flex items-center gap-1.5 font-bold text-[#162237]">
                             {sug.source === "SUPPLIER" ? (
-                              <Building size={13} className="text-[#7B3F8D] shrink-0" />
+                              <Building size={14} className="text-[#7B3F8D] shrink-0" />
                             ) : (
-                              <User size={13} className="text-blue-600 shrink-0" />
+                              <User size={14} className="text-blue-600 shrink-0" />
                             )}
-                            <span className="truncate">{sug.name}</span>
+                            <span className="truncate text-sm">{sug.name}</span>
                           </div>
-                          <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500">
-                            {sug.gstin ? <span className="font-mono text-slate-700">GST: {sug.gstin}</span> : <span>No GST</span>}
-                            {sug.phone ? <span>· {sug.phone}</span> : null}
+
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
+                            {sug.gstin ? (
+                              <span className="font-mono text-purple-800 font-semibold bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200/60">
+                                GST: {sug.gstin}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">No GST</span>
+                            )}
+                            {sug.lastBillNo && (
+                              <span className="font-medium text-slate-700">
+                                Last Bill #{sug.lastBillNo} {sug.lastDate ? `(${sug.lastDate})` : ""}
+                              </span>
+                            )}
+                            {sug.totalValue ? (
+                              <span className="font-semibold text-slate-800">
+                                · Total: ₹{Number(sug.totalValue).toLocaleString("en-IN")}
+                              </span>
+                            ) : null}
+                            {sug.phone ? <span>· Mo: {sug.phone}</span> : null}
                             {sug.city ? <span>· {sug.city}</span> : null}
                           </div>
+
+                          {/* Preview of old purchase record items */}
+                          {Array.isArray(sug.items) && sug.items.length > 0 && (
+                            <div className="text-[11px] text-emerald-800 bg-emerald-50/80 rounded px-2 py-1 border border-emerald-200/70">
+                              <span className="font-semibold">📦 Previous Items ({sug.items.length}): </span>
+                              <span className="italic">
+                                {sug.items.map((i) => `${i.description || "Item"} (${i.quantity} ${i.unit || "PCS"}${i.rate ? ` @ ₹${i.rate}` : ""})`).join(", ")}
+                              </span>
+                            </div>
+                          )}
+
+                          {sug.taxType && (
+                            <div className="text-[10px] text-slate-500 font-medium">
+                              Tax: {sug.taxType === "INTRA_STATE" ? "Intra-State Gujarat (CGST + SGST)" : "Inter-State (IGST)"} · {sug.gstRate || "18"}% GST
+                            </div>
+                          )}
                         </div>
-                        <span
-                          className={`rounded px-1.5 py-0.5 text-[10px] font-bold shrink-0 border ${
-                            sug.source === "SUPPLIER"
-                              ? "bg-purple-50 text-[#7B3F8D] border-purple-200"
-                              : "bg-blue-50 text-blue-700 border-blue-200"
-                          }`}
-                        >
-                          {sug.source === "SUPPLIER" ? "Previous Supplier" : "Customer"}
-                        </span>
+
+                        <div className="flex flex-col items-end gap-1.5 shrink-0 pt-0.5">
+                          <span
+                            className={`rounded px-1.5 py-0.5 text-[10px] font-bold border ${
+                              sug.source === "SUPPLIER"
+                                ? "bg-purple-100 text-[#7B3F8D] border-purple-200"
+                                : "bg-blue-100 text-blue-700 border-blue-200"
+                            }`}
+                          >
+                            {sug.source === "SUPPLIER" ? "Previous Supplier" : "Customer"}
+                          </span>
+                          <span className="text-[10px] text-[#7B3F8D] font-bold underline">
+                            Autofill Record ↵
+                          </span>
+                        </div>
                       </li>
                     ))}
                   </ul>
