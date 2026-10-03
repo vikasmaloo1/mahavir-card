@@ -40,8 +40,27 @@ export async function GET(request: Request, ctx: RouteContext<"/api/products/[id
     const effectiveRules = (customerType === "B2B" && !rules.length)
       ? await db.select({ id: pricingRules.id, productId: pricingRules.productId, variantId: pricingRules.variantId, variantActive: productVariants.isActive, name: pricingRules.name, ruleType: pricingRules.ruleType, conditions: pricingRules.conditions, priceFormula: pricingRules.priceFormula, taxInclusive: pricingRules.taxInclusive, isActive: pricingRules.isActive }).from(pricingRules).leftJoin(productVariants, eq(pricingRules.variantId, productVariants.id)).where(and(eq(pricingRules.productId, product.id), eq(pricingRules.isActive, true), eq(pricingRules.customerType, "B2C"))).orderBy(asc(pricingRules.createdAt))
       : rules;
+    // --- Remap addon pricingRuleIds so addons scoped to excluded customer-type rules ---
+    // still appear.  e.g. Corner Cut scoped to a B2C rule must also show for B2B users.
+    const effectiveRuleIds = new Set(effectiveRules.map((rule) => rule.id));
+    const effectiveRulesByName = new Map(effectiveRules.map((rule) => [rule.name, rule.id]));
+    const orphanedRuleIds = [...new Set(productAddonRows.filter((a) => a.pricingRuleId && !effectiveRuleIds.has(a.pricingRuleId)).map((a) => a.pricingRuleId!))];
+    let orphanedRuleNameMap = new Map<string, string>();
+    if (orphanedRuleIds.length) {
+      const allRules = await db.select({ id: pricingRules.id, name: pricingRules.name }).from(pricingRules).where(and(eq(pricingRules.productId, product.id), eq(pricingRules.isActive, true)));
+      orphanedRuleNameMap = new Map(allRules.map((r) => [r.id, r.name]));
+    }
+    const remappedAddonRows = productAddonRows.map((addon) => {
+      if (!addon.pricingRuleId || effectiveRuleIds.has(addon.pricingRuleId)) return addon;
+      const orphanedName = orphanedRuleNameMap.get(addon.pricingRuleId);
+      if (orphanedName) {
+        const mapped = effectiveRulesByName.get(orphanedName);
+        if (mapped) return { ...addon, pricingRuleId: mapped };
+      }
+      return { ...addon, pricingRuleId: null };
+    });
     const priceSummary = authenticated ? deriveStartingPrice(product, effectiveRules) : { startingPrice: null, startingQuantity: null, currency: "INR", priceLabel: "Login to view price", priceState: "LOGIN", taxInclusive: null };
-    return jsonOk({ ...product, ...priceSummary, authenticated, variants, images, contentSections: sections.map((section) => ({ ...section, items: contentItems.filter((item) => item.sectionId === section.id) })), addons: productAddonRows.map((addon) => authenticated ? addon : { ...addon, price: null }), deliveryRules: deliveryRules.map((rule) => authenticated ? rule : { ...rule, price: null }), pricingRules: effectiveRules.map((rule) => authenticated ? rule : { ...rule, priceFormula: {} }), artworkRequirements: requirements.map((requirement) => ({ ...requirement, slots: slots.filter((row) => row.slot.artworkRequirementId === requirement.id).map((row) => row.slot) })), configuration: product.configuration, hasStructuredContent: sectionIds.size > 0, relatedProducts });
+    return jsonOk({ ...product, ...priceSummary, authenticated, variants, images, contentSections: sections.map((section) => ({ ...section, items: contentItems.filter((item) => item.sectionId === section.id) })), addons: remappedAddonRows.map((addon) => authenticated ? addon : { ...addon, price: null }), deliveryRules: deliveryRules.map((rule) => authenticated ? rule : { ...rule, price: null }), pricingRules: effectiveRules.map((rule) => authenticated ? rule : { ...rule, priceFormula: {} }), artworkRequirements: requirements.map((requirement) => ({ ...requirement, slots: slots.filter((row) => row.slot.artworkRequirementId === requirement.id).map((row) => row.slot) })), configuration: product.configuration, hasStructuredContent: sectionIds.size > 0, relatedProducts });
   } catch (error) {
     return handleApiError(error);
   }

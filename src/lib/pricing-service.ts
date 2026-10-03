@@ -85,8 +85,8 @@ function positive(value: unknown, label: string) {
 }
 
 async function calculateBasePrice(productId: string, quantity: number, options: Record<string, unknown>, customerType: "B2C" | "B2B") {
-  const rules = await db.select().from(pricingRules).where(and(eq(pricingRules.productId, productId), eq(pricingRules.isActive, true), or(eq(pricingRules.customerType, customerType), eq(pricingRules.customerType, "BOTH")))).orderBy(asc(pricingRules.createdAt));
   const requestedRuleId = typeof options.pricingRuleId === "string" ? options.pricingRuleId : undefined;
+  const rules = await db.select().from(pricingRules).where(and(eq(pricingRules.productId, productId), eq(pricingRules.isActive, true), requestedRuleId ? or(eq(pricingRules.customerType, customerType), eq(pricingRules.customerType, "BOTH"), eq(pricingRules.id, requestedRuleId)) : or(eq(pricingRules.customerType, customerType), eq(pricingRules.customerType, "BOTH")))).orderBy(asc(pricingRules.createdAt));
   let matching = rules
     .map((rule) => ({ rule, conditions: rule.conditions as RuleData, formula: rule.priceFormula as FormulaData }))
     .filter(({ rule, conditions }) => {
@@ -219,6 +219,21 @@ export async function calculateProductPrice(productId: string, rawQuantity: numb
   const surcharge = await locationCharge(productId, base.ruleId, deliveryLocation);
   const addonIds = [...new Set(input.addonIds ?? [])];
   if (addonIds.length !== (input.addonIds ?? []).length) throw new PricingValidationError("An add-on can only be selected once");
+  // Find sibling pricing rule IDs (same product + name, different customerType) so addons
+  // scoped to e.g. a B2C rule can be found when the active rule is B2B (or vice versa).
+  let siblingRuleIds: string[] = [];
+  if (base.ruleId && addonIds.length) {
+    const [activeRule] = await db.select({ name: pricingRules.name }).from(pricingRules).where(eq(pricingRules.id, base.ruleId)).limit(1);
+    if (activeRule) {
+      const siblings = await db.select({ id: pricingRules.id }).from(pricingRules).where(and(eq(pricingRules.productId, productId), eq(pricingRules.name, activeRule.name), eq(pricingRules.isActive, true)));
+      siblingRuleIds = siblings.map((r) => r.id).filter((id) => id !== base.ruleId);
+    }
+  }
+  const addonRuleFilter = base.ruleId
+    ? siblingRuleIds.length
+      ? or(eq(productAddons.pricingRuleId, base.ruleId), ...siblingRuleIds.map((id) => eq(productAddons.pricingRuleId, id)), isNull(productAddons.pricingRuleId))
+      : or(eq(productAddons.pricingRuleId, base.ruleId), isNull(productAddons.pricingRuleId))
+    : isNull(productAddons.pricingRuleId);
   const configuredAddons = addonIds.length ? await db.select({
     addonId: productAddons.addonId,
     pricingRuleId: productAddons.pricingRuleId,
@@ -228,7 +243,7 @@ export async function calculateProductPrice(productId: string, rawQuantity: numb
     pricingType: addons.pricingType,
     priceConfiguration: addons.priceConfiguration,
     taxInclusive: productAddons.taxInclusive,
-  }).from(productAddons).innerJoin(addons, eq(productAddons.addonId, addons.id)).where(and(eq(productAddons.productId, productId), eq(productAddons.isActive, true), eq(addons.isActive, true), inArray(productAddons.addonId, addonIds), base.ruleId ? or(eq(productAddons.pricingRuleId, base.ruleId), isNull(productAddons.pricingRuleId)) : isNull(productAddons.pricingRuleId))) : [];
+  }).from(productAddons).innerJoin(addons, eq(productAddons.addonId, addons.id)).where(and(eq(productAddons.productId, productId), eq(productAddons.isActive, true), eq(addons.isActive, true), inArray(productAddons.addonId, addonIds), addonRuleFilter)) : [];
   const selectedMappings = new Map<string, typeof configuredAddons[number]>();
   for (const addon of configuredAddons) if (!selectedMappings.has(addon.addonId) || addon.pricingRuleId === base.ruleId) selectedMappings.set(addon.addonId, addon);
   if (selectedMappings.size !== addonIds.length) throw new PricingValidationError("One or more selected add-ons are not available for this configuration");
