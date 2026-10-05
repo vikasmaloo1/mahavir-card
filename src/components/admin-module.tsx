@@ -999,8 +999,8 @@ function CustomerTableView({
                 </button>
               </div>
 
-              {/* Action Buttons Row: ONLY WhatsApp */}
-              <div className="flex items-center justify-end pt-2 border-t border-[#e8ecf2]">
+              {/* Action Buttons Row: WhatsApp & Manage */}
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#e8ecf2]">
                 <button
                   type="button"
                   onClick={() => onWhatsApp(item)}
@@ -1009,6 +1009,12 @@ function CustomerTableView({
                   <MessageCircle size={13} />
                   WhatsApp
                 </button>
+                <Link
+                  href={`/admin/customers/${id}`}
+                  className="inline-flex items-center rounded border border-[#c9d2df] bg-white px-3 py-1.5 text-xs font-bold text-[#2457b8] hover:bg-slate-50 transition-colors shadow-2xs"
+                >
+                  Manage
+                </Link>
               </div>
             </article>
           );
@@ -1136,17 +1142,26 @@ function CustomerTableView({
                         </div>
                       </td>
 
-                      {/* Actions: ONLY WhatsApp */}
+                      {/* Actions: WhatsApp & Manage */}
                       <td className="whitespace-nowrap px-3.5 py-3 align-middle text-right">
-                        <button
-                          type="button"
-                          onClick={() => onWhatsApp(item)}
-                          title="Send WhatsApp message"
-                          className="inline-flex items-center gap-1.5 rounded bg-[#25D366] hover:bg-[#20bd5a] px-3.5 py-1.5 text-xs font-bold text-white transition-colors shadow-2xs"
-                        >
-                          <MessageCircle size={13} />
-                          WhatsApp
-                        </button>
+                        <div className="inline-flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => onWhatsApp(item)}
+                            title="Send WhatsApp message"
+                            className="inline-flex items-center gap-1.5 rounded bg-[#25D366] hover:bg-[#20bd5a] px-3 py-1.5 text-xs font-bold text-white transition-colors shadow-2xs"
+                          >
+                            <MessageCircle size={13} />
+                            WhatsApp
+                          </button>
+                          <Link
+                            href={`/admin/customers/${id}`}
+                            title="Manage profile, orders, ledger statement, and credit"
+                            className="inline-flex items-center rounded border border-[#c9d2df] bg-white px-3 py-1.5 text-xs font-bold text-[#2457b8] hover:bg-slate-50 hover:border-[#b4c2d6] transition-colors shadow-2xs"
+                          >
+                            Manage
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   );
