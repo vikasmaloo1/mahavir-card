@@ -1793,29 +1793,37 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
       </div>
 
       {/* Main Options Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div
+        className={`grid gap-3.5 sm:grid-cols-2 ${
+          hasMultipleRules || isSquareInch
+            ? "lg:grid-cols-3 xl:grid-cols-5"
+            : "lg:grid-cols-4 xl:grid-cols-4"
+        }`}
+      >
         {/* 1. Size / Dimensions (takes 2 cols for stickers, art cards or single-rule items) */}
         {isSquareInch ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3 sm:col-span-2 lg:col-span-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wide text-slate-700">
-                {isSticker ? "Sticker Dimensions" : "Dimensions (Width × Height)"}
+          <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs space-y-2.5 sm:col-span-2 lg:col-span-2 flex flex-col justify-between min-h-[148px]">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 truncate">
+                {isSticker ? "Sticker Dimensions" : "Dimensions (W × H)"}
               </span>
               {stickerArea ? (
-                <span className={`text-xs font-bold px-2.5 py-1 rounded-md border ${
-                  minimumArea && parseFloat(stickerArea) < minimumArea
-                    ? "bg-amber-50 text-amber-800 border-amber-300"
-                    : "text-[var(--mc-accent-dark)] bg-blue-50 border-blue-200"
-                }`}>
+                <span
+                  className={`text-[11px] font-bold px-2 py-0.5 rounded border shrink-0 ${
+                    minimumArea && parseFloat(stickerArea) < minimumArea
+                      ? "bg-amber-50 text-amber-800 border-amber-300"
+                      : "text-[var(--mc-accent-dark)] bg-blue-50 border-blue-200"
+                  }`}
+                >
                   {minimumArea && parseFloat(stickerArea) < minimumArea
-                    ? `Area: ${stickerArea} sq.in (Min ${minimumArea} sq.in)`
-                    : `Total Area: ${stickerArea} sq.in / pc`}
+                    ? `Area: ${stickerArea} sq.in (Min ${minimumArea})`
+                    : `${stickerArea} sq.in / pc`}
                 </span>
               ) : null}
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="my-1 grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-semibold text-slate-600 block mb-1">Width (in inches)</label>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1">Width (in inches)</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -1824,14 +1832,14 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
                     max="100"
                     value={width}
                     onChange={(e) => setWidth(e.target.value)}
-                    className="w-full h-11 rounded-lg border border-slate-300 px-3.5 pr-10 text-sm sm:text-base font-bold text-slate-900 focus:border-[var(--mc-accent)] focus:ring-1 focus:ring-[var(--mc-accent)] outline-none"
+                    className="w-full h-11 rounded-lg border border-slate-300 px-3 pr-8 text-sm font-bold text-slate-900 focus:border-[var(--mc-accent)] outline-none"
                     placeholder={isArtCardBoth ? "10" : "2"}
                   />
-                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 select-none">in</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 select-none">in</span>
                 </div>
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-600 block mb-1">Height (in inches)</label>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1">Height (in inches)</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -1840,16 +1848,16 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
                     max="100"
                     value={height}
                     onChange={(e) => setHeight(e.target.value)}
-                    className="w-full h-11 rounded-lg border border-slate-300 px-3.5 pr-10 text-sm sm:text-base font-bold text-slate-900 focus:border-[var(--mc-accent)] focus:ring-1 focus:ring-[var(--mc-accent)] outline-none"
+                    className="w-full h-11 rounded-lg border border-slate-300 px-3 pr-8 text-sm font-bold text-slate-900 focus:border-[var(--mc-accent)] outline-none"
                     placeholder={isArtCardBoth ? "5" : "2"}
                   />
-                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 select-none">in</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 select-none">in</span>
                 </div>
               </div>
             </div>
             {bladeCharge > 0 ? (
-              <div className="pt-1">
-                <label className="text-xs font-semibold text-slate-600 block mb-1">Half Blades (₹{bladeCharge} / blade)</label>
+              <div className="pt-0.5">
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1">Half Blades (₹{bladeCharge} / blade)</label>
                 <input
                   type="number"
                   min="0"
@@ -1860,65 +1868,77 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
                 />
               </div>
             ) : null}
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-slate-500 leading-tight">
               {minimumArea
-                ? `Enter width & height in inches (minimum ${minimumArea} sq. inches required). Calculated live.`
+                ? `Enter width & height in inches (minimum ${minimumArea} sq. in). Calculated live.`
                 : "Enter custom width & height in inches. Calculated live per square inch."}
             </p>
           </div>
         ) : (
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-2.5">
-            <span className="text-xs font-bold uppercase tracking-wide text-slate-700 block">Product Size</span>
-            <div className="flex items-center h-11 px-3.5 rounded-lg bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800">
-              {item.productSize || item.listingSpecification || "Standard Size (3.5 × 2 in)"}
+          <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs flex flex-col justify-between min-h-[148px]">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 truncate">Product Size</span>
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider shrink-0">Die Cut</span>
             </div>
-            <p className="text-[11px] text-slate-500">Standard offset print production die cut</p>
+            <div className="my-1.5 flex items-center min-h-11 px-3.5 py-2 rounded-lg bg-slate-50 border border-slate-200/90 text-xs sm:text-sm font-bold text-slate-800 leading-snug break-words">
+              {item.productSize || (item.listingSpecification ? item.listingSpecification : "Standard Size (3.5 × 2 in)")}
+            </div>
+            <p className="text-[11px] text-slate-500 leading-tight">Standard offset print production</p>
           </div>
         )}
 
         {/* 2. Paper Stock / Printing Rule - ONLY shown if multiple options exist */}
         {hasMultipleRules ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-2.5">
-            <span className="text-xs font-bold uppercase tracking-wide text-slate-700 block">Paper Stock &amp; Print</span>
-            <select
-              value={ruleId ?? ""}
-              onChange={(e) => setRuleId(e.target.value)}
-              className="w-full h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-[var(--mc-accent)] outline-none"
-            >
-              {details.pricingRules.map((rule) => (
-                <option key={rule.id} value={rule.id}>
-                  {rule.name}
-                </option>
-              ))}
-            </select>
-            <p className="text-[11px] text-slate-500">Select printing specification</p>
+          <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs flex flex-col justify-between min-h-[148px]">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 truncate">Paper Stock</span>
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider shrink-0">Print</span>
+            </div>
+            <div className="my-1.5">
+              <select
+                value={ruleId ?? ""}
+                onChange={(e) => setRuleId(e.target.value)}
+                className="w-full h-11 rounded-lg border border-slate-300 bg-white px-3 text-xs sm:text-sm font-semibold text-slate-900 focus:border-[var(--mc-accent)] outline-none"
+              >
+                {details.pricingRules.map((rule) => (
+                  <option key={rule.id} value={rule.id}>
+                    {rule.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-[11px] text-slate-500 leading-tight">Select printing specification</p>
           </div>
         ) : null}
 
         {/* 3. Job Name - Allow B2B customer to write job name directly from outside page */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-2.5 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wide text-slate-700">Job Name (optional)</span>
-            <span className="text-[11px] text-slate-400">For identification</span>
+        <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs flex flex-col justify-between min-h-[148px]">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 truncate">Job Name</span>
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider shrink-0">Optional</span>
           </div>
-          <input
-            type="text"
-            value={jobName}
-            onChange={(e) => setJobName(e.target.value)}
-            maxLength={160}
-            placeholder="e.g. Restaurant cards"
-            className="w-full h-11 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-900 focus:border-[var(--mc-accent)] focus:ring-1 focus:ring-[var(--mc-accent)] outline-none"
-          />
-          <p className="text-[11px] text-slate-500">Appears on bill &amp; parcel for easy sorting</p>
+          <div className="my-1.5">
+            <input
+              type="text"
+              value={jobName}
+              onChange={(e) => setJobName(e.target.value)}
+              maxLength={160}
+              placeholder="e.g. Restaurant cards"
+              className="w-full h-11 rounded-lg border border-slate-300 px-3 text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:border-[var(--mc-accent)] focus:ring-1 focus:ring-[var(--mc-accent)] outline-none transition-colors"
+            />
+          </div>
+          <p className="text-[11px] text-slate-500 leading-tight">Printed on bill &amp; parcel label</p>
         </div>
 
-        {/* 3. Quantity Stepper */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-2.5 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wide text-slate-700">Quantity</span>
-            <span className="text-[11px] font-semibold text-slate-500">min {minQuantity.toLocaleString("en-IN")} pcs</span>
+        {/* 4. Quantity Stepper */}
+        <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs flex flex-col justify-between min-h-[148px]">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 truncate">Quantity</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
+              Min {minQuantity.toLocaleString("en-IN")}
+            </span>
           </div>
-          <div className="flex items-center rounded-lg border border-slate-300 bg-white h-11 overflow-hidden">
+          <div className="my-1.5 flex items-center rounded-lg border border-slate-300 bg-white h-11 overflow-hidden shadow-2xs">
             <button
               type="button"
               disabled={quantity <= minQuantity}
@@ -1927,12 +1947,12 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
                   stepProductQuantity(current, "DOWN", item.category?.slug ?? null, item.slug)
                 )
               }
-              className="w-11 h-full flex items-center justify-center text-base font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="w-10 h-full flex items-center justify-center text-base font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors select-none"
               aria-label="Decrease quantity"
             >
               −
             </button>
-            <span className="flex-1 text-center text-sm font-bold text-slate-900">
+            <span className="flex-1 text-center text-xs sm:text-sm font-bold text-slate-900 truncate px-1">
               {quantity.toLocaleString("en-IN")} pcs
             </span>
             <button
@@ -1943,28 +1963,36 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
                   stepProductQuantity(current, "UP", item.category?.slug ?? null, item.slug)
                 )
               }
-              className="w-11 h-full flex items-center justify-center text-base font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="w-10 h-full flex items-center justify-center text-base font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors select-none"
               aria-label="Increase quantity"
             >
               +
             </button>
           </div>
-          <p className="text-[11px] text-slate-500">Max limit: 25,000 units</p>
+          <p className="text-[11px] text-slate-500 leading-tight">Max limit: 25,000 units</p>
         </div>
 
-        {/* 4. Live Rate & Estimated Total */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-2.5 flex flex-col justify-between">
-          <span className="text-xs font-bold uppercase tracking-wide text-slate-700 block">Total Rate</span>
-          <div>
-            <div className="text-2xl font-black text-[var(--mc-ink)]">
-              {calculating ? "Calculating..." : estimatedPrice ? formatInr(estimatedPrice) : item.priceLabel || "-"}
-            </div>
-            <div className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700">
+        {/* 5. Live Rate & Estimated Total */}
+        <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs flex flex-col justify-between min-h-[148px]">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 truncate">Total Rate</span>
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 shrink-0">
               <span className="size-1.5 rounded-full bg-emerald-500" />
-              <span>B2B Wholesale Rate</span>
+              Wholesale
+            </span>
+          </div>
+          <div className="my-1.5">
+            <div className="text-2xl sm:text-[1.7rem] font-black tracking-tight text-[var(--mc-ink)] leading-none">
+              {calculating ? (
+                <span className="text-sm font-bold text-slate-400">Calculating...</span>
+              ) : estimatedPrice ? (
+                formatInr(estimatedPrice)
+              ) : (
+                item.priceLabel || "-"
+              )}
             </div>
           </div>
-          <span className="text-[10px] text-slate-400">Includes packaging &amp; standard lead time</span>
+          <p className="text-[11px] text-slate-500 leading-tight">Includes packaging &amp; standard lead time</p>
         </div>
       </div>
 
@@ -2092,11 +2120,12 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
       ) : null}
 
       {/* Bottom Action Footer */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200/90">
-        <div className="text-xs text-slate-600">
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-3.5 border-t border-slate-200/90">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
           <span className="font-bold text-slate-900">{quantity.toLocaleString("en-IN")} pcs</span>
           {isSquareInch && stickerArea ? <> &bull; <span className="font-semibold">{width}&Prime; &times; {height}&Prime; ({stickerArea} sq.in)</span></> : null}
-          {estimatedPrice ? <> &bull; <span className="font-bold text-[var(--mc-accent-dark)]">{formatInr(estimatedPrice)}</span></> : null}
+          {jobName.trim() ? <> &bull; <span className="font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded truncate max-w-[220px]" title={jobName}>Job: {jobName.trim()}</span></> : null}
+          {estimatedPrice ? <> &bull; <span className="font-bold text-[var(--mc-accent-dark)] text-sm">{formatInr(estimatedPrice)}</span></> : null}
         </div>
         <div className="flex items-center gap-2.5">
           <button
