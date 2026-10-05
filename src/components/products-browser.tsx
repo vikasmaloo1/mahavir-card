@@ -1566,6 +1566,7 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
   const [ruleId, setRuleId] = useState<string | null>(null);
   const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([]);
   const [quantity, setQuantity] = useState(1000);
+  const [jobName, setJobName] = useState("");
 
   const isSticker =
     item.category?.slug === "sticker" ||
@@ -1611,9 +1612,16 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
           setQuantity(conditionQuantity ? Number(conditionQuantity) : normalizeProductQuantity(undefined, item.category?.slug ?? null, item.slug).normalizedQuantity);
         }
         if (data.addons?.length) {
-          const scoped = rule ? data.addons.filter((addon) => addon.pricingRuleId === rule.id) : [];
-          const list = scoped.length ? scoped : data.addons.filter((addon) => addon.pricingRuleId === null);
-          setSelectedAddonIds(list.filter((addon) => addon.isDefault).map((addon) => addon.addonId));
+          const list = rule
+            ? data.addons.filter((addon) => addon.pricingRuleId === rule.id || addon.pricingRuleId === null)
+            : data.addons;
+          const seen = new Set<string>();
+          const defaults = list.filter((addon) => {
+            if (seen.has(addon.addonId)) return false;
+            seen.add(addon.addonId);
+            return addon.isDefault;
+          });
+          setSelectedAddonIds(defaults.map((addon) => addon.addonId));
         }
       })
       .catch((caught) => { if (active) setLoadError(caught instanceof Error ? caught.message : "Could not load this product's options"); })
@@ -1623,8 +1631,13 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
 
   const availableAddons = useMemo(() => {
     if (!details?.addons?.length) return [];
-    const scoped = details.addons.filter((addon) => addon.pricingRuleId === ruleId);
-    return scoped.length ? scoped : details.addons.filter((addon) => addon.pricingRuleId === null);
+    const list = details.addons.filter((addon) => addon.pricingRuleId === ruleId || addon.pricingRuleId === null);
+    const seen = new Set<string>();
+    return list.filter((addon) => {
+      if (seen.has(addon.addonId)) return false;
+      seen.add(addon.addonId);
+      return true;
+    });
   }, [details?.addons, ruleId]);
 
   const stickerArea = useMemo(() => {
@@ -1730,7 +1743,13 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
       const response = await fetch("/api/cart/items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId: item.id, quantity, configuration, kind: "PURCHASE" }),
+        body: JSON.stringify({
+          productId: item.id,
+          quantity,
+          jobName: jobName.trim() || undefined,
+          configuration,
+          kind: "PURCHASE",
+        }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "Could not add this product to your basket");
@@ -1770,7 +1789,7 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
       </div>
 
       {/* Main Options Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {/* 1. Size / Dimensions (takes 2 cols for stickers, art cards or single-rule items) */}
         {isSquareInch ? (
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3 sm:col-span-2 lg:col-span-2">
@@ -1844,7 +1863,7 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
             </p>
           </div>
         ) : (
-          <div className={`rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-2.5 ${!hasMultipleRules ? "sm:col-span-2 lg:col-span-2" : ""}`}>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-2.5">
             <span className="text-xs font-bold uppercase tracking-wide text-slate-700 block">Product Size</span>
             <div className="flex items-center h-11 px-3.5 rounded-lg bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800">
               {item.productSize || item.listingSpecification || "Standard Size (3.5 × 2 in)"}
@@ -1871,6 +1890,23 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
             <p className="text-[11px] text-slate-500">Select printing specification</p>
           </div>
         ) : null}
+
+        {/* 3. Job Name - Allow B2B customer to write job name directly from outside page */}
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-2.5 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wide text-slate-700">Job Name (optional)</span>
+            <span className="text-[11px] text-slate-400">For identification</span>
+          </div>
+          <input
+            type="text"
+            value={jobName}
+            onChange={(e) => setJobName(e.target.value)}
+            maxLength={160}
+            placeholder="e.g. Restaurant cards"
+            className="w-full h-11 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-900 focus:border-[var(--mc-accent)] focus:ring-1 focus:ring-[var(--mc-accent)] outline-none"
+          />
+          <p className="text-[11px] text-slate-500">Appears on bill &amp; parcel for easy sorting</p>
+        </div>
 
         {/* 3. Quantity Stepper */}
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-2.5 flex flex-col justify-between">

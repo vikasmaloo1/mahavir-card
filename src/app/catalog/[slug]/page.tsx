@@ -167,8 +167,12 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   if (lower.includes("velvet")) finishes.push({ label: "Velvet Soft-Touch", tone: "bg-slate-900 text-white" });
   if (lower.includes("thermal") || lower.includes("matt")) finishes.push({ label: "Thermal Matt", tone: "bg-slate-100 text-slate-800" });
   if (lower.includes("spot uv") || lower.includes(" uv")) finishes.push({ label: "Selective Spot UV", tone: "bg-amber-50 text-amber-900 border border-amber-200/70" });
-  if (lower.includes("foil")) finishes.push({ label: "Metallic Foil Stamping", tone: "bg-amber-100/70 text-amber-950 font-bold" });
-  if (lower.includes("corner cut") || product.categorySlug === "premium-card") finishes.push({ label: "Corner Cut", tone: "bg-[#1e3a5f]/10 text-[#1e3a5f]" });
+  const isCornerCutProduct = [
+    "400-gsm-thermal-matt-single-front-back",
+    "400-gsm-thermal-matt-single-side-uv",
+    "400-gsm-thermal-matt-front-back-uv",
+  ].includes(product.slug);
+  if (isCornerCutProduct || product.categorySlug === "premium-card") finishes.push({ label: product.categorySlug === "premium-card" ? "Corner Cut Included" : "Corner Cut Available", tone: "bg-[#1e3a5f]/10 text-[#1e3a5f]" });
   if (lower.includes("250 gsm") || product.categorySlug === "art-card" || product.categorySlug === "brochure") finishes.push({ label: "250 GSM Art Card", tone: "bg-slate-100 text-slate-700" });
 
   // Contextual category note

@@ -108,9 +108,17 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
     return reasons;
   }, [details, isCalculating, estimate, requirement, artworkReady, isQuantityNegativeOrZero, isQuantityAboveMax, defaultQty, rawEnteredQty]);
   const configurationAddons = useMemo(() => {
-    const scoped = details?.addons.filter((addon) => addon.pricingRuleId === selectedRuleId) ?? [];
-    const available = scoped.length ? scoped : details?.addons.filter((addon) => addon.pricingRuleId === null) ?? [];
-    return available.map((addon) => {
+    if (!details?.addons?.length) return [];
+    const list = details.addons.filter(
+      (addon) => addon.pricingRuleId === selectedRuleId || addon.pricingRuleId === null
+    );
+    const seen = new Set<string>();
+    const deduplicated = list.filter((addon) => {
+      if (seen.has(addon.addonId)) return false;
+      seen.add(addon.addonId);
+      return true;
+    });
+    return deduplicated.map((addon) => {
       const isCornerCut = addon.name.toLowerCase().includes("corner cut");
       const multiplier = isCornerCut ? Math.max(1, Math.ceil(quantity / 1000)) : 1;
       return {
@@ -142,8 +150,16 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
         const nextValues = { ...defaults };
         for (const [key, value] of Object.entries(initialRule.conditions ?? {})) nextValues[key] = String(value);
         setValues(nextValues);
-        const scopedAddons = next.addons.filter((addon) => addon.pricingRuleId === initialRule.id);
-        setAddonIds((scopedAddons.length ? scopedAddons : next.addons.filter((addon) => addon.pricingRuleId === null)).filter((addon) => addon.isDefault).map((addon) => addon.addonId));
+        const availableAddons = next.addons.filter(
+          (addon) => addon.pricingRuleId === initialRule.id || addon.pricingRuleId === null
+        );
+        const seen = new Set<string>();
+        const defaultAddons = availableAddons.filter((addon) => {
+          if (seen.has(addon.addonId)) return false;
+          seen.add(addon.addonId);
+          return addon.isDefault;
+        });
+        setAddonIds(defaultAddons.map((addon) => addon.addonId));
       }
       const pickup = next.deliveryRules.find((rule) => rule.deliveryMethod === "PICKUP");
       const nonPickupMethods = [...new Set(next.deliveryRules.map((rule) => rule.deliveryMethod).filter((method) => method !== "PICKUP"))];
@@ -225,9 +241,16 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
     const rule = details?.pricingRules.find((item) => item.id === id);
     if (!rule) return;
     setSelectedRuleId(id); setArtworks({}); setStatus("idle");
-    const scopedAddons = details?.addons.filter((addon) => addon.pricingRuleId === id) ?? [];
-    const availableAddons = scopedAddons.length ? scopedAddons : details?.addons.filter((addon) => addon.pricingRuleId === null) ?? [];
-    setAddonIds(availableAddons.filter((addon) => addon.isDefault).map((addon) => addon.addonId));
+    const availableAddons = details?.addons.filter(
+      (addon) => addon.pricingRuleId === id || addon.pricingRuleId === null
+    ) ?? [];
+    const seen = new Set<string>();
+    const defaultAddons = availableAddons.filter((addon) => {
+      if (seen.has(addon.addonId)) return false;
+      seen.add(addon.addonId);
+      return addon.isDefault;
+    });
+    setAddonIds(defaultAddons.map((addon) => addon.addonId));
     setValues((current) => ({ ...current, ...Object.fromEntries(Object.entries(rule.conditions ?? {}).map(([key, value]) => [key, String(value)])) }));
   }
   function configuration() {
