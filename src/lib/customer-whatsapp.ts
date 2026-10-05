@@ -56,13 +56,8 @@ export function buildWhatsAppMessage(customer?: {
 } | null): string {
   const rawName = customer?.contactName?.trim() || customer?.companyName?.trim() || "Customer";
   const name = rawName;
-  const isB2B = customer?.customerType?.toUpperCase() === "B2B";
-  const typeLabel = isB2B ? "B2B" : "B2C";
 
-  return `Hi ${name}, this is Mahavir Card, Ahmedabad.
-Sharing our ${typeLabel} printing price catalogue for your reference.
-For higher quantities, we can discuss the rates accordingly.
-Please feel free to share your requirement.`;
+  return `Hi ${name}, this is Mahavir Card, Ahmedabad., sir ji aapne login kiya tha \nPlease feel free to share your requirement.,`;
 }
 
 /**

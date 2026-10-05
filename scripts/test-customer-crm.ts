@@ -45,23 +45,16 @@ async function runTests() {
   // 2. WhatsApp message generation & URL safety
   console.log("\n--- TEST SUITE 2: WhatsApp Message & URL Generation ---");
   const b2bMsg = buildWhatsAppMessage({ contactName: "Rajesh Patel", customerType: "B2B" });
-  const expectedB2b =
-    "Hi Rajesh Patel, this is Mahavir Card, Ahmedabad.\n" +
-    "Sharing our B2B printing price catalogue for your reference.\n" +
-    "For higher quantities, we can discuss the rates accordingly.\n" +
-    "Please feel free to share your requirement.";
-  assert(b2bMsg === expectedB2b, "B2B message exact wording matches specification");
+  const expectedUniversal =
+    "Hi Rajesh Patel, this is Mahavir Card, Ahmedabad., sir ji aapne login kiya tha \n" +
+    "Please feel free to share your requirement.,";
+  assert(b2bMsg === expectedUniversal, "Universal message exact wording matches specification");
 
   const b2cMsg = buildWhatsAppMessage({ contactName: "Pooja Shah", customerType: "B2C" });
-  const expectedB2c =
-    "Hi Pooja Shah, this is Mahavir Card, Ahmedabad.\n" +
-    "Sharing our B2C printing price catalogue for your reference.\n" +
-    "For higher quantities, we can discuss the rates accordingly.\n" +
-    "Please feel free to share your requirement.";
-  assert(b2cMsg === expectedB2c, "B2C message exact wording matches specification");
+  assert(b2cMsg.includes("sir ji aapne login kiya tha"), "B2C gets universal 2-liner message");
 
   const fallbackMsg = buildWhatsAppMessage(null);
-  assert(fallbackMsg.startsWith("Hi Customer,"), "Fallback customer name handled smoothly");
+  assert(fallbackMsg.startsWith("Hi Customer, this is Mahavir Card"), "Fallback customer name handled smoothly");
 
   const waUrl = buildWhatsAppUrl("9876543210", b2bMsg);
   assert(waUrl !== null, "WhatsApp URL is generated for valid customer");
@@ -70,7 +63,7 @@ async function runTests() {
     assert(!waUrl.includes("id="), "WhatsApp URL does NOT leak internal/customer IDs");
     assert(!waUrl.includes("cust_"), "WhatsApp URL does NOT leak customer prefix");
     assert(decodeURIComponent(waUrl).includes("Hi Rajesh Patel"), "Decoded WhatsApp URL contains customer name");
-    assert(decodeURIComponent(waUrl).includes("B2B printing price catalogue"), "Decoded WhatsApp URL contains B2B catalogue");
+    assert(decodeURIComponent(waUrl).includes("sir ji aapne login kiya tha"), "Decoded WhatsApp URL contains universal message");
   }
 
   // 3. Customer-Specific Price Catalogue Routing

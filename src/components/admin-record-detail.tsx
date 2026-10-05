@@ -822,28 +822,13 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* WhatsApp & Catalogue Action Buttons */}
+            {/* WhatsApp Action Button */}
             <button
               type="button"
               onClick={() => void handleWhatsApp()}
-              className="inline-flex items-center gap-1.5 rounded bg-[#25D366] hover:bg-[#20bd5a] px-3 py-2 text-xs font-bold text-white transition-colors shadow-2xs"
+              className="inline-flex items-center gap-1.5 rounded bg-[#25D366] hover:bg-[#20bd5a] px-3.5 py-2 text-xs font-bold text-white transition-colors shadow-2xs"
             >
               <MessageCircle size={14} /> WhatsApp
-            </button>
-            <button
-              type="button"
-              onClick={handleCatalogue}
-              className="inline-flex items-center gap-1.5 rounded border border-[#cfd7e3] bg-white px-3 py-2 text-xs font-bold text-[#24324a] hover:bg-slate-50 transition-colors shadow-2xs"
-            >
-              <FileText size={14} className="text-[#2457b8]" /> {isB2B ? "B2B Catalogue PDF" : "B2C Catalogue PDF"}
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleWhatsAppAndCatalogue()}
-              title="Open WhatsApp chat and download catalogue PDF together"
-              className="inline-flex items-center gap-1.5 rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs"
-            >
-              WA + PDF
             </button>
             <button
               type="button"

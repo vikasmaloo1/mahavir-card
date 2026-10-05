@@ -852,8 +852,6 @@ export function AdminModule({ section }: { section: ModuleKey }) {
           updatingStatusId={updatingCustomerStatusId}
           onStatusChange={handleCustomerStatusChange}
           onWhatsApp={handleCustomerWhatsApp}
-          onCatalogue={handleCustomerCatalogue}
-          onWhatsAppAndCatalogue={handleCustomerWhatsAppAndCatalogue}
           onLogCall={handleCustomerLogCall}
         />
       ) : (
@@ -898,16 +896,12 @@ function CustomerTableView({
   updatingStatusId,
   onStatusChange,
   onWhatsApp,
-  onCatalogue,
-  onWhatsAppAndCatalogue,
   onLogCall,
 }: {
   items: Row[];
   updatingStatusId: string | null;
   onStatusChange: (id: string, nextStatus: string) => void;
   onWhatsApp: (customer: Row) => void;
-  onCatalogue: (customer: Row) => void;
-  onWhatsAppAndCatalogue: (customer: Row) => void;
   onLogCall: (customer: Row) => void;
 }) {
   return (
@@ -1007,32 +1001,14 @@ function CustomerTableView({
 
               {/* Action Buttons Row */}
               <div className="flex flex-wrap items-center justify-between gap-1.5 pt-2 border-t border-[#e8ecf2]">
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => onWhatsApp(item)}
-                    className="inline-flex items-center gap-1 rounded bg-[#25D366] hover:bg-[#20bd5a] px-2.5 py-1.5 text-xs font-bold text-white transition-colors shadow-2xs"
-                  >
-                    <MessageCircle size={13} />
-                    WhatsApp
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onCatalogue(item)}
-                    className="inline-flex items-center gap-1 rounded border border-[#cfd7e3] bg-white px-2 py-1.5 text-xs font-bold text-[#24324a] hover:bg-slate-50 transition-colors"
-                  >
-                    <FileText size={13} className="text-[#2457b8]" />
-                    {isB2B ? "B2B PDF" : "B2C PDF"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onWhatsAppAndCatalogue(item)}
-                    title="Open WhatsApp chat and download catalogue PDF together"
-                    className="inline-flex items-center gap-1 rounded border border-emerald-300 bg-emerald-50 px-2 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors"
-                  >
-                    WA+PDF
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => onWhatsApp(item)}
+                  className="inline-flex items-center gap-1.5 rounded bg-[#25D366] hover:bg-[#20bd5a] px-3 py-1.5 text-xs font-bold text-white transition-colors shadow-2xs"
+                >
+                  <MessageCircle size={13} />
+                  WhatsApp
+                </button>
                 <Link
                   href={`/admin/customers/${id}`}
                   className="inline-flex items-center border border-[#c9d2df] bg-white px-2.5 py-1.5 text-xs font-bold text-[#2457b8] hover:bg-slate-50"
@@ -1173,31 +1149,14 @@ function CustomerTableView({
                             type="button"
                             onClick={() => onWhatsApp(item)}
                             title="Send WhatsApp message"
-                            className="inline-flex items-center gap-1 rounded bg-[#25D366] hover:bg-[#20bd5a] px-2.5 py-1 text-xs font-bold text-white transition-colors shadow-2xs"
+                            className="inline-flex items-center gap-1.5 rounded bg-[#25D366] hover:bg-[#20bd5a] px-3 py-1 text-xs font-bold text-white transition-colors shadow-2xs"
                           >
                             <MessageCircle size={13} />
                             WhatsApp
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => onCatalogue(item)}
-                            title={`Download official ${isB2B ? "B2B" : "B2C"} PDF price catalogue`}
-                            className="inline-flex items-center gap-1 rounded border border-[#cfd7e3] bg-white px-2 py-1 text-xs font-bold text-[#24324a] hover:bg-slate-50 transition-colors"
-                          >
-                            <FileText size={12} className="text-[#2457b8]" />
-                            {isB2B ? "B2B PDF" : "B2C PDF"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onWhatsAppAndCatalogue(item)}
-                            title="Open WhatsApp chat and download catalogue PDF together for manual attachment"
-                            className="inline-flex items-center gap-1 rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors"
-                          >
-                            WA+PDF
-                          </button>
                           <Link
                             href={`/admin/customers/${id}`}
-                            className="inline-flex items-center border border-[#c9d2df] bg-white px-2 py-1 text-xs font-bold text-[#2457b8] hover:bg-slate-50"
+                            className="inline-flex items-center border border-[#c9d2df] bg-white px-2.5 py-1 text-xs font-bold text-[#2457b8] hover:bg-slate-50"
                           >
                             Details
                           </Link>
