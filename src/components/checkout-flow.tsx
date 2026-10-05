@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight, CheckCircle2, CreditCard, MapPin, Truck } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { formatInr, formatRoundOff } from "@/lib/formatting";
 import { citiesForState, commerceStates, indiaStateName, isOutsideGujRaj } from "@/lib/india-states";
 import { cachedFetchJson } from "@/lib/client-fetch-cache";
+import { dispatchWalletUpdated } from "@/lib/wallet-events";
 import { UpiQrCode } from "@/components/upi-qr-code";
 import { PaymentBankDetails } from "@/components/payment-bank-details";
 
@@ -22,6 +24,7 @@ declare global {
 }
 
 export function CheckoutFlow({ upiVpa }: { upiVpa: string }) {
+  const router = useRouter();
   const [cart, setCart] = useState<CartData>({ items: [], summary: { productSubtotal: "0.00", addonSubtotal: "0.00", deliverySubtotal: "0.00", surchargeSubtotal: "0.00", priceBeforeTax: "0.00", tax: "0.00", cgst: "0.00", sgst: "0.00", igst: "0.00", total: "0.00", taxInclusive: false, hasTaxBreakdown: false, hasUnavailableItems: false } });
   const [method, setMethod] = useState<"RAZORPAY" | "COD" | "CREDIT" | "UPI_QR">("COD");
   const [utr, setUtr] = useState("");
@@ -117,6 +120,8 @@ export function CheckoutFlow({ upiVpa }: { upiVpa: string }) {
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success) throw new Error(payload?.error?.message ?? "We could not create this order.");
       const created = payload.data as Result;
+      dispatchWalletUpdated(created.availableCredit, "checkout");
+      try { router.refresh(); } catch { /* ignore */ }
       if (method !== "RAZORPAY" || !created.razorpay) { setResult(created); return; }
       const callback = await openRazorpay(created);
       const verification = await fetch("/api/payments/razorpay/verify", {
@@ -130,6 +135,8 @@ export function CheckoutFlow({ upiVpa }: { upiVpa: string }) {
       });
       const verified = await verification.json().catch(() => null);
       if (!verification.ok || !verified?.success) throw new Error(verified?.error?.message ?? "Payment could not be verified. Check your order status before retrying.");
+      dispatchWalletUpdated(created.availableCredit, "checkout_razorpay");
+      try { router.refresh(); } catch { /* ignore */ }
       setResult({ ...created, payment: verified.data.payment, razorpay: null });
     } catch (caught) { setError(caught instanceof Error ? caught.message : "We could not complete checkout."); }
     finally { setSubmitting(false); }

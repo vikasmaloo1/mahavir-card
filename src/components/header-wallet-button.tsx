@@ -17,6 +17,12 @@ import { whatsAppUrlFor } from "@/lib/whatsapp";
 
 import { formatInr } from "@/lib/formatting";
 import { UpiQrCode } from "@/components/upi-qr-code";
+import {
+  WALLET_UPDATED_EVENT,
+  dispatchWalletUpdated,
+  fetchLiveWalletBalance,
+  type WalletUpdatedDetail,
+} from "@/lib/wallet-events";
 
 interface HeaderWalletButtonProps {
   initialBalance: string | null;
@@ -66,10 +72,9 @@ export function HeaderWalletButton({
   const refreshBalance = useCallback(async () => {
     if (!isLoggedIn) return;
     try {
-      const res = await fetch("/api/account/wallet/top-up", { cache: "no-store" });
-      const payload = await res.json();
-      if (payload.success && payload.data?.customer?.availableBalance) {
-        setBalance(payload.data.customer.availableBalance);
+      const fresh = await fetchLiveWalletBalance();
+      if (fresh !== null) {
+        setBalance(fresh);
       }
     } catch {
       // Ignore background refresh errors
@@ -77,12 +82,38 @@ export function HeaderWalletButton({
   }, [isLoggedIn]);
 
   useEffect(() => {
-    function onWalletUpdate() {
+    if (isLoggedIn) {
       void refreshBalance();
     }
-    window.addEventListener("wallet-updated", onWalletUpdate);
-    return () => window.removeEventListener("wallet-updated", onWalletUpdate);
-  }, [refreshBalance]);
+  }, [isLoggedIn, refreshBalance]);
+
+  useEffect(() => {
+    function onWalletUpdate(event: Event) {
+      const customEvent = event as CustomEvent<WalletUpdatedDetail>;
+      if (
+        customEvent.detail?.availableCredit !== undefined &&
+        customEvent.detail?.availableCredit !== null
+      ) {
+        setBalance(String(customEvent.detail.availableCredit));
+      }
+      void refreshBalance();
+    }
+
+    function onVisibilityOrFocus() {
+      if (document.visibilityState === "visible" && isLoggedIn) {
+        void refreshBalance();
+      }
+    }
+
+    window.addEventListener(WALLET_UPDATED_EVENT, onWalletUpdate);
+    window.addEventListener("visibilitychange", onVisibilityOrFocus);
+    window.addEventListener("focus", onVisibilityOrFocus);
+    return () => {
+      window.removeEventListener(WALLET_UPDATED_EVENT, onWalletUpdate);
+      window.removeEventListener("visibilitychange", onVisibilityOrFocus);
+      window.removeEventListener("focus", onVisibilityOrFocus);
+    };
+  }, [refreshBalance, isLoggedIn]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -141,7 +172,7 @@ export function HeaderWalletButton({
       });
       setUtr("");
 
-      window.dispatchEvent(new CustomEvent("wallet-updated"));
+      dispatchWalletUpdated(null, "header_wallet_submit");
       await refreshBalance();
     } catch (err) {
       setSubmitting(false);

@@ -1,10 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { CheckCircle2, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { citiesForState, commerceStates, indiaStateName, isOutsideGujRaj } from "@/lib/india-states";
 import { showToast } from "@/components/toast-provider";
+import { dispatchWalletUpdated } from "@/lib/wallet-events";
 
 type ProfilePayload = {
   user: { name: string; email: string; phoneNumber?: string | null };
@@ -16,6 +18,7 @@ type ProfilePayload = {
 const fieldClass = "mt-1.5 w-full rounded-lg border border-[var(--mc-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--mc-accent)] transition-colors";
 
 export function CustomerProfileForm() {
+  const router = useRouter();
   const [data, setData] = useState<ProfilePayload | null>(null);
   const [form, setForm] = useState({ contactName: "", companyName: "", phone: "", city: "", stateCode: "GJ", gstNumber: "", line1: "", line2: "", postalCode: "", emailNotificationsEnabled: true, whatsappNotificationsEnabled: true });
   const [loading, setLoading] = useState(true);
@@ -80,6 +83,8 @@ export function CustomerProfileForm() {
       const payload = await response.json();
       if (!response.ok || !payload.success) throw new Error(payload.error?.message ?? "Profile could not be saved.");
       setData((current) => current ? { ...current, customer: { ...current.customer!, ...form, state: indiaStateName(form.stateCode), gstNumber: form.gstNumber || null }, profileComplete: payload.data.profileComplete } : current);
+      dispatchWalletUpdated(null, "profile_saved");
+      try { router.refresh(); } catch { /* ignore */ }
       setMessage("Profile saved successfully.");
       showToast.success("Profile saved successfully!", "Your customer details and delivery address have been updated.");
       setTimeout(() => setMessage(""), 4000);

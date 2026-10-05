@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { adminRequest, asItems, formattedAmount } from "@/lib/admin-client";
 import { HorizontalScrollContainer } from "@/components/horizontal-scroll-container";
 import { showToast } from "@/components/toast-provider";
+import { dispatchWalletUpdated } from "@/lib/wallet-events";
 
 type WalletRow = {
   transaction: { id: string; status: string; amount: string; balanceAfter: string | null; reference: string | null; notes: string | null; createdAt: string };
@@ -66,6 +67,7 @@ export function WalletAdmin() {
     setSaving(id); setError("");
     try {
       await adminRequest(`/api/admin/wallet/${id}`, { method: "PATCH", body: JSON.stringify({ decision, notes: notes || null }) });
+      dispatchWalletUpdated(null, "admin_wallet_decision");
       showToast.success(`Request ${decision === "APPROVED" ? "Approved" : "Rejected"}`, `The top-up request has been ${decision.toLowerCase()}.`);
       await load();
     } catch (caught) {

@@ -215,7 +215,7 @@ export async function POST(request: Request) {
         });
       }
       await tx.delete(cartItems).where(eq(cartItems.cartId, basket.id!));
-      return payment ? { order, payment, availableCredit: input.paymentMethod === "CREDIT" ? customer.availableCredit : null, razorpay: razorpayOrder ? { orderId: razorpayOrder.id, keyId: razorpayPublicKey(), amount: razorpayOrder.amount, currency: razorpayOrder.currency } : null } : null;
+      return payment ? { order, payment, availableCredit: customer.availableCredit, razorpay: razorpayOrder ? { orderId: razorpayOrder.id, keyId: razorpayPublicKey(), amount: razorpayOrder.amount, currency: razorpayOrder.currency } : null } : null;
     });
 
     if (result) {

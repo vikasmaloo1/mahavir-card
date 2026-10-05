@@ -8,6 +8,7 @@ import { formatInr } from "@/lib/formatting";
 import { UpiQrCode } from "@/components/upi-qr-code";
 import { PaymentBankDetails } from "@/components/payment-bank-details";
 import { useAutoRefresh } from "@/lib/use-auto-refresh";
+import { dispatchWalletUpdated, WALLET_UPDATED_EVENT, type WalletUpdatedDetail } from "@/lib/wallet-events";
 
 type WalletData = {
   customer: { customerType: string; creditEnabled: boolean; creditLimit: string; availableBalance: string; paymentTermsDays: number } | null;
@@ -80,11 +81,28 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
     const response = await fetch(`/api/account/wallet/top-up?_t=${Date.now()}`, { cache: "no-store" });
     if (response.status === 401) { setSignedOut(true); return; }
     const payload = await response.json();
-    if (payload.success) setData(payload.data);
-    else setErrorMessage(payload.error?.message ?? "Could not load balance");
+    if (payload.success) {
+      setData(payload.data);
+      if (payload.data?.customer?.availableBalance !== undefined && payload.data?.customer?.availableBalance !== null) {
+        dispatchWalletUpdated(payload.data.customer.availableBalance, "wallet_dashboard_load");
+      }
+    } else {
+      setErrorMessage(payload.error?.message ?? "Could not load balance");
+    }
   }
   useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer); }, []);
   useAutoRefresh(load);
+
+  useEffect(() => {
+    function onWalletUpdate(event: Event) {
+      const ce = event as CustomEvent<WalletUpdatedDetail>;
+      if (ce.detail?.source !== "wallet_dashboard_load") {
+        void load();
+      }
+    }
+    window.addEventListener(WALLET_UPDATED_EVENT, onWalletUpdate);
+    return () => window.removeEventListener(WALLET_UPDATED_EVENT, onWalletUpdate);
+  }, []);
 
   if (signedOut) {
     return (
@@ -168,6 +186,7 @@ export function WalletDashboard({ upiVpa }: { upiVpa: string }) {
         utr: submittedUtr,
       });
 
+      dispatchWalletUpdated(null, "wallet_dashboard_submit");
       await load();
     } catch (err) {
       setSaving(false);

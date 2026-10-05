@@ -10,6 +10,7 @@ import { cachedFetchJson } from "@/lib/client-fetch-cache";
 import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import { HorizontalScrollContainer } from "@/components/horizontal-scroll-container";
 import { showToast } from "@/components/toast-provider";
+import { dispatchWalletUpdated, WALLET_UPDATED_EVENT, type WalletUpdatedDetail } from "@/lib/wallet-events";
 
 type SavedJob = { id: string; name: string; productId: string; productName: string; productSlug: string; quantity: number };
 
@@ -115,6 +116,8 @@ export function AccountDashboard() {
       showToast.info("Order cancelled", payload.data?.message || "Order cancelled successfully. Our team will review and credit your wallet if applicable.");
       window.alert(payload.data?.message || "Order cancelled successfully. Our team will review and credit your wallet if applicable.");
       await load();
+      dispatchWalletUpdated(null, "order_cancel");
+      try { router.refresh(); } catch { /* ignore */ }
     } catch (caught) {
       const msg = caught instanceof Error ? caught.message : "This order could not be cancelled";
       setReorderError(msg);
@@ -133,12 +136,26 @@ export function AccountDashboard() {
       if (status === 401) { setSignedOut(true); throw new Error("Sign in to view your account."); }
       if (!ok || !payload?.success) throw new Error(payload?.error?.message ?? "We couldn't load your account. Please retry.");
       setData(payload.data);
+      if (payload.data?.customer?.availableCredit !== undefined && payload.data?.customer?.availableCredit !== null) {
+        dispatchWalletUpdated(payload.data.customer.availableCredit, "account_load");
+      }
     } catch (caught) {
       setError(caught instanceof TypeError ? "Connection interrupted. Check your connection and retry." : caught instanceof Error ? caught.message : "We couldn't load your account. Please retry.");
     } finally {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    function onWalletUpdate(event: Event) {
+      const ce = event as CustomEvent<WalletUpdatedDetail>;
+      if (ce.detail?.source !== "account_load") {
+        void load();
+      }
+    }
+    window.addEventListener(WALLET_UPDATED_EVENT, onWalletUpdate);
+    return () => window.removeEventListener(WALLET_UPDATED_EVENT, onWalletUpdate);
+  }, [load]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); void loadSavedJobs(); }, 0);

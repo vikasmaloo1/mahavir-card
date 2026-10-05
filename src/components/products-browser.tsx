@@ -14,6 +14,7 @@ import { ArtworkUploader, type ArtworkRequirement, type UploadedArtwork } from "
 import { showToast } from "@/components/toast-provider";
 import { HorizontalScrollContainer } from "@/components/horizontal-scroll-container";
 import { isOutsideGujRaj } from "@/lib/india-states";
+import { useLiveWalletBalance, dispatchWalletUpdated } from "@/lib/wallet-events";
 
 type ProductDetail = {
   pricingRules: Array<{
@@ -140,6 +141,7 @@ function formatOrderStatus(status: string) {
 
 export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLoggedIn = false }: { initialFilters: ProductFilters; isB2B: boolean; walletBalance: string | null; isLoggedIn?: boolean }) {
   const router = useRouter();
+  const { balance: liveWalletBalance } = useLiveWalletBalance(walletBalance, Boolean(isLoggedIn && isB2B));
   const [items, setItems] = useState<Product[]>([]);
   const [quickActionId, setQuickActionId] = useState<string | null>(null);
   const [addedProductIds, setAddedProductIds] = useState<Set<string>>(new Set());
@@ -316,6 +318,8 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
         return;
       }
       showToast.success(`Order #${orderNumber} cancelled successfully`);
+      dispatchWalletUpdated(null, "order_cancel");
+      try { router.refresh(); } catch { /* ignore */ }
       setOrderHistory((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, status: "CANCELLED" } : o))
       );
@@ -548,7 +552,7 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
       {/* 1. FILTER & CATEGORY HEADER (Soft Blue) */}
       <div className="w-full border-b border-[#d4e4f5] mc-section-blue py-6 sm:py-8">
         <div className="mx-auto max-w-[1440px] px-4 lg:px-8">
-          {isB2B && walletBalance !== null ? (
+          {isB2B && liveWalletBalance !== null ? (
             <Link
               href="/account/wallet"
               className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-white px-4 py-3 shadow-xs transition-colors hover:border-[var(--mc-accent)]"
@@ -557,10 +561,10 @@ export function ProductsBrowser({ initialFilters, isB2B, walletBalance, isLogged
                 <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--mc-accent-soft)] text-[var(--mc-accent)]">
                   <WalletCards size={18} />
                 </span>
-                <span>
+                <div>
                   <span className="block text-xs font-bold uppercase text-[var(--mc-muted)]">Wallet balance</span>
-                  <span className="block text-lg font-bold text-[var(--mc-ink)]">{formatInr(walletBalance)}</span>
-                </span>
+                  <span className="block text-lg font-bold text-[var(--mc-ink)]">{formatInr(liveWalletBalance)}</span>
+                </div>
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--mc-accent)] px-4 py-2 text-xs font-bold text-white">
                 Top up <ArrowRight size={14} />
