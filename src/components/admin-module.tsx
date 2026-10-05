@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Check, ChevronLeft, ChevronRight, CircleAlert, Download, Pencil, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, CircleAlert, Download, FileText, MessageCircle, Pencil, Phone, PhoneCall, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { adminRequest, asItems, formattedAmount, formattedDate } from "@/lib/admin-client";
@@ -9,6 +9,7 @@ import { formatInrExact } from "@/lib/formatting";
 import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import { HorizontalScrollContainer } from "@/components/horizontal-scroll-container";
 import { showToast } from "@/components/toast-provider";
+import { LEAD_STATUSES, buildWhatsAppMessage, buildWhatsAppUrl, getCustomerCatalogueUrl } from "@/lib/customer-whatsapp";
 
 type Row = Record<string, unknown>;
 type ModuleKey = "categories" | "addons" | "pricing" | "delivery" | "orders" | "quotes" | "customers" | "inquiries" | "payments" | "artworks" | "notices" | "admins" | "banners" | "terms";
@@ -29,6 +30,38 @@ const moduleCopy: Record<ModuleKey, { title: string; description: string; endpoi
   admins: { title: "Administrators", description: "Create and manage restricted administrative accounts.", endpoint: "/api/admin/admins", createLabel: "New administrator" },
   terms: { title: "Terms & Conditions", description: "Manage commercial printing policies, color disclaimers, dispatch responsibility, and legal terms in English, Gujarati, and Hindi.", endpoint: "/api/admin/terms", createLabel: "New condition" },
 };
+
+const STATUS_COLORS: Record<string, { bg: string; text: string; border: string; dot: string }> = {
+  "NEW LEAD": { bg: "bg-sky-50", text: "text-sky-800", border: "border-sky-300", dot: "bg-sky-500" },
+  "CONTACTED": { bg: "bg-blue-50", text: "text-blue-800", border: "border-blue-300", dot: "bg-blue-500" },
+  "TALKED ON CALL": { bg: "bg-indigo-50", text: "text-indigo-800", border: "border-indigo-300", dot: "bg-indigo-500" },
+  "FOLLOW UP": { bg: "bg-amber-50", text: "text-amber-850", border: "border-amber-300", dot: "bg-amber-500" },
+  "QUOTED": { bg: "bg-teal-50", text: "text-teal-800", border: "border-teal-300", dot: "bg-teal-500" },
+  "CONVERTED": { bg: "bg-emerald-50", text: "text-emerald-800", border: "border-emerald-300", dot: "bg-emerald-500" },
+  "LOST": { bg: "bg-rose-50", text: "text-rose-800", border: "border-rose-300", dot: "bg-rose-500" },
+  "INACTIVE": { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-300", dot: "bg-slate-400" },
+};
+
+function getLeadStatusBadgeStyle(status: string | null | undefined) {
+  const s = String(status || "NEW LEAD").trim().toUpperCase();
+  return STATUS_COLORS[s] || STATUS_COLORS["NEW LEAD"];
+}
+
+function formatContactDate(val: unknown): string {
+  if (!val) return "Never";
+  const date = new Date(String(val));
+  if (isNaN(date.getTime())) return "Never";
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24 && now.getDate() === date.getDate()) {
+    return date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
+  }
+  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: now.getFullYear() !== date.getFullYear() ? "numeric" : undefined });
+}
 
 const columns: Record<ModuleKey, { label: string; value: (row: Row) => string; render?: (row: Row) => React.ReactNode }[]> = {
   categories: [{ label: "Category", value: (r) => text(r.name) }, { label: "Slug", value: (r) => text(r.slug) }, { label: "Order", value: (r) => text(r.sortOrder) }, { label: "Status", value: (r) => enabled(r.isActive) }],
@@ -371,6 +404,12 @@ export function AdminModule({ section }: { section: ModuleKey }) {
   const [editing, setEditing] = useState<Row | null>(null);
   const [creating, setCreating] = useState(false);
 
+  const [leadStatusFilter, setLeadStatusFilter] = useState("");
+  const [conversionFilter, setConversionFilter] = useState("");
+  const [stateFilter, setStateFilter] = useState("");
+  const [customerSort, setCustomerSort] = useState("NEWEST");
+  const [updatingCustomerStatusId, setUpdatingCustomerStatusId] = useState<string | null>(null);
+
   const isPaginated = ["orders", "quotes", "customers", "inquiries", "payments", "artworks"].includes(section);
   const PAGE_LIMIT = 20;
 
@@ -378,7 +417,22 @@ export function AdminModule({ section }: { section: ModuleKey }) {
     setLoading(true);
     setError("");
     try {
-      const suffix = isPaginated ? `?page=${nextPage}&limit=${PAGE_LIMIT}` : "";
+      let suffix = "";
+      if (section === "customers") {
+        const queryParams = new URLSearchParams();
+        queryParams.set("page", String(nextPage));
+        queryParams.set("limit", String(PAGE_LIMIT));
+        if (query.trim()) queryParams.set("q", query.trim());
+        if (customerTypeFilter) queryParams.set("customerType", customerTypeFilter);
+        if (leadStatusFilter) queryParams.set("leadStatus", leadStatusFilter);
+        if (conversionFilter) queryParams.set("converted", conversionFilter);
+        if (stateFilter) queryParams.set("state", stateFilter);
+        if (balanceFilter) queryParams.set("balance", balanceFilter);
+        if (customerSort) queryParams.set("sort", customerSort);
+        suffix = `?${queryParams.toString()}`;
+      } else if (isPaginated) {
+        suffix = `?page=${nextPage}&limit=${PAGE_LIMIT}`;
+      }
       const result = await adminRequest<Row[] | { items?: Row[] }>(`${config.endpoint}${suffix}`);
       setItems(asItems(result));
       setPage(nextPage);
@@ -404,13 +458,45 @@ export function AdminModule({ section }: { section: ModuleKey }) {
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(1); }, 0);
     return () => window.clearTimeout(timer);
-  }, [section]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [section, leadStatusFilter, conversionFilter, stateFilter, customerSort, customerTypeFilter, balanceFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useAutoRefresh(() => {
     void load(page);
   });
 
   const visible = useMemo(() => {
+    if (section === "customers") {
+      // In customer section, filters are applied server-side in GET endpoint.
+      // We also do a quick client-side fallback filter for instant responsiveness:
+      const term = query.trim().toLowerCase();
+      return items.filter((item) => {
+        if (term) {
+          const match =
+            String(item.contactName || "").toLowerCase().includes(term) ||
+            String(item.companyName || "").toLowerCase().includes(term) ||
+            String(item.phone || "").toLowerCase().includes(term) ||
+            String(item.email || "").toLowerCase().includes(term) ||
+            String(item.gstNumber || "").toLowerCase().includes(term);
+          if (!match) return false;
+        }
+        if (customerTypeFilter && text(item.customerType) !== customerTypeFilter) return false;
+        if (leadStatusFilter && String(item.leadStatus || "NEW LEAD") !== leadStatusFilter) return false;
+        if (conversionFilter === "CONVERTED" && String(item.leadStatus || "NEW LEAD") !== "CONVERTED") return false;
+        if (conversionFilter === "NON_CONVERTED" && String(item.leadStatus || "NEW LEAD") === "CONVERTED") return false;
+        if (stateFilter) {
+          const s = String(item.stateCode || item.state || "").toUpperCase();
+          if (stateFilter === "GJ" && s !== "GJ" && s !== "GUJARAT") return false;
+          if (stateFilter === "RJ" && s !== "RJ" && s !== "RAJASTHAN") return false;
+          if (stateFilter === "OTHER" && (s === "GJ" || s === "GUJARAT" || s === "RJ" || s === "RAJASTHAN")) return false;
+        }
+        const balanceNum = Number(item.availableCredit ?? 0);
+        if (balanceFilter === "NEGATIVE" && balanceNum >= -0.001) return false;
+        if (balanceFilter === "ZERO" && Math.abs(balanceNum) > 0.001) return false;
+        if (balanceFilter === "POSITIVE" && balanceNum <= 0.001) return false;
+        return true;
+      });
+    }
+
     const term = query.trim().toLowerCase();
     return items.filter((item) => {
       const matchesQuery = !term || columns[section].some((column) => column.value(item).toLowerCase().includes(term));
@@ -424,8 +510,117 @@ export function AdminModule({ section }: { section: ModuleKey }) {
         (balanceFilter === "POSITIVE" && balanceNum > 0.001);
       return matchesQuery && (!statusFilter || itemStatus === statusFilter) && matchesCustomerType && matchesBalance;
     });
-  }, [items, query, section, statusFilter, customerTypeFilter, balanceFilter]);
+  }, [items, query, section, statusFilter, customerTypeFilter, balanceFilter, leadStatusFilter, conversionFilter, stateFilter]);
   const statuses = useMemo(() => [...new Set(items.map((item) => text(section === "payments" ? nested(item, "payment.status") : section === "admins" ? nested(item, "admin.status") : item.status)).filter((item) => item !== "-"))].sort(), [items, section]);
+
+  async function handleCustomerStatusChange(customerId: string, nextLeadStatus: string) {
+    setUpdatingCustomerStatusId(customerId);
+    try {
+      const res = await fetch(`/api/admin/customers/${customerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadStatus: nextLeadStatus }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update lead status");
+      }
+      showToast({
+        type: "success",
+        title: "Status Updated",
+        message: `Lead status changed to ${nextLeadStatus}`,
+      });
+      // Optimistic in-memory update
+      setItems((prev) =>
+        prev.map((it) => (String(it.id) === customerId ? { ...it, leadStatus: nextLeadStatus, updatedAt: new Date().toISOString() } : it))
+      );
+    } catch (err) {
+      showToast({
+        type: "error",
+        title: "Update Failed",
+        message: err instanceof Error ? err.message : "Failed to change status",
+      });
+    } finally {
+      setUpdatingCustomerStatusId(null);
+    }
+  }
+
+  async function handleCustomerWhatsApp(customer: Row) {
+    const phone = String(customer.phone || "");
+    const msg = buildWhatsAppMessage({
+      contactName: customer.contactName as string | null,
+      companyName: customer.companyName as string | null,
+      customerType: customer.customerType as string | null,
+    });
+    const url = buildWhatsAppUrl(phone, msg);
+    if (!url) {
+      showToast({
+        type: "warning",
+        title: "Invalid Phone Number",
+        message: "This customer does not have a valid mobile number for WhatsApp.",
+      });
+      return;
+    }
+
+    // Open WhatsApp Web / app in new tab
+    window.open(url, "_blank", "noopener,noreferrer");
+
+    // Silently log contact activity (WhatsApp) without changing status
+    try {
+      await fetch(`/api/admin/customers/${customer.id}/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method: "WHATSAPP" }),
+      });
+      const nowIso = new Date().toISOString();
+      setItems((prev) =>
+        prev.map((it) => (String(it.id) === String(customer.id) ? { ...it, lastContactedAt: nowIso, lastContactMethod: "WHATSAPP" } : it))
+      );
+    } catch {
+      // non-fatal
+    }
+  }
+
+  function handleCustomerCatalogue(customer: Row) {
+    const url = getCustomerCatalogueUrl(customer.customerType as string | null);
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  async function handleCustomerWhatsAppAndCatalogue(customer: Row) {
+    // 1. Open WhatsApp link
+    await handleCustomerWhatsApp(customer);
+    // 2. Open / download customer PDF catalogue
+    handleCustomerCatalogue(customer);
+  }
+
+  async function handleCustomerLogCall(customer: Row) {
+    try {
+      const res = await fetch(`/api/admin/customers/${customer.id}/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method: "CALL" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to log call activity");
+      }
+      const nowIso = new Date().toISOString();
+      setItems((prev) =>
+        prev.map((it) => (String(it.id) === String(customer.id) ? { ...it, lastContactedAt: nowIso, lastContactMethod: "CALL" } : it))
+      );
+      showToast({
+        type: "success",
+        title: "Call Recorded",
+        message: `Call activity logged for ${customer.contactName || customer.companyName || "customer"}`,
+      });
+    } catch (err) {
+      showToast({
+        type: "error",
+        title: "Failed to record call",
+        message: err instanceof Error ? err.message : "Error logging call activity",
+      });
+    }
+  }
 
   async function save(data: Record<string, unknown>) {
     setSaving(true);
@@ -528,36 +723,143 @@ export function AdminModule({ section }: { section: ModuleKey }) {
       </section>
     ) : null}
 
-    <div className={`mt-6 grid gap-2 ${section === "orders" || section === "payments" ? "sm:grid-cols-[minmax(0,1fr)_10rem_13rem]" : section === "customers" ? "sm:grid-cols-[minmax(0,1fr)_9rem_12rem_10rem]" : "sm:grid-cols-[minmax(0,1fr)_13rem]"}`}>
-      <div className="flex items-center gap-3 border border-[#cfd7e3] bg-white px-3">
-        <Search size={17} className="shrink-0 text-[#607089]" />
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Search ${config.title.toLowerCase()}`} className="min-w-0 flex-1 bg-transparent py-3 text-sm text-[#162237] outline-none" />
+    {section === "customers" ? (
+      <div className="mt-6 space-y-2.5">
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1.5fr)_8rem_8rem_7.5rem_9.5rem_9.5rem]">
+          <div className="flex items-center gap-3 border border-[#cfd7e3] bg-white px-3">
+            <Search size={17} className="shrink-0 text-[#607089]" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search by name, phone, company, GST..."
+              className="min-w-0 flex-1 bg-transparent py-2.5 text-sm text-[#162237] outline-none"
+            />
+          </div>
+          <select
+            value={customerTypeFilter}
+            onChange={(event) => setCustomerTypeFilter(event.target.value)}
+            className="border border-[#cfd7e3] bg-white px-2.5 py-2.5 text-xs font-semibold text-[#263753]"
+          >
+            <option value="">All Types (B2B/C)</option>
+            <option value="B2B">B2B Trade</option>
+            <option value="B2C">B2C Retail</option>
+          </select>
+          <select
+            value={leadStatusFilter}
+            onChange={(event) => setLeadStatusFilter(event.target.value)}
+            className="border border-[#cfd7e3] bg-white px-2.5 py-2.5 text-xs font-semibold text-[#263753]"
+          >
+            <option value="">All Lead Statuses</option>
+            {LEAD_STATUSES.map((st) => (
+              <option key={st} value={st}>
+                {st}
+              </option>
+            ))}
+          </select>
+          <select
+            value={stateFilter}
+            onChange={(event) => setStateFilter(event.target.value)}
+            className="border border-[#cfd7e3] bg-white px-2.5 py-2.5 text-xs font-semibold text-[#263753]"
+          >
+            <option value="">All States</option>
+            <option value="GJ">Gujarat (GJ)</option>
+            <option value="RJ">Rajasthan (RJ)</option>
+            <option value="OTHER">Other States</option>
+          </select>
+          <select
+            value={conversionFilter}
+            onChange={(event) => setConversionFilter(event.target.value)}
+            className="border border-[#cfd7e3] bg-white px-2.5 py-2.5 text-xs font-semibold text-[#263753]"
+          >
+            <option value="">All Leads / Clients</option>
+            <option value="CONVERTED">Converted Only</option>
+            <option value="NON_CONVERTED">Non-converted (Pipeline)</option>
+          </select>
+          <select
+            value={customerSort}
+            onChange={(event) => setCustomerSort(event.target.value)}
+            className="border border-[#cfd7e3] bg-white px-2.5 py-2.5 text-xs font-semibold text-[#2457b8]"
+          >
+            <option value="NEWEST">Sort: Newest</option>
+            <option value="RECENTLY_CONTACTED">Recently Contacted</option>
+            <option value="RECENTLY_UPDATED">Recently Updated</option>
+            <option value="NAME_ASC">Name (A-Z)</option>
+            <option value="BALANCE_DESC">Highest Balance</option>
+            <option value="BALANCE_ASC">Highest Due</option>
+          </select>
+        </div>
+
+        {/* Quick balance filter chips */}
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          <span className="text-[#607089] font-medium mr-1">Balance:</span>
+          <button
+            type="button"
+            onClick={() => setBalanceFilter("")}
+            className={`px-2 py-0.5 rounded font-bold transition-colors ${!balanceFilter ? "bg-[#2457b8] text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => setBalanceFilter(balanceFilter === "NEGATIVE" ? "" : "NEGATIVE")}
+            className={`px-2 py-0.5 rounded font-bold transition-colors ${balanceFilter === "NEGATIVE" ? "bg-red-600 text-white" : "bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"}`}
+          >
+            Outstanding Dues
+          </button>
+          <button
+            type="button"
+            onClick={() => setBalanceFilter(balanceFilter === "POSITIVE" ? "" : "POSITIVE")}
+            className={`px-2 py-0.5 rounded font-bold transition-colors ${balanceFilter === "POSITIVE" ? "bg-emerald-700 text-white" : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"}`}
+          >
+            Credit Balance
+          </button>
+          <button
+            type="button"
+            onClick={() => setBalanceFilter(balanceFilter === "ZERO" ? "" : "ZERO")}
+            className={`px-2 py-0.5 rounded font-bold transition-colors ${balanceFilter === "ZERO" ? "bg-slate-700 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"}`}
+          >
+            Zero (₹0)
+          </button>
+        </div>
       </div>
-      {section === "orders" || section === "payments" || section === "customers" ? (
-        <select value={customerTypeFilter} onChange={(event) => setCustomerTypeFilter(event.target.value)} className="border border-[#cfd7e3] bg-white px-3 py-3 text-sm font-semibold text-[#263753]">
-          <option value="">B2B & B2C</option>
-          <option value="B2B">B2B only</option>
-          <option value="B2C">B2C only</option>
-        </select>
-      ) : null}
-      {section === "customers" ? (
-        <select value={balanceFilter} onChange={(event) => setBalanceFilter(event.target.value)} className="border border-[#cfd7e3] bg-white px-3 py-3 text-sm font-semibold text-[#263753]">
-          <option value="">All balances</option>
-          <option value="NEGATIVE">Negative (Outstanding)</option>
-          <option value="ZERO">Zero (₹0.00)</option>
-          <option value="POSITIVE">Positive</option>
-        </select>
-      ) : null}
-      {statuses.length ? (
-        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="border border-[#cfd7e3] bg-white px-3 py-3 text-sm font-semibold text-[#263753]">
-          <option value="">All statuses</option>
-          {statuses.map((status) => <option key={status}>{status}</option>)}
-        </select>
-      ) : null}
-    </div>
+    ) : (
+      <div className={`mt-6 grid gap-2 ${section === "orders" || section === "payments" ? "sm:grid-cols-[minmax(0,1fr)_10rem_13rem]" : "sm:grid-cols-[minmax(0,1fr)_13rem]"}`}>
+        <div className="flex items-center gap-3 border border-[#cfd7e3] bg-white px-3">
+          <Search size={17} className="shrink-0 text-[#607089]" />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Search ${config.title.toLowerCase()}`} className="min-w-0 flex-1 bg-transparent py-3 text-sm text-[#162237] outline-none" />
+        </div>
+        {section === "orders" || section === "payments" ? (
+          <select value={customerTypeFilter} onChange={(event) => setCustomerTypeFilter(event.target.value)} className="border border-[#cfd7e3] bg-white px-3 py-3 text-sm font-semibold text-[#263753]">
+            <option value="">B2B & B2C</option>
+            <option value="B2B">B2B only</option>
+            <option value="B2C">B2C only</option>
+          </select>
+        ) : null}
+        {statuses.length ? (
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="border border-[#cfd7e3] bg-white px-3 py-3 text-sm font-semibold text-[#263753]">
+            <option value="">All statuses</option>
+            {statuses.map((status) => <option key={status}>{status}</option>)}
+          </select>
+        ) : null}
+      </div>
+    )}
     {loading ? <div className="mt-6 border border-[#d7dce5] bg-white p-6 text-sm text-[#607089]">Loading {config.title.toLowerCase()}...</div> : null}
     {!loading && !visible.length ? <div className="mt-6 border border-dashed border-[#c9d2df] bg-white p-8 text-center"><p className="font-bold text-[#162237]">No {config.title.toLowerCase()} found.</p><p className="mt-2 text-sm text-[#607089]">Use the new-record control when this module supports creation.</p></div> : null}
-    {!loading && visible.length ? <ResourceTable section={section} items={visible} saving={saving} onEdit={(item) => { setEditing(item); setCreating(false); setError(""); }} onDelete={remove} onConvert={convertInquiry} onRemind={remindQuote} /> : null}
+    {!loading && visible.length ? (
+      section === "customers" ? (
+        <CustomerTableView
+          items={visible}
+          updatingStatusId={updatingCustomerStatusId}
+          onStatusChange={handleCustomerStatusChange}
+          onWhatsApp={handleCustomerWhatsApp}
+          onCatalogue={handleCustomerCatalogue}
+          onWhatsAppAndCatalogue={handleCustomerWhatsAppAndCatalogue}
+          onLogCall={handleCustomerLogCall}
+        />
+      ) : (
+        <ResourceTable section={section} items={visible} saving={saving} onEdit={(item) => { setEditing(item); setCreating(false); setError(""); }} onDelete={remove} onConvert={convertInquiry} onRemind={remindQuote} />
+      )
+    ) : null}
     {isPaginated ? (
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#d7dce5] pt-4">
         <div className="text-xs font-semibold text-[#607089]">
@@ -591,7 +893,345 @@ export function AdminModule({ section }: { section: ModuleKey }) {
   </div>;
 }
 
-function ResourceTable({ section, items, saving, onEdit, onDelete, onConvert, onRemind }: { section: ModuleKey; items: Row[]; saving: boolean; onEdit: (item: Row) => void; onDelete: (item: Row) => void; onConvert: (item: Row) => void; onRemind: (item: Row) => void }) {
+function CustomerTableView({
+  items,
+  updatingStatusId,
+  onStatusChange,
+  onWhatsApp,
+  onCatalogue,
+  onWhatsAppAndCatalogue,
+  onLogCall,
+}: {
+  items: Row[];
+  updatingStatusId: string | null;
+  onStatusChange: (id: string, nextStatus: string) => void;
+  onWhatsApp: (customer: Row) => void;
+  onCatalogue: (customer: Row) => void;
+  onWhatsAppAndCatalogue: (customer: Row) => void;
+  onLogCall: (customer: Row) => void;
+}) {
+  return (
+    <>
+      {/* Mobile Card Layout */}
+      <div className="mt-6 space-y-3.5 md:hidden">
+        {items.map((item) => {
+          const id = String(item.id);
+          const currentLeadStatus = String(item.leadStatus || "NEW LEAD");
+          const badgeStyle = getLeadStatusBadgeStyle(currentLeadStatus);
+          const isB2B = String(item.customerType || "").toUpperCase() === "B2B";
+          const balanceNum = Number(item.availableCredit ?? 0);
+          const isUpdating = updatingStatusId === id;
+
+          return (
+            <article key={id} className="border border-[#d7dce5] bg-white p-4 rounded-sm shadow-2xs space-y-3">
+              <div className="flex items-start justify-between gap-3 border-b border-[#f0f3f8] pb-2.5">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-[#162237] text-base truncate block">{text(item.contactName)}</span>
+                    <span
+                      className={`inline-flex items-center px-1.5 py-0.2 rounded text-[11px] font-bold shrink-0 ${
+                        isB2B
+                          ? "bg-blue-50 text-blue-700 border border-blue-200"
+                          : "bg-slate-100 text-slate-700 border border-slate-200"
+                      }`}
+                    >
+                      {isB2B ? "B2B" : "B2C"}
+                    </span>
+                  </div>
+                  {item.companyName ? (
+                    <p className="text-xs text-[#607089] truncate">{text(item.companyName)}</p>
+                  ) : null}
+                </div>
+                <div className="text-right shrink-0">
+                  {balanceNum < -0.001 ? (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-50 border border-red-200 text-xs font-bold text-red-700 tabular-nums">
+                      <CircleAlert size={11} />
+                      {formatInrExact(balanceNum)}
+                    </span>
+                  ) : balanceNum > 0.001 ? (
+                    <span className="font-bold text-emerald-700 text-xs tabular-nums">{formatInrExact(balanceNum)}</span>
+                  ) : (
+                    <span className="text-slate-400 text-xs font-semibold tabular-nums">₹0.00</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#8896ab] block">Contact</span>
+                  <span className="font-mono text-[#162237] font-semibold block">{text(item.phone)}</span>
+                  <span className="text-slate-500 truncate block text-[11px]">{text(item.city ? `${text(item.stateCode || item.state)}, ${text(item.city)}` : text(item.stateCode || item.state))}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#8896ab] block">Last Contact</span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-xs font-semibold text-slate-700">{formatContactDate(item.lastContactedAt)}</span>
+                    {item.lastContactMethod ? (
+                      <span className="text-[10px] uppercase font-bold text-slate-500 bg-slate-100 px-1 rounded">
+                        {String(item.lastContactMethod).slice(0, 2)}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Row with Dropdown */}
+              <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#f0f3f8]">
+                <div className="flex items-center gap-1.5">
+                  <span className={`size-2 rounded-full ${badgeStyle.dot}`} />
+                  <select
+                    value={currentLeadStatus}
+                    disabled={isUpdating}
+                    onChange={(e) => onStatusChange(id, e.target.value)}
+                    className={`rounded-full border px-2.5 py-1 text-xs font-bold outline-none cursor-pointer transition-all disabled:opacity-50 ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`}
+                  >
+                    {LEAD_STATUSES.map((st) => (
+                      <option key={st} value={st} className="bg-white text-slate-800">
+                        {st}
+                      </option>
+                    ))}
+                  </select>
+                  {isUpdating ? <RefreshCw size={11} className="animate-spin text-slate-400" /> : null}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onLogCall(item)}
+                  title="Record phone call"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold border border-[#c9d2df] bg-slate-50 text-[#24324a] hover:bg-slate-100 transition-colors"
+                >
+                  <PhoneCall size={12} className="text-indigo-600" />
+                  Call
+                </button>
+              </div>
+
+              {/* Action Buttons Row */}
+              <div className="flex flex-wrap items-center justify-between gap-1.5 pt-2 border-t border-[#e8ecf2]">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onWhatsApp(item)}
+                    className="inline-flex items-center gap-1 rounded bg-[#25D366] hover:bg-[#20bd5a] px-2.5 py-1.5 text-xs font-bold text-white transition-colors shadow-2xs"
+                  >
+                    <MessageCircle size={13} />
+                    WhatsApp
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onCatalogue(item)}
+                    className="inline-flex items-center gap-1 rounded border border-[#cfd7e3] bg-white px-2 py-1.5 text-xs font-bold text-[#24324a] hover:bg-slate-50 transition-colors"
+                  >
+                    <FileText size={13} className="text-[#2457b8]" />
+                    {isB2B ? "B2B PDF" : "B2C PDF"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onWhatsAppAndCatalogue(item)}
+                    title="Open WhatsApp chat and download catalogue PDF together"
+                    className="inline-flex items-center gap-1 rounded border border-emerald-300 bg-emerald-50 px-2 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors"
+                  >
+                    WA+PDF
+                  </button>
+                </div>
+                <Link
+                  href={`/admin/customers/${id}`}
+                  className="inline-flex items-center border border-[#c9d2df] bg-white px-2.5 py-1.5 text-xs font-bold text-[#2457b8] hover:bg-slate-50"
+                >
+                  Details
+                </Link>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      {/* Desktop Compact Business Table */}
+      <div className="mt-6 hidden md:block">
+        <HorizontalScrollContainer>
+          <div className="inline-block min-w-full align-middle border border-[#d7dce5] bg-white">
+            <table className="min-w-full text-left text-xs">
+              <thead className="border-b border-[#d7dce5] bg-[#f7f9fc]">
+                <tr>
+                  <th className="whitespace-nowrap px-3.5 py-3 font-bold uppercase tracking-[0.08em] text-[#52647e]">Customer / Company</th>
+                  <th className="whitespace-nowrap px-3 py-3 font-bold uppercase tracking-[0.08em] text-[#52647e]">Type</th>
+                  <th className="whitespace-nowrap px-3 py-3 font-bold uppercase tracking-[0.08em] text-[#52647e]">Phone / State</th>
+                  <th className="whitespace-nowrap px-3 py-3 font-bold uppercase tracking-[0.08em] text-[#52647e]">Balance</th>
+                  <th className="whitespace-nowrap px-3.5 py-3 font-bold uppercase tracking-[0.08em] text-[#52647e]">Lead Status</th>
+                  <th className="whitespace-nowrap px-3 py-3 font-bold uppercase tracking-[0.08em] text-[#52647e]">Last Contacted</th>
+                  <th className="whitespace-nowrap px-3.5 py-3 text-right font-bold uppercase tracking-[0.08em] text-[#52647e]">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#e8ecf2]">
+                {items.map((item) => {
+                  const id = String(item.id);
+                  const currentLeadStatus = String(item.leadStatus || "NEW LEAD");
+                  const badgeStyle = getLeadStatusBadgeStyle(currentLeadStatus);
+                  const isB2B = String(item.customerType || "").toUpperCase() === "B2B";
+                  const balanceNum = Number(item.availableCredit ?? 0);
+                  const isUpdating = updatingStatusId === id;
+
+                  return (
+                    <tr key={id} className="hover:bg-[#fafbfe] transition-colors">
+                      {/* Name / Company */}
+                      <td className="max-w-[200px] px-3.5 py-3 align-middle text-[#162237]">
+                        <Link href={`/admin/customers/${id}`} className="font-bold hover:underline hover:text-[#2457b8] truncate block">
+                          {text(item.contactName)}
+                        </Link>
+                        {item.companyName ? (
+                          <span className="text-[11px] text-[#607089] truncate block" title={String(item.companyName)}>
+                            {text(item.companyName)}
+                          </span>
+                        ) : null}
+                      </td>
+
+                      {/* Type B2B / B2C */}
+                      <td className="whitespace-nowrap px-3 py-3 align-middle">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${
+                            isB2B
+                              ? "bg-blue-50 text-blue-700 border border-blue-200"
+                              : "bg-slate-100 text-slate-700 border border-slate-200"
+                          }`}
+                        >
+                          {isB2B ? "B2B" : "B2C"}
+                        </span>
+                      </td>
+
+                      {/* Phone & State */}
+                      <td className="whitespace-nowrap px-3 py-3 align-middle">
+                        <span className="font-mono text-xs font-semibold text-[#162237] block">{text(item.phone)}</span>
+                        <span className="text-[11px] text-[#607089] block">
+                          {text(item.stateCode || item.state)}
+                          {item.city ? `, ${text(item.city)}` : ""}
+                        </span>
+                      </td>
+
+                      {/* Balance */}
+                      <td className="whitespace-nowrap px-3 py-3 align-middle">
+                        {balanceNum < -0.001 ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-50 border border-red-200 text-xs font-bold text-red-700 tabular-nums">
+                            <CircleAlert size={11} />
+                            {formatInrExact(balanceNum)}
+                          </span>
+                        ) : balanceNum > 0.001 ? (
+                          <span className="font-bold text-emerald-700 text-xs tabular-nums">
+                            {formatInrExact(balanceNum)}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 text-xs font-semibold tabular-nums">₹0.00</span>
+                        )}
+                      </td>
+
+                      {/* Lead Status badge + Dropdown */}
+                      <td className="whitespace-nowrap px-3.5 py-3 align-middle">
+                        <div className="relative inline-flex items-center">
+                          <span className={`mr-1.5 size-2 rounded-full ${badgeStyle.dot}`} />
+                          <select
+                            value={currentLeadStatus}
+                            disabled={isUpdating}
+                            onChange={(e) => onStatusChange(id, e.target.value)}
+                            className={`cursor-pointer rounded-full border px-2.5 py-1 text-xs font-bold outline-none transition-all disabled:opacity-50 ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`}
+                          >
+                            {LEAD_STATUSES.map((st) => (
+                              <option key={st} value={st} className="bg-white text-slate-800">
+                                {st}
+                              </option>
+                            ))}
+                          </select>
+                          {isUpdating ? <RefreshCw size={11} className="ml-1 animate-spin text-slate-400" /> : null}
+                        </div>
+                      </td>
+
+                      {/* Last contacted + Log call button */}
+                      <td className="whitespace-nowrap px-3 py-3 align-middle">
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <span className="text-xs font-semibold text-slate-700 block">
+                              {formatContactDate(item.lastContactedAt)}
+                            </span>
+                            {item.lastContactMethod ? (
+                              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                via {String(item.lastContactMethod)}
+                              </span>
+                            ) : null}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => onLogCall(item)}
+                            title="Log Call activity"
+                            className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 border border-transparent hover:border-indigo-200 transition-colors"
+                          >
+                            <PhoneCall size={13} />
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Actions: WhatsApp / Catalogue / WA+PDF / Details */}
+                      <td className="whitespace-nowrap px-3.5 py-3 align-middle text-right">
+                        <div className="inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => onWhatsApp(item)}
+                            title="Send WhatsApp message"
+                            className="inline-flex items-center gap-1 rounded bg-[#25D366] hover:bg-[#20bd5a] px-2.5 py-1 text-xs font-bold text-white transition-colors shadow-2xs"
+                          >
+                            <MessageCircle size={13} />
+                            WhatsApp
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onCatalogue(item)}
+                            title={`Download official ${isB2B ? "B2B" : "B2C"} PDF price catalogue`}
+                            className="inline-flex items-center gap-1 rounded border border-[#cfd7e3] bg-white px-2 py-1 text-xs font-bold text-[#24324a] hover:bg-slate-50 transition-colors"
+                          >
+                            <FileText size={12} className="text-[#2457b8]" />
+                            {isB2B ? "B2B PDF" : "B2C PDF"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onWhatsAppAndCatalogue(item)}
+                            title="Open WhatsApp chat and download catalogue PDF together for manual attachment"
+                            className="inline-flex items-center gap-1 rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors"
+                          >
+                            WA+PDF
+                          </button>
+                          <Link
+                            href={`/admin/customers/${id}`}
+                            className="inline-flex items-center border border-[#c9d2df] bg-white px-2 py-1 text-xs font-bold text-[#2457b8] hover:bg-slate-50"
+                          >
+                            Details
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </HorizontalScrollContainer>
+      </div>
+    </>
+  );
+}
+
+function ResourceTable({
+  section,
+  items,
+  saving,
+  onEdit,
+  onDelete,
+  onConvert,
+  onRemind,
+}: {
+  section: ModuleKey;
+  items: Row[];
+  saving: boolean;
+  onEdit: (item: Row) => void;
+  onDelete: (item: Row) => void;
+  onConvert: (item: Row) => void;
+  onRemind: (item: Row) => void;
+}) {
   const actionLabel = section === "categories" || section === "delivery" ? "Remove" : section === "customers" || section === "orders" || section === "quotes" || section === "inquiries" || section === "artworks" || section === "payments" ? "Update" : "Deactivate";
   return (
     <>
@@ -1290,6 +1930,7 @@ function ModuleForm({ section, item, products, saving, onSubmit, onCancel }: { s
     name: value("name"), title: value("title"), titleGu: value("titleGu"), titleHi: value("titleHi"), content: value("content"), contentGu: value("contentGu"), contentHi: value("contentHi"), category: value("category") || "GENERAL", slug: value("slug"), description: value("description"), sortOrder: value("sortOrder") || "0", code: value("code"), pricingType: value("pricingType") || "FIXED", priceConfiguration: asJson(item?.priceConfiguration), productId: value("productId"), ruleType: value("ruleType") || "FIXED_PER_REFERENCE_QUANTITY", conditions: asJson(item?.conditions), priceFormula: asJson(item?.priceFormula), baseAmount: asString(object(item?.priceFormula).amount), rateUnit: asString(object(item?.priceFormula).rateUnit) || (object(item?.priceFormula).ratePaisePerSqInch ? "PAISE" : "RUPEES"), rateValue: asString(object(item?.priceFormula).ratePaisePerSqInch ?? object(item?.priceFormula).ratePerSqInch), minimumArea: asString(object(item?.priceFormula).minimumArea), minimumCharge: asString(object(item?.priceFormula).minimumCharge), bladeCharge: asString(object(item?.priceFormula).bladeCharge), referenceQuantity: asString(object(item?.conditions).quantity) || "1", taxRate: value("taxRate") || "18", productionTime: value("productionTime"), deliveryMethod: value("deliveryMethod") || "COURIER", stateCode: value("stateCode") || "GJ", price: value("price"), status: value("status") || defaultStatus(section), notes: value("notes"), internalNotes: value("internalNotes"), contactName: value("contactName"), email: value("email"), phone: value("phone"), companyName: value("companyName"), gstNumber: value("gstNumber"), message: value("message"), tone: value("tone") || "INFO", placement: value("placement") || (section === "banners" ? "HOME_HERO_BOTTOM" : "GLOBAL"), animationType: value("animationType") || (section === "banners" ? "FADE" : "MARQUEE"), priority: value("priority") || "NORMAL", subtitle: value("subtitle"), badge: value("badge"), ctaLabel: value("ctaLabel"), ctaUrl: value("ctaUrl"), imageUrl: value("imageUrl"), storageKey: value("storageKey"), linkLabel: value("linkLabel"), linkUrl: value("linkUrl"), startsAt: dateInput(item?.startsAt), endsAt: dateInput(item?.endsAt), method: value("method") || "MANUAL", amount: value("amount"), orderId: value("orderId"), provider: value("provider"), providerOrderId: value("providerOrderId"), providerPaymentId: value("providerPaymentId"), password: "", quantity: "1", unitPrice: "0", itemDescription: "",
     customerType: value("customerType") || "B2B",
     creditEnabled: item ? String(item.creditEnabled ?? "true") : "true",
+    leadStatus: value("leadStatus") || "NEW LEAD",
   }));
   const [formError, setFormError] = useState("");
   const toggleValue = (key: string, fallback: boolean) => asBoolean(item?.[key], fallback);
@@ -1439,6 +2080,20 @@ function ModuleFields({ section, form, toggles, products, update, setForm, setTo
                 <option value="false">false (Disabled)</option>
               </select>
             </label>
+            <label className="block text-sm font-semibold text-[#263753]">
+              <span>Lead / Customer Status</span>
+              <select
+                value={form.leadStatus || "NEW LEAD"}
+                onChange={update("leadStatus")}
+                className="mt-1.5 w-full border border-[#c9d2df] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#2457b8]"
+              >
+                {LEAD_STATUSES.map((st) => (
+                  <option key={st} value={st}>
+                    {st}
+                  </option>
+                ))}
+              </select>
+            </label>
             {editing ? select("Account status", "status", ["ACTIVE", "INACTIVE"]) : null}
           </div>
         </div>
@@ -1529,7 +2184,7 @@ function buildPayload(section: ModuleKey, form: Record<string, string>, toggles:
     const creditEnabled = form.creditEnabled !== undefined && form.creditEnabled !== ""
       ? form.creditEnabled === "true"
       : isB2B;
-    return { contactName: form.contactName, companyName: form.companyName, phone: empty(form.phone), email: empty(form.email), gstNumber: empty(form.gstNumber), customerType: form.customerType || (editing ? "B2C" : "B2B"), city: empty(form.city), state: form.stateCode === "RJ" ? "Rajasthan" : "Gujarat", stateCode: form.stateCode || "GJ", creditEnabled, creditLimit: form.creditLimit || "0", availableCredit: form.availableCredit || "0", paymentTermsDays: number(form.paymentTermsDays || "0"), status: form.status, createLogin: toggles.createLogin ?? false, password: form.password };
+    return { contactName: form.contactName, companyName: form.companyName, phone: empty(form.phone), email: empty(form.email), gstNumber: empty(form.gstNumber), customerType: form.customerType || (editing ? "B2C" : "B2B"), city: empty(form.city), state: form.stateCode === "RJ" ? "Rajasthan" : "Gujarat", stateCode: form.stateCode || "GJ", creditEnabled, creditLimit: form.creditLimit || "0", availableCredit: form.availableCredit || "0", paymentTermsDays: number(form.paymentTermsDays || "0"), status: form.status, leadStatus: form.leadStatus || "NEW LEAD", createLogin: toggles.createLogin ?? false, password: form.password };
   }
   if (section === "inquiries") return { status: form.status, message: form.message, internalNotes: empty(form.internalNotes) };
   if (section === "payments") return { ...(editing ? {} : { orderId: form.orderId }), method: form.method, amount: form.amount, status: form.status, provider: empty(form.provider), providerOrderId: empty(form.providerOrderId), providerPaymentId: empty(form.providerPaymentId) };

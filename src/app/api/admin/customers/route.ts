@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, ne, or, sql } from "drizzle-orm";
 
 import { auth } from "@/lib/auth/server";
 import { handleApiError, jsonError, jsonOk, readBody } from "@/lib/api";
@@ -6,6 +6,7 @@ import { db } from "@/lib/db/server";
 import { addresses, bills, customers, orders, user as authUser, walletTransactions } from "@/lib/db/schema";
 import { isValidIndianPhoneNumber, normalizePhoneNumber } from "@/lib/phone";
 import { requireRole } from "@/lib/permissions";
+import { isValidLeadStatus } from "@/lib/customer-whatsapp";
 
 export async function POST(request: Request) {
   try {
@@ -85,6 +86,7 @@ export async function POST(request: Request) {
     const availableCredit = Number(body.availableCredit || 0).toFixed(2);
     const paymentTermsDays = Math.max(0, Number(body.paymentTermsDays || 0));
     const status = body.status === "INACTIVE" ? "INACTIVE" : "ACTIVE";
+    const leadStatus = isValidLeadStatus(body.leadStatus) ? body.leadStatus : (status === "INACTIVE" ? "INACTIVE" : "NEW LEAD");
 
     const result = await db.transaction(async (tx) => {
       const [newCustomer] = await tx
@@ -106,6 +108,7 @@ export async function POST(request: Request) {
           walletBalance: availableCredit,
           paymentTermsDays,
           status,
+          leadStatus,
         })
         .returning();
 
@@ -140,9 +143,11 @@ export async function GET(request: Request) {
     const limit = Math.min(100, Math.max(1, Number(params.get("limit") ?? 25)));
     const query = (params.get("query") || params.get("q"))?.trim();
     const customerType = params.get("customerType")?.trim();
+    const leadStatus = params.get("leadStatus")?.trim();
     const status = params.get("status")?.trim();
     const state = params.get("state")?.trim();
     const balance = params.get("balance")?.trim();
+    const converted = params.get("converted")?.trim();
     const sort = params.get("sort")?.trim();
 
     const conditions = [];
@@ -163,8 +168,20 @@ export async function GET(request: Request) {
       conditions.push(eq(customers.customerType, customerType));
     }
 
-    if (status === "ACTIVE" || status === "INACTIVE") {
-      conditions.push(eq(customers.status, status));
+    if (leadStatus) {
+      conditions.push(eq(customers.leadStatus, leadStatus));
+    } else if (status) {
+      if (status === "ACTIVE" || status === "INACTIVE") {
+        conditions.push(or(eq(customers.status, status), eq(customers.leadStatus, status)));
+      } else {
+        conditions.push(eq(customers.leadStatus, status));
+      }
+    }
+
+    if (converted === "CONVERTED") {
+      conditions.push(eq(customers.leadStatus, "CONVERTED"));
+    } else if (converted === "NON_CONVERTED") {
+      conditions.push(ne(customers.leadStatus, "CONVERTED"));
     }
 
     if (state) {
@@ -188,6 +205,12 @@ export async function GET(request: Request) {
 
     let orderBy;
     switch (sort) {
+      case "RECENTLY_CONTACTED":
+        orderBy = sql`${customers.lastContactedAt} DESC NULLS LAST`;
+        break;
+      case "RECENTLY_UPDATED":
+        orderBy = desc(customers.updatedAt);
+        break;
       case "BALANCE_DESC":
         orderBy = desc(sql`CAST(${customers.availableCredit} AS NUMERIC)`);
         break;

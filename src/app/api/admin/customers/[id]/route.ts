@@ -7,13 +7,31 @@ import { addresses, bills, customers, inquiries, notificationLog, orderItems, or
 import { requireRole } from "@/lib/permissions";
 
 const customerUpdateSchema = z.object({
-  companyName: z.string().trim().min(2).max(160).optional(), contactName: z.string().trim().min(2).max(120).optional(),
-  phone: z.string().trim().max(30).optional(), gstNumber: z.string().trim().max(30).nullable().optional(),
-  customerType: z.enum(["B2B", "B2C"]).optional(), city: z.string().trim().max(100).nullable().optional(),
-  state: z.string().trim().max(100).nullable().optional(), stateCode: z.string().trim().max(3).toUpperCase().nullable().optional(),
+  companyName: z.string().trim().min(2).max(160).optional(),
+  contactName: z.string().trim().min(2).max(120).optional(),
+  phone: z.string().trim().max(30).optional(),
+  gstNumber: z.string().trim().max(30).nullable().optional(),
+  customerType: z.enum(["B2B", "B2C"]).optional(),
+  city: z.string().trim().max(100).nullable().optional(),
+  state: z.string().trim().max(100).nullable().optional(),
+  stateCode: z.string().trim().max(3).toUpperCase().nullable().optional(),
   creditEnabled: z.union([z.boolean(), z.enum(["true", "false"]).transform((v) => v === "true")]).optional(),
   creditLimit: z.string().regex(/^-?\d+(\.\d{1,2})?$/).optional(),
-  paymentTermsDays: z.number().int().min(0).max(365).optional(), status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+  paymentTermsDays: z.number().int().min(0).max(365).optional(),
+  status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+  leadStatus: z.enum([
+    "NEW LEAD",
+    "CONTACTED",
+    "TALKED ON CALL",
+    "FOLLOW UP",
+    "QUOTED",
+    "CONVERTED",
+    "LOST",
+    "INACTIVE",
+  ]).optional(),
+  lastContactedAt: z.union([z.string().datetime(), z.date()]).nullable().optional(),
+  lastContactMethod: z.enum(["WHATSAPP", "CALL", "OTHER"]).nullable().optional(),
+  recordContact: z.boolean().optional(),
 });
 
 export async function GET(request: Request, ctx: RouteContext<"/api/admin/customers/[id]">) {
@@ -85,11 +103,27 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/admin/cust
       creditEnabled = true;
     }
 
-    const [customer] = await db.update(customers).set({
-      ...input,
+    const { recordContact, ...fieldsToUpdate } = input;
+    const updateData: Record<string, unknown> = {
+      ...fieldsToUpdate,
       ...(creditEnabled !== undefined ? { creditEnabled } : {}),
       updatedAt: new Date(),
-    }).where(eq(customers.id, id)).returning();
+    };
+
+    if (recordContact) {
+      updateData.lastContactedAt = new Date();
+      updateData.lastContactMethod = input.lastContactMethod || "WHATSAPP";
+    }
+
+    if (input.leadStatus === "INACTIVE") {
+      updateData.status = "INACTIVE";
+    } else if (input.leadStatus && !input.status) {
+      updateData.status = "ACTIVE";
+    } else if (input.status === "INACTIVE" && !input.leadStatus) {
+      updateData.leadStatus = "INACTIVE";
+    }
+
+    const [customer] = await db.update(customers).set(updateData).where(eq(customers.id, id)).returning();
     return customer ? jsonOk(customer) : jsonError("Customer not found", 404);
   } catch (error) { return error instanceof Response ? error : handleApiError(error); }
 }

@@ -123,12 +123,19 @@ export const customers = pgTable(
     walletBalance: numeric("walletBalance", { precision: 12, scale: 2 }).notNull().default("0"),
     paymentTermsDays: integer("paymentTermsDays").notNull().default(0),
     status: text("status").notNull().default("ACTIVE"),
+    leadStatus: text("leadStatus").notNull().default("NEW LEAD"),
+    lastContactedAt: timestamp("lastContactedAt", { withTimezone: true }),
+    lastContactMethod: text("lastContactMethod"),
     /** Transactional-only toggles — no marketing flag yet since no marketing sends exist. Default on: these are order/quote status updates the customer already expects. */
     emailNotificationsEnabled: boolean("emailNotificationsEnabled").notNull().default(true),
     whatsappNotificationsEnabled: boolean("whatsappNotificationsEnabled").notNull().default(true),
     ...timestamps,
   },
-  (table) => [uniqueIndex("customers_user_idx").on(table.userId)],
+  (table) => [
+    uniqueIndex("customers_user_idx").on(table.userId),
+    index("customers_lead_status_idx").on(table.leadStatus),
+    index("customers_last_contacted_idx").on(table.lastContactedAt),
+  ],
 );
 
 export const addresses = pgTable("addresses", {

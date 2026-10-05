@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, CircleAlert, Download, FileSpreadsheet, FileText, MessageSquare, Plus, Printer, RefreshCw, Search, Send, Trash2, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, CircleAlert, Download, FileSpreadsheet, FileText, MessageCircle, MessageSquare, Phone, PhoneCall, Plus, Printer, RefreshCw, Search, Send, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { adminRequest, formattedAmount, formattedDate } from "@/lib/admin-client";
@@ -10,6 +10,7 @@ import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import { mapItemsWithArtworks } from "@/lib/order-artwork-mapping";
 import { HorizontalScrollContainer } from "@/components/horizontal-scroll-container";
 import { AdminInvoiceManagerModal } from "@/components/admin-invoice-manager-modal";
+import { LEAD_STATUSES, buildWhatsAppMessage, buildWhatsAppUrl, getCustomerCatalogueUrl } from "@/lib/customer-whatsapp";
 
 function formatDateTime(dateString: unknown) {
   if (!dateString) return "-";
@@ -49,6 +50,36 @@ const ORDER_STATUS_LABELS: Record<string, string> = {
   DELIVERED: "Delivered",
   CANCELLED: "Cancelled",
 };
+
+const LEAD_STATUS_COLORS: Record<string, { bg: string; text: string; border: string; dot: string }> = {
+  "NEW LEAD": { bg: "bg-sky-50", text: "text-sky-800", border: "border-sky-300", dot: "bg-sky-500" },
+  "CONTACTED": { bg: "bg-blue-50", text: "text-blue-800", border: "border-blue-300", dot: "bg-blue-500" },
+  "TALKED ON CALL": { bg: "bg-indigo-50", text: "text-indigo-800", border: "border-indigo-300", dot: "bg-indigo-500" },
+  "FOLLOW UP": { bg: "bg-amber-50", text: "text-amber-850", border: "border-amber-300", dot: "bg-amber-500" },
+  "QUOTED": { bg: "bg-teal-50", text: "text-teal-800", border: "border-teal-300", dot: "bg-teal-500" },
+  "CONVERTED": { bg: "bg-emerald-50", text: "text-emerald-800", border: "border-emerald-300", dot: "bg-emerald-500" },
+  "LOST": { bg: "bg-rose-50", text: "text-rose-800", border: "border-rose-300", dot: "bg-rose-500" },
+  "INACTIVE": { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-300", dot: "bg-slate-400" },
+};
+
+function getLeadBadgeStyle(status: string | null | undefined) {
+  const s = String(status || "NEW LEAD").trim().toUpperCase();
+  return LEAD_STATUS_COLORS[s] || LEAD_STATUS_COLORS["NEW LEAD"];
+}
+
+function formatContactDateDetail(val: unknown): string {
+  if (!val) return "Never contacted";
+  const date = new Date(String(val));
+  if (isNaN(date.getTime())) return "Never";
+  return date.toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
 
 
 function text(value: unknown) { return value === null || value === undefined || value === "" ? "-" : String(value); }
@@ -682,13 +713,83 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
     }
   };
 
+  const currentLeadStatus = String(customer.leadStatus || "NEW LEAD");
+  const leadBadgeStyle = getLeadBadgeStyle(currentLeadStatus);
+  const isB2B = String(customer.customerType || "").toUpperCase() === "B2B";
+  const [updatingLeadStatus, setUpdatingLeadStatus] = useState(false);
+
+  const handleWhatsApp = async () => {
+    const phone = String(customer.phone || "");
+    const msg = buildWhatsAppMessage({
+      contactName: customer.contactName as string | null,
+      companyName: customer.companyName as string | null,
+      customerType: customer.customerType as string | null,
+    });
+    const url = buildWhatsAppUrl(phone, msg);
+    if (!url) {
+      alert("This customer does not have a valid mobile number for WhatsApp.");
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+    try {
+      await fetch(`/api/admin/customers/${customer.id}/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method: "WHATSAPP" }),
+      });
+    } catch {
+      // non-fatal
+    }
+  };
+
+  const handleCatalogue = () => {
+    const url = getCustomerCatalogueUrl(customer.customerType as string | null);
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleWhatsAppAndCatalogue = async () => {
+    await handleWhatsApp();
+    handleCatalogue();
+  };
+
+  const handleLogCall = async () => {
+    try {
+      await mutate(
+        `/api/admin/customers/${customer.id}/contact`,
+        {
+          method: "POST",
+          body: JSON.stringify({ method: "CALL" }),
+        },
+        "Call activity recorded successfully."
+      );
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to record call");
+    }
+  };
+
+  const handleLeadStatusChange = async (nextStatus: string) => {
+    setUpdatingLeadStatus(true);
+    try {
+      await mutate(
+        `/api/admin/customers/${customer.id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ leadStatus: nextStatus }),
+        },
+        `Lead status updated to ${nextStatus}.`
+      );
+    } finally {
+      setUpdatingLeadStatus(false);
+    }
+  };
+
   return (
     <div className="mt-6 space-y-6">
       {/* Customer Balance & Profile Card */}
       <section className="border border-[#d7dce5] bg-white p-4 sm:p-6 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e1e6ee] pb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[#e1e6ee] pb-4">
           <div>
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
               <h2 className="text-xl font-bold text-[#162237]">{text(customer.contactName)}</h2>
               <span className={`px-2.5 py-0.5 rounded text-xs font-bold ${customer.customerType === "B2B" ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-slate-100 text-slate-700 border border-slate-200"}`}>
                 {text(customer.customerType || "B2C")}
@@ -696,6 +797,24 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
               <span className={`px-2 py-0.5 rounded text-xs font-semibold ${customer.status === "ACTIVE" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-600 border border-slate-200"}`}>
                 {text(customer.status)}
               </span>
+
+              {/* Lead Status Dropdown Badge */}
+              <div className="relative inline-flex items-center">
+                <span className={`mr-1.5 size-2 rounded-full ${leadBadgeStyle.dot}`} />
+                <select
+                  value={currentLeadStatus}
+                  disabled={updatingLeadStatus}
+                  onChange={(e) => void handleLeadStatusChange(e.target.value)}
+                  className={`cursor-pointer rounded-full border px-2.5 py-1 text-xs font-bold outline-none transition-all disabled:opacity-50 ${leadBadgeStyle.bg} ${leadBadgeStyle.text} ${leadBadgeStyle.border}`}
+                >
+                  {LEAD_STATUSES.map((st) => (
+                    <option key={st} value={st} className="bg-white text-slate-800">
+                      {st}
+                    </option>
+                  ))}
+                </select>
+                {updatingLeadStatus ? <RefreshCw size={11} className="ml-1 animate-spin text-slate-400" /> : null}
+              </div>
             </div>
             {customer.companyName ? (
               <p className="mt-1 text-sm font-medium text-[#607089]">{text(customer.companyName)}</p>
@@ -703,37 +822,69 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {/* WhatsApp & Catalogue Action Buttons */}
+            <button
+              type="button"
+              onClick={() => void handleWhatsApp()}
+              className="inline-flex items-center gap-1.5 rounded bg-[#25D366] hover:bg-[#20bd5a] px-3 py-2 text-xs font-bold text-white transition-colors shadow-2xs"
+            >
+              <MessageCircle size={14} /> WhatsApp
+            </button>
+            <button
+              type="button"
+              onClick={handleCatalogue}
+              className="inline-flex items-center gap-1.5 rounded border border-[#cfd7e3] bg-white px-3 py-2 text-xs font-bold text-[#24324a] hover:bg-slate-50 transition-colors shadow-2xs"
+            >
+              <FileText size={14} className="text-[#2457b8]" /> {isB2B ? "B2B Catalogue PDF" : "B2C Catalogue PDF"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleWhatsAppAndCatalogue()}
+              title="Open WhatsApp chat and download catalogue PDF together"
+              className="inline-flex items-center gap-1.5 rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs"
+            >
+              WA + PDF
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleLogCall()}
+              title="Log phone call with customer"
+              className="inline-flex items-center gap-1.5 rounded border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-colors shadow-2xs"
+            >
+              <PhoneCall size={14} /> Log Call
+            </button>
+
             {!hasLogin ? (
               <button
                 type="button"
                 onClick={() => setShowLoginModal(true)}
-                className="inline-flex items-center gap-1.5 rounded border border-[#2457b8] bg-blue-50 px-3.5 py-2 text-xs font-bold text-[#2457b8] hover:bg-blue-100 transition-colors shadow-xs"
+                className="inline-flex items-center gap-1.5 rounded border border-[#2457b8] bg-blue-50 px-3 py-2 text-xs font-bold text-[#2457b8] hover:bg-blue-100 transition-colors shadow-xs"
               >
-                <Plus size={14} /> Create Storefront Login
+                <Plus size={14} /> Create Login
               </button>
             ) : (
               <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200">
-                <Check size={13} className="text-emerald-600" /> Storefront Account Linked
+                <Check size={13} className="text-emerald-600" /> Account Linked
               </span>
             )}
             <button
               type="button"
               onClick={() => setShowCreditModal(true)}
-              className="inline-flex items-center gap-1.5 rounded border border-[#2457b8] bg-blue-50/60 px-3.5 py-2 text-xs font-bold text-[#2457b8] hover:bg-blue-100 transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 rounded border border-[#2457b8] bg-blue-50/60 px-3 py-2 text-xs font-bold text-[#2457b8] hover:bg-blue-100 transition-colors shadow-xs"
             >
               Credit &amp; Terms
             </button>
             <button
               type="button"
               onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-1.5 rounded bg-emerald-700 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-800 transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 rounded bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800 transition-colors shadow-xs"
             >
               <Plus size={15} /> Add Balance
             </button>
             <button
               type="button"
               onClick={() => setShowAdjustModal(true)}
-              className="inline-flex items-center gap-1.5 rounded border border-[#c9d2df] bg-white px-3.5 py-2 text-xs font-bold text-[#24324a] hover:bg-slate-50 transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 rounded border border-[#c9d2df] bg-white px-3 py-2 text-xs font-bold text-[#24324a] hover:bg-slate-50 transition-colors shadow-xs"
             >
               Adjust Balance
             </button>
@@ -837,6 +988,13 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
             <p className="mt-1 font-mono text-sm font-bold text-[#162237]">{text(customer.phone)}</p>
             <p className="text-xs text-[#607089] truncate">{text(customer.email)}</p>
             {customer.gstNumber ? <p className="text-xs font-mono text-slate-700 mt-0.5">GST: {text(customer.gstNumber)}</p> : null}
+            <div className="mt-2 pt-2 border-t border-[#e1e6ee] text-xs">
+              <span className="text-[#607089] font-medium block text-[11px]">Last Contacted:</span>
+              <span className="font-semibold text-slate-800">
+                {formatContactDateDetail(customer.lastContactedAt)}
+                {customer.lastContactMethod ? ` via ${String(customer.lastContactMethod)}` : ""}
+              </span>
+            </div>
           </div>
         </div>
       </section>
@@ -852,12 +1010,14 @@ function CustomerDetail({ data, customer, mutate }: { data: Row; customer: Row; 
           "phone",
           "gstNumber",
           "customerType",
+          "leadStatus",
           "state",
           "city",
           "creditEnabled",
           "paymentTermsDays",
           "availableCredit",
           "status",
+          "lastContactedAt",
           "createdAt",
         ]}
       />
@@ -1568,6 +1728,16 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function Message({ tone, children }: { tone: "success" | "error"; children: React.ReactNode }) { return <p className={`mt-5 flex gap-2 border p-3 text-sm font-semibold ${tone === "success" ? "border-[#bbdfc9] bg-[#f3fbf5] text-[#1e6b3a]" : "border-[#efc4be] bg-[#fff6f4] text-[#a9362c]"}`}><CircleAlert size={17} />{children}</p>; }
 function display(field: string, input: unknown) {
   const f = field.toLowerCase();
+  if (f === "leadstatus" && input) {
+    const raw = String(input);
+    const style = getLeadBadgeStyle(raw);
+    return (
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${style.bg} ${style.text} ${style.border}`}>
+        <span className={`size-1.5 rounded-full ${style.dot}`} />
+        {raw}
+      </span>
+    );
+  }
   if (f === "status" && input) {
     const raw = String(input);
     const label = ORDER_STATUS_LABELS[raw] || raw.replaceAll("_", " ");
