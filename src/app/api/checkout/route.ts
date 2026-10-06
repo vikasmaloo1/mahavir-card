@@ -182,7 +182,7 @@ export async function POST(request: Request) {
 
       const orderArtworkIds = [...new Set(basket.items.flatMap((item) => extractArtworkIds(item.configuration as Record<string, unknown>)))];
       if (orderArtworkIds.length) {
-        await tx.update(artworks).set({ orderId: order.id }).where(and(inArray(artworks.id, orderArtworkIds), eq(artworks.uploadedBy, session.user.id)));
+        await tx.update(artworks).set({ orderId: order.id, replacedAt: null }).where(and(inArray(artworks.id, orderArtworkIds), eq(artworks.uploadedBy, session.user.id)));
       }
 
       const intent = createPaymentIntent(input.paymentMethod, total);

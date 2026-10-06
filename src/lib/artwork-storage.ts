@@ -77,19 +77,6 @@ export async function initiateArtworkUpload(userId: string, input: InitiateArtwo
       }
       await db.update(artworks).set({ replacedAt: new Date(), updatedAt: new Date() }).where(eq(artworks.id, existing.id));
     }
-  } else {
-    // If customer refreshed the page or selected a new file, automatically replace existing un-ordered file for this slot
-    const existing = await db.select().from(artworks).where(and(eq(artworks.uploadedBy, userId), eq(artworks.productId, input.productId), input.pricingRuleId ? eq(artworks.pricingRuleId, input.pricingRuleId) : isNull(artworks.pricingRuleId), isNull(artworks.replacedAt), isNull(artworks.orderId)));
-    const active = existing.filter((item) => item.artworkSlotKey === slotKey && item.status !== "UPLOAD_FAILED" && (item.status !== "UPLOADING" || !item.uploadExpiresAt || item.uploadExpiresAt > new Date()));
-    if (active.length > 0) {
-      for (const item of active) {
-        if (item.storageKey) {
-          await storage.deleteObject(item.storageKey).catch(() => undefined);
-        }
-        await db.update(artworks).set({ replacedAt: new Date(), updatedAt: new Date() }).where(eq(artworks.id, item.id));
-      }
-      replacement = active[0];
-    }
   }
 
   const [customer] = await db

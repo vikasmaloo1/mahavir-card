@@ -30,6 +30,17 @@ export async function validateRequiredArtwork(userId: string, productId: string,
     : [{ slotKey: "MAIN", id: legacyId ?? (typeof submitted.MAIN === "string" ? String(submitted.MAIN) : null) }];
   if (selected.some((entry) => !entry.id)) throw new Error("Upload every required CDR artwork file before continuing");
   const ids = selected.map((entry) => entry.id as string);
-  const rows = await db.select({ id: artworks.id, slotKey: artworks.artworkSlotKey }).from(artworks).where(and(inArray(artworks.id, ids), eq(artworks.uploadedBy, userId), eq(artworks.productId, productId), eq(artworks.fileType, "cdr"), inArray(artworks.status, ["PENDING_REVIEW", "APPROVED", "CHANGES_REQUIRED"]), isNull(artworks.replacedAt), pricingRuleId ? eq(artworks.pricingRuleId, pricingRuleId) : isNull(artworks.pricingRuleId)));
+  const rows = await db
+    .select({ id: artworks.id, slotKey: artworks.artworkSlotKey })
+    .from(artworks)
+    .where(
+      and(
+        inArray(artworks.id, ids),
+        eq(artworks.uploadedBy, userId),
+        eq(artworks.productId, productId),
+        eq(artworks.fileType, "cdr"),
+        inArray(artworks.status, ["PENDING_REVIEW", "APPROVED", "CHANGES_REQUIRED"])
+      )
+    );
   if (selected.some((entry) => !rows.some((row) => row.id === entry.id && row.slotKey === entry.slotKey))) throw new Error("The selected CDR artwork is not available for this configuration");
 }

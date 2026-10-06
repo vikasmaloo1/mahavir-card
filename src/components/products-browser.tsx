@@ -1265,18 +1265,8 @@ function RowActions({
     );
   }
   if (quickOrderEligible) {
-    const isAddedRecently = isAdded;
     return (
       <div className="flex items-center gap-1.5 whitespace-nowrap">
-        {isAddedRecently || inCart ? (
-          <Link
-            href="/cart"
-            className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800 border border-emerald-300 hover:bg-emerald-200 transition-colors shadow-2xs"
-          >
-            <Check size={12} className="text-emerald-700" />
-            <span>{isAddedRecently ? "Added!" : "In basket"} · View &rarr;</span>
-          </Link>
-        ) : null}
         <button
           type="button"
           disabled={Boolean(quickActionId)}
@@ -1307,21 +1297,12 @@ function RowActions({
   if (expandableEligible) {
     return (
       <div className="flex items-center gap-1.5 whitespace-nowrap">
-        {inCart ? (
-          <Link
-            href="/cart"
-            className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800 border border-emerald-300 hover:bg-emerald-200 transition-colors shadow-2xs"
-          >
-            <Check size={12} className="text-emerald-700" />
-            <span>In basket · View &rarr;</span>
-          </Link>
-        ) : null}
         <button
           type="button"
           onClick={() => setExpandedId(isExpanded ? null : item.id)}
           className="inline-flex items-center gap-1 rounded bg-[var(--mc-accent)] px-2.5 py-1 text-xs font-bold text-white hover:bg-[var(--mc-accent-dark)] transition-colors shadow-xs"
         >
-          <span>{isExpanded ? "Close" : inCart ? "Order more" : "Order now"}</span>
+          <span>{isExpanded ? "Close" : "Order now"}</span>
           <ArrowRight
             size={12}
             className={isExpanded ? "rotate-90 transition-transform" : "transition-transform"}
