@@ -338,20 +338,22 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
                 <span className="text-xs font-bold text-[#263753]">Quantity</span>
                 <span className="text-[11px] text-[#607089]">min {defaultQty.toLocaleString("en-IN")} &bull; max 25,000</span>
               </div>
-              <div className="flex items-center rounded-lg border border-[#c9d2df] bg-white">
+              <div className="flex items-center rounded-lg border border-[#c9d2df] bg-white h-11 px-1 focus-within:border-[#2457b8] focus-within:ring-1 focus-within:ring-[#2457b8] transition-colors shadow-2xs">
                 <input
                   inputMode="numeric"
                   value={values.quantity ?? String(defaultQty)}
                   onChange={(event) => update("quantity", event.target.value)}
                   onBlur={() => update("quantity", String(quantity))}
-                  className="min-w-0 flex-1 px-3 py-1.5 text-sm font-semibold outline-none"
+                  className="min-w-0 flex-1 px-3 text-sm font-bold text-slate-900 outline-none bg-transparent"
+                  aria-label="Order quantity"
                 />
-                <div className="flex gap-0.5 pr-1.5">
+                <span className="text-xs font-bold text-slate-400 select-none mr-2">pcs</span>
+                <div className="flex items-center gap-1 pr-1">
                   <button
                     type="button"
                     disabled={quantity <= defaultQty}
                     onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "DOWN", product.categorySlug, product.slug)))}
-                    className="grid size-7 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="grid size-8 place-items-center rounded-md border border-[#c9d2df] hover:bg-[#f3f6fa] text-slate-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     aria-label="Decrease quantity"
                   >
                     <Minus size={13} />
@@ -360,7 +362,7 @@ export function ProductConfigurator({ product, editItemId, editKind = "PURCHASE"
                     type="button"
                     disabled={quantity >= 25000}
                     onClick={() => update("quantity", String(stepProductQuantity(values.quantity, "UP", product.categorySlug, product.slug)))}
-                    className="grid size-7 place-items-center rounded-full border border-[#c9d2df] hover:bg-[#f3f6fa] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="grid size-8 place-items-center rounded-md border border-[#c9d2df] hover:bg-[#f3f6fa] text-slate-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     aria-label="Increase quantity"
                   >
                     <Plus size={13} />

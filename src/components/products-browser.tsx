@@ -1570,7 +1570,37 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
   const [ruleId, setRuleId] = useState<string | null>(null);
   const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([]);
   const [quantity, setQuantity] = useState(1000);
+  const [quantityInput, setQuantityInput] = useState("1000");
   const [jobName, setJobName] = useState("");
+
+  const handleQuantityStep = (direction: "UP" | "DOWN") => {
+    const next = stepProductQuantity(quantity, direction, item.category?.slug ?? null, item.slug);
+    setQuantity(next);
+    setQuantityInput(String(next));
+  };
+
+  const handleQuantityInputChange = (val: string) => {
+    const cleaned = val.replace(/[^0-9]/g, "");
+    setQuantityInput(cleaned);
+    const parsed = parseInt(cleaned, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      setQuantity(Math.min(parsed, MAX_ORDER_QUANTITY));
+    }
+  };
+
+  const handleQuantityInputBlur = () => {
+    const parsed = parseInt(quantityInput, 10);
+    let finalQty = quantity;
+    if (isNaN(parsed) || parsed <= 0) {
+      finalQty = minQuantity;
+    } else if (parsed > MAX_ORDER_QUANTITY) {
+      finalQty = MAX_ORDER_QUANTITY;
+    } else {
+      finalQty = parsed;
+    }
+    setQuantity(finalQty);
+    setQuantityInput(String(finalQty));
+  };
 
   const isSticker =
     item.category?.slug === "sticker" ||
@@ -1613,7 +1643,9 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
         if (rule) {
           setRuleId(rule.id);
           const conditionQuantity = rule.conditions?.quantity;
-          setQuantity(conditionQuantity ? Number(conditionQuantity) : normalizeProductQuantity(undefined, item.category?.slug ?? null, item.slug).normalizedQuantity);
+          const initialQty = conditionQuantity ? Number(conditionQuantity) : normalizeProductQuantity(undefined, item.category?.slug ?? null, item.slug).normalizedQuantity;
+          setQuantity(initialQty);
+          setQuantityInput(String(initialQty));
         }
         if (data.addons?.length) {
           const list = rule
@@ -1795,35 +1827,35 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
       {/* Main Options Grid */}
       <div
         className={`grid gap-3.5 sm:grid-cols-2 ${
-          hasMultipleRules || isSquareInch
+          hasMultipleRules
             ? "lg:grid-cols-3 xl:grid-cols-5"
             : "lg:grid-cols-4 xl:grid-cols-4"
         }`}
       >
-        {/* 1. Size / Dimensions (takes 2 cols for stickers, art cards or single-rule items) */}
+        {/* 1. Size / Dimensions */}
         {isSquareInch ? (
-          <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs space-y-2.5 sm:col-span-2 lg:col-span-2 flex flex-col justify-between min-h-[148px]">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 truncate">
+          <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-2xs space-y-2 flex flex-col justify-between min-h-[148px]">
+            <div className="flex items-center justify-between gap-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 shrink-0">
                 {isSticker ? "Sticker Dimensions" : "Dimensions (W × H)"}
               </span>
               {stickerArea ? (
                 <span
-                  className={`text-[11px] font-bold px-2 py-0.5 rounded border shrink-0 ${
+                  className={`text-[10px] sm:text-[11px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${
                     minimumArea && parseFloat(stickerArea) < minimumArea
                       ? "bg-amber-50 text-amber-800 border-amber-300"
                       : "text-[var(--mc-accent-dark)] bg-blue-50 border-blue-200"
                   }`}
                 >
                   {minimumArea && parseFloat(stickerArea) < minimumArea
-                    ? `Area: ${stickerArea} sq.in (Min ${minimumArea})`
+                    ? `Min ${minimumArea} sq.in`
                     : `${stickerArea} sq.in / pc`}
                 </span>
               ) : null}
             </div>
-            <div className="my-1 grid grid-cols-2 gap-3">
+            <div className="my-1 grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[11px] font-semibold text-slate-600 block mb-1">Width (in inches)</label>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1">Width (in)</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -1832,14 +1864,14 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
                     max="100"
                     value={width}
                     onChange={(e) => setWidth(e.target.value)}
-                    className="w-full h-11 rounded-lg border border-slate-300 px-3 pr-8 text-sm font-bold text-slate-900 focus:border-[var(--mc-accent)] outline-none"
+                    className="w-full h-11 rounded-lg border border-slate-300 px-2.5 pr-7 text-sm font-bold text-slate-900 focus:border-[var(--mc-accent)] outline-none"
                     placeholder={isArtCardBoth ? "10" : "2"}
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 select-none">in</span>
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 select-none">in</span>
                 </div>
               </div>
               <div>
-                <label className="text-[11px] font-semibold text-slate-600 block mb-1">Height (in inches)</label>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1">Height (in)</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -1848,10 +1880,10 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
                     max="100"
                     value={height}
                     onChange={(e) => setHeight(e.target.value)}
-                    className="w-full h-11 rounded-lg border border-slate-300 px-3 pr-8 text-sm font-bold text-slate-900 focus:border-[var(--mc-accent)] outline-none"
+                    className="w-full h-11 rounded-lg border border-slate-300 px-2.5 pr-7 text-sm font-bold text-slate-900 focus:border-[var(--mc-accent)] outline-none"
                     placeholder={isArtCardBoth ? "5" : "2"}
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 select-none">in</span>
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 select-none">in</span>
                 </div>
               </div>
             </div>
@@ -1864,20 +1896,20 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
                   max="50"
                   value={bladeCount}
                   onChange={(e) => setBladeCount(e.target.value)}
-                  className="w-full sm:w-48 h-10 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-800 focus:border-[var(--mc-accent)] outline-none"
+                  className="w-full h-10 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-800 focus:border-[var(--mc-accent)] outline-none"
                 />
               </div>
             ) : null}
             <p className="text-[11px] text-slate-500 leading-tight">
               {minimumArea
-                ? `Enter width & height in inches (minimum ${minimumArea} sq. in). Calculated live.`
-                : "Enter custom width & height in inches. Calculated live per square inch."}
+                ? `Min ${minimumArea} sq. in. Calculated live.`
+                : "Custom width & height in inches."}
             </p>
           </div>
         ) : (
-          <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs flex flex-col justify-between min-h-[148px]">
+          <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-2xs flex flex-col justify-between min-h-[148px]">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 truncate">Product Size</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 shrink-0">Product Size</span>
               <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider shrink-0">Die Cut</span>
             </div>
             <div className="my-1.5 flex items-center min-h-11 px-3.5 py-2 rounded-lg bg-slate-50 border border-slate-200/90 text-xs sm:text-sm font-bold text-slate-800 leading-snug break-words">
@@ -1889,9 +1921,9 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
 
         {/* 2. Paper Stock / Printing Rule - ONLY shown if multiple options exist */}
         {hasMultipleRules ? (
-          <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs flex flex-col justify-between min-h-[148px]">
+          <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-2xs flex flex-col justify-between min-h-[148px]">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 truncate">Paper Stock</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 shrink-0">Paper Stock</span>
               <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider shrink-0">Print</span>
             </div>
             <div className="my-1.5">
@@ -1912,9 +1944,9 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
         ) : null}
 
         {/* 3. Job Name - Allow B2B customer to write job name directly from outside page */}
-        <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs flex flex-col justify-between min-h-[148px]">
+        <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-2xs flex flex-col justify-between min-h-[148px]">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 truncate">Job Name</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 shrink-0">Job Name</span>
             <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider shrink-0">Optional</span>
           </div>
           <div className="my-1.5">
@@ -1930,52 +1962,55 @@ function InlineOrderPanel({ item, onAdded, customerStateCode }: { item: Product;
           <p className="text-[11px] text-slate-500 leading-tight">Printed on bill &amp; parcel label</p>
         </div>
 
-        {/* 4. Quantity Stepper */}
-        <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs flex flex-col justify-between min-h-[148px]">
+        {/* 4. Quantity Stepper & Direct Editable Input */}
+        <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-2xs flex flex-col justify-between min-h-[148px]">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 truncate">Quantity</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 shrink-0">Quantity</span>
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
               Min {minQuantity.toLocaleString("en-IN")}
             </span>
           </div>
-          <div className="my-1.5 flex items-center rounded-lg border border-slate-300 bg-white h-11 overflow-hidden shadow-2xs">
+          <div className="my-1.5 flex items-center rounded-lg border border-slate-300 bg-white h-11 overflow-hidden shadow-2xs focus-within:border-[var(--mc-accent)] focus-within:ring-1 focus-within:ring-[var(--mc-accent)] transition-colors">
             <button
               type="button"
               disabled={quantity <= minQuantity}
-              onClick={() =>
-                setQuantity((current) =>
-                  stepProductQuantity(current, "DOWN", item.category?.slug ?? null, item.slug)
-                )
-              }
-              className="w-10 h-full flex items-center justify-center text-base font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors select-none"
+              onClick={() => handleQuantityStep("DOWN")}
+              className="w-9 sm:w-10 h-full shrink-0 flex items-center justify-center text-base font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors select-none"
               aria-label="Decrease quantity"
             >
               −
             </button>
-            <span className="flex-1 text-center text-xs sm:text-sm font-bold text-slate-900 truncate px-1">
-              {quantity.toLocaleString("en-IN")} pcs
-            </span>
+            <div className="flex-1 min-w-0 flex items-center justify-center px-1">
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={quantityInput}
+                onChange={(e) => handleQuantityInputChange(e.target.value)}
+                onBlur={handleQuantityInputBlur}
+                className="w-full text-center text-sm font-bold text-slate-900 bg-transparent outline-none p-0"
+                aria-label="Order quantity"
+                placeholder={String(minQuantity)}
+              />
+              <span className="text-xs font-bold text-slate-400 select-none ml-1 shrink-0">pcs</span>
+            </div>
             <button
               type="button"
               disabled={quantity >= MAX_ORDER_QUANTITY}
-              onClick={() =>
-                setQuantity((current) =>
-                  stepProductQuantity(current, "UP", item.category?.slug ?? null, item.slug)
-                )
-              }
-              className="w-10 h-full flex items-center justify-center text-base font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors select-none"
+              onClick={() => handleQuantityStep("UP")}
+              className="w-9 sm:w-10 h-full shrink-0 flex items-center justify-center text-base font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors select-none"
               aria-label="Increase quantity"
             >
               +
             </button>
           </div>
-          <p className="text-[11px] text-slate-500 leading-tight">Max limit: 25,000 units</p>
+          <p className="text-[11px] text-slate-500 leading-tight">Type or click +/− (Max: 25,000)</p>
         </div>
 
         {/* 5. Live Rate & Estimated Total */}
-        <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs flex flex-col justify-between min-h-[148px]">
+        <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-2xs flex flex-col justify-between min-h-[148px]">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 truncate">Total Rate</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 shrink-0">Total Rate</span>
             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 shrink-0">
               <span className="size-1.5 rounded-full bg-emerald-500" />
               Wholesale

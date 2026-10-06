@@ -124,16 +124,15 @@ async function calculateBasePrice(productId: string, quantity: number, options: 
     const rawAreaPrice = area * rate;
     const singleBatchPrice = Math.max(rawAreaPrice, minimumCharge);
     const refQty = selected.conditions.quantity || 1000;
-    const batchMultiplier = Math.max(1, Math.ceil(quantity / refQty));
+    const batchMultiplier = Math.max(1, quantity / refQty);
     const areaPrice = singleBatchPrice * batchMultiplier;
     const extraCharge = bladeCount * bladeCharge * batchMultiplier;
-    const expectedQuantity = selected.conditions.quantity;
     return {
       amount: areaPrice, rule: selected.rule.name, ruleId: selected.rule.id,
       taxInclusive: selected.rule.taxInclusive, taxRate: selected.rule.taxRate ? Number(selected.rule.taxRate) : null,
       blade: bladeCount > 0 && bladeCharge > 0 ? { count: bladeCount, chargePerBlade: bladeCharge, total: extraCharge } : null,
       details: { quantity, width, height, area, ratePerSqInch: rate, baseAreaPrice: rawAreaPrice, minimumArea: minimumArea || null, minimumCharge: minimumCharge || null, bladeCount, bladeCharge: bladeCharge || null, extraCharge, source: "RATE.xlsx", unit: "reference_batch_area" },
-      warnings: expectedQuantity && expectedQuantity !== quantity ? [`This rate is configured for ${expectedQuantity.toLocaleString("en-IN")} quantity.`] : [],
+      warnings: [],
     };
   }
   if (selected?.formula.amount) {

@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ProductImage } from "@/components/product-image";
 import { formatInr, formatRoundOff } from "@/lib/formatting";
-import { stepProductQuantity, MAX_ORDER_QUANTITY } from "@/lib/quantity-helper";
+import { stepProductQuantity, normalizeProductQuantity, MAX_ORDER_QUANTITY } from "@/lib/quantity-helper";
 import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import { showToast } from "@/components/toast-provider";
 import { isOutsideGujRaj } from "@/lib/india-states";
@@ -95,6 +95,28 @@ export function PurchaseCart() {
       showToast.error("Update failed", msg);
     } else {
       showToast.success("Quantity updated", `${item.product.name} quantity changed to ${nextQty.toLocaleString("en-IN")}.`);
+      await load();
+    }
+    setBusyId("");
+  }
+
+  async function setDirectQuantity(item: Item, directQty: number) {
+    if (directQty <= 0) return;
+    if (directQty > MAX_ORDER_QUANTITY) {
+      showToast.info("Maximum quantity reached", "For orders above 25,000 units, please request a quotation.");
+      return;
+    }
+    const { normalizedQuantity } = normalizeProductQuantity(directQty, item.product.categorySlug, item.product.slug);
+    if (normalizedQuantity === item.quantity) return;
+    setBusyId(item.id); setError("");
+    const response = await fetch(`/api/cart/items/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quantity: normalizedQuantity }) });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      const msg = payload?.error?.message ?? "Could not update this item";
+      setError(msg);
+      showToast.error("Update failed", msg);
+    } else {
+      showToast.success("Quantity updated", `${item.product.name} quantity changed to ${normalizedQuantity.toLocaleString("en-IN")}.`);
       await load();
     }
     setBusyId("");
@@ -196,29 +218,12 @@ export function PurchaseCart() {
                 ) : null}
                 <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3">
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Qty:</span>
-                  <div className="flex items-center rounded-xl border border-slate-200 bg-white shadow-2xs">
-                    <button
-                      type="button"
-                      onClick={() => void updateQuantity(item, "DOWN")}
-                      disabled={busyId === item.id || item.quantity <= 500}
-                      className="grid size-8 place-items-center rounded-l-xl hover:bg-slate-50 disabled:opacity-40 transition-colors"
-                      aria-label="Decrease quantity"
-                    >
-                      <Minus size={13} />
-                    </button>
-                    <span className="min-w-14 text-center text-xs font-bold text-slate-900">
-                      {item.quantity.toLocaleString("en-IN")}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => void updateQuantity(item, "UP")}
-                      disabled={busyId === item.id || item.quantity >= MAX_ORDER_QUANTITY}
-                      className="grid size-8 place-items-center rounded-r-xl hover:bg-slate-50 disabled:opacity-40 transition-colors"
-                      aria-label="Increase quantity"
-                    >
-                      <Plus size={13} />
-                    </button>
-                  </div>
+                  <CartItemQuantityControl
+                    item={item}
+                    busy={busyId === item.id}
+                    onStep={updateQuantity}
+                    onDirect={setDirectQuantity}
+                  />
                   <Link
                     href={`/catalog/${item.product.slug}?editItem=${item.id}&kind=PURCHASE`}
                     className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-bold text-[#1e3a5f] hover:bg-slate-50 transition-colors"
@@ -365,6 +370,69 @@ function CartSkeleton() {
         ))}
       </div>
       <div className="rounded-xl border border-[var(--mc-line)] bg-white p-5 h-64" />
+    </div>
+  );
+}
+
+function CartItemQuantityControl({
+  item,
+  busy,
+  onStep,
+  onDirect,
+}: {
+  item: Item;
+  busy: boolean;
+  onStep: (item: Item, dir: "UP" | "DOWN") => void;
+  onDirect: (item: Item, qty: number) => void;
+}) {
+  const [val, setVal] = useState(String(item.quantity));
+  useEffect(() => {
+    setVal(String(item.quantity));
+  }, [item.quantity]);
+
+  return (
+    <div className="flex items-center rounded-xl border border-slate-200 bg-white shadow-2xs focus-within:border-[var(--mc-accent)] focus-within:ring-1 focus-within:ring-[var(--mc-accent)] transition-colors">
+      <button
+        type="button"
+        onClick={() => onStep(item, "DOWN")}
+        disabled={busy || item.quantity <= 500}
+        className="grid size-8 place-items-center rounded-l-xl hover:bg-slate-50 disabled:opacity-40 transition-colors select-none text-slate-700"
+        aria-label="Decrease quantity"
+      >
+        <Minus size={13} />
+      </button>
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        value={val}
+        disabled={busy}
+        onChange={(e) => setVal(e.target.value.replace(/[^0-9]/g, ""))}
+        onBlur={() => {
+          const parsed = parseInt(val, 10);
+          if (!isNaN(parsed) && parsed > 0 && parsed !== item.quantity) {
+            onDirect(item, parsed);
+          } else {
+            setVal(String(item.quantity));
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            (e.target as HTMLInputElement).blur();
+          }
+        }}
+        className="w-16 text-center text-xs font-bold text-slate-900 bg-transparent outline-none px-1"
+        aria-label="Item quantity"
+      />
+      <button
+        type="button"
+        onClick={() => onStep(item, "UP")}
+        disabled={busy || item.quantity >= MAX_ORDER_QUANTITY}
+        className="grid size-8 place-items-center rounded-r-xl hover:bg-slate-50 disabled:opacity-40 transition-colors select-none text-slate-700"
+        aria-label="Increase quantity"
+      >
+        <Plus size={13} />
+      </button>
     </div>
   );
 }
