@@ -50,6 +50,7 @@ export type CatalogProduct = {
   /** True when no real product photo exists; the PDF renders a neutral placeholder instead of inventing one. */
   imageIsPlaceholder: boolean;
   addon?: { code: string; name: string; amount: number };
+  addons?: Array<{ code: string; name: string; amount: number }>;
   /** B2C rate (tax-exclusive), or null when the product has no active retail rule. */
   retail: CatalogRate | null;
   /** B2B rate (tax-inclusive), or null when the product has no active trade rule. */
@@ -144,7 +145,13 @@ export async function getCatalogModel(): Promise<CatalogModel> {
   }> = [];
   let ruleRows: RuleRow[] = [];
   let imageRows: Array<typeof productImages.$inferSelect> = [];
-  let addonRows: Array<{ productId: string; code: string; name: string; priceConfiguration: Record<string, unknown> }> = [];
+  let addonRows: Array<{
+    productId: string;
+    code: string;
+    name: string;
+    price: string | null;
+    priceConfiguration: Record<string, unknown>;
+  }> = [];
 
   try {
     const [settings, products] = await Promise.all([
@@ -202,11 +209,19 @@ export async function getCatalogModel(): Promise<CatalogModel> {
             productId: productAddons.productId,
             code: addonsTable.code,
             name: addonsTable.name,
+            price: productAddons.price,
             priceConfiguration: addonsTable.priceConfiguration,
           })
           .from(productAddons)
           .innerJoin(addonsTable, eq(productAddons.addonId, addonsTable.id))
-          .where(and(inArray(productAddons.productId, productIds), eq(addonsTable.isActive, true))),
+          .where(
+            and(
+              inArray(productAddons.productId, productIds),
+              eq(addonsTable.isActive, true),
+              eq(productAddons.isActive, true),
+            ),
+          )
+          .orderBy(asc(productAddons.sortOrder)),
       ]);
     }
   } catch (error) {
@@ -230,10 +245,18 @@ export async function getCatalogModel(): Promise<CatalogModel> {
   }
 
   const addonByProduct = new Map<string, { code: string; name: string; amount: number }>();
+  const addonsByProduct = new Map<string, Array<{ code: string; name: string; amount: number }>>();
   for (const row of addonRows) {
-    if (addonByProduct.has(row.productId)) continue;
     const configured = (row.priceConfiguration as { amount?: unknown }).amount;
-    addonByProduct.set(row.productId, { code: row.code, name: row.name, amount: numberOrNull(configured) ?? 0 });
+    const amount = numberOrNull(row.price) ?? numberOrNull(configured) ?? 0;
+    const addonObj = { code: row.code, name: row.name, amount };
+
+    if (!addonByProduct.has(row.productId)) {
+      addonByProduct.set(row.productId, addonObj);
+    }
+    const list = addonsByProduct.get(row.productId) ?? [];
+    list.push(addonObj);
+    addonsByProduct.set(row.productId, list);
   }
 
   const productsWithoutImages: string[] = [];
@@ -283,6 +306,7 @@ export async function getCatalogModel(): Promise<CatalogModel> {
       imageUrl,
       imageIsPlaceholder,
       addon: addonByProduct.get(product.id),
+      addons: addonsByProduct.get(product.id) ?? [],
       retail: retailRule ? toRate(retailRule, referenceQuantity) : null,
       trade: tradeRule ? toRate(tradeRule, referenceQuantity) : null,
     });

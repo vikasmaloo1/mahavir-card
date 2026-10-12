@@ -38,6 +38,12 @@ export type CatalogProductItem = {
     amount: number;
     referenceQuantity?: number;
   };
+  addons?: Array<{
+    code: string;
+    name: string;
+    amount: number;
+    referenceQuantity?: number;
+  }>;
   bladeCharge?: number;
   minimumArea?: number;
   minimumCharge?: number;
@@ -90,8 +96,13 @@ const defaultBusinessInfo: BusinessInfo = {
 
 function getAddonNote(p: CatalogProductItem): string | null {
   const notes: string[] = [];
-  if (p.addon) {
-    notes.push(`${p.addon.name}: +₹${p.addon.amount}`);
+  const list = p.addons && p.addons.length > 0 ? p.addons : p.addon ? [p.addon] : [];
+  for (const a of list) {
+    if (a.amount > 0) {
+      notes.push(`${a.name}: +₹${a.amount}`);
+    } else {
+      notes.push(`${a.name}: Included`);
+    }
   }
   if (p.bladeCharge) {
     notes.push(`Half Blade: ₹${p.bladeCharge} / blade`);

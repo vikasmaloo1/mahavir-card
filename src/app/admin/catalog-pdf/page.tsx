@@ -53,6 +53,7 @@ export default async function AdminCatalogPdfPage() {
         size: product.size,
         imageUrl: product.imageUrl,
         addon: product.addon,
+        addons: product.addons,
         bladeCharge: shape?.bladeCharge ?? undefined,
         minimumCharge: shape?.minimumCharge ?? undefined,
       };
