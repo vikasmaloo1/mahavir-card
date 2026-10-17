@@ -699,8 +699,8 @@ export function LoginForm() {
                       <strong className="block font-bold text-[#1e3a5f]">Need help signing up?</strong>
                       <p className="mt-0.5 text-slate-700 leading-relaxed">
                         Not sure how to sign up or need help creating your account? Call or WhatsApp us directly at{" "}
-                        <a href="tel:+919426371150" className="font-bold underline text-[#1e3a5f] hover:text-[#152a45]">
-                          +91 94263 71150
+                        <a href="tel:+917984752154" className="font-bold underline text-[#1e3a5f] hover:text-[#152a45]">
+                          +91 79847 52154
                         </a>{" "}
                         and our team will assist you immediately.
                       </p>

@@ -3,7 +3,7 @@
  * Keeps prefilled message text in one place instead of duplicating strings per component.
  */
 
-export const WHATSAPP_NUMBER = "919426371150";
+export const WHATSAPP_NUMBER = "917984752154";
 
 export const WHATSAPP_MESSAGES = {
   GENERIC: "Hello, I found Mahavir Card online and would like to discuss a printing requirement.",

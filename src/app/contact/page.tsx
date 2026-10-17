@@ -51,13 +51,13 @@ export default function ContactPage() {
           <div className="grid gap-8 lg:grid-cols-[1fr_1.1fr]">
             <div className="space-y-4">
               <a
-                href="tel:+919426371150"
+                href="tel:+917984752154"
                 className="flex items-start gap-4 rounded-xl border border-slate-200/90 bg-white p-5 shadow-xs transition hover:border-[#1e3a5f] hover:shadow-sm"
               >
                 <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#1e3a5f]/10 text-[#1e3a5f]"><Phone size={19} /></span>
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Call</p>
-                  <p className="mt-0.5 text-lg font-bold text-slate-950">+91 94263 71150</p>
+                  <p className="mt-0.5 text-lg font-bold text-slate-950">+91 79847 52154</p>
                 </div>
               </a>
 
@@ -81,7 +81,7 @@ export default function ContactPage() {
                 <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#1e3a5f]/10 text-[#1e3a5f]"><MessageCircle size={19} /></span>
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-500">WhatsApp</p>
-                  <p className="mt-0.5 text-lg font-bold text-slate-950">+91 94263 71150</p>
+                  <p className="mt-0.5 text-lg font-bold text-slate-950">+91 79847 52154</p>
                 </div>
               </a>
 

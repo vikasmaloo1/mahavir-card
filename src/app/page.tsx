@@ -115,7 +115,7 @@ export default async function Home() {
             </div>
             <div>
               <p className="text-[14.5px] font-bold text-slate-900">Ahmedabad Based</p>
-              <p className="mt-0.5 text-xs text-slate-600">Khadia Golwad press facility &amp; counter pickup</p>
+              <p className="mt-0.5 text-xs text-slate-600">Press facility &amp; counter pickup</p>
             </div>
           </div>
         </div>

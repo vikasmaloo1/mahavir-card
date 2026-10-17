@@ -54,7 +54,7 @@ const localBusinessJsonLd = {
   image: ["https://mahavircard.in/images/mahavir-print-assortment.png", "https://mahavircard.in/images/home-hero-printing.jpg"],
   logo: "https://mahavircard.in/icon.png",
   url: "https://mahavircard.in",
-  telephone: "+91 94263 71150",
+  telephone: "+91 79847 52154",
   email: "mahavircard2011@gmail.com",
   vatID: "24AIUPJ2271L1ZV",
   taxID: "24AIUPJ2271L1ZV",

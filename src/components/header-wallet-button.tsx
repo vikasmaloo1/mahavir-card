@@ -406,7 +406,7 @@ export function HeaderWalletButton({
                     rel="noopener noreferrer"
                     className="font-bold text-[var(--mc-accent)] hover:underline"
                   >
-                    +91 94263 71150
+                    +91 79847 52154
                   </a>
                 </p>
               </form>

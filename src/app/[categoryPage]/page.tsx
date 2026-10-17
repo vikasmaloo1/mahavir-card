@@ -165,7 +165,7 @@ export default async function CategoryLandingPage({ params }: { params: Promise<
           <p className="font-bold text-[var(--mc-ink)]">Mahavir Card</p>
           <p>Khadia Golwad, Opp. Jain Digamber Mandir, Ahmedabad - 380001, Gujarat</p>
           <p>
-            <a href="tel:+919426371150" className="hover:text-[var(--mc-accent)]">+91 94263 71150</a> ·{" "}
+            <a href="tel:+917984752154" className="hover:text-[var(--mc-accent)]">+91 79847 52154</a> ·{" "}
             <a href="mailto:mahavircard2011@gmail.com" className="hover:text-[var(--mc-accent)]">mahavircard2011@gmail.com</a>
           </p>
           <p className="font-mono text-xs">GSTIN 24AIUPJ2271L1ZV</p>
